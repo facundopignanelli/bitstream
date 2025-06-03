@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BitStream
  * Description: A microblogging plugin for sharing Bits and ReBits.
- * Version: beta 0.3
+ * Version: beta 0.4
  * Author: Facundo Pignanelli
  * Text Domain: bitstream
  * GitHub Plugin URI: https://github.com/facundopignanelli/bitstream
@@ -11,6 +11,8 @@
 
 // Exit if accessed directly
 if (!defined('ABSPATH')) exit;
+
+define('BITSTREAM_VERSION','beta 0.4');
 
 /*
 // Activation hook: populate default ReBit mappings
@@ -546,3 +548,80 @@ function bitstream_render_og_card($post_id) {
 
 // Display quoted Bit in output (final: use global context to prevent double quote rendering!)
 // End quoted box
+
+// ===== Front-end Quick Post Page =====
+add_action('init', function(){
+    add_rewrite_rule('^bitstream/new/?$', 'index.php?bitstream_new=1', 'top');
+    add_rewrite_tag('%bitstream_new%', '1');
+});
+
+add_action('init', function(){
+    if (get_option('bitstream_version') !== BITSTREAM_VERSION) {
+        flush_rewrite_rules();
+        update_option('bitstream_version', BITSTREAM_VERSION);
+    }
+}, 20);
+
+register_activation_hook(__FILE__, function(){
+    flush_rewrite_rules();
+    update_option('bitstream_version', BITSTREAM_VERSION);
+});
+
+// Output manifest link and service worker registration
+add_action('wp_head', function(){
+    if (get_query_var('bitstream_new')) {
+        $base = plugin_dir_url(__FILE__);
+        echo '<link rel="manifest" href="'.esc_url($base.'manifest.json').'">';
+        echo '<meta name="theme-color" content="#2c6e49">';
+        echo '<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("'.esc_url($base.'sw.js').'");}</script>';
+    }
+});
+
+// Handle quick post page
+add_action('template_redirect', function(){
+    if (!get_query_var('bitstream_new')) return;
+    if (!is_user_logged_in()) {
+        wp_redirect(wp_login_url(site_url('/bitstream/new')));
+        exit;
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && check_admin_referer('bitstream_quick_new','bitstream_nonce')) {
+        $content   = wp_kses_post($_POST['bit_content'] ?? '');
+        $rebit_url = isset($_POST['bit_rebit_url']) ? esc_url_raw($_POST['bit_rebit_url']) : '';
+        $post_id   = wp_insert_post([
+            'post_type'   => 'bit',
+            'post_status' => 'publish',
+            'post_title'  => '',
+            'post_content'=> $content,
+        ]);
+        if ($post_id && !is_wp_error($post_id)) {
+            if ($rebit_url) update_post_meta($post_id,'bitstream_rebit_url',$rebit_url);
+            if (!empty($_FILES['bit_image']['tmp_name'])) {
+                require_once ABSPATH.'wp-admin/includes/file.php';
+                require_once ABSPATH.'wp-admin/includes/media.php';
+                $attachment_id = media_handle_upload('bit_image',$post_id);
+                if (!is_wp_error($attachment_id)) {
+                    $img_url = wp_get_attachment_url($attachment_id);
+                    $content .= "\n<img src='".esc_url($img_url)."' alt='' />";
+                    wp_update_post(['ID'=>$post_id,'post_content'=>$content]);
+                }
+            }
+            wp_redirect(get_permalink($post_id));
+            exit;
+        }
+    }
+
+    get_header();
+    echo '<div class="bitstream-new-form" style="max-width:600px;margin:2rem auto;">';
+    echo '<form method="post" enctype="multipart/form-data">';
+    wp_nonce_field('bitstream_quick_new','bitstream_nonce');
+    echo '<p><label>Content<br><textarea name="bit_content" rows="5" required style="width:100%;"></textarea></label></p>';
+    echo '<p><label>ReBit URL<br><input type="url" name="bit_rebit_url" style="width:100%;"></label></p>';
+    echo '<p><label>Image<br><input type="file" name="bit_image" accept="image/*"></label></p>';
+    echo '<p><button type="submit">Post Bit</button></p>';
+    echo '</form>';
+    echo '<p><a href="'.esc_url(admin_url('post-new.php?post_type=bit')).'" style="display:inline-block;margin-top:1rem;">Launch Full Editor</a></p>';
+    echo '</div>';
+    get_footer();
+    exit;
+});
