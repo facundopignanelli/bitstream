@@ -12,6 +12,8 @@
 // Exit if accessed directly
 if (!defined('ABSPATH')) exit;
 
+define('BITSTREAM_VERSION','beta 0.4');
+
 /*
 // Activation hook: populate default ReBit mappings
 register_activation_hook(__FILE__, 'bitstream_set_default_rebit_mappings');
@@ -553,6 +555,17 @@ add_action('init', function(){
     add_rewrite_tag('%bitstream_new%', '1');
 });
 
+add_action('init', function(){
+    if (get_option('bitstream_version') !== BITSTREAM_VERSION) {
+        flush_rewrite_rules();
+        update_option('bitstream_version', BITSTREAM_VERSION);
+    }
+}, 20);
+
+register_activation_hook(__FILE__, function(){
+    flush_rewrite_rules();
+    update_option('bitstream_version', BITSTREAM_VERSION);
+=======
 register_activation_hook(__FILE__, function(){
     flush_rewrite_rules();
 });
