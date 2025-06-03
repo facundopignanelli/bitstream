@@ -5,6 +5,8 @@
  * Version: beta 0.3
  * Author: Facundo Pignanelli
  * Text Domain: bitstream
+ * GitHub Plugin URI: https://github.com/facundopignanelli/bitstream
+ * Primary Branch: main
  */
 
 // Exit if accessed directly
