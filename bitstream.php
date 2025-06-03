@@ -549,25 +549,57 @@ function bitstream_render_og_card($post_id) {
 // End quoted box
 
 // ===== Front-end Quick Post Page =====
+// ===== Front-end Quick Post Page =====
+
+/**
+ * 1) Register the “bitstream/new” rewrite rule and tag via a named function.
+ */
 function bitstream_register_quick_post_rule() {
-    add_rewrite_rule('^bitstream/new/?$', 'index.php?bitstream_new=1', 'top');
+    add_rewrite_rule(
+        '^bitstream/new/?$',          // URL pattern: example.com/bitstream/new
+        'index.php?bitstream_new=1',  // Query var to catch
+        'top'
+    );
     add_rewrite_tag('%bitstream_new%', '1');
 }
 add_action('init', 'bitstream_register_quick_post_rule');
 
-function bitstream_quick_post_query_var($vars){
+
+/**
+ * 1.5) Allow WordPress to recognize “bitstream_new” as a valid query var.
+ */
+function bitstream_quick_post_query_var( $vars ) {
     $vars[] = 'bitstream_new';
     return $vars;
 }
 add_filter('query_vars', 'bitstream_quick_post_query_var');
 
+
+/**
+ * 2) On init (priority 20), check if the stored option “bitstream_version”
+ *    matches the current BITSTREAM_VERSION. If not, flush + update.
+ */
 function bitstream_quick_post_version_check() {
-    if (get_option('bitstream_version') !== BITSTREAM_VERSION) {
+    if ( get_option('bitstream_version') !== BITSTREAM_VERSION ) {
+        // Flush rewrite rules so the new “bitstream/new” rule takes effect.
         flush_rewrite_rules();
+
+        // Store the latest version so we don’t keep flushing on every page load.
         update_option('bitstream_version', BITSTREAM_VERSION);
     }
 }
 add_action('init', 'bitstream_quick_post_version_check', 20);
+
+
+/**
+ * 3) On plugin activation, flush rewrite rules and set the version
+ *    option so everything is in sync immediately.
+ */
+function bitstream_quick_post_activate() {
+    flush_rewrite_rules();
+    update_option('bitstream_version', BITSTREAM_VERSION);
+}
+register_activation_hook(__FILE__, 'bitstream_quick_post_activate');
 
 function bitstream_quick_post_activate() {
     flush_rewrite_rules();
