@@ -565,6 +565,9 @@ add_action('init', function(){
 register_activation_hook(__FILE__, function(){
     flush_rewrite_rules();
     update_option('bitstream_version', BITSTREAM_VERSION);
+=======
+register_activation_hook(__FILE__, function(){
+    flush_rewrite_rules();
 });
 
 // Output manifest link and service worker registration
