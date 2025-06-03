@@ -540,7 +540,6 @@ function bitstream_render_og_card($post_id) {
     if ($desc) {
         $card .= '<div class="bitstream-og-desc" style="font-size:0.97em;line-height:1.5;color:#444;margin-top:2px;">'.esc_html($desc).'</div>';
     }
-    // HERE: Make the link green and clickable
     $card .= '<div class="bitstream-og-url" style="font-size:0.92em;color:var(--wp--preset--color--accent-1,#2c6e49);overflow-wrap:anywhere;word-break:break-all;margin-top:6px;"><a href="'.esc_url($url).'" target="_blank" style="color:var(--wp--preset--color--accent-1,#2c6e49);text-decoration:underline;word-break:break-all;">'.esc_html($url).'</a></div>';
     $card .= '</div></div>';
     return $card;
