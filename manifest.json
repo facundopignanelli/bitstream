@@ -1,0 +1,20 @@
+{
+  "name": "BitStream",
+  "short_name": "BitStream",
+  "start_url": "/bitstream/new",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2c6e49",
+  "icons": [
+    {
+      "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADAAQMAAABoEv5EAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAAGUExURSxuSf///xWphAsAAAABYktHRAH/Ai3eAAAAB3RJTUUH6QYDFjkWgpFdjQAAABxJREFUWMPtwTEBAAAAwqD1T20ND6AAAAAA4NcAEsAAAQj+n1IAAAAASUVORK5CYII=",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAIAAQMAAADOtka5AAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAAGUExURSxuSf///xWphAsAAAABYktHRAH/Ai3eAAAAB3RJTUUH6QYDFjkX9ZZtGwAAADZJREFUeNrtwQEBAAAAgiD/r25IQAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAF8G4IAAABjdVCkAAAAAElFTkSuQmCC",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
