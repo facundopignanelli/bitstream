@@ -1,7 +1,7 @@
 {
   "name": "BitStream QuickPost",
   "short_name": "BS QuickPost",
-  "start_url": "/bitstream/new",
+  "start_url": "/bitstream/quickbit/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#2c6e49",
