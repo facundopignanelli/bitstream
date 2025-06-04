@@ -579,7 +579,7 @@ function bitstream_quick_post_shortcode() {
     echo '<p><label>Image<br><input type="file" name="bit_image" accept="image/*"></label></p>';
     echo '<div class="wp-block-button bitstream-post-button"><button type="submit" class="wp-block-button__link wp-element-button"><strong>Post Bit</strong></button></div>';
     echo '</form>';
-    echo '<div class="wp-block-button bitstream-full-editor" style="margin-top:13px;"><a class="wp-block-button__link wp-element-button" href="'.esc_url(admin_url('post-new.php?post_type=bit')).'"><strong>Open Full Editor</strong></a></div>';
+    echo '<div class="wp-block-button bitstream-full-editor" style="margin-top:13px;text-align:center;"><a class="wp-block-button__link wp-element-button" href="'.esc_url(admin_url('post-new.php?post_type=bit')).'"><strong>Open Full Editor</strong></a></div>';
     return ob_get_clean();
 }
 add_shortcode('bitstream_quick_post', 'bitstream_quick_post_shortcode');
@@ -623,7 +623,7 @@ function bitstream_handle_quick_post_submission() {
                     wp_update_post(['ID'=>$post_id,'post_content'=>$content]);
                 }
             }
-            wp_redirect(get_permalink($post_id));
+            wp_redirect(home_url('/bitstream/'));
             exit;
         }
     }
