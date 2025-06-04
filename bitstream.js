@@ -67,6 +67,24 @@ document.querySelectorAll('.bit-comment-toggle').forEach(button => {
         }
     });
 });
+
+    // Quick Post validation
+    const quickForm = document.querySelector('.bitstream-form');
+    if (quickForm) {
+        const contentField = quickForm.querySelector('textarea[name="bit_content"]');
+        const urlField     = quickForm.querySelector('input[name="bit_rebit_url"]');
+
+        function toggleRequired() {
+            if (urlField.value.trim()) {
+                contentField.removeAttribute('required');
+            } else {
+                contentField.setAttribute('required', 'required');
+            }
+        }
+
+        urlField.addEventListener('input', toggleRequired);
+        toggleRequired();
+    }
     // Infinite Scroll & Load More
     const feed = document.querySelector('.bitstream-feed');
     if (!feed) return;

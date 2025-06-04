@@ -322,6 +322,20 @@
 .bitstream-form input[type="file"] {
     width: 100%;
 }
+.bitstream-form .wp-block-button {
+    margin: 13px 0;
+    text-align: center;
+}
+.bitstream-form .wp-block-button__link,
+.bitstream-form .wp-block-button button {
+    border-radius: 13px;
+}
+.bitstream-full-editor .wp-block-button__link {
+    background-color: var(--wp--preset--color--accent-2);
+}
+.bitstream-login-button {
+    text-align: center;
+}
 
 /* Animated comments transition */
 .bit-comments {
