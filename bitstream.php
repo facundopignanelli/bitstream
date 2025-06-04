@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BitStream
  * Description: A microblogging plugin for sharing Bits and ReBits.
- * Version: beta 0.3
+ * Version: beta 0.4
  * Author: Facundo Pignanelli
  * Text Domain: bitstream
  */
@@ -10,7 +10,7 @@
 // Exit if accessed directly
 if (!defined('ABSPATH')) exit;
 
-define('BITSTREAM_VERSION', 'beta 0.3');
+define('BITSTREAM_VERSION', 'beta 0.4');
 
 /*
 // Activation hook: populate default ReBit mappings
@@ -556,52 +556,50 @@ function bitstream_render_og_card($post_id) {
 // Display quoted Bit in output (final: use global context to prevent double quote rendering!)
 // End quoted box
 
-// ===== Front-end Quick Post Page =====
-function bitstream_register_quick_post_rule() {
-    add_rewrite_rule('^bitstream/new/?$', 'index.php?bitstream_new=1', 'top');
-    add_rewrite_tag('%bitstream_new%', '1');
-}
-add_action('init', 'bitstream_register_quick_post_rule');
+// ===== Quick Post Shortcode =====
 
-function bitstream_quick_post_query_var($vars){
-    $vars[] = 'bitstream_new';
-    return $vars;
-}
-add_filter('query_vars', 'bitstream_quick_post_query_var');
+// Flag to know when shortcode is used
+$bitstream_quick_post_page = false;
 
-function bitstream_quick_post_version_check() {
-    if (get_option('bitstream_version') !== BITSTREAM_VERSION) {
-        flush_rewrite_rules();
-        update_option('bitstream_version', BITSTREAM_VERSION);
+function bitstream_quick_post_shortcode() {
+    global $bitstream_quick_post_page;
+    $bitstream_quick_post_page = true;
+
+    if (!is_user_logged_in()) {
+        $login = wp_login_url(get_permalink());
+        return '<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="'.esc_url($login).'"><strong>Log in to post</strong></a></div>';
     }
-}
-add_action('init', 'bitstream_quick_post_version_check', 20);
 
-function bitstream_quick_post_activate() {
-    flush_rewrite_rules();
-    update_option('bitstream_version', BITSTREAM_VERSION);
+    ob_start();
+    echo '<form method="post" enctype="multipart/form-data" class="bitstream-form">';
+    wp_nonce_field('bitstream_quick_new','bitstream_nonce');
+    echo '<input type="hidden" name="bitstream_quick_post_submit" value="1" />';
+    echo '<p><label>Content<br><textarea name="bit_content" rows="5" required style="width:100%;"></textarea></label></p>';
+    echo '<p><label>ReBit URL<br><input type="url" name="bit_rebit_url" style="width:100%;"></label></p>';
+    echo '<p><label>Image<br><input type="file" name="bit_image" accept="image/*"></label></p>';
+    echo '<div class="wp-block-button"><button type="submit" class="wp-block-button__link wp-element-button"><strong>Post Bit</strong></button></div>';
+    echo '</form>';
+    echo '<div class="wp-block-button is-style-outline" style="margin-top:1rem;"><a class="wp-block-button__link wp-element-button" href="'.esc_url(admin_url('post-new.php?post_type=bit')).'"><strong>Launch Full Editor</strong></a></div>';
+    return ob_get_clean();
 }
-register_activation_hook(__FILE__, 'bitstream_quick_post_activate');
+add_shortcode('bitstream_quick_post', 'bitstream_quick_post_shortcode');
 
-// Output manifest link and service worker registration
-add_action('wp_head', function(){
-    if (get_query_var('bitstream_new')) {
+function bitstream_quick_post_pwa_assets() {
+    global $bitstream_quick_post_page;
+    if ($bitstream_quick_post_page) {
         $base = plugin_dir_url(__FILE__);
         echo '<link rel="manifest" href="'.esc_url($base.'manifest.json').'">';
         echo '<meta name="theme-color" content="#2c6e49">';
         echo '<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("'.esc_url($base.'sw.js').'");}</script>';
     }
-});
+}
+add_action('wp_head', 'bitstream_quick_post_pwa_assets');
 
-// Handle quick post page
-add_action('template_redirect', function(){
-    if (!get_query_var('bitstream_new')) return;
-    if (!is_user_logged_in()) {
-        wp_redirect(wp_login_url(site_url('/bitstream/new')));
-        exit;
-    }
-
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && check_admin_referer('bitstream_quick_new','bitstream_nonce')) {
+function bitstream_handle_quick_post_submission() {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bitstream_quick_post_submit']) && check_admin_referer('bitstream_quick_new','bitstream_nonce')) {
+        if (!is_user_logged_in()) {
+            wp_die(__('You must be logged in to post','bitstream'));
+        }
         $content   = wp_kses_post($_POST['bit_content'] ?? '');
         $rebit_url = isset($_POST['bit_rebit_url']) ? esc_url_raw($_POST['bit_rebit_url']) : '';
         $post_id   = wp_insert_post([
@@ -626,23 +624,5 @@ add_action('template_redirect', function(){
             exit;
         }
     }
-
-    get_header();
-    echo '<main id="primary" class="site-main">';
-    echo '<article class="page type-page">';
-    echo '<div class="entry-content">';
-    echo '<h1 class="entry-title">New Bit</h1>';
-    echo '<form method="post" enctype="multipart/form-data" class="bitstream-form">';
-    wp_nonce_field('bitstream_quick_new','bitstream_nonce');
-    echo '<p><label>Content<br><textarea name="bit_content" rows="5" required style="width:100%;"></textarea></label></p>';
-    echo '<p><label>ReBit URL<br><input type="url" name="bit_rebit_url" style="width:100%;"></label></p>';
-    echo '<p><label>Image<br><input type="file" name="bit_image" accept="image/*"></label></p>';
-    echo '<div class="wp-block-button"><button type="submit" class="wp-block-button__link">Post Bit</button></div>';
-    echo '</form>';
-    echo '<div class="wp-block-button is-style-outline" style="margin-top:1rem;"><a class="wp-block-button__link" href="'.esc_url(admin_url('post-new.php?post_type=bit')).'">Launch Full Editor</a></div>';
-    echo '</div>';
-    echo '</article>';
-    echo '</main>';
-    get_footer();
-    exit;
-});
+}
+add_action('init', 'bitstream_handle_quick_post_submission');
