@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BitStream
  * Description: A microblogging plugin for sharing Bits and ReBits.
- * Version: beta 0.4
+ * Version: RC 1
  * Author: Facundo Pignanelli
  * Text Domain: bitstream
  */
