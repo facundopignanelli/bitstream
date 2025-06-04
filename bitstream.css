@@ -330,8 +330,16 @@
 .bitstream-form .wp-block-button button {
     border-radius: 13px;
 }
+.bitstream-full-editor {
+    text-align: center;
+}
 .bitstream-full-editor .wp-block-button__link {
     background-color: var(--wp--preset--color--accent-2);
+    border-radius: 13px;
+    transition: background-color 0.2s ease;
+}
+.bitstream-full-editor .wp-block-button__link:hover {
+    background-color: var(--wp--preset--color--accent-1);
 }
 .bitstream-login-button {
     text-align: center;
