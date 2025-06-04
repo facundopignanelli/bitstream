@@ -256,7 +256,14 @@ add_action('wp_ajax_bitstream_load_more','bitstream_load_more');
 add_action('wp_ajax_nopriv_bitstream_load_more','bitstream_load_more');
 function bitstream_load_more() {
     $page = isset($_POST['page'])?intval($_POST['page']):1;
-    $q = new WP_Query(['post_type'=>'bit','posts_per_page'=>10,'paged'=>$page,'orderby'=>'date','order'=>'DESC']);
+    $q = new WP_Query([
+        'post_type'      => 'bit',
+        'post_status'    => 'publish',
+        'posts_per_page' => 10,
+        'paged'          => $page,
+        'orderby'        => 'date',
+        'order'          => 'DESC'
+    ]);
     if ($q->have_posts()) { while($q->have_posts()){ $q->the_post(); echo bitstream_render_card(get_the_ID()); }}
     wp_reset_postdata(); wp_die();
 }
@@ -268,7 +275,9 @@ function bitstream_render_shortcode($atts){
     $q = new WP_Query(['post_type'=>'bit','posts_per_page'=>intval($atts['posts_per_page']),'paged'=>intval($atts['paged']),'orderby'=>'date','order'=>'DESC']);
     $max = $q->max_num_pages;
     ob_start();
-    if ($q->have_posts()){ echo '<div class="bitstream-feed" data-page="1" data-max-page="'.$max.'">';
+    if ($q->have_posts()){
+        $current_page = intval($atts['paged']);
+        echo '<div class="bitstream-feed" data-page="'.$current_page.'" data-max-page="'.$max.'">';
         while($q->have_posts()){ $q->the_post(); echo bitstream_render_card(get_the_ID()); }
         echo '</div>';
         if ($max>1) echo '<button id="bitstream-load-more" class="bitstream-load-more">Load More</button>';
