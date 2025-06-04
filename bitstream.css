@@ -312,6 +312,17 @@
     margin-top: 1rem;
 }
 
+/* Quick Bit/ReBit form styling */
+.bitstream-form {
+    max-width: 600px;
+    margin: 2rem auto;
+}
+.bitstream-form textarea,
+.bitstream-form input[type="url"],
+.bitstream-form input[type="file"] {
+    width: 100%;
+}
+
 /* Animated comments transition */
 .bit-comments {
     max-height: 0;

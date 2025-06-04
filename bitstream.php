@@ -619,16 +619,21 @@ add_action('template_redirect', function(){
     }
 
     get_header();
-    echo '<div class="bitstream-new-form" style="max-width:600px;margin:2rem auto;">';
-    echo '<form method="post" enctype="multipart/form-data">';
+    echo '<main id="primary" class="site-main">';
+    echo '<article class="page type-page">';
+    echo '<div class="entry-content">';
+    echo '<h1 class="entry-title">New Bit</h1>';
+    echo '<form method="post" enctype="multipart/form-data" class="bitstream-form">';
     wp_nonce_field('bitstream_quick_new','bitstream_nonce');
     echo '<p><label>Content<br><textarea name="bit_content" rows="5" required style="width:100%;"></textarea></label></p>';
     echo '<p><label>ReBit URL<br><input type="url" name="bit_rebit_url" style="width:100%;"></label></p>';
     echo '<p><label>Image<br><input type="file" name="bit_image" accept="image/*"></label></p>';
-    echo '<p><button type="submit">Post Bit</button></p>';
+    echo '<div class="wp-block-button"><button type="submit" class="wp-block-button__link">Post Bit</button></div>';
     echo '</form>';
-    echo '<p><a href="'.esc_url(admin_url('post-new.php?post_type=bit')).'" style="display:inline-block;margin-top:1rem;">Launch Full Editor</a></p>';
+    echo '<div class="wp-block-button is-style-outline" style="margin-top:1rem;"><a class="wp-block-button__link" href="'.esc_url(admin_url('post-new.php?post_type=bit')).'">Launch Full Editor</a></div>';
     echo '</div>';
+    echo '</article>';
+    echo '</main>';
     get_footer();
     exit;
 });
