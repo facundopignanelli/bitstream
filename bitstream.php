@@ -567,19 +567,19 @@ function bitstream_quick_post_shortcode() {
 
     if (!is_user_logged_in()) {
         $login = wp_login_url(get_permalink());
-        return '<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="'.esc_url($login).'"><strong>Log in to post</strong></a></div>';
+        return '<div class="wp-block-button bitstream-login-button"><a class="wp-block-button__link wp-element-button" href="'.esc_url($login).'"><strong>Log in to post</strong></a></div>';
     }
 
     ob_start();
     echo '<form method="post" enctype="multipart/form-data" class="bitstream-form">';
     wp_nonce_field('bitstream_quick_new','bitstream_nonce');
     echo '<input type="hidden" name="bitstream_quick_post_submit" value="1" />';
-    echo '<p><label>Content<br><textarea name="bit_content" rows="5" required style="width:100%;"></textarea></label></p>';
-    echo '<p><label>ReBit URL<br><input type="url" name="bit_rebit_url" style="width:100%;"></label></p>';
+    echo '<p><label>Content<br><textarea name="bit_content" rows="5" class="bitstream-content" style="width:100%;"></textarea></label></p>';
+    echo '<p><label>ReBit URL<br><input type="url" name="bit_rebit_url" class="bitstream-rebit-url" style="width:100%;"></label></p>';
     echo '<p><label>Image<br><input type="file" name="bit_image" accept="image/*"></label></p>';
-    echo '<div class="wp-block-button"><button type="submit" class="wp-block-button__link wp-element-button"><strong>Post Bit</strong></button></div>';
+    echo '<div class="wp-block-button bitstream-post-button"><button type="submit" class="wp-block-button__link wp-element-button"><strong>Post Bit</strong></button></div>';
     echo '</form>';
-    echo '<div class="wp-block-button is-style-outline" style="margin-top:1rem;"><a class="wp-block-button__link wp-element-button" href="'.esc_url(admin_url('post-new.php?post_type=bit')).'"><strong>Launch Full Editor</strong></a></div>';
+    echo '<div class="wp-block-button bitstream-full-editor" style="margin-top:13px;"><a class="wp-block-button__link wp-element-button" href="'.esc_url(admin_url('post-new.php?post_type=bit')).'"><strong>Open Full Editor</strong></a></div>';
     return ob_get_clean();
 }
 add_shortcode('bitstream_quick_post', 'bitstream_quick_post_shortcode');
@@ -602,6 +602,9 @@ function bitstream_handle_quick_post_submission() {
         }
         $content   = wp_kses_post($_POST['bit_content'] ?? '');
         $rebit_url = isset($_POST['bit_rebit_url']) ? esc_url_raw($_POST['bit_rebit_url']) : '';
+        if ($content === '' && $rebit_url === '') {
+            wp_die(__('Content or ReBit URL is required', 'bitstream'));
+        }
         $post_id   = wp_insert_post([
             'post_type'   => 'bit',
             'post_status' => 'publish',
