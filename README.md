@@ -48,4 +48,3 @@ BitStream is an experimental WordPress plugin that adds a lightweight microblogg
   - The plugin is designed to be easily extended with new shortcodes, meta fields, or UI tweaks.
 
 Because this project was created primarily for experimentation, the code may be incomplete or unstable. Use at your own risk.
-

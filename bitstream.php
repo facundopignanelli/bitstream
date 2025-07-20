@@ -646,6 +646,22 @@ function bitstream_handle_quick_post_submission() {
         ]);
         if ($post_id && !is_wp_error($post_id)) {
             if ($rebit_url) update_post_meta($post_id,'bitstream_rebit_url',$rebit_url);
+            // OG Data Fetching for ReBit URL (same as save_post_bit)
+            if ($rebit_url && !get_post_meta($post_id, '_bitstream_og_fetched', true)) {
+                $resp = wp_remote_get($rebit_url, [ 'timeout' => 5 ]);
+                if (!is_wp_error($resp) && wp_remote_retrieve_response_code($resp) === 200) {
+                    $html = wp_remote_retrieve_body($resp);
+                    $og_title = $og_desc = $og_img = '';
+                    if (preg_match('/<meta[^>]+property=["\']og:title["\'][^>]+content=["\']([^"\']+)["\']/', $html, $m)) $og_title = $m[1];
+                    if (preg_match('/<meta[^>]+property=["\']og:description["\'][^>]+content=["\']([^"\']+)["\']/', $html, $m)) $og_desc = $m[1];
+                    if (preg_match('/<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']/', $html, $m)) $og_img  = $m[1];
+                    if (empty($og_title) && preg_match('/<title>(.*?)<\/title>/', $html, $m)) $og_title = $m[1];
+                    update_post_meta($post_id,'_bitstream_og_title', sanitize_text_field($og_title));
+                    update_post_meta($post_id,'_bitstream_og_desc',  sanitize_text_field($og_desc));
+                    update_post_meta($post_id,'_bitstream_og_image', esc_url_raw($og_img));
+                    update_post_meta($post_id,'_bitstream_og_fetched', time());
+                }
+            }
             // Use selected image from media library
             if (!empty($_POST['bit_image_id'])) {
                 $img_id = intval($_POST['bit_image_id']);
