@@ -1,3 +1,13 @@
+/* BitStream: Restrict image size in posts and previews */
+.bit-card-content img,
+.bit-rebit-preview img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0.5em auto;
+    border-radius: 10px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+}
 
 /* Date and Edit link: italic, secondary color, clickable, smaller */
 .bit-comment-meta a {
