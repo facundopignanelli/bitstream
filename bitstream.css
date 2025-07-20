@@ -322,6 +322,15 @@
 .bitstream-form input[type="file"] {
     width: 100%;
 }
+.bitstream-image-button {
+    margin-top: 0.5rem;
+}
+#bitstream-image-preview img {
+    max-width: 100%;
+    height: auto;
+    margin-top: 0.5rem;
+    border-radius: 8px;
+}
 .bitstream-form .wp-block-button {
     margin: 13px 0;
     text-align: center;
