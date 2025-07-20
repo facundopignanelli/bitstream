@@ -1,3 +1,61 @@
+/* Universal rule: All images inside BitStream cards and previews are responsive */
+.bit-card-content img,
+.bit-rebit-preview img {
+    max-width: 100% !important;
+    height: auto !important;
+    display: block;
+    margin: 0.5em auto;
+    border-radius: 10px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+}
+/* Force direct child images in .bit-card-content to be responsive */
+.bit-card-content > img {
+    max-width: 100% !important;
+    max-height: 480px !important;
+    width: auto !important;
+    height: auto !important;
+    display: block;
+    margin: 0.5em auto;
+    border-radius: 10px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+}
+/* Force override for images with inline width/height attributes or styles */
+.bit-card-content img[width],
+.bit-card-content img[height],
+.bit-card-content img[style],
+.bit-rebit-preview img[width],
+.bit-rebit-preview img[height],
+.bit-rebit-preview img[style] {
+    max-width: 100% !important;
+    width: auto !important;
+    height: auto !important;
+    display: block;
+    margin: 0.5em auto;
+    border-radius: 10px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+}
+/* Force image size constraint for images added by QuickBit or in post content */
+.bit-card-content > img,
+.bit-card-content img,
+.bit-rebit-preview > img,
+.bit-rebit-preview img {
+    max-width: 100% !important;
+    height: auto !important;
+    display: block;
+    margin: 0.5em auto;
+    border-radius: 10px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+}
+/* BitStream: Restrict image size in posts and previews */
+.bit-card-content img,
+.bit-rebit-preview img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0.5em auto;
+    border-radius: 10px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+}
 
 /* Date and Edit link: italic, secondary color, clickable, smaller */
 .bit-comment-meta a {

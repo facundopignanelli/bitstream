@@ -320,9 +320,20 @@ function bitstream_render_latest_shortcode($atts) {
 
 // Enqueue front-end assets
 add_action('wp_enqueue_scripts', function(){
-    wp_enqueue_style('bitstream-css',plugins_url('bitstream.css',__FILE__),[], '1.0');
-    wp_enqueue_script('bitstream-js',plugins_url('bitstream.js',__FILE__),[], '1.0', true);
-    wp_localize_script('bitstream-js','bitstream_ajax',['ajax_url'=>admin_url('admin-ajax.php')]);
+    // Always enqueue media scripts for frontend (for media modal reliability)
+    if (!is_admin()) {
+        wp_enqueue_media();
+    }
+    wp_enqueue_style('bitstream-css', plugins_url('bitstream.css', __FILE__), [], '1.0');
+    // Add cache-busting version to JS (use plugin filemtime)
+    $js_path = plugin_dir_path(__FILE__) . 'bitstream.js';
+    $js_ver = file_exists($js_path) ? filemtime($js_path) : '1.0';
+    wp_enqueue_script('bitstream-js', plugins_url('bitstream.js', __FILE__), ['jquery'], $js_ver, true);
+    wp_localize_script('bitstream-js', 'bitstream_ajax', ['ajax_url' => admin_url('admin-ajax.php')]);
+    // Ensure $ is available globally for frontend scripts
+    add_action('wp_print_footer_scripts', function() {
+        echo '<script type="text/javascript">window.$ = window.jQuery;</script>';
+    });
 });
 
 // 8) Render a single Bit card with ReBit Label/Icon
@@ -561,6 +572,7 @@ function bitstream_render_og_card($post_id) {
 // Flag to know when shortcode is used
 $bitstream_quick_post_page = false;
 
+
 function bitstream_quick_post_shortcode() {
     global $bitstream_quick_post_page;
     $bitstream_quick_post_page = true;
@@ -571,12 +583,17 @@ function bitstream_quick_post_shortcode() {
     }
 
     ob_start();
-    echo '<form method="post" enctype="multipart/form-data" class="bitstream-form">';
+    echo '<form method="post" class="bitstream-form">';
     wp_nonce_field('bitstream_quick_new','bitstream_nonce');
     echo '<input type="hidden" name="bitstream_quick_post_submit" value="1" />';
     echo '<p><label>Content<br><textarea name="bit_content" rows="5" class="bitstream-content" style="width:100%;"></textarea></label></p>';
     echo '<p><label>ReBit URL<br><input type="url" name="bit_rebit_url" class="bitstream-rebit-url" style="width:100%;"></label></p>';
-    echo '<p><label>Image<br><input type="file" name="bit_image" accept="image/*"></label></p>';
+    // Media Library image selector
+    echo '<p><label>Image<br>';
+    echo '<input type="hidden" name="bit_image_id" id="bit_image_id" value="">';
+    echo '<button type="button" id="bitstream-select-image" class="button">Select Image from Media Library</button>';
+    echo '<span id="bitstream-image-preview" style="display:block;margin-top:8px;"></span>';
+    echo '</label></p>';
     echo '<div class="wp-block-button bitstream-post-button"><button type="submit" class="wp-block-button__link wp-element-button"><strong>Post Bit</strong></button></div>';
     echo '</form>';
     echo '<div class="wp-block-button bitstream-full-editor" style="margin-top:13px;text-align:center;"><a class="wp-block-button__link wp-element-button" href="'.esc_url(admin_url('post-new.php?post_type=bit')).'"><strong>Open Full Editor</strong></a></div>';
@@ -584,16 +601,31 @@ function bitstream_quick_post_shortcode() {
 }
 add_shortcode('bitstream_quick_post', 'bitstream_quick_post_shortcode');
 
+// Enqueue Media Library scripts for quick post form (now handled in bitstream.js)
+add_action('wp_enqueue_scripts', function() {
+    global $bitstream_quick_post_page;
+    if ($bitstream_quick_post_page || (is_singular() && has_shortcode(get_post()->post_content ?? '', 'bitstream_quick_post'))) {
+        wp_enqueue_media();
+        // bitstream.js already enqueued globally, no need for bitstream-quick-media.js
+    }
+});
+
 function bitstream_quick_post_pwa_assets() {
     global $bitstream_quick_post_page;
     if ($bitstream_quick_post_page) {
-        $base = plugin_dir_url(__FILE__);
-        echo '<link rel="manifest" href="'.esc_url($base.'manifest.json').'">';
+        // Use a unique subdirectory for BitStream PWA assets
+        $base = plugins_url('', __FILE__); // e.g. /wp-content/plugins/bitstream
+        $manifest_url = $base . '/bitstream/manifest.json';
+        $sw_url = $base . '/bitstream/sw.js';
+        // Manifest with unique path
+        echo '<link rel="manifest" href="'.esc_url($manifest_url).'">';
         echo '<meta name="theme-color" content="#2c6e49">';
-        echo '<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("'.esc_url($base.'sw.js').'");}</script>';
+        // Register service worker with explicit scope
+        echo '<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("'.esc_url($sw_url).'", {scope: "/bitstream/"});}</script>';
     }
 }
 add_action('wp_head', 'bitstream_quick_post_pwa_assets');
+
 
 function bitstream_handle_quick_post_submission() {
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bitstream_quick_post_submit']) && check_admin_referer('bitstream_quick_new','bitstream_nonce')) {
@@ -602,8 +634,9 @@ function bitstream_handle_quick_post_submission() {
         }
         $content   = wp_kses_post($_POST['bit_content'] ?? '');
         $rebit_url = isset($_POST['bit_rebit_url']) ? esc_url_raw($_POST['bit_rebit_url']) : '';
-        if ($content === '' && $rebit_url === '') {
-            wp_die(__('Content or ReBit URL is required', 'bitstream'));
+        $has_image = !empty($_POST['bit_image_id']) && wp_get_attachment_url(intval($_POST['bit_image_id']));
+        if ($content === '' && $rebit_url === '' && !$has_image) {
+            wp_die(__('Content, ReBit URL, or an Image is required', 'bitstream'));
         }
         $post_id   = wp_insert_post([
             'post_type'   => 'bit',
@@ -613,13 +646,13 @@ function bitstream_handle_quick_post_submission() {
         ]);
         if ($post_id && !is_wp_error($post_id)) {
             if ($rebit_url) update_post_meta($post_id,'bitstream_rebit_url',$rebit_url);
-            if (!empty($_FILES['bit_image']['tmp_name'])) {
-                require_once ABSPATH.'wp-admin/includes/file.php';
-                require_once ABSPATH.'wp-admin/includes/media.php';
-                $attachment_id = media_handle_upload('bit_image',$post_id);
-                if (!is_wp_error($attachment_id)) {
-                    $img_url = wp_get_attachment_url($attachment_id);
-                    $content .= "\n<img src='".esc_url($img_url)."' alt='' />";
+            // Use selected image from media library
+            if (!empty($_POST['bit_image_id'])) {
+                $img_id = intval($_POST['bit_image_id']);
+                $img_url = wp_get_attachment_url($img_id);
+                if ($img_url) {
+                    // Add inline style to force image to fit card
+                    $content .= "\n<img src='".esc_url($img_url)."' alt='' style='max-width:100%;height:auto;display:block;margin:0.5em auto;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,0.07);' />";
                     wp_update_post(['ID'=>$post_id,'post_content'=>$content]);
                 }
             }
