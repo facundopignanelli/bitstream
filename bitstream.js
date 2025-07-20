@@ -84,29 +84,6 @@ document.querySelectorAll('.bit-comment-toggle').forEach(button => {
 
         urlField.addEventListener('input', toggleRequired);
         toggleRequired();
-
-        const selectButton = document.getElementById('bitstream-select-image');
-        const preview      = document.getElementById('bitstream-image-preview');
-        let frame;
-        if (selectButton) {
-            selectButton.addEventListener('click', (e) => {
-                e.preventDefault();
-                if (frame) { frame.open(); return; }
-                frame = wp.media({
-                    title: 'Select Image',
-                    button: { text: 'Use this image' },
-                    multiple: false
-                });
-                frame.on('select', () => {
-                    const attachment = frame.state().get('selection').first().toJSON();
-                    document.getElementById('bit_image_id').value = attachment.id;
-                    if (preview) {
-                        preview.innerHTML = '<img src="' + attachment.url + '" alt="" />';
-                    }
-                });
-                frame.open();
-            });
-        }
     }
     // Infinite Scroll & Load More
     const feed = document.querySelector('.bitstream-feed');
