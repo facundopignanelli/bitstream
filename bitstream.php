@@ -634,8 +634,9 @@ function bitstream_handle_quick_post_submission() {
         }
         $content   = wp_kses_post($_POST['bit_content'] ?? '');
         $rebit_url = isset($_POST['bit_rebit_url']) ? esc_url_raw($_POST['bit_rebit_url']) : '';
-        if ($content === '' && $rebit_url === '') {
-            wp_die(__('Content or ReBit URL is required', 'bitstream'));
+        $has_image = !empty($_POST['bit_image_id']) && wp_get_attachment_url(intval($_POST['bit_image_id']));
+        if ($content === '' && $rebit_url === '' && !$has_image) {
+            wp_die(__('Content, ReBit URL, or an Image is required', 'bitstream'));
         }
         $post_id   = wp_insert_post([
             'post_type'   => 'bit',
