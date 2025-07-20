@@ -1,3 +1,13 @@
+/* Universal rule: All images inside BitStream cards and previews are responsive */
+.bit-card-content img,
+.bit-rebit-preview img {
+    max-width: 100% !important;
+    height: auto !important;
+    display: block;
+    margin: 0.5em auto;
+    border-radius: 10px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+}
 /* Force direct child images in .bit-card-content to be responsive */
 .bit-card-content > img {
     max-width: 100% !important;

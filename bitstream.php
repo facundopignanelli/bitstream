@@ -650,7 +650,8 @@ function bitstream_handle_quick_post_submission() {
                 $img_id = intval($_POST['bit_image_id']);
                 $img_url = wp_get_attachment_url($img_id);
                 if ($img_url) {
-                    $content .= "\n<img src='".esc_url($img_url)."' alt='' />";
+                    // Add inline style to force image to fit card
+                    $content .= "\n<img src='".esc_url($img_url)."' alt='' style='max-width:100%;height:auto;display:block;margin:0.5em auto;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,0.07);' />";
                     wp_update_post(['ID'=>$post_id,'post_content'=>$content]);
                 }
             }
