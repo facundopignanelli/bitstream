@@ -11,6 +11,13 @@
 if (!defined('ABSPATH')) exit;
 
 define('BITSTREAM_VERSION', 'beta 0.4');
+add_filter("upload_mimes", "bitstream_allow_heic_mimes");
+function bitstream_allow_heic_mimes($mimes){
+    $mimes['heic'] = 'image/heic';
+    $mimes['heif'] = 'image/heif';
+    return $mimes;
+}
+
 
 /*
 // Activation hook: populate default ReBit mappings
@@ -616,7 +623,34 @@ function bitstream_handle_quick_post_submission() {
             if (!empty($_FILES['bit_image']['tmp_name'])) {
                 require_once ABSPATH.'wp-admin/includes/file.php';
                 require_once ABSPATH.'wp-admin/includes/media.php';
+
+                $file = $_FILES['bit_image'];
+                $ext  = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+                if (in_array($ext, ['heic','heif'])) {
+                    if (class_exists('Imagick')) {
+                        try {
+                            $img = new Imagick($file['tmp_name']);
+                            $img->setImageFormat('jpeg');
+                            $converted = $file['tmp_name'].'.jpg';
+                            $img->writeImage($converted);
+                            $img->clear();
+                            $img->destroy();
+                            $file['tmp_name'] = $converted;
+                            $file['name']     = preg_replace("/\.(heic|heif)$/i", ".jpg", $file['name']);
+                            $file['type']     = 'image/jpeg';
+                            $_FILES['bit_image'] = $file;
+                        } catch (Exception $e) {
+                            wp_die(__('HEIC images are not supported on this server.', 'bitstream'));
+                        }
+                    } else {
+                        wp_die(__('HEIC images are not supported on this server.', 'bitstream'));
+                    }
+                }
+
                 $attachment_id = media_handle_upload('bit_image',$post_id);
+                if (isset($converted) && file_exists($converted)) {
+                    unlink($converted);
+                }
                 if (!is_wp_error($attachment_id)) {
                     $img_url = wp_get_attachment_url($attachment_id);
                     $content .= "\n<img src='".esc_url($img_url)."' alt='' />";
