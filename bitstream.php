@@ -613,10 +613,15 @@ add_action('wp_enqueue_scripts', function() {
 function bitstream_quick_post_pwa_assets() {
     global $bitstream_quick_post_page;
     if ($bitstream_quick_post_page) {
-        $base = plugin_dir_url(__FILE__);
-        echo '<link rel="manifest" href="'.esc_url($base.'manifest.json').'">';
+        // Use a unique subdirectory for BitStream PWA assets
+        $base = plugins_url('', __FILE__); // e.g. /wp-content/plugins/bitstream
+        $manifest_url = $base . '/bitstream/manifest.json';
+        $sw_url = $base . '/bitstream/sw.js';
+        // Manifest with unique path
+        echo '<link rel="manifest" href="'.esc_url($manifest_url).'">';
         echo '<meta name="theme-color" content="#2c6e49">';
-        echo '<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("'.esc_url($base.'sw.js').'");}</script>';
+        // Register service worker with explicit scope
+        echo '<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("'.esc_url($sw_url).'", {scope: "/bitstream/"});}</script>';
     }
 }
 add_action('wp_head', 'bitstream_quick_post_pwa_assets');
