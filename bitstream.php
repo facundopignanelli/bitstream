@@ -320,9 +320,9 @@ function bitstream_render_latest_shortcode($atts) {
 
 // Enqueue front-end assets
 add_action('wp_enqueue_scripts', function(){
-    wp_enqueue_style('bitstream-css',plugins_url('bitstream.css',__FILE__),[], '1.0');
-    wp_enqueue_script('bitstream-js',plugins_url('bitstream.js',__FILE__),[], '1.0', true);
-    wp_localize_script('bitstream-js','bitstream_ajax',['ajax_url'=>admin_url('admin-ajax.php')]);
+    wp_enqueue_style('bitstream-css', plugins_url('bitstream.css', __FILE__), [], '1.0');
+    wp_enqueue_script('bitstream-js', plugins_url('bitstream.js', __FILE__), ['jquery'], '1.0', true);
+    wp_localize_script('bitstream-js', 'bitstream_ajax', ['ajax_url' => admin_url('admin-ajax.php')]);
 });
 
 // 8) Render a single Bit card with ReBit Label/Icon
