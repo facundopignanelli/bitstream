@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', function () {
+function bitstreamInit(){
     // Like button
     document.querySelectorAll('.bit-like').forEach(button => {
       const postId     = button.dataset.postId;
@@ -84,6 +84,29 @@ document.querySelectorAll('.bit-comment-toggle').forEach(button => {
 
         urlField.addEventListener('input', toggleRequired);
         toggleRequired();
+
+        const selectButton = document.getElementById('bitstream-select-image');
+        const preview      = document.getElementById('bitstream-image-preview');
+        let frame;
+        if (selectButton) {
+            selectButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (frame) { frame.open(); return; }
+                frame = wp.media({
+                    title: 'Select Image',
+                    button: { text: 'Use this image' },
+                    multiple: false
+                });
+                frame.on('select', () => {
+                    const attachment = frame.state().get('selection').first().toJSON();
+                    document.getElementById('bit_image_id').value = attachment.id;
+                    if (preview) {
+                        preview.innerHTML = '<img src="' + attachment.url + '" alt="" />';
+                    }
+                });
+                frame.open();
+            });
+        }
     }
     // Infinite Scroll & Load More
     const feed = document.querySelector('.bitstream-feed');
@@ -147,7 +170,13 @@ document.querySelectorAll('.bit-comment-toggle').forEach(button => {
     if (loadMoreButton) {
         loadMoreButton.addEventListener('click', loadNextPage);
     }
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bitstreamInit);
+} else {
+    bitstreamInit();
+}
 
 // Final forced inline style fix for stubborn comment styles (2025-05-15, smaller)
 jQuery(document).ready(function($) {
