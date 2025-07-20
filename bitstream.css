@@ -1,3 +1,15 @@
+/* Force image size constraint for images added by QuickBit or in post content */
+.bit-card-content > img,
+.bit-card-content img,
+.bit-rebit-preview > img,
+.bit-rebit-preview img {
+    max-width: 100% !important;
+    height: auto !important;
+    display: block;
+    margin: 0.5em auto;
+    border-radius: 10px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+}
 /* BitStream: Restrict image size in posts and previews */
 .bit-card-content img,
 .bit-rebit-preview img {
