@@ -1,3 +1,14 @@
+/* Force direct child images in .bit-card-content to be responsive */
+.bit-card-content > img {
+    max-width: 100% !important;
+    max-height: 480px !important;
+    width: auto !important;
+    height: auto !important;
+    display: block;
+    margin: 0.5em auto;
+    border-radius: 10px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+}
 /* Force override for images with inline width/height attributes or styles */
 .bit-card-content img[width],
 .bit-card-content img[height],
