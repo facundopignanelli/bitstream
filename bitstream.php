@@ -561,6 +561,7 @@ function bitstream_render_og_card($post_id) {
 // Flag to know when shortcode is used
 $bitstream_quick_post_page = false;
 
+
 function bitstream_quick_post_shortcode() {
     global $bitstream_quick_post_page;
     $bitstream_quick_post_page = true;
@@ -571,18 +572,32 @@ function bitstream_quick_post_shortcode() {
     }
 
     ob_start();
-    echo '<form method="post" enctype="multipart/form-data" class="bitstream-form">';
+    echo '<form method="post" class="bitstream-form">';
     wp_nonce_field('bitstream_quick_new','bitstream_nonce');
     echo '<input type="hidden" name="bitstream_quick_post_submit" value="1" />';
     echo '<p><label>Content<br><textarea name="bit_content" rows="5" class="bitstream-content" style="width:100%;"></textarea></label></p>';
     echo '<p><label>ReBit URL<br><input type="url" name="bit_rebit_url" class="bitstream-rebit-url" style="width:100%;"></label></p>';
-    echo '<p><label>Image<br><input type="file" name="bit_image" accept="image/*"></label></p>';
+    // Media Library image selector
+    echo '<p><label>Image<br>';
+    echo '<input type="hidden" name="bit_image_id" id="bit_image_id" value="">';
+    echo '<button type="button" id="bitstream-select-image" class="button">Select Image from Media Library</button>';
+    echo '<span id="bitstream-image-preview" style="display:block;margin-top:8px;"></span>';
+    echo '</label></p>';
     echo '<div class="wp-block-button bitstream-post-button"><button type="submit" class="wp-block-button__link wp-element-button"><strong>Post Bit</strong></button></div>';
     echo '</form>';
     echo '<div class="wp-block-button bitstream-full-editor" style="margin-top:13px;text-align:center;"><a class="wp-block-button__link wp-element-button" href="'.esc_url(admin_url('post-new.php?post_type=bit')).'"><strong>Open Full Editor</strong></a></div>';
     return ob_get_clean();
 }
 add_shortcode('bitstream_quick_post', 'bitstream_quick_post_shortcode');
+
+// Enqueue Media Library scripts for quick post form (now handled in bitstream.js)
+add_action('wp_enqueue_scripts', function() {
+    global $bitstream_quick_post_page;
+    if ($bitstream_quick_post_page || (is_singular() && has_shortcode(get_post()->post_content ?? '', 'bitstream_quick_post'))) {
+        wp_enqueue_media();
+        // bitstream.js already enqueued globally, no need for bitstream-quick-media.js
+    }
+});
 
 function bitstream_quick_post_pwa_assets() {
     global $bitstream_quick_post_page;
@@ -594,6 +609,7 @@ function bitstream_quick_post_pwa_assets() {
     }
 }
 add_action('wp_head', 'bitstream_quick_post_pwa_assets');
+
 
 function bitstream_handle_quick_post_submission() {
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bitstream_quick_post_submit']) && check_admin_referer('bitstream_quick_new','bitstream_nonce')) {
@@ -613,12 +629,11 @@ function bitstream_handle_quick_post_submission() {
         ]);
         if ($post_id && !is_wp_error($post_id)) {
             if ($rebit_url) update_post_meta($post_id,'bitstream_rebit_url',$rebit_url);
-            if (!empty($_FILES['bit_image']['tmp_name'])) {
-                require_once ABSPATH.'wp-admin/includes/file.php';
-                require_once ABSPATH.'wp-admin/includes/media.php';
-                $attachment_id = media_handle_upload('bit_image',$post_id);
-                if (!is_wp_error($attachment_id)) {
-                    $img_url = wp_get_attachment_url($attachment_id);
+            // Use selected image from media library
+            if (!empty($_POST['bit_image_id'])) {
+                $img_id = intval($_POST['bit_image_id']);
+                $img_url = wp_get_attachment_url($img_id);
+                if ($img_url) {
                     $content .= "\n<img src='".esc_url($img_url)."' alt='' />";
                     wp_update_post(['ID'=>$post_id,'post_content'=>$content]);
                 }
