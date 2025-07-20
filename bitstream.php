@@ -320,8 +320,15 @@ function bitstream_render_latest_shortcode($atts) {
 
 // Enqueue front-end assets
 add_action('wp_enqueue_scripts', function(){
+    // Always enqueue media scripts for frontend (for media modal reliability)
+    if (!is_admin()) {
+        wp_enqueue_media();
+    }
     wp_enqueue_style('bitstream-css', plugins_url('bitstream.css', __FILE__), [], '1.0');
-    wp_enqueue_script('bitstream-js', plugins_url('bitstream.js', __FILE__), ['jquery'], '1.0', true);
+    // Add cache-busting version to JS (use plugin filemtime)
+    $js_path = plugin_dir_path(__FILE__) . 'bitstream.js';
+    $js_ver = file_exists($js_path) ? filemtime($js_path) : '1.0';
+    wp_enqueue_script('bitstream-js', plugins_url('bitstream.js', __FILE__), ['jquery'], $js_ver, true);
     wp_localize_script('bitstream-js', 'bitstream_ajax', ['ajax_url' => admin_url('admin-ajax.php')]);
     // Ensure $ is available globally for frontend scripts
     add_action('wp_print_footer_scripts', function() {
