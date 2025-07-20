@@ -11,6 +11,46 @@
 if (!defined('ABSPATH')) exit;
 
 define('BITSTREAM_VERSION', 'beta 0.4');
+add_filter("upload_mimes", "bitstream_allow_heic_mimes");
+function bitstream_allow_heic_mimes($mimes){
+    $mimes['heic'] = 'image/heic';
+    $mimes['heif'] = 'image/heif';
+    return $mimes;
+}
+
+function bitstream_can_handle_heic(){
+    if(!class_exists('Imagick')) return false;
+    try{
+        $formats = array_map('strtoupper', Imagick::queryFormats());
+        return in_array('HEIC', $formats) || in_array('HEIF', $formats);
+    } catch(Exception $e){
+        return false;
+    }
+}
+
+function bitstream_convert_heic_if_needed(&$file){
+    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    if(!in_array($ext, ['heic','heif'])) return '';
+    if(!bitstream_can_handle_heic()){
+        wp_die(__('HEIC images require the Imagick PHP extension with HEIC support.', 'bitstream'));
+    }
+    try{
+        $img = new Imagick($file['tmp_name']);
+        $img->setImageFormat('jpeg');
+        $converted = $file['tmp_name'].'.jpg';
+        $img->writeImage($converted);
+        $img->clear();
+        $img->destroy();
+        $file['tmp_name'] = $converted;
+        $file['name'] = preg_replace('/\.(heic|heif)$/i', '.jpg', $file['name']);
+        $file['type'] = 'image/jpeg';
+        return $converted;
+    }catch(Exception $e){
+        wp_die(__('Failed to convert HEIC image.', 'bitstream'));
+    }
+    return '';
+}
+
 
 /*
 // Activation hook: populate default ReBit mappings
@@ -605,6 +645,12 @@ function bitstream_handle_quick_post_submission() {
         if ($content === '' && $rebit_url === '') {
             wp_die(__('Content or ReBit URL is required', 'bitstream'));
         }
+
+        $converted = '';
+        if (!empty($_FILES['bit_image']['tmp_name'])) {
+            $converted = bitstream_convert_heic_if_needed($_FILES['bit_image']);
+        }
+
         $post_id   = wp_insert_post([
             'post_type'   => 'bit',
             'post_status' => 'publish',
@@ -616,7 +662,11 @@ function bitstream_handle_quick_post_submission() {
             if (!empty($_FILES['bit_image']['tmp_name'])) {
                 require_once ABSPATH.'wp-admin/includes/file.php';
                 require_once ABSPATH.'wp-admin/includes/media.php';
+
                 $attachment_id = media_handle_upload('bit_image',$post_id);
+                if ($converted && file_exists($converted)) {
+                    unlink($converted);
+                }
                 if (!is_wp_error($attachment_id)) {
                     $img_url = wp_get_attachment_url($attachment_id);
                     $content .= "\n<img src='".esc_url($img_url)."' alt='' />";
