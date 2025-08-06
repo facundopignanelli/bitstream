@@ -675,6 +675,10 @@ function bitstream_handle_quick_post_submission() {
         ]);
         if ($post_id && !is_wp_error($post_id)) {
             if ($rebit_url) update_post_meta($post_id,'bitstream_rebit_url',$rebit_url);
+            // Save quoted Bit meta if present in GET (from admin quote action)
+            if (isset($_GET['quoted_bit']) && !get_post_meta($post_id, '_bitstream_quoted_bit', true)) {
+                update_post_meta($post_id, '_bitstream_quoted_bit', intval($_GET['quoted_bit']));
+            }
             // Use selected image from media library
             if (!empty($_POST['bit_image_id'])) {
                 $img_id = intval($_POST['bit_image_id']);
