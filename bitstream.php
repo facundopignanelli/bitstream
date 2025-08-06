@@ -338,33 +338,12 @@ add_action('wp_enqueue_scripts', function(){
 
 // 8) Render a single Bit card with ReBit Label/Icon
 function bitstream_render_card( $post_id ) {
-    $content   = get_post_field('post_content',$post_id);
+    $content   = apply_filters( 'the_content', get_post_field('post_content',$post_id) );
     $timestamp = human_time_diff(get_post_modified_time('U',false,$post_id),current_time('timestamp')).' ago';
     $avatar    = get_avatar(get_post_field('post_author',$post_id),48,'','',['class'=>'bit-avatar-img']);
     $likes     = (int)get_post_meta($post_id,'_bitstream_likes',true);
     $comments  = get_comments_number($post_id);
     $rebit_url = get_post_meta($post_id,'bitstream_rebit_url',true);
-
-    // Quoted Bit logic: render quoted box at top if present
-    $quoted_id = get_post_meta($post_id, '_bitstream_quoted_bit', true);
-    $quoted_box = '';
-    if ($quoted_id) {
-        $quoted_post = get_post($quoted_id);
-        if ($quoted_post) {
-            $indicator = '<div class="bitstream-quoted-indicator" style="font-weight:700;color:#2c6e49;font-size:1.05em;margin-bottom:0.5em;display:flex;align-items:center;gap:0.5em;">'
-                . '<i class="fas fa-quote-left" aria-hidden="true" style="color:#2c6e49;font-size:1.2em;"></i>'
-                . 'Quoted Bit'
-                . '</div>';
-            $meta = '<div class="bitstream-quoted-meta" style="color:#666;font-size:0.95em;margin-bottom:0.5em;">'
-                . bitstream_format_quoted_date($quoted_id)
-                . '</div>';
-            $quoted_content = wpautop($quoted_post->post_content);
-            $quoted_content = preg_replace('/<!--\s*wp:.*?\/>-->/s', '', $quoted_content);
-            $rich_preview = bitstream_render_og_card($quoted_id);
-            $quoted_box = '<div class="bitstream-quoted-preview" style="border-radius:13px;box-shadow:0 2px 12px rgba(0,0,0,0.10);padding:16px;background:#fafafa;margin-bottom:20px;">'
-                . $indicator . $meta . $quoted_content . $rich_preview . '</div>';
-        }
-    }
 
     ob_start(); ?>
     <article id="bit-<?php echo esc_attr($post_id); ?>" class="bit-card" style="margin:2rem auto;padding:1.5rem;max-width:720px;border:1px solid #eee;border-radius:16px;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,0.05);">
@@ -377,10 +356,8 @@ function bitstream_render_card( $post_id ) {
             </div>
         </header>
 
-        <?php if ($quoted_box) echo $quoted_box; ?>
-
         <div class="bit-card-content" style="font-size:1rem;line-height:1.6;margin-bottom:1rem;">
-            <?php echo apply_filters('the_content', $content); ?>
+            <?php echo $content; ?>
         </div>
 
         <?php if ($rebit_url):
@@ -531,19 +508,13 @@ add_filter('the_content', function($content) {
     if ($quoted_id) {
         $quoted_post = get_post($quoted_id);
         if ($quoted_post) {
-            // Quoted Bit indicator and metadata
-            $indicator = '<div class="bitstream-quoted-indicator" style="font-weight:700;color:#2c6e49;font-size:1.05em;margin-bottom:0.5em;display:flex;align-items:center;gap:0.5em;">'
-                . '<i class="fas fa-quote-left" aria-hidden="true" style="color:#2c6e49;font-size:1.2em;"></i>'
-                . 'Quoted Bit'
-                . '</div>';
-            $meta = '<div class="bitstream-quoted-meta" style="color:#666;font-size:0.95em;margin-bottom:0.5em;">'
-                . bitstream_format_quoted_date($quoted_id)
-                . '</div>';
+            $header = '<div style="color:var(--wp--preset--color--accent-1,#2c6e49);font-weight:600;margin-bottom:8px;">'
+                    . bitstream_format_quoted_date($quoted_id) . '</div>';
             $quoted_content = wpautop($quoted_post->post_content);
-            $quoted_content = preg_replace('/<!--\s*wp:.*?\/>-->/s', '', $quoted_content);
+            $quoted_content = preg_replace('/<!--\s*wp:.*?\/-->/s', '', $quoted_content);
             $rich_preview = bitstream_render_og_card($quoted_id);
-            $quoted_box = '<div class="bitstream-quoted-preview" style="border-radius:13px;box-shadow:0 2px 12px rgba(0,0,0,0.10);padding:16px;background:#fafafa;margin-bottom:20px;">'
-                . $indicator . $meta . $quoted_content . $rich_preview . '</div>';
+            $quoted_box = '<div class="bitstream-quoted-preview">'
+                . $header . $quoted_content . $rich_preview . '</div>';
             $GLOBALS['bitstream_is_rendering_quote'] = true;
             $content = $quoted_box . $content;
             unset($GLOBALS['bitstream_is_rendering_quote']);
@@ -675,9 +646,21 @@ function bitstream_handle_quick_post_submission() {
         ]);
         if ($post_id && !is_wp_error($post_id)) {
             if ($rebit_url) update_post_meta($post_id,'bitstream_rebit_url',$rebit_url);
-            // Save quoted Bit meta if present in GET (from admin quote action)
-            if (isset($_GET['quoted_bit']) && !get_post_meta($post_id, '_bitstream_quoted_bit', true)) {
-                update_post_meta($post_id, '_bitstream_quoted_bit', intval($_GET['quoted_bit']));
+            // OG Data Fetching for ReBit URL (same as save_post_bit)
+            if ($rebit_url && !get_post_meta($post_id, '_bitstream_og_fetched', true)) {
+                $resp = wp_remote_get($rebit_url, [ 'timeout' => 5 ]);
+                if (!is_wp_error($resp) && wp_remote_retrieve_response_code($resp) === 200) {
+                    $html = wp_remote_retrieve_body($resp);
+                    $og_title = $og_desc = $og_img = '';
+                    if (preg_match('/<meta[^>]+property=["\']og:title["\'][^>]+content=["\']([^"\']+)["\']/', $html, $m)) $og_title = $m[1];
+                    if (preg_match('/<meta[^>]+property=["\']og:description["\'][^>]+content=["\']([^"\']+)["\']/', $html, $m)) $og_desc = $m[1];
+                    if (preg_match('/<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']/', $html, $m)) $og_img  = $m[1];
+                    if (empty($og_title) && preg_match('/<title>(.*?)<\/title>/', $html, $m)) $og_title = $m[1];
+                    update_post_meta($post_id,'_bitstream_og_title', sanitize_text_field($og_title));
+                    update_post_meta($post_id,'_bitstream_og_desc',  sanitize_text_field($og_desc));
+                    update_post_meta($post_id,'_bitstream_og_image', esc_url_raw($og_img));
+                    update_post_meta($post_id,'_bitstream_og_fetched', time());
+                }
             }
             // Use selected image from media library
             if (!empty($_POST['bit_image_id'])) {
@@ -695,13 +678,3 @@ function bitstream_handle_quick_post_submission() {
     }
 }
 add_action('init', 'bitstream_handle_quick_post_submission');
-// Show full Bit card (with ReBit preview) on single Bit permalink
-add_filter('the_content', function($content) {
-    if (is_singular('bit') && in_the_loop() && is_main_query()) {
-        global $post;
-        if ($post && $post->post_type === 'bit') {
-            return bitstream_render_card($post->ID);
-        }
-    }
-    return $content;
-});
