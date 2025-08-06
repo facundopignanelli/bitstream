@@ -338,12 +338,33 @@ add_action('wp_enqueue_scripts', function(){
 
 // 8) Render a single Bit card with ReBit Label/Icon
 function bitstream_render_card( $post_id ) {
-    $content   = apply_filters( 'the_content', get_post_field('post_content',$post_id) );
+    $content   = get_post_field('post_content',$post_id);
     $timestamp = human_time_diff(get_post_modified_time('U',false,$post_id),current_time('timestamp')).' ago';
     $avatar    = get_avatar(get_post_field('post_author',$post_id),48,'','',['class'=>'bit-avatar-img']);
     $likes     = (int)get_post_meta($post_id,'_bitstream_likes',true);
     $comments  = get_comments_number($post_id);
     $rebit_url = get_post_meta($post_id,'bitstream_rebit_url',true);
+
+    // Quoted Bit logic: render quoted box at top if present
+    $quoted_id = get_post_meta($post_id, '_bitstream_quoted_bit', true);
+    $quoted_box = '';
+    if ($quoted_id) {
+        $quoted_post = get_post($quoted_id);
+        if ($quoted_post) {
+            $indicator = '<div class="bitstream-quoted-indicator" style="font-weight:700;color:#2c6e49;font-size:1.05em;margin-bottom:0.5em;display:flex;align-items:center;gap:0.5em;">'
+                . '<i class="fas fa-quote-left" aria-hidden="true" style="color:#2c6e49;font-size:1.2em;"></i>'
+                . 'Quoted Bit'
+                . '</div>';
+            $meta = '<div class="bitstream-quoted-meta" style="color:#666;font-size:0.95em;margin-bottom:0.5em;">'
+                . bitstream_format_quoted_date($quoted_id)
+                . '</div>';
+            $quoted_content = wpautop($quoted_post->post_content);
+            $quoted_content = preg_replace('/<!--\s*wp:.*?\/>-->/s', '', $quoted_content);
+            $rich_preview = bitstream_render_og_card($quoted_id);
+            $quoted_box = '<div class="bitstream-quoted-preview" style="border-radius:13px;box-shadow:0 2px 12px rgba(0,0,0,0.10);padding:16px;background:#fafafa;margin-bottom:20px;">'
+                . $indicator . $meta . $quoted_content . $rich_preview . '</div>';
+        }
+    }
 
     ob_start(); ?>
     <article id="bit-<?php echo esc_attr($post_id); ?>" class="bit-card" style="margin:2rem auto;padding:1.5rem;max-width:720px;border:1px solid #eee;border-radius:16px;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,0.05);">
@@ -356,8 +377,10 @@ function bitstream_render_card( $post_id ) {
             </div>
         </header>
 
+        <?php if ($quoted_box) echo $quoted_box; ?>
+
         <div class="bit-card-content" style="font-size:1rem;line-height:1.6;margin-bottom:1rem;">
-            <?php echo $content; ?>
+            <?php echo apply_filters('the_content', $content); ?>
         </div>
 
         <?php if ($rebit_url):
