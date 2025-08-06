@@ -662,3 +662,13 @@ function bitstream_handle_quick_post_submission() {
     }
 }
 add_action('init', 'bitstream_handle_quick_post_submission');
+// Show full Bit card (with ReBit preview) on single Bit permalink
+add_filter('the_content', function($content) {
+    if (is_singular('bit') && in_the_loop() && is_main_query()) {
+        global $post;
+        if ($post && $post->post_type === 'bit') {
+            return bitstream_render_card($post->ID);
+        }
+    }
+    return $content;
+});
