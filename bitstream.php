@@ -508,13 +508,19 @@ add_filter('the_content', function($content) {
     if ($quoted_id) {
         $quoted_post = get_post($quoted_id);
         if ($quoted_post) {
-            $header = '<div style="color:var(--wp--preset--color--accent-1,#2c6e49);font-weight:600;margin-bottom:8px;">'
-                    . bitstream_format_quoted_date($quoted_id) . '</div>';
+            // Quoted Bit indicator and metadata
+            $indicator = '<div class="bitstream-quoted-indicator" style="font-weight:700;color:#2c6e49;font-size:1.05em;margin-bottom:0.5em;display:flex;align-items:center;gap:0.5em;">'
+                . '<i class="fas fa-quote-left" aria-hidden="true" style="color:#2c6e49;font-size:1.2em;"></i>'
+                . 'Quoted Bit'
+                . '</div>';
+            $meta = '<div class="bitstream-quoted-meta" style="color:#666;font-size:0.95em;margin-bottom:0.5em;">'
+                . bitstream_format_quoted_date($quoted_id)
+                . '</div>';
             $quoted_content = wpautop($quoted_post->post_content);
-            $quoted_content = preg_replace('/<!--\s*wp:.*?\/-->/s', '', $quoted_content);
+            $quoted_content = preg_replace('/<!--\s*wp:.*?\/>-->/s', '', $quoted_content);
             $rich_preview = bitstream_render_og_card($quoted_id);
-            $quoted_box = '<div class="bitstream-quoted-preview">'
-                . $header . $quoted_content . $rich_preview . '</div>';
+            $quoted_box = '<div class="bitstream-quoted-preview" style="border-radius:13px;box-shadow:0 2px 12px rgba(0,0,0,0.10);padding:16px;background:#fafafa;margin-bottom:20px;">'
+                . $indicator . $meta . $quoted_content . $rich_preview . '</div>';
             $GLOBALS['bitstream_is_rendering_quote'] = true;
             $content = $quoted_box . $content;
             unset($GLOBALS['bitstream_is_rendering_quote']);
