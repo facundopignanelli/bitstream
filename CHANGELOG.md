@@ -5,6 +5,25 @@ All notable changes to the BitStream WordPress plugin will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.4] - 2025-08-19
+
+### Fixed
+- **Single Bit Template**: Fixed single bit posts to properly use theme's header and footer instead of custom template override
+- **PWA Installation**: Resolved PWA installation prompts not appearing on mobile and desktop Chrome
+- **PWA Scope Conflicts**: Improved PWA conflict resolution between QuickPost and Feed PWAs
+
+### Added
+- Content filtering integration for single bit posts using `the_content` filter
+- `beforeinstallprompt` event listeners for better PWA installation detection
+- Apple meta tags for iOS PWA support
+- Enhanced PWA loading logic with better URL detection
+
+### Changed
+- Updated PWA manifest start URLs to more practical paths
+- Simplified service worker registration logic
+- Improved PWA asset caching strategy
+- Enhanced console logging for PWA debugging
+
 ## [2.0.3] - 2025-08-19
 
 ### Fixed
@@ -128,6 +147,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
+- **2.0.4** - Single bit template integration and PWA installation fixes
 - **2.0.3** - PWA scope separation and conflict resolution
 - **2.0.2** - Permalink fixes and single post display
 - **2.0.1** - Version consistency and PWA enhancements  

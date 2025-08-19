@@ -3,12 +3,12 @@
   "short_name": "BS QuickPost",
   "description": "Quick microblogging for WordPress",
   "id": "bitstream-quickpost-wp-plugin",
-  "start_url": "/bitstream/quickbit/",
+  "start_url": "/?bitstream_quickpost=1",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#ffffff",
   "theme_color": "#2c6e49",
-  "scope": "/bitstream/quickbit/",
+  "scope": "/",
   "categories": ["social", "productivity"],
   "icons": [
     {

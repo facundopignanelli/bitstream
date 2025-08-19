@@ -1,5 +1,5 @@
 // BitStream Feed Service Worker - PWA Support for Main Feed
-const CACHE_NAME = 'bitstream-feed-v2.0.3';
+const CACHE_NAME = 'bitstream-feed-v2.0.4';
 const ASSETS_TO_CACHE = [
   '/bitstream/',
   '/wp-content/plugins/bitstream/assets/css/bitstream.css',
@@ -30,11 +30,11 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  // Handle BitStream feed requests specifically - avoid QuickBit scope
+  // Handle BitStream feed requests specifically - avoid QuickPost conflicts
   if (event.request.url.includes('/bitstream/') && 
-      !event.request.url.includes('/quickbit/') &&
-      (event.request.url.match(/\/bitstream\/feed\/?/) || 
-       event.request.url.match(/\/bitstream\/?$/) || 
+      !event.request.url.includes('bitstream_quick_post') &&
+      !event.request.url.includes('bitstream_quickpost') &&
+      (event.request.url.match(/\/bitstream\/?/) || 
        event.request.url.includes('/wp-content/plugins/bitstream/') ||
        event.request.url.includes('/wp-admin/admin-ajax.php'))) {
     

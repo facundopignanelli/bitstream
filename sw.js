@@ -1,7 +1,7 @@
 // BitStream Service Worker - Enhanced PWA Support
-const CACHE_NAME = 'bitstream-v2.0.3';
+const CACHE_NAME = 'bitstream-v2.0.4';
 const ASSETS_TO_CACHE = [
-  '/bitstream/quickbit/',
+  '/?bitstream_quickpost=1',
   '/wp-content/plugins/bitstream/assets/css/bitstream.css',
   '/wp-content/plugins/bitstream/assets/js/bitstream.js'
 ];
@@ -29,8 +29,9 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  // Only handle requests within QuickBit scope to avoid conflicts
-  if (event.request.url.includes('/bitstream/quickbit/') || 
+  // Only handle BitStream QuickPost related requests
+  if (event.request.url.includes('bitstream_quick_post') || 
+      event.request.url.includes('bitstream_quickpost') ||
       event.request.url.includes('/wp-content/plugins/bitstream/')) {
     event.respondWith(
       caches.match(event.request)

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BitStream
  * Description: A microblogging plugin for sharing Bits and ReBits.
- * Version: 2.0.3
+ * Version: 2.0.4
  * Author: Facundo Pignanelli
  * Text Domain: bitstream
  */
@@ -10,7 +10,7 @@
 // Exit if accessed directly
 if (!defined('ABSPATH')) exit;
 
-define('BITSTREAM_VERSION', '2.0.3');
+define('BITSTREAM_VERSION', '2.0.4');
 define('BITSTREAM_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('BITSTREAM_PLUGIN_PATH', plugin_dir_path(__FILE__));
 
@@ -195,7 +195,7 @@ JS;
     }
     
     /**
-     * Handle single bit post display
+     * Handle single bit post display using theme template
      */
     public function handle_single_bit_display() {
         global $post;
@@ -205,9 +205,38 @@ JS;
             wp_enqueue_style('bitstream-css');
             wp_enqueue_script('bitstream-js');
             
-            // Use WordPress theme header and footer
-            get_header(); ?>
-            
+            // Use the theme's page template by filtering the content
+            add_filter('the_content', [$this, 'single_bit_content']);
+            add_action('wp_head', [$this, 'single_bit_styles']);
+        }
+    }
+    
+    /**
+     * Filter content for single bit posts
+     */
+    public function single_bit_content($content) {
+        global $post;
+        
+        if (is_single() && $post && $post->post_type === 'bit') {
+            ob_start(); ?>
+            <div class="bitstream-single-wrapper">
+                <a href="<?php echo esc_url(home_url('/bitstream/')); ?>" class="bitstream-back-link">← Back to BitStream</a>
+                <?php echo bitstream_render_card($post->ID); ?>
+            </div>
+            <?php
+            return ob_get_clean();
+        }
+        
+        return $content;
+    }
+    
+    /**
+     * Add styles for single bit display
+     */
+    public function single_bit_styles() {
+        global $post;
+        
+        if (is_single() && $post && $post->post_type === 'bit') { ?>
             <style>
                 .bitstream-single-wrapper { max-width: 800px; margin: 2rem auto; padding: 0 1rem; }
                 .bitstream-back-link { 
@@ -226,17 +255,7 @@ JS;
                     text-decoration: none;
                 }
             </style>
-            
-            <main class="site-main" role="main">
-                <div class="bitstream-single-wrapper">
-                    <a href="<?php echo esc_url(home_url('/bitstream/')); ?>" class="bitstream-back-link">← Back to BitStream</a>
-                    <?php echo bitstream_render_card($post->ID); ?>
-                </div>
-            </main>
-            
-            <?php get_footer();
-            exit;
-        }
+        <?php }
     }
     
     /**
@@ -418,35 +437,54 @@ JS;
      * Add PWA assets for quick post pages
      */
     public function pwa_assets() {
+        // Load QuickPost PWA on quickbit pages or pages with quickpost shortcode
+        $should_load_quickpost = false;
+        
         global $post;
+        
+        // Check if current page has quickpost shortcode
         if (is_a($post, 'WP_Post') && has_shortcode($post->post_content, 'bitstream_quick_post')) {
+            $should_load_quickpost = true;
+        }
+        
+        // Check if URL suggests quickbit page
+        if (isset($_SERVER['REQUEST_URI']) && 
+            (strpos($_SERVER['REQUEST_URI'], '/quickbit/') !== false || 
+             strpos($_SERVER['REQUEST_URI'], '/bitstream/quickbit/') !== false ||
+             is_page('quickbit'))) {
+            $should_load_quickpost = true;
+        }
+        
+        if ($should_load_quickpost) {
             $base = BITSTREAM_PLUGIN_URL;
             $manifest_url = $base . 'manifest.json';
             $sw_url = $base . 'sw.js';
             
-            // Only register if not already registered and within BitStream scope
             echo '<link rel="manifest" href="'.esc_url($manifest_url).'">';
             echo '<meta name="theme-color" content="#2c6e49">';
+            echo '<meta name="apple-mobile-web-app-capable" content="yes">';
+            echo '<meta name="apple-mobile-web-app-status-bar-style" content="default">';
+            echo '<meta name="apple-mobile-web-app-title" content="BitStream QuickPost">';
+            
             echo '<script>
-            if("serviceWorker" in navigator && window.location.pathname.includes("/bitstream/")) {
-                navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                    // Check if BitStream SW is already registered
-                    let bitstreamRegistered = false;
-                    for(let registration of registrations) {
-                        if(registration.scope.includes("/bitstream/quickbit/")) {
-                            bitstreamRegistered = true;
-                            break;
-                        }
-                    }
-                    // Only register if not already registered
-                    if(!bitstreamRegistered) {
-                        navigator.serviceWorker.register("'.esc_url($sw_url).'", {
-                            scope: "/bitstream/quickbit/",
-                            updateViaCache: "none"
-                        }).catch(function(error) {
-                            console.warn("BitStream SW registration failed:", error);
+            if("serviceWorker" in navigator) {
+                window.addEventListener("load", function() {
+                    navigator.serviceWorker.register("'.esc_url($sw_url).'", {
+                        scope: "/",
+                        updateViaCache: "none"
+                    }).then(function(registration) {
+                        console.log("QuickPost SW registered with scope:", registration.scope);
+                        
+                        // Check for installation prompt
+                        window.addEventListener("beforeinstallprompt", function(event) {
+                            console.log("BitStream QuickPost PWA installation available");
+                            // Store the event for later use
+                            window.deferredPrompt = event;
                         });
-                    }
+                        
+                    }).catch(function(error) {
+                        console.warn("QuickPost SW registration failed:", error);
+                    });
                 });
             }
             </script>';
@@ -459,47 +497,66 @@ JS;
     public function pwa_feed_assets() {
         global $post;
         
-        // Load on archive pages or pages with [bitstream] shortcode
-        $is_bit_archive = is_post_type_archive('bit');
-        $has_feed_shortcode = is_a($post, 'WP_Post') && 
-                             (has_shortcode($post->post_content, 'bitstream') || 
-                              has_shortcode($post->post_content, 'bitstream_latest'));
-        $is_bitstream_page = isset($_SERVER['REQUEST_URI']) && 
-                            strpos($_SERVER['REQUEST_URI'], '/bitstream/') !== false &&
-                            strpos($_SERVER['REQUEST_URI'], '/quickbit/') === false;
+        // Don't load feed PWA if QuickPost PWA should be loaded
+        $should_load_quickpost = false;
         
-        if ($is_bit_archive || $has_feed_shortcode || $is_bitstream_page) {
-            $base = BITSTREAM_PLUGIN_URL;
-            $manifest_url = $base . 'manifest-feed.json';
-            $sw_url = $base . 'sw-feed.js';
+        // Check if current page has quickpost shortcode
+        if (is_a($post, 'WP_Post') && has_shortcode($post->post_content, 'bitstream_quick_post')) {
+            $should_load_quickpost = true;
+        }
+        
+        // Check if URL suggests quickbit page
+        if (isset($_SERVER['REQUEST_URI']) && 
+            (strpos($_SERVER['REQUEST_URI'], '/quickbit/') !== false || 
+             strpos($_SERVER['REQUEST_URI'], '/bitstream/quickbit/') !== false ||
+             is_page('quickbit'))) {
+            $should_load_quickpost = true;
+        }
+        
+        // Only load feed PWA if QuickPost shouldn't be loaded
+        if (!$should_load_quickpost) {
+            // Load on archive pages or pages with [bitstream] shortcode
+            $is_bit_archive = is_post_type_archive('bit');
+            $has_feed_shortcode = is_a($post, 'WP_Post') && 
+                                 (has_shortcode($post->post_content, 'bitstream') || 
+                                  has_shortcode($post->post_content, 'bitstream_latest'));
+            $is_bitstream_page = isset($_SERVER['REQUEST_URI']) && 
+                                strpos($_SERVER['REQUEST_URI'], '/bitstream/') !== false;
             
-            echo '<link rel="manifest" href="'.esc_url($manifest_url).'">';
-            echo '<meta name="theme-color" content="#2c6e49">';
-            echo '<script>
-            if("serviceWorker" in navigator && window.location.pathname.includes("/bitstream/") && !window.location.pathname.includes("/quickbit/")) {
-                navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                    // Check if BitStream Feed SW is already registered
-                    let feedRegistered = false;
-                    for(let registration of registrations) {
-                        if((registration.scope.includes("/bitstream/feed/") || registration.scope.includes("/bitstream/")) && registration.active && registration.active.scriptURL.includes("sw-feed.js")) {
-                            feedRegistered = true;
-                            break;
-                        }
-                    }
-                    // Only register if not already registered
-                    if(!feedRegistered) {
+            if ($is_bit_archive || $has_feed_shortcode || $is_bitstream_page) {
+                $base = BITSTREAM_PLUGIN_URL;
+                $manifest_url = $base . 'manifest-feed.json';
+                $sw_url = $base . 'sw-feed.js';
+                
+                echo '<link rel="manifest" href="'.esc_url($manifest_url).'">';
+                echo '<meta name="theme-color" content="#2c6e49">';
+                echo '<meta name="apple-mobile-web-app-capable" content="yes">';
+                echo '<meta name="apple-mobile-web-app-status-bar-style" content="default">';
+                echo '<meta name="apple-mobile-web-app-title" content="BitStream Feed">';
+                
+                echo '<script>
+                if("serviceWorker" in navigator) {
+                    window.addEventListener("load", function() {
                         navigator.serviceWorker.register("'.esc_url($sw_url).'", {
-                            scope: "/bitstream/feed/",
+                            scope: "/",
                             updateViaCache: "none"
                         }).then(function(registration) {
-                            console.log("BitStream Feed PWA registered successfully");
+                            console.log("BitStream Feed PWA registered with scope:", registration.scope);
+                            
+                            // Check for installation prompt
+                            window.addEventListener("beforeinstallprompt", function(event) {
+                                console.log("BitStream Feed PWA installation available");
+                                // Store the event for later use
+                                window.deferredPrompt = event;
+                            });
+                            
                         }).catch(function(error) {
-                            console.warn("BitStream Feed SW registration failed:", error);
+                            console.warn("Feed SW registration failed:", error);
                         });
-                    }
-                });
+                    });
+                }
+                </script>';
             }
-            </script>';
         }
     }
 }
