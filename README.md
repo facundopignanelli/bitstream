@@ -1,6 +1,9 @@
 # BitStream
 
-**DISCLAIMER: This plugin was primarily created to experiment with AI‑generated code. It is unsupported, provided as‑is, and I do not recommend using it in production.**
+**DI- **Infinite Scroll &- **Frontend:**
+  - All UI logic is in `bitstream.js` (likes, comments, infinite scroll, media modal, copy-link, etc.).
+  - All layout and responsive rules are in `bitstream.css` (including forced image constraints for all post images). More:** The `[bitstream]` shortcode outputs a feed of Bits with infinite scroll and a "Load More" button. `[bitstream_latest]` renders the 3 most recent Bits.
+- **OG Data Fetching:** When saving a Bit with a ReBit URL, the plugin fetches Open Graph data (title, description, image) for rich previews).AIMER: This plugin was primarily created to experiment with AI‑generated code. It is unsupported, provided as‑is, and I do not recommend using it in production.**
 
 BitStream is an experimental WordPress plugin that adds a lightweight microblogging experience to your site. It introduces a custom post type called **Bits** which act like small status updates. Users can publish Bits, link to other content ("ReBits"), and interact via likes and comments. The project was written mostly with the help of AI tools.
 
