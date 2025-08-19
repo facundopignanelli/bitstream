@@ -1,7 +1,7 @@
-// BitStream Service Worker - Enhanced PWA Support
-const CACHE_NAME = 'bitstream-v2.0.3';
+// BitStream Feed Service Worker - PWA Support for Main Feed
+const CACHE_NAME = 'bitstream-feed-v2.0.3';
 const ASSETS_TO_CACHE = [
-  '/bitstream/quickbit/',
+  '/bitstream/',
   '/wp-content/plugins/bitstream/assets/css/bitstream.css',
   '/wp-content/plugins/bitstream/assets/js/bitstream.js'
 ];
@@ -19,7 +19,8 @@ self.addEventListener('activate', event => {
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME) {
+          // Only clean up our own caches, not the QuickPost ones
+          if (cacheName.startsWith('bitstream-feed-') && cacheName !== CACHE_NAME) {
             return caches.delete(cacheName);
           }
         })
@@ -29,15 +30,21 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  // Only handle requests within QuickBit scope to avoid conflicts
-  if (event.request.url.includes('/bitstream/quickbit/') || 
-      event.request.url.includes('/wp-content/plugins/bitstream/')) {
+  // Handle BitStream feed requests specifically - avoid QuickBit scope
+  if (event.request.url.includes('/bitstream/') && 
+      !event.request.url.includes('/quickbit/') &&
+      (event.request.url.match(/\/bitstream\/feed\/?/) || 
+       event.request.url.match(/\/bitstream\/?$/) || 
+       event.request.url.includes('/wp-content/plugins/bitstream/') ||
+       event.request.url.includes('/wp-admin/admin-ajax.php'))) {
+    
     event.respondWith(
       caches.match(event.request)
         .then(response => {
           if (response) {
             return response;
           }
+          
           // Clone the request for fetch
           const fetchRequest = event.request.clone();
           return fetch(fetchRequest)
@@ -46,22 +53,29 @@ self.addEventListener('fetch', event => {
               if (!response || response.status !== 200 || response.type !== 'basic') {
                 return response;
               }
+              
               // Clone the response for caching
               const responseToCache = response.clone();
               caches.open(CACHE_NAME)
                 .then(cache => {
-                  cache.put(event.request, responseToCache);
+                  // Cache feed pages and assets
+                  if (event.request.url.includes('/bitstream/') || 
+                      event.request.url.includes('/wp-content/plugins/bitstream/')) {
+                    cache.put(event.request, responseToCache);
+                  }
                 });
               return response;
             });
         })
         .catch(() => {
-          // Offline fallback only for BitStream navigation requests
-          if (event.request.mode === 'navigate' && event.request.url.includes('/bitstream/')) {
-            return caches.match('/bitstream/quickbit/');
+          // Offline fallback for feed navigation
+          if (event.request.mode === 'navigate' && 
+              event.request.url.includes('/bitstream/') && 
+              !event.request.url.includes('/quickbit/')) {
+            return caches.match('/bitstream/');
           }
         })
     );
   }
-  // For all other requests, let them pass through normally
+  // Let other requests pass through normally
 });

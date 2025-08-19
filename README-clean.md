@@ -1,12 +1,14 @@
 # BitStream
 
-**DISCLAIMER: This plugin was primarily created to experiment with AI‑generated code. It is unsupported, provided as‑is, and I do not recommend using it in production. Because this project was created primarily for experimentation, the code may be incomplete or unstable. Use at your own risk.**
+**DISCLAIMER: This plugin was primarily created to experiment with AI‑generated code. It is unsupported, provided as‑is, and I do not recommend using it in production.**
 
 BitStream is an experimental WordPress plugin that adds a lightweight microblogging experience to your site. It introduces a custom post type called **Bits** (short status updates), supports rich interactions, and is designed for both desktop and mobile use. The project was written entirely with the help of AI tools.
 
 ## 📋 Changelog
 
 For detailed release notes and version history, see [CHANGELOG.md](CHANGELOG.md).
+
+**Current Version: 2.0.3** - PWA scope separation and conflict resolution improvements.
 
 ## Features
 
@@ -83,6 +85,8 @@ bitstream/
 - **Class-Based Architecture**: Easy to extend with new functionality
 - **Hook System**: Proper WordPress hooks for customization
 - **Modular Design**: Components can be modified independently
+
+Because this project was created primarily for experimentation, the code may be incomplete or unstable. Use at your own risk.
 
 ## 🧪 Testing & Validation
 

@@ -1,15 +1,15 @@
 {
-  "name": "BitStream QuickPost",
-  "short_name": "BS QuickPost",
-  "description": "Quick microblogging for WordPress",
-  "id": "bitstream-quickpost-wp-plugin",
-  "start_url": "/bitstream/quickbit/",
+  "name": "BitStream Feed",
+  "short_name": "BitStream",
+  "description": "View and interact with BitStream posts",
+  "id": "bitstream-feed-wp-plugin",
+  "start_url": "/bitstream/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#ffffff",
   "theme_color": "#2c6e49",
-  "scope": "/bitstream/quickbit/",
-  "categories": ["social", "productivity"],
+  "scope": "/bitstream/feed/",
+  "categories": ["social", "news"],
   "icons": [
     {
       "src": "assets/images/192.png",

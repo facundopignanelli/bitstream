@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BitStream
  * Description: A microblogging plugin for sharing Bits and ReBits.
- * Version: 2.0.2
+ * Version: 2.0.3
  * Author: Facundo Pignanelli
  * Text Domain: bitstream
  */
@@ -10,7 +10,7 @@
 // Exit if accessed directly
 if (!defined('ABSPATH')) exit;
 
-define('BITSTREAM_VERSION', '2.0.2');
+define('BITSTREAM_VERSION', '2.0.3');
 define('BITSTREAM_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('BITSTREAM_PLUGIN_PATH', plugin_dir_path(__FILE__));
 
@@ -62,6 +62,7 @@ class BitStream_Plugin {
         add_filter('the_content', [$this, 'display_quoted_content']);
         add_action('template_redirect', [$this, 'handle_single_bit_display']);
         add_action('wp_head', [$this, 'pwa_assets']);
+        add_action('wp_head', [$this, 'pwa_feed_assets']);
     }
     
     /**
@@ -200,32 +201,40 @@ JS;
         global $post;
         
         if (is_single() && $post && $post->post_type === 'bit') {
-            // Output simple HTML page for single bit
+            // Ensure assets are loaded
             wp_enqueue_style('bitstream-css');
             wp_enqueue_script('bitstream-js');
             
-            ?><!DOCTYPE html>
-<html <?php language_attributes(); ?>>
-<head>
-    <meta charset="<?php bloginfo('charset'); ?>">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title><?php echo esc_html(get_the_title($post->ID)); ?> - <?php bloginfo('name'); ?></title>
-    <?php wp_head(); ?>
-    <style>
-        body { margin: 0; padding: 2rem 1rem; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; }
-        .bitstream-single-wrapper { max-width: 800px; margin: 0 auto; }
-        .bitstream-back-link { display: inline-block; margin-bottom: 2rem; padding: 0.5rem 1rem; background: #2c6e49; color: white; text-decoration: none; border-radius: 8px; }
-        .bitstream-back-link:hover { background: #044389; color: white; }
-    </style>
-</head>
-<body>
-    <div class="bitstream-single-wrapper">
-        <a href="<?php echo esc_url(home_url('/bitstream/')); ?>" class="bitstream-back-link">← Back to BitStream</a>
-        <?php echo bitstream_render_card($post->ID); ?>
-    </div>
-    <?php wp_footer(); ?>
-</body>
-</html><?php
+            // Use WordPress theme header and footer
+            get_header(); ?>
+            
+            <style>
+                .bitstream-single-wrapper { max-width: 800px; margin: 2rem auto; padding: 0 1rem; }
+                .bitstream-back-link { 
+                    display: inline-block; 
+                    margin-bottom: 2rem; 
+                    padding: 0.5rem 1rem; 
+                    background: var(--wp--preset--color--accent-1, #2c6e49); 
+                    color: white; 
+                    text-decoration: none; 
+                    border-radius: 8px; 
+                    transition: background-color 0.2s ease;
+                }
+                .bitstream-back-link:hover { 
+                    background: var(--wp--preset--color--accent-2, #044389); 
+                    color: white; 
+                    text-decoration: none;
+                }
+            </style>
+            
+            <main class="site-main" role="main">
+                <div class="bitstream-single-wrapper">
+                    <a href="<?php echo esc_url(home_url('/bitstream/')); ?>" class="bitstream-back-link">← Back to BitStream</a>
+                    <?php echo bitstream_render_card($post->ID); ?>
+                </div>
+            </main>
+            
+            <?php get_footer();
             exit;
         }
     }
@@ -414,9 +423,83 @@ JS;
             $base = BITSTREAM_PLUGIN_URL;
             $manifest_url = $base . 'manifest.json';
             $sw_url = $base . 'sw.js';
+            
+            // Only register if not already registered and within BitStream scope
             echo '<link rel="manifest" href="'.esc_url($manifest_url).'">';
             echo '<meta name="theme-color" content="#2c6e49">';
-            echo '<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("'.esc_url($sw_url).'", {scope: "/bitstream/"});}</script>';
+            echo '<script>
+            if("serviceWorker" in navigator && window.location.pathname.includes("/bitstream/")) {
+                navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                    // Check if BitStream SW is already registered
+                    let bitstreamRegistered = false;
+                    for(let registration of registrations) {
+                        if(registration.scope.includes("/bitstream/quickbit/")) {
+                            bitstreamRegistered = true;
+                            break;
+                        }
+                    }
+                    // Only register if not already registered
+                    if(!bitstreamRegistered) {
+                        navigator.serviceWorker.register("'.esc_url($sw_url).'", {
+                            scope: "/bitstream/quickbit/",
+                            updateViaCache: "none"
+                        }).catch(function(error) {
+                            console.warn("BitStream SW registration failed:", error);
+                        });
+                    }
+                });
+            }
+            </script>';
+        }
+    }
+    
+    /**
+     * Add PWA assets for BitStream feed pages
+     */
+    public function pwa_feed_assets() {
+        global $post;
+        
+        // Load on archive pages or pages with [bitstream] shortcode
+        $is_bit_archive = is_post_type_archive('bit');
+        $has_feed_shortcode = is_a($post, 'WP_Post') && 
+                             (has_shortcode($post->post_content, 'bitstream') || 
+                              has_shortcode($post->post_content, 'bitstream_latest'));
+        $is_bitstream_page = isset($_SERVER['REQUEST_URI']) && 
+                            strpos($_SERVER['REQUEST_URI'], '/bitstream/') !== false &&
+                            strpos($_SERVER['REQUEST_URI'], '/quickbit/') === false;
+        
+        if ($is_bit_archive || $has_feed_shortcode || $is_bitstream_page) {
+            $base = BITSTREAM_PLUGIN_URL;
+            $manifest_url = $base . 'manifest-feed.json';
+            $sw_url = $base . 'sw-feed.js';
+            
+            echo '<link rel="manifest" href="'.esc_url($manifest_url).'">';
+            echo '<meta name="theme-color" content="#2c6e49">';
+            echo '<script>
+            if("serviceWorker" in navigator && window.location.pathname.includes("/bitstream/") && !window.location.pathname.includes("/quickbit/")) {
+                navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                    // Check if BitStream Feed SW is already registered
+                    let feedRegistered = false;
+                    for(let registration of registrations) {
+                        if((registration.scope.includes("/bitstream/feed/") || registration.scope.includes("/bitstream/")) && registration.active && registration.active.scriptURL.includes("sw-feed.js")) {
+                            feedRegistered = true;
+                            break;
+                        }
+                    }
+                    // Only register if not already registered
+                    if(!feedRegistered) {
+                        navigator.serviceWorker.register("'.esc_url($sw_url).'", {
+                            scope: "/bitstream/feed/",
+                            updateViaCache: "none"
+                        }).then(function(registration) {
+                            console.log("BitStream Feed PWA registered successfully");
+                        }).catch(function(error) {
+                            console.warn("BitStream Feed SW registration failed:", error);
+                        });
+                    }
+                });
+            }
+            </script>';
         }
     }
 }
