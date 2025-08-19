@@ -217,14 +217,31 @@ JS;
     public function single_bit_content($content) {
         global $post;
         
+        // Prevent infinite loop by checking if we're already processing
+        static $processing = false;
+        if ($processing) {
+            return $content;
+        }
+        
         if (is_single() && $post && $post->post_type === 'bit') {
+            $processing = true;
+            
+            // Temporarily remove our filter to prevent infinite loop
+            remove_filter('the_content', [$this, 'single_bit_content']);
+            
             ob_start(); ?>
             <div class="bitstream-single-wrapper">
                 <a href="<?php echo esc_url(home_url('/bitstream/')); ?>" class="bitstream-back-link">← Back to BitStream</a>
-                <?php echo bitstream_render_card($post->ID); ?>
+                <?php echo bitstream_render_card($post->ID, true); ?>
             </div>
             <?php
-            return ob_get_clean();
+            $output = ob_get_clean();
+            
+            // Re-add our filter
+            add_filter('the_content', [$this, 'single_bit_content']);
+            
+            $processing = false;
+            return $output;
         }
         
         return $content;
@@ -562,8 +579,15 @@ JS;
 }
 
 // Bit card rendering function (kept global for compatibility)
-function bitstream_render_card($post_id) {
-    $content   = apply_filters('the_content', get_post_field('post_content',$post_id));
+function bitstream_render_card($post_id, $skip_content_filter = false) {
+    // Avoid infinite loop by skipping content filter when rendering in single bit context
+    if ($skip_content_filter) {
+        $content = get_post_field('post_content', $post_id);
+        $content = wpautop($content); // Basic paragraph formatting
+    } else {
+        $content = apply_filters('the_content', get_post_field('post_content',$post_id));
+    }
+    
     $timestamp = human_time_diff(get_post_modified_time('U',false,$post_id),current_time('timestamp')).' ago';
     $avatar    = get_avatar(get_post_field('post_author',$post_id),48,'','',['class'=>'bit-avatar-img']);
     $likes     = (int)get_post_meta($post_id,'_bitstream_likes',true);
