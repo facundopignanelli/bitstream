@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BitStream
  * Description: A microblogging plugin for sharing Bits and ReBits.
- * Version: 2.0.1
+ * Version: 2.0.2
  * Author: Facundo Pignanelli
  * Text Domain: bitstream
  */
@@ -10,7 +10,7 @@
 // Exit if accessed directly
 if (!defined('ABSPATH')) exit;
 
-define('BITSTREAM_VERSION', '2.0.1');
+define('BITSTREAM_VERSION', '2.0.2');
 define('BITSTREAM_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('BITSTREAM_PLUGIN_PATH', plugin_dir_path(__FILE__));
 
@@ -53,11 +53,14 @@ class BitStream_Plugin {
         add_action('enqueue_block_editor_assets', [$this, 'enqueue_block_editor_assets']);
         add_action('wp_enqueue_scripts', [$this, 'enqueue_frontend_assets']);
         add_action('admin_menu', [$this, 'add_admin_menus']);
+        add_action('admin_notices', [$this, 'permalink_admin_notice']);
+        add_action('wp_ajax_bitstream_flush_permalinks', [$this, 'flush_permalinks_ajax']);
         add_filter('default_content', [$this, 'default_rebit_content'], 10, 2);
         add_filter('post_row_actions', [$this, 'add_quote_action'], 10, 2);
         add_action('edit_form_after_title', [$this, 'show_quoted_preview']);
         add_action('save_post_bit', [$this, 'save_quoted_meta']);
         add_filter('the_content', [$this, 'display_quoted_content']);
+        add_action('template_redirect', [$this, 'handle_single_bit_display']);
         add_action('wp_head', [$this, 'pwa_assets']);
     }
     
@@ -139,6 +142,92 @@ JS;
     public function add_admin_menus() {
         add_submenu_page('edit.php?post_type=bit', 'Post ReBit', 'Post ReBit', 'edit_posts', 'bitstream-post-rebit', [$this, 'handle_post_rebit_redirect']);
         add_submenu_page('edit.php?post_type=bit', 'ReBit Mappings', 'ReBit Mappings', 'manage_options', 'bitstream-rebit-mappings', [$this, 'rebit_mappings_page']);
+    }
+    
+    /**
+     * Admin notice for permalink issues
+     */
+    public function permalink_admin_notice() {
+        $screen = get_current_screen();
+        if (!$screen || $screen->post_type !== 'bit') return;
+        
+        if (get_option('bitstream_permalinks_flushed') !== BITSTREAM_VERSION) {
+            echo '<div class="notice notice-warning is-dismissible">';
+            echo '<p><strong>BitStream:</strong> Permalink issues detected. ';
+            echo '<button type="button" class="button button-primary" onclick="bitstreamFlushPermalinks()">Fix Permalinks</button></p>';
+            echo '</div>';
+            
+            // Add JavaScript for AJAX call
+            echo '<script>
+            function bitstreamFlushPermalinks() {
+                fetch("' . admin_url('admin-ajax.php') . '", {
+                    method: "POST",
+                    body: new FormData(Object.assign(document.createElement("form"), {
+                        innerHTML: `<input name="action" value="bitstream_flush_permalinks">
+                                   <input name="nonce" value="' . wp_create_nonce('flush_permalinks') . '">`
+                    }))
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert("Error: " + (data.data || "Unknown error"));
+                    }
+                });
+            }
+            </script>';
+        }
+    }
+    
+    /**
+     * AJAX handler to flush permalinks
+     */
+    public function flush_permalinks_ajax() {
+        if (!current_user_can('manage_options') || !wp_verify_nonce($_POST['nonce'] ?? '', 'flush_permalinks')) {
+            wp_send_json_error('Unauthorized');
+        }
+        
+        flush_rewrite_rules();
+        update_option('bitstream_permalinks_flushed', BITSTREAM_VERSION);
+        wp_send_json_success('Permalinks flushed successfully');
+    }
+    
+    /**
+     * Handle single bit post display
+     */
+    public function handle_single_bit_display() {
+        global $post;
+        
+        if (is_single() && $post && $post->post_type === 'bit') {
+            // Output simple HTML page for single bit
+            wp_enqueue_style('bitstream-css');
+            wp_enqueue_script('bitstream-js');
+            
+            ?><!DOCTYPE html>
+<html <?php language_attributes(); ?>>
+<head>
+    <meta charset="<?php bloginfo('charset'); ?>">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title><?php echo esc_html(get_the_title($post->ID)); ?> - <?php bloginfo('name'); ?></title>
+    <?php wp_head(); ?>
+    <style>
+        body { margin: 0; padding: 2rem 1rem; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; }
+        .bitstream-single-wrapper { max-width: 800px; margin: 0 auto; }
+        .bitstream-back-link { display: inline-block; margin-bottom: 2rem; padding: 0.5rem 1rem; background: #2c6e49; color: white; text-decoration: none; border-radius: 8px; }
+        .bitstream-back-link:hover { background: #044389; color: white; }
+    </style>
+</head>
+<body>
+    <div class="bitstream-single-wrapper">
+        <a href="<?php echo esc_url(home_url('/bitstream/')); ?>" class="bitstream-back-link">← Back to BitStream</a>
+        <?php echo bitstream_render_card($post->ID); ?>
+    </div>
+    <?php wp_footer(); ?>
+</body>
+</html><?php
+            exit;
+        }
     }
     
     /**
@@ -415,7 +504,7 @@ function bitstream_render_card($post_id) {
             <button class="bit-like bit-action" data-post-id="<?php echo esc_attr($post_id); ?>" style="background:none;border:none;cursor:pointer;">
                 <i class="fas fa-heart"></i> <span class="bit-like-count"><?php echo esc_html($likes); ?></span>
             </button>
-            <button class="bit-permalink bit-action" data-url="<?php echo esc_url(get_permalink($post_id)); ?>" style="background:none;border:none;cursor:pointer;">
+            <button class="bit-permalink bit-action" data-url="<?php echo esc_url(get_permalink($post_id)); ?>" style="background:none;border:none;cursor:pointer;" title="Copy link: <?php echo esc_attr(get_permalink($post_id)); ?>">
                 <i class="fa-solid fa-up-right-from-square"></i>
             </button>
         </footer>
@@ -442,3 +531,27 @@ function bitstream_render_card($post_id) {
 
 // Initialize the plugin
 new BitStream_Plugin();
+
+// Plugin activation/deactivation hooks
+register_activation_hook(__FILE__, 'bitstream_plugin_activate');
+register_deactivation_hook(__FILE__, 'bitstream_plugin_deactivate');
+
+/**
+ * Plugin activation callback
+ */
+function bitstream_plugin_activate() {
+    // Ensure post type is registered before flushing
+    $plugin = new BitStream_Plugin();
+    $plugin->init();
+    
+    // Flush rewrite rules to ensure permalinks work
+    flush_rewrite_rules();
+}
+
+/**
+ * Plugin deactivation callback  
+ */
+function bitstream_plugin_deactivate() {
+    // Flush rewrite rules on deactivation
+    flush_rewrite_rules();
+}

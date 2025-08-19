@@ -4,11 +4,17 @@
 
 BitStream is an experimental WordPress plugin that adds a lightweight microblogging experience to your site. It introduces a custom post type called **Bits** (short status updates), supports rich interactions, and is designed for both desktop and mobile use. The project was written entirely with the help of AI tools.
 
-## ✨ Recent Optimizations (v2.0.1)
+## ✨ Recent Optimizations (v2.0.2)
 
 This version includes significant performance, security, and code quality improvements:
 
-### 🚀 Performance Enhancements
+### � Bug Fixes
+- **Permalink Issues**: Fixed 404 errors on copy permalink button
+- **Auto-Generated Slugs**: Improved SEO-friendly URL generation  
+- **Single Post Display**: Added proper template handling for individual Bit posts
+- **Rewrite Rules**: Automatic flush on plugin activation to prevent permalink issues
+
+### �🚀 Performance Enhancements
 - **Cached Auto-Title Generation**: Daily post counts are now cached using WordPress transients
 - **Conditional Asset Loading**: Media library scripts only load when needed
 - **Background OG Data Fetching**: Open Graph data is fetched asynchronously using `wp_cron`

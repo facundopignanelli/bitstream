@@ -1,5 +1,5 @@
 // BitStream Service Worker - Enhanced PWA Support
-const CACHE_NAME = 'bitstream-v2.0.1';
+const CACHE_NAME = 'bitstream-v2.0.2';
 const ASSETS_TO_CACHE = [
   '/bitstream/quickbit/',
   '/wp-content/plugins/bitstream/assets/css/bitstream.css',

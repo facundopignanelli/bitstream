@@ -86,7 +86,15 @@ class BitStream_Post_Type {
         set_transient($cache_key, $count, DAY_IN_SECONDS);
         $count_str = str_pad($count, 3, '0', STR_PAD_LEFT);
         $new_title = 'Bit #' . $date_str . ':' . $count_str;
-        wp_update_post(['ID' => $post_id, 'post_title' => $new_title]);
+        
+        // Create a SEO-friendly slug
+        $slug = 'bit-' . $date_str . '-' . $count_str;
+        
+        wp_update_post([
+            'ID' => $post_id, 
+            'post_title' => $new_title,
+            'post_name' => $slug
+        ]);
         
         add_action('save_post', [$this, 'auto_generate_title']);
     }
