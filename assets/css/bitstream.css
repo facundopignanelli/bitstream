@@ -20,6 +20,17 @@
     width: 100%;
     padding: 1rem;
     box-sizing: border-box;
+    z-index: 1; /* Establish stacking context */
+    overflow: hidden; /* Prevent content from spilling outside container */
+    isolation: isolate; /* Create new stacking context to prevent z-index issues */
+}
+
+/* Ensure the feed doesn't interfere with other page elements */
+.bitstream-feed::after {
+    content: "";
+    display: block;
+    clear: both;
+    height: 2rem; /* Add some spacing after the feed */
 }
 
 /* Grid sizer elements for consistent column widths */
@@ -55,6 +66,7 @@
     max-width: none !important;
     box-sizing: border-box;
     transition: all 0.3s ease;
+    z-index: 2; /* Ensure cards stay within their container context */
 }
 
 @media (min-width: 768px) {
@@ -311,6 +323,9 @@
     transition: background-color 0.2s ease;
     width: 100%;
     max-width: 300px;
+    position: relative;
+    z-index: 10; /* Ensure button appears above masonry content */
+    clear: both;
 }
 
 .bitstream-load-more:hover,
@@ -322,6 +337,8 @@
 .bitstream-scroll-trigger {
     width: 100%;
     clear: both;
+    position: relative;
+    z-index: 10; /* Ensure trigger is above masonry content */
 }
 
 /* Enhanced comment animation */
@@ -348,11 +365,17 @@
         position: relative !important;
         left: 0 !important;
         top: 0 !important;
+        z-index: auto !important;
     }
     
     .bitstream-feed {
         padding: 0.5rem;
         height: auto !important;
+        overflow: visible !important;
+    }
+    
+    .bitstream-feed::after {
+        height: 1rem; /* Reduce spacing on mobile */
     }
 }
 
@@ -364,7 +387,7 @@
 
 /* Adjust quoted preview for masonry cells */
 .bitstream-quoted-preview {
-    margin-bottom: 15px !important;
+    margin-top: 15px !important;
     padding: 12px !important;
     overflow: hidden !important;
     word-wrap: break-word !important;
@@ -374,10 +397,11 @@
     box-shadow: 0 2px 12px rgba(0,0,0,0.10);
     padding: 16px;
     background: #fafafa;
-    margin-bottom: 20px;
+    margin-top: 20px; /* Changed from margin-bottom to margin-top since quotes now appear after content */
     overflow: hidden; /* Prevent content overflow */
     word-wrap: break-word; /* Break long words */
     box-sizing: border-box; /* Include padding in width calculation */
+    border-left: 3px solid var(--wp--preset--color--accent-1, #2c6e49); /* Add visual indicator for quoted content */
 }
 
 /* Ensure all content within quoted preview stays contained */

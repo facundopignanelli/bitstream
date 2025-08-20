@@ -400,7 +400,7 @@ JS;
                 $quoted_box = '<div class="bitstream-quoted-preview">'
                     . $header . $quoted_content . $rich_preview . '</div>';
                 $GLOBALS['bitstream_is_rendering_quote'] = true;
-                $content = $quoted_box . $content;
+                $content = $content . $quoted_box; // Put quoted content after new content (social media style)
                 unset($GLOBALS['bitstream_is_rendering_quote']);
             }
         }

@@ -115,6 +115,7 @@ document.querySelectorAll('.bit-comment-toggle').forEach(button => {
                 card.style.top = '0';
                 card.style.width = '100%';
                 card.style.marginBottom = '1rem';
+                card.style.zIndex = 'auto';
             });
             return;
         }
@@ -128,6 +129,9 @@ document.querySelectorAll('.bit-comment-toggle').forEach(button => {
         const columnHeights = new Array(columns).fill(0);
 
         cards.forEach((card, index) => {
+            // Ensure card dimensions are calculated
+            const cardHeight = card.offsetHeight || card.getBoundingClientRect().height;
+            
             // Find the shortest column
             const shortestColumn = columnHeights.indexOf(Math.min(...columnHeights));
             
@@ -139,14 +143,17 @@ document.querySelectorAll('.bit-comment-toggle').forEach(button => {
             card.style.left = x + 'px';
             card.style.top = y + 'px';
             card.style.width = columnWidth + 'px';
+            card.style.zIndex = '2';
             
             // Update column height
-            columnHeights[shortestColumn] += card.offsetHeight + gap;
+            columnHeights[shortestColumn] += cardHeight + gap;
         });
 
-        // Set container height
-        feed.style.height = Math.max(...columnHeights) + 'px';
+        // Set container height with some padding to prevent overlap
+        const maxHeight = Math.max(...columnHeights);
+        feed.style.height = (maxHeight + gap) + 'px';
         feed.style.position = 'relative';
+        feed.style.overflow = 'hidden';
     }
 
     // Initialize masonry on load

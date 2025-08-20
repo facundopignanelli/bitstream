@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Comment Animation**: Fixed conflicting CSS rules that prevented comment sliding animation
 - **Quote Box Overflow**: Fixed elements appearing outside quote bit containers
 - **Chronological Order**: Fixed issue where new posts loaded in wrong columns, breaking chronological flow
+- **Z-Index Layering**: Fixed bit content overlapping with footer and other page elements during fast scrolling
 - **Mobile Responsiveness**: Improved spacing and layout on mobile devices
 
 ### Changed
@@ -22,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Better Height Distribution**: Cards flow naturally based on content height while maintaining order
 - **Enhanced Spacing**: Improved gaps between cards and proper vertical spacing
 - **Animation Performance**: Smoother comment open/close transitions with increased max-height
+- **Stacking Context**: Improved z-index management with proper container isolation
+- **Quote Position**: Quoted content now appears below new content (social media style) instead of above
 
 ### Improved
 - **Visual Balance**: Cards of different heights distribute evenly while preserving chronological order
@@ -30,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Break Prevention**: Cards no longer split across columns inappropriately
 - **Content Overflow**: Quote previews and embedded content properly contained
 - **User Experience**: Maintains logical reading order when loading more content
+- **Layer Management**: Proper stacking context prevents content from interfering with other page elements
+- **Quote Styling**: Added left border accent and improved spacing for quoted content
 
 ## [2.1.0] - 2025-08-20
 
