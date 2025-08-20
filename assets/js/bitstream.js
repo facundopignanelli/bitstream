@@ -309,11 +309,11 @@ function applyCommentStyles() {
     };
 
     // Apply author name styling
-    $('.bit-comments-list .comment-author .fn').attr('style', styles.authorName);
+    jQuery('.bit-comments-list .comment-author .fn').attr('style', styles.authorName);
 
     // Add "says:" if missing and style it
-    $('.bit-comments-list .comment-author').each(function() {
-        var $author = $(this);
+    jQuery('.bit-comments-list .comment-author').each(function() {
+        var $author = jQuery(this);
         if ($author.find('.says').length === 0) {
             $author.append(' <span class="says">says:</span>');
         }
@@ -321,10 +321,10 @@ function applyCommentStyles() {
     });
 
     // Style date and edit links
-    $('.bit-comments-list .comment-metadata a, .bit-comments-list .edit-link a, .bit-comments-list .comment-edit-link').attr('style', styles.dateLinks);
+    jQuery('.bit-comments-list .comment-metadata a, .bit-comments-list .edit-link a, .bit-comments-list .comment-edit-link').attr('style', styles.dateLinks);
 
     // Style nested replies with green border
-    $('.bit-comments-list .comment.depth-2, .bit-comments-list .comment.depth-3, .bit-comments-list .comment.depth-4').css({
+    jQuery('.bit-comments-list .comment.depth-2, .bit-comments-list .comment.depth-3, .bit-comments-list .comment.depth-4').css({
         'margin-left': '2em',
         'border-left': '2px solid #2c6e49',
         'padding-left': '1em',
@@ -332,7 +332,7 @@ function applyCommentStyles() {
     });
 
     // Remove top divider from nested replies
-    $('.bit-comments-list .comment.depth-2 > .comment-body, .bit-comments-list .comment.depth-3 > .comment-body, .bit-comments-list .comment.depth-4 > .comment-body').css({
+    jQuery('.bit-comments-list .comment.depth-2 > .comment-body, .bit-comments-list .comment.depth-3 > .comment-body, .bit-comments-list .comment.depth-4 > .comment-body').css({
         'border-top': 'none',
         'margin-top': '0',
         'padding-top': '0'

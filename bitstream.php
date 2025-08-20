@@ -320,9 +320,18 @@ class BitStream_Plugin {
         const quotedBitId = urlParams.get('quoted_bit');
         
         if(quotedBitId) {
+            // Add debugging
+            console.log('BitStream: Looking for quoted bit ID:', quotedBitId);
+            
             // Wait for editor to be ready
             const waitForEditor = () => {
-                const editorElement = document.querySelector('.edit-post-visual-editor');
+                const editorElement = document.querySelector('.edit-post-visual-editor') || 
+                                    document.querySelector('.block-editor-writing-flow') ||
+                                    document.querySelector('.editor-styles-wrapper') ||
+                                    document.querySelector('[data-type="core/post-content"]');
+                                    
+                console.log('BitStream: Editor element found:', editorElement);
+                
                 if (!editorElement) {
                     setTimeout(waitForEditor, 100);
                     return;
@@ -338,16 +347,31 @@ class BitStream_Plugin {
                     border-radius: 8px;
                     background: #f9f9f9;
                     border-left: 4px solid #2c6e49;
+                    position: relative;
+                    z-index: 1000;
                 `;
                 quotedPreview.innerHTML = '<div style="color: #666; margin-bottom: 8px;">Loading quoted bit...</div>';
                 
-                // Insert before the editor content
-                const contentArea = document.querySelector('.editor-styles-wrapper') || editorElement;
+                // Try multiple insertion points
+                const contentArea = document.querySelector('.editor-styles-wrapper') || 
+                                  document.querySelector('.block-editor-writing-flow') ||
+                                  document.querySelector('.edit-post-visual-editor') ||
+                                  editorElement;
+                                  
                 if (contentArea) {
                     contentArea.insertBefore(quotedPreview, contentArea.firstChild);
+                    console.log('BitStream: Preview element inserted');
+                } else {
+                    // Fallback: insert after the editor toolbar
+                    const toolbar = document.querySelector('.edit-post-header');
+                    if (toolbar && toolbar.parentNode) {
+                        toolbar.parentNode.insertBefore(quotedPreview, toolbar.nextSibling);
+                        console.log('BitStream: Preview element inserted after toolbar');
+                    }
                 }
                 
                 // Fetch the quoted bit content
+                console.log('BitStream: Fetching quoted bit content...');
                 fetch(bitstream_ajax.ajax_url, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -359,6 +383,7 @@ class BitStream_Plugin {
                 })
                 .then(response => response.json())
                 .then(data => {
+                    console.log('BitStream: AJAX response:', data);
                     if(data.success) {
                         quotedPreview.innerHTML = `
                             <div style="display: flex; align-items: center; margin-bottom: 12px; color: #2c6e49; font-weight: 600;">
@@ -369,6 +394,7 @@ class BitStream_Plugin {
                                 ${data.data.content}
                             </div>
                         `;
+                        console.log('BitStream: Quote content loaded successfully');
                         
                         // Store the quoted bit ID for saving
                         const hiddenInput = document.createElement('input');
@@ -579,18 +605,13 @@ JS;
 
         if (is_single() && $post && $post->post_type === 'bit') { ?>
             <style>
-                /* Hide theme's default post elements to prevent conflicts */
-                .bitstream-single-bit .entry-header,
-                .bitstream-single-bit .entry-title,
-                .bitstream-single-bit .entry-meta,
-                .bitstream-single-bit .entry-footer,
+                /* Hide theme's default post elements that might conflict with our bit card */
+                .bitstream-single-bit .entry-header .entry-title,
+                .bitstream-single-bit .entry-meta:not(.bitstream-single-wrapper .entry-meta),
+                .bitstream-single-bit .entry-footer:not(.bitstream-single-wrapper .entry-footer),
                 .bitstream-single-bit .post-navigation,
                 .bitstream-single-bit .author-info,
-                .bitstream-single-bit .entry-content > *:not(.bitstream-single-wrapper),
-                .bitstream-single-bit .post-header,
-                .bitstream-single-bit .post-title,
-                .bitstream-single-bit .post-meta,
-                .bitstream-single-bit .post-footer,
+                .bitstream-single-bit .post-header .post-title,
                 .bitstream-single-bit .wp-block-post-title,
                 .bitstream-single-bit .wp-block-post-date,
                 .bitstream-single-bit .wp-block-post-author,
@@ -598,11 +619,15 @@ JS;
                     display: none !important;
                 }
                 
+                /* Hide only empty content that's not our wrapper */
+                .bitstream-single-bit .entry-content > p:empty,
+                .bitstream-single-bit .entry-content > div:empty:not(.bitstream-single-wrapper) {
+                    display: none !important;
+                }
+                
                 /* Clean layout for BitStream content */
-                .bitstream-single-bit .entry-content,
-                .bitstream-single-bit .post-content {
-                    padding: 0 !important;
-                    margin: 0 !important;
+                .bitstream-single-bit .entry-content {
+                    min-height: auto;
                 }
                 
                 .bitstream-single-bit .site-main,
@@ -610,17 +635,13 @@ JS;
                     padding-top: 2rem;
                 }
                 
-                /* Remove any auto-generated content */
-                .bitstream-single-bit .entry-content > p:empty,
-                .bitstream-single-bit .entry-content > div:empty {
-                    display: none !important;
-                }
-                
                 /* BitStream specific styles */
                 .bitstream-single-wrapper { 
                     max-width: 800px; 
                     margin: 2rem auto; 
                     padding: 0 1rem; 
+                    display: block !important;
+                    visibility: visible !important;
                 }
                 
                 .bitstream-back-link { 
@@ -645,11 +666,14 @@ JS;
                 .bitstream-single-wrapper .bit-card {
                     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
                     border: 1px solid #e1e1e1;
+                    display: block !important;
+                    visibility: visible !important;
                 }
                 
-                /* Hide any duplicate content */
-                .bitstream-single-bit .entry-content .wp-block-post-content {
-                    display: none !important;
+                /* Ensure all bit card elements are visible */
+                .bitstream-single-wrapper .bit-card * {
+                    display: revert !important;
+                    visibility: visible !important;
                 }
                 
                 /* Handle theme-specific containers */
@@ -657,10 +681,17 @@ JS;
                     max-width: none;
                 }
                 
-                /* Clean up article styling */
-                .bitstream-single-bit article {
+                /* Clean up article styling but don't hide everything */
+                .bitstream-single-bit article:not(.bit-card) {
                     margin: 0;
                     padding: 0;
+                }
+                
+                /* Ensure content is visible */
+                .bitstream-single-bit .entry-content .bitstream-single-wrapper {
+                    display: block !important;
+                    opacity: 1 !important;
+                    visibility: visible !important;
                 }
             </style>
         <?php }
