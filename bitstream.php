@@ -93,16 +93,184 @@ class BitStream_Plugin {
         $inline_js = <<<'JS'
 (function(){
     const {registerBlockType,createBlock} = wp.blocks;
-    const {dispatch,select} = wp.data;
-    const {InspectorControls} = wp.blockEditor||wp.editor;
-    const {PanelBody,TextControl} = wp.components;
-    registerBlockType('bitstream/rebit-url',{title:'ReBit URL',icon:'admin-links',category:'widgets',attributes:{bitstream_rebit_url:{type:'string',source:'meta',meta:'bitstream_rebit_url'}},edit({attributes,setAttributes}){return[
-        wp.element.createElement(InspectorControls,null,
-            wp.element.createElement(PanelBody,{title:'ReBit Settings',initialOpen:true},
-                wp.element.createElement(TextControl,{label:'ReBit URL',value:attributes.bitstream_rebit_url,onChange:value=>setAttributes({bitstream_rebit_url:value})})
-            )
-        )
-    ];},save(){return null;}});
+    const {dispatch,select,useSelect} = wp.data;
+    const {InspectorControls,useBlockProps} = wp.blockEditor||wp.editor;
+    const {PanelBody,TextControl,Placeholder,Spinner} = wp.components;
+    const {useState,useEffect} = wp.element;
+    
+    registerBlockType('bitstream/rebit-url',{
+        title:'ReBit URL',
+        icon:'admin-links',
+        category:'widgets',
+        attributes:{
+            bitstream_rebit_url:{
+                type:'string',
+                source:'meta',
+                meta:'bitstream_rebit_url'
+            }
+        },
+        edit({attributes,setAttributes}){
+            const [preview,setPreview] = useState(null);
+            const [loading,setLoading] = useState(false);
+            const [error,setError] = useState(null);
+            const blockProps = useBlockProps ? useBlockProps() : {};
+            
+            const fetchPreview = async (url) => {
+                if (!url || !url.trim()) {
+                    setPreview(null);
+                    return;
+                }
+                
+                setLoading(true);
+                setError(null);
+                
+                try {
+                    const response = await fetch(bitstream_ajax.ajax_url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: new URLSearchParams({
+                            action: 'bitstream_fetch_og_data',
+                            url: url,
+                            nonce: bitstream_ajax.og_fetch_nonce
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    if (data.success) {
+                        setPreview(data.data);
+                    } else {
+                        setError(data.data || 'Failed to fetch preview');
+                    }
+                } catch (err) {
+                    setError('Failed to fetch preview');
+                } finally {
+                    setLoading(false);
+                }
+            };
+            
+            useEffect(() => {
+                if (attributes.bitstream_rebit_url) {
+                    fetchPreview(attributes.bitstream_rebit_url);
+                }
+            }, [attributes.bitstream_rebit_url]);
+            
+            const onURLChange = (value) => {
+                setAttributes({bitstream_rebit_url: value});
+            };
+            
+            return [
+                wp.element.createElement(InspectorControls,null,
+                    wp.element.createElement(PanelBody,{title:'ReBit Settings',initialOpen:true},
+                        wp.element.createElement(TextControl,{
+                            label:'ReBit URL',
+                            value:attributes.bitstream_rebit_url || '',
+                            onChange:onURLChange,
+                            help:'Enter the URL you want to share'
+                        })
+                    )
+                ),
+                wp.element.createElement('div',blockProps,
+                    !attributes.bitstream_rebit_url ? 
+                        wp.element.createElement(Placeholder,{
+                            icon:'admin-links',
+                            label:'ReBit URL',
+                            instructions:'Paste or type a URL to share external content'
+                        },
+                            wp.element.createElement(TextControl,{
+                                placeholder:'https://example.com',
+                                value:'',
+                                onChange:onURLChange,
+                                style:{marginBottom:'10px'}
+                            })
+                        ) :
+                        wp.element.createElement('div',{
+                            style:{
+                                border:'1px solid #ddd',
+                                borderRadius:'8px',
+                                padding:'16px',
+                                backgroundColor:'#f9f9f9'
+                            }
+                        },
+                            wp.element.createElement('div',{
+                                style:{
+                                    marginBottom:'12px',
+                                    fontSize:'14px',
+                                    fontWeight:'600',
+                                    color:'#2c6e49'
+                                }
+                            },'🔗 ReBit URL'),
+                            wp.element.createElement(TextControl,{
+                                value:attributes.bitstream_rebit_url || '',
+                                onChange:onURLChange,
+                                placeholder:'https://example.com',
+                                style:{marginBottom:'12px'}
+                            }),
+                            loading && wp.element.createElement('div',{
+                                style:{
+                                    display:'flex',
+                                    alignItems:'center',
+                                    gap:'8px',
+                                    color:'#666',
+                                    fontSize:'14px'
+                                }
+                            },
+                                wp.element.createElement(Spinner),
+                                'Loading preview...'
+                            ),
+                            error && wp.element.createElement('div',{
+                                style:{
+                                    color:'#d63638',
+                                    fontSize:'14px',
+                                    marginTop:'8px'
+                                }
+                            }, error),
+                            preview && !loading && wp.element.createElement('div',{
+                                style:{
+                                    border:'1px solid #ccc',
+                                    borderRadius:'6px',
+                                    overflow:'hidden',
+                                    backgroundColor:'white',
+                                    marginTop:'12px'
+                                }
+                            },
+                                preview.image && wp.element.createElement('img',{
+                                    src:preview.image,
+                                    alt:'',
+                                    style:{
+                                        width:'100%',
+                                        height:'auto',
+                                        display:'block'
+                                    }
+                                }),
+                                wp.element.createElement('div',{
+                                    style:{padding:'12px'}
+                                },
+                                    preview.title && wp.element.createElement('h4',{
+                                        style:{
+                                            margin:'0 0 8px 0',
+                                            fontSize:'16px',
+                                            fontWeight:'600'
+                                        }
+                                    }, preview.title),
+                                    preview.description && wp.element.createElement('p',{
+                                        style:{
+                                            margin:'0',
+                                            fontSize:'14px',
+                                            color:'#666',
+                                            lineHeight:'1.4'
+                                        }
+                                    }, preview.description)
+                                )
+                            )
+                        )
+                )
+            ];
+        },
+        save(){return null;}
+    });
+    
     if(window.location.search.includes('rebit=1')&&select('core/editor')&&select('core/editor').isEditedPostNew()){
         dispatch('core/block-editor').insertBlock(createBlock('bitstream/rebit-url'));
     }
@@ -130,7 +298,8 @@ JS;
             'ajax_url' => admin_url('admin-ajax.php'),
             'admin_url' => admin_url(),
             'like_nonce' => wp_create_nonce('bitstream_like_nonce'),
-            'load_more_nonce' => wp_create_nonce('bitstream_load_more_nonce')
+            'load_more_nonce' => wp_create_nonce('bitstream_load_more_nonce'),
+            'og_fetch_nonce' => wp_create_nonce('bitstream_og_fetch_nonce')
         ]);
         
         // Ensure $ is available globally

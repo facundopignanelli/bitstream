@@ -16,6 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Responsive design with mobile adjustments
   - WordPress admin bar positioning awareness
   - Smooth hover animations and accessibility features
+- **Enhanced ReBit Block**: Completely redesigned ReBit URL block with improved user experience
+  - Direct URL input field in the block itself (no more sidebar-only editing)
+  - Real-time link preview with OpenGraph data fetching
+  - Shows title, description, and image preview as you type
+  - Elegant placeholder state when no URL is entered
+  - Loading states and error handling for failed URL fetches
+  - Maintains backward compatibility with existing ReBit posts
 - **ReBit Support**: Enhanced support for sharing and displaying linked content (ReBits) with proper metadata handling
 
 ### Fixed
