@@ -8,7 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.1.1] - 2025-08-20
 
 ### Added
-- **Admin Quote Button**: Added quote button next to comment, like, and permalink buttons for admin users to easily quote posts
+- **Enhanced Quote Functionality**: Complete quote system with block editor integration
+  - Quote button next to comment, like, and permalink buttons for easy access
+  - Visual quoted bit preview in block editor showing original content, author, and timestamp
+  - Automatic form handling to save quote relationships
+  - Beautiful styling that integrates seamlessly with the block editor interface
+  - Full context display when quoting bits from the feed
 - **Floating QuickBit Button with Dropdown**: Added floating button in bottom-right corner for admin users with quick access to both post types
   - Appears on all pages for users with `edit_posts` capability
   - Dropdown menu with two options: "Add New Bit" and "Add New ReBit"
@@ -26,6 +31,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Eliminates duplicate fetching and background processing
   - Loading states and error handling for failed URL fetches
   - Maintains backward compatibility with existing ReBit posts
+  - Real-time preview generation in block editor when pasting URLs
+  - Automatic saving of OpenGraph metadata (title, description, image) when publishing
+  - Rich preview cards displayed in feed with title, description, and images
+  - Fallback support for posts created outside the block editor
+  - Enhanced AJAX system with caching and error handling
 - **ReBit Support**: Enhanced support for sharing and displaying linked content (ReBits) with proper metadata handling
 
 ### Fixed

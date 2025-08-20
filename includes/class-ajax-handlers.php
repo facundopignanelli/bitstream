@@ -16,6 +16,7 @@ class BitStream_Ajax_Handlers {
         add_action('wp_ajax_bitstream_load_more', [$this, 'handle_load_more']);
         add_action('wp_ajax_nopriv_bitstream_load_more', [$this, 'handle_load_more']);
         add_action('wp_ajax_bitstream_fetch_og_data', [$this, 'handle_fetch_og_data']);
+        add_action('wp_ajax_bitstream_get_quoted_bit', [$this, 'handle_get_quoted_bit']);
     }
     
     /**
@@ -230,6 +231,55 @@ class BitStream_Ajax_Handlers {
 
         } catch (Exception $e) {
             wp_send_json_error('An error occurred while fetching preview data.');
+        }
+    }
+    
+    /**
+     * Handle getting quoted bit content for block editor display
+     */
+    public function handle_get_quoted_bit() {
+        try {
+            // Verify nonce
+            if (!wp_verify_nonce($_POST['nonce'] ?? '', 'bitstream_og_fetch_nonce')) {
+                wp_send_json_error('Invalid nonce.');
+            }
+
+            // Check permissions
+            if (!current_user_can('edit_posts')) {
+                wp_send_json_error('Insufficient permissions.');
+            }
+
+            $quoted_bit_id = intval($_POST['quoted_bit_id'] ?? 0);
+            
+            if ($quoted_bit_id <= 0) {
+                wp_send_json_error('Invalid quoted bit ID.');
+            }
+
+            $quoted_post = get_post($quoted_bit_id);
+            
+            if (!$quoted_post || $quoted_post->post_type !== 'bit') {
+                wp_send_json_error('Quoted bit not found.');
+            }
+
+            // Get the content and apply filters
+            $content = apply_filters('the_content', $quoted_post->post_content);
+            
+            // Get author info
+            $author = get_userdata($quoted_post->post_author);
+            $author_name = $author ? $author->display_name : 'Unknown';
+            
+            // Get timestamp
+            $timestamp = human_time_diff(get_post_time('U', false, $quoted_post), current_time('timestamp')) . ' ago';
+
+            wp_send_json_success([
+                'content' => $content,
+                'author' => $author_name,
+                'timestamp' => $timestamp,
+                'post_id' => $quoted_bit_id
+            ]);
+
+        } catch (Exception $e) {
+            wp_send_json_error('An error occurred while fetching quoted bit.');
         }
     }
 }

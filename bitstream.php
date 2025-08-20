@@ -313,6 +313,103 @@ class BitStream_Plugin {
     if(window.location.search.includes('rebit=1')&&select('core/editor')&&select('core/editor').isEditedPostNew()){
         dispatch('core/block-editor').insertBlock(createBlock('bitstream/rebit-url'));
     }
+    
+    // Handle quoted bit display in block editor
+    if(window.location.search.includes('quoted_bit=')&&select('core/editor')&&select('core/editor').isEditedPostNew()){
+        const urlParams = new URLSearchParams(window.location.search);
+        const quotedBitId = urlParams.get('quoted_bit');
+        
+        if(quotedBitId) {
+            // Wait for editor to be ready
+            const waitForEditor = () => {
+                const editorElement = document.querySelector('.edit-post-visual-editor');
+                if (!editorElement) {
+                    setTimeout(waitForEditor, 100);
+                    return;
+                }
+                
+                // Create quoted bit preview element
+                const quotedPreview = document.createElement('div');
+                quotedPreview.id = 'bitstream-quoted-preview';
+                quotedPreview.style.cssText = `
+                    margin: 16px 0;
+                    padding: 16px;
+                    border: 1px solid #ddd;
+                    border-radius: 8px;
+                    background: #f9f9f9;
+                    border-left: 4px solid #2c6e49;
+                `;
+                quotedPreview.innerHTML = '<div style="color: #666; margin-bottom: 8px;">Loading quoted bit...</div>';
+                
+                // Insert before the editor content
+                const contentArea = document.querySelector('.editor-styles-wrapper') || editorElement;
+                if (contentArea) {
+                    contentArea.insertBefore(quotedPreview, contentArea.firstChild);
+                }
+                
+                // Fetch the quoted bit content
+                fetch(bitstream_ajax.ajax_url, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({
+                        action: 'bitstream_get_quoted_bit',
+                        quoted_bit_id: quotedBitId,
+                        nonce: bitstream_ajax.og_fetch_nonce
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if(data.success) {
+                        quotedPreview.innerHTML = `
+                            <div style="display: flex; align-items: center; margin-bottom: 12px; color: #2c6e49; font-weight: 600;">
+                                <i class="fa-solid fa-quote-left" style="margin-right: 8px;"></i>
+                                Quoting Bit #${quotedBitId} by ${data.data.author} • ${data.data.timestamp}
+                            </div>
+                            <div style="border-left: 3px solid #ccc; padding-left: 12px; color: #555;">
+                                ${data.data.content}
+                            </div>
+                        `;
+                        
+                        // Store the quoted bit ID for saving
+                        const hiddenInput = document.createElement('input');
+                        hiddenInput.type = 'hidden';
+                        hiddenInput.name = 'bitstream_quoted_bit';
+                        hiddenInput.value = quotedBitId;
+                        
+                        // Find the form and append the hidden input
+                        const form = document.querySelector('form[name="post"]') || document.querySelector('#post');
+                        if (form) {
+                            form.appendChild(hiddenInput);
+                        } else {
+                            // Fallback: append to body and ensure it gets submitted
+                            document.body.appendChild(hiddenInput);
+                            
+                            // Listen for form submissions to ensure our data is included
+                            document.addEventListener('submit', function(e) {
+                                const submitForm = e.target;
+                                if (submitForm && (submitForm.name === 'post' || submitForm.id === 'post')) {
+                                    const existingInput = submitForm.querySelector('input[name="bitstream_quoted_bit"]');
+                                    if (!existingInput) {
+                                        const clonedInput = hiddenInput.cloneNode(true);
+                                        submitForm.appendChild(clonedInput);
+                                    }
+                                }
+                            });
+                        }
+                        
+                    } else {
+                        quotedPreview.innerHTML = '<div style="color: #d63638;">Failed to load quoted bit: ' + (data.data || 'Unknown error') + '</div>';
+                    }
+                })
+                .catch(err => {
+                    console.error('Failed to fetch quoted bit:', err);
+                    quotedPreview.innerHTML = '<div style="color: #d63638;">Failed to load quoted bit content.</div>';
+                });
+            };
+            
+            waitForEditor();
+        }
+    }
 })();
 JS;
         wp_add_inline_script('bitstream-block', $inline_js);
@@ -426,6 +523,12 @@ JS;
             wp_enqueue_style('bitstream-css');
             wp_enqueue_script('bitstream-js');
             
+            // Add body class for better targeting
+            add_filter('body_class', function($classes) {
+                $classes[] = 'bitstream-single-bit';
+                return $classes;
+            });
+            
             // Use the theme's page template by filtering the content
             add_filter('the_content', [$this, 'single_bit_content']);
             add_action('wp_head', [$this, 'single_bit_styles']);
@@ -473,10 +576,53 @@ JS;
      */
     public function single_bit_styles() {
         global $post;
-        
+
         if (is_single() && $post && $post->post_type === 'bit') { ?>
             <style>
-                .bitstream-single-wrapper { max-width: 800px; margin: 2rem auto; padding: 0 1rem; }
+                /* Hide theme's default post elements to prevent conflicts */
+                .bitstream-single-bit .entry-header,
+                .bitstream-single-bit .entry-title,
+                .bitstream-single-bit .entry-meta,
+                .bitstream-single-bit .entry-footer,
+                .bitstream-single-bit .post-navigation,
+                .bitstream-single-bit .author-info,
+                .bitstream-single-bit .entry-content > *:not(.bitstream-single-wrapper),
+                .bitstream-single-bit .post-header,
+                .bitstream-single-bit .post-title,
+                .bitstream-single-bit .post-meta,
+                .bitstream-single-bit .post-footer,
+                .bitstream-single-bit .wp-block-post-title,
+                .bitstream-single-bit .wp-block-post-date,
+                .bitstream-single-bit .wp-block-post-author,
+                .bitstream-single-bit .wp-block-post-terms {
+                    display: none !important;
+                }
+                
+                /* Clean layout for BitStream content */
+                .bitstream-single-bit .entry-content,
+                .bitstream-single-bit .post-content {
+                    padding: 0 !important;
+                    margin: 0 !important;
+                }
+                
+                .bitstream-single-bit .site-main,
+                .bitstream-single-bit .main-content {
+                    padding-top: 2rem;
+                }
+                
+                /* Remove any auto-generated content */
+                .bitstream-single-bit .entry-content > p:empty,
+                .bitstream-single-bit .entry-content > div:empty {
+                    display: none !important;
+                }
+                
+                /* BitStream specific styles */
+                .bitstream-single-wrapper { 
+                    max-width: 800px; 
+                    margin: 2rem auto; 
+                    padding: 0 1rem; 
+                }
+                
                 .bitstream-back-link { 
                     display: inline-block; 
                     margin-bottom: 2rem; 
@@ -486,17 +632,39 @@ JS;
                     text-decoration: none; 
                     border-radius: 8px; 
                     transition: background-color 0.2s ease;
+                    font-size: 0.9rem;
                 }
+                
                 .bitstream-back-link:hover { 
                     background: var(--wp--preset--color--accent-2, #044389); 
                     color: white; 
                     text-decoration: none;
                 }
+                
+                /* Ensure BitStream card displays properly */
+                .bitstream-single-wrapper .bit-card {
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                    border: 1px solid #e1e1e1;
+                }
+                
+                /* Hide any duplicate content */
+                .bitstream-single-bit .entry-content .wp-block-post-content {
+                    display: none !important;
+                }
+                
+                /* Handle theme-specific containers */
+                .bitstream-single-bit .content-area {
+                    max-width: none;
+                }
+                
+                /* Clean up article styling */
+                .bitstream-single-bit article {
+                    margin: 0;
+                    padding: 0;
+                }
             </style>
         <?php }
-    }
-    
-    /**
+    }    /**
      * Handle ReBit redirect
      */
     public function handle_post_rebit_redirect() {
@@ -878,7 +1046,7 @@ JS;
                        style="display: flex; align-items: center; padding: 12px 16px; text-decoration: none; color: #333;"
                        onmouseover="this.style.background='#f5f5f5';"
                        onmouseout="this.style.background='white';">
-                        <i class="fa-solid fa-retweet" style="margin-right: 8px; color: #2c6e49;"></i>
+                        <i class="fa-solid fa-link" style="margin-right: 8px; color: #2c6e49;"></i>
                         Add New ReBit
                     </a>
                 </div>
