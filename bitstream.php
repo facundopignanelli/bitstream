@@ -1120,7 +1120,7 @@ JS;
         
         $mappings = get_option('bitstream_rebit_mappings', []);
         ?>
-        <div class="wrap" style="max-width: 95%; margin: 0 auto;">
+        <div class="wrap" style="max-width: none; width: 98%; margin: 0 auto;">
             <h1>ReBit Mappings</h1>
             <p class="description">Configure how different websites appear when shared as ReBits. Each mapping adds a custom icon and label for specific domains.</p>
             
@@ -1378,41 +1378,6 @@ JS;
             document.getElementById('icon-picker-modal').style.display = 'none';
             document.body.style.overflow = 'auto';
             currentIconInput = null;
-        }
-        
-        function showCategory(category) {
-            // Update active category button
-            document.querySelectorAll('.icon-category').forEach(btn => btn.classList.remove('active'));
-            document.querySelector(`[data-category="${category}"]`).classList.add('active');
-            
-            const grid = document.getElementById('icon-grid');
-            grid.innerHTML = '';
-            
-            let iconsToShow = [];
-            if (category === 'all') {
-                iconsToShow = [...iconLibrary.brands, ...iconLibrary.solid, ...iconLibrary.regular];
-            } else {
-                iconsToShow = iconLibrary[category] || [];
-            }
-            
-            iconsToShow.forEach(iconClass => {
-                const iconDiv = document.createElement('div');
-                iconDiv.className = 'icon-option';
-                iconDiv.style.cssText = 'padding: 15px; text-align: center; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;';
-                iconDiv.innerHTML = `<i class="${iconClass}" style="font-size: 24px; display: block; margin-bottom: 5px;"></i><small style="font-size: 10px; word-break: break-all;">${iconClass}</small>`;
-                
-                iconDiv.addEventListener('click', () => selectIcon(iconClass));
-                iconDiv.addEventListener('mouseenter', () => {
-                    iconDiv.style.backgroundColor = '#f0f0f0';
-                    iconDiv.style.borderColor = '#2c6e49';
-                });
-                iconDiv.addEventListener('mouseleave', () => {
-                    iconDiv.style.backgroundColor = '';
-                    iconDiv.style.borderColor = '#ddd';
-                });
-                
-                grid.appendChild(iconDiv);
-            });
         }
         
         function filterIcons() {
@@ -1824,14 +1789,26 @@ JS;
         }
         
         function openIconPicker(inputId) {
+            console.log('Opening icon picker for:', inputId);
             currentIconInput = document.getElementById(inputId);
             document.getElementById('icon-picker-modal').style.display = 'block';
             document.body.style.overflow = 'hidden';
             
-            // Try to load FA icons, fallback if needed
-            loadFontAwesomeIcons().then(() => {
-                showCategory('all');
-                document.getElementById('icon-search').value = '';
+            // Immediately load fallback icons to ensure we have something to show
+            if (!iconsLoaded) {
+                console.log('Loading fallback icons immediately...');
+                iconLibrary = getFallbackIcons();
+                iconsLoaded = true;
+                console.log('Fallback icons loaded:', iconLibrary.brands.length, 'brands,', iconLibrary.solid.length, 'solid,', iconLibrary.regular.length, 'regular');
+            }
+            
+            // Show all icons immediately, then try to enhance with FA icons
+            showCategory('all');
+            document.getElementById('icon-search').value = '';
+            
+            // Try to load FA icons in background for future use
+            loadFontAwesomeIcons().catch(e => {
+                console.log('FA loading failed, using fallback:', e);
             });
         }
         
@@ -1842,9 +1819,13 @@ JS;
         }
         
         function showCategory(category) {
+            console.log('Showing category:', category);
+            console.log('Available icon library:', iconLibrary);
+            
             // Update active category button
             document.querySelectorAll('.icon-category').forEach(btn => btn.classList.remove('active'));
-            document.querySelector(`[data-category="${category}"]`).classList.add('active');
+            const categoryBtn = document.querySelector(`[data-category="${category}"]`);
+            if (categoryBtn) categoryBtn.classList.add('active');
             
             const grid = document.getElementById('icon-grid');
             grid.innerHTML = '';
@@ -1856,11 +1837,23 @@ JS;
                 iconsToShow = iconLibrary[category] || [];
             }
             
+            console.log('Icons to show for category', category + ':', iconsToShow.length);
+            
+            if (iconsToShow.length === 0) {
+                grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #666;">No icons found. Loading fallback icons...</p>';
+                // Force load fallback if we don't have any icons
+                iconLibrary = getFallbackIcons();
+                iconsLoaded = true;
+                // Retry showing category
+                setTimeout(() => showCategory(category), 100);
+                return;
+            }
+            
             iconsToShow.forEach(iconClass => {
                 const iconDiv = document.createElement('div');
                 iconDiv.className = 'icon-option';
-                iconDiv.style.cssText = 'padding: 15px; text-align: center; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;';
-                iconDiv.innerHTML = `<i class="${iconClass}" style="font-size: 24px; display: block; margin-bottom: 5px;"></i><small style="font-size: 10px; word-break: break-all;">${iconClass}</small>`;
+                iconDiv.style.cssText = 'padding: 15px; text-align: center; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s; background: white;';
+                iconDiv.innerHTML = `<i class="${iconClass}" style="font-size: 24px; display: block; margin-bottom: 5px; color: #2c6e49;"></i><small style="font-size: 10px; word-break: break-all;">${iconClass}</small>`;
                 
                 iconDiv.addEventListener('click', () => selectIcon(iconClass));
                 iconDiv.addEventListener('mouseenter', () => {
@@ -1868,12 +1861,14 @@ JS;
                     iconDiv.style.borderColor = '#2c6e49';
                 });
                 iconDiv.addEventListener('mouseleave', () => {
-                    iconDiv.style.backgroundColor = '';
+                    iconDiv.style.backgroundColor = 'white';
                     iconDiv.style.borderColor = '#ddd';
                 });
                 
                 grid.appendChild(iconDiv);
             });
+            
+            console.log('Added', iconsToShow.length, 'icons to grid');
         }
         
         function filterIcons() {
