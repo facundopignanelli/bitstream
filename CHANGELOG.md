@@ -12,8 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `limit` - Show a fixed number of posts (e.g., `limit="3"` for latest 3 posts)
   - `infinite_scroll` - Enable automatic infinite scroll (`infinite_scroll="true"`)
   - `show_load_more` - Control load more button visibility (`show_load_more="false"`)
+- **Responsive Column Layout**: Implemented automatic responsive grid layout for posts:
+  - Mobile (< 768px): 1 column
+  - Tablet (768px - 1023px): 2 columns
+  - Desktop (1024px - 1399px): 3 columns
+  - Large Desktop (1400px+): 4 columns
 - **Improved JavaScript**: Updated infinite scroll to use Intersection Observer API for better performance
 - **Parameter-Based Display**: Single shortcode now handles all display scenarios
+- **CSS Grid Implementation**: Automatic, flexible column layout with responsive spacing
 
 ### Removed
 - **Deprecated Shortcode**: Removed `[bitstream_latest]` shortcode (use `[bitstream limit="3"]` instead)
@@ -22,6 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Simplified API**: Consolidated all feed display options into the main `[bitstream]` shortcode
 - **Better Performance**: More efficient scroll handling with intersection observer
+- **Enhanced Responsive Design**: Cards automatically adapt to screen size and available space
+- **Improved Mobile Experience**: Optimized spacing, typography, and layout for mobile devices
+- **Grid-Compatible Layout**: Load more buttons and scroll triggers work seamlessly with column layout
 - **Enhanced Documentation**: Updated README with comprehensive shortcode parameter examples
 
 ## [2.0.4] - 2025-08-19
