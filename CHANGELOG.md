@@ -67,6 +67,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixed theme conflicts hiding bit metadata and content
   - Ensured proper card layout with headers, content, and footer sections
   - Resolved avatar and timestamp display issues
+  - **Fixed missing bit titles and metadata on individual bit pages**
+  - Restored display of auto-generated bit titles (format: "Bit #YYYY-MM-DD:001")
+  - **Added actual timestamp display for citing purposes alongside relative time**
+  - WordPress post meta now shows exact date/time using theme's default styling
+  - Bit card continues to show relative time ("2 hours ago") for social context
+  - Enhanced header styling with proper typography and spacing
+  - Improved citation and reference capabilities with dual time display
 - **Quote Context Display**: Fixed quoted bit not appearing in block editor
   - Enhanced quote detection logic with multiple fallback methods
   - URL-based bit retrieval when standard methods fail

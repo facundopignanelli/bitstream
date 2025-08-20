@@ -68,6 +68,9 @@ class BitStream_Plugin {
         add_action('init', [$this, 'add_service_worker_rewrite']);
         add_action('template_redirect', [$this, 'serve_service_worker']);
         add_filter('query_vars', [$this, 'add_query_vars']);
+        
+        // Add debug parameter handler
+        add_action('template_redirect', [$this, 'handle_debug_requests']);
     }
     
     /**
@@ -634,6 +637,14 @@ JS;
             }
             </script>';
         }
+        
+        // Service Worker debug notice for admins
+        if (current_user_can('manage_options')) {
+            echo '<div class="notice notice-info is-dismissible">';
+            echo '<p><strong>BitStream Debug:</strong> If Service Worker errors occur, ';
+            echo '<a href="' . esc_url(add_query_arg('bitstream_debug', 'flush_rewrite')) . '" class="button button-secondary">Flush SW Rewrite Rules</a></p>';
+            echo '</div>';
+        }
     }
     
     /**
@@ -716,18 +727,45 @@ JS;
 
         if (is_single() && $post && $post->post_type === 'bit') { ?>
             <style>
-                /* Hide theme's default post elements that might conflict with our bit card */
-                .bitstream-single-bit .entry-header .entry-title,
-                .bitstream-single-bit .entry-meta:not(.bitstream-single-wrapper .entry-meta),
+                /* Hide theme's default post elements that might conflict with our bit card BUT keep title */
                 .bitstream-single-bit .entry-footer:not(.bitstream-single-wrapper .entry-footer),
                 .bitstream-single-bit .post-navigation,
-                .bitstream-single-bit .author-info,
-                .bitstream-single-bit .post-header .post-title,
-                .bitstream-single-bit .wp-block-post-title,
-                .bitstream-single-bit .wp-block-post-date,
+                .bitstream-single-bit .author-info {
+                    display: none !important;
+                }
+                
+                /* Keep and style the entry title for SEO and navigation */
+                .bitstream-single-bit .entry-header {
+                    margin-bottom: 2rem !important;
+                    border-bottom: 1px solid #eee !important;
+                    padding-bottom: 1rem !important;
+                }
+                
+                .bitstream-single-bit .entry-title,
+                .bitstream-single-bit .entry-header .entry-title {
+                    display: block !important;
+                    font-size: 1.8rem !important;
+                    margin-bottom: 0.5rem !important;
+                    color: #333 !important;
+                    line-height: 1.3 !important;
+                }
+                
+                /* Show post meta using theme's default styling for better integration */
+                .bitstream-single-bit .entry-meta,
+                .bitstream-single-bit .entry-header .entry-meta {
+                    display: block !important;
+                }
+                
+                /* Hide other meta elements but keep date */
+                .bitstream-single-bit .post-meta,
                 .bitstream-single-bit .wp-block-post-author,
                 .bitstream-single-bit .wp-block-post-terms {
                     display: none !important;
+                }
+                
+                /* Allow wp-block-post-date to show using theme's default styling */
+                .bitstream-single-bit .wp-block-post-date {
+                    display: block !important;
                 }
                 
                 /* Hide only empty content that's not our wrapper */
@@ -1138,6 +1176,7 @@ JS;
             
             echo '<link rel="manifest" href="'.esc_url($manifest_url).'">';
             echo '<meta name="theme-color" content="#2c6e49">';
+            echo '<meta name="mobile-web-app-capable" content="yes">';
             echo '<meta name="apple-mobile-web-app-capable" content="yes">';
             echo '<meta name="apple-mobile-web-app-status-bar-style" content="default">';
             echo '<meta name="apple-mobile-web-app-title" content="BitStream QuickPost">';
@@ -1206,6 +1245,7 @@ JS;
                 
                 echo '<link rel="manifest" href="'.esc_url($manifest_url).'">';
                 echo '<meta name="theme-color" content="#2c6e49">';
+                echo '<meta name="mobile-web-app-capable" content="yes">';
                 echo '<meta name="apple-mobile-web-app-capable" content="yes">';
                 echo '<meta name="apple-mobile-web-app-status-bar-style" content="default">';
                 echo '<meta name="apple-mobile-web-app-title" content="BitStream Feed">';
@@ -1285,11 +1325,12 @@ JS;
         add_rewrite_rule('^sw-feed\.js$', 'index.php?bitstream_sw=feed', 'top');
         add_rewrite_rule('^sw\.js$', 'index.php?bitstream_sw=main', 'top');
         
-        // Flush rewrite rules if they haven't been flushed yet
-        // Temporarily always flush for debugging
-        flush_rewrite_rules();
-        if (!get_option('bitstream_sw_rewrite_flushed')) {
-            update_option('bitstream_sw_rewrite_flushed', true);
+        // Flush rewrite rules if they haven't been flushed for this version
+        if (!get_option('bitstream_sw_rewrite_flushed_v2')) {
+            flush_rewrite_rules(false);
+            update_option('bitstream_sw_rewrite_flushed_v2', true);
+            delete_option('bitstream_sw_rewrite_flushed'); // Remove old flag
+            error_log('BitStream: Service Worker rewrite rules flushed (v2)');
         }
     }
 
@@ -1309,6 +1350,7 @@ JS;
         
         error_log('BitStream: serve_service_worker called, sw_type: ' . $sw_type);
         error_log('BitStream: REQUEST_URI: ' . $_SERVER['REQUEST_URI']);
+        error_log('BitStream: Query vars: ' . print_r($_GET, true));
         
         if (!$sw_type) {
             error_log('BitStream: No sw_type found, returning');
@@ -1317,12 +1359,16 @@ JS;
         
         error_log('BitStream: Serving Service Worker type: ' . $sw_type);
         
-        // Set proper headers for Service Worker
-        header('Content-Type: application/javascript');
+        // Set proper headers for Service Worker with no caching and CORS
+        status_header(200);
+        header('Content-Type: application/javascript; charset=utf-8');
         header('Service-Worker-Allowed: /');
-        header('Cache-Control: no-cache, no-store, must-revalidate');
+        header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0');
         header('Pragma: no-cache');
-        header('Expires: 0');
+        header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
+        header('Access-Control-Allow-Origin: *');
+        header('Access-Control-Allow-Methods: GET');
+        header('Access-Control-Allow-Headers: Content-Type');
         
         // Serve the appropriate Service Worker file
         $file_path = '';
@@ -1333,11 +1379,30 @@ JS;
         }
         
         if ($file_path && file_exists($file_path)) {
+            error_log('BitStream: Serving SW file: ' . $file_path);
             readfile($file_path);
             exit;
         } else {
+            error_log('BitStream: SW file not found: ' . $file_path);
             status_header(404);
+            echo '// Service Worker file not found';
             exit;
+        }
+    }
+    
+    /**
+     * Handle debug requests
+     */
+    public function handle_debug_requests() {
+        if (isset($_GET['bitstream_debug']) && $_GET['bitstream_debug'] === 'flush_rewrite') {
+            if (current_user_can('manage_options')) {
+                delete_option('bitstream_sw_rewrite_flushed_v2');
+                flush_rewrite_rules(false);
+                update_option('bitstream_sw_rewrite_flushed_v2', true);
+                wp_die('BitStream rewrite rules flushed! Service Worker rewrite rules have been refreshed.');
+            } else {
+                wp_die('Access denied');
+            }
         }
     }
 }
