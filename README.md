@@ -31,7 +31,8 @@ For detailed release notes and version history, see [CHANGELOG.md](CHANGELOG.md)
 - **Quote Action:** Admin row action to quote an existing Bit in a new Bit.
 - **Responsive Design:**
   - Consolidated CSS ensures responsive, modern layout
-  - Automatic responsive column layout (1-4 columns based on screen size)
+  - True masonry layout with automatic height distribution (Pinterest-style)
+  - Responsive columns (1-4 columns based on screen size)
   - All images automatically fit cards regardless of insertion method
   - Mobile-friendly and accessible interface
 - **Font Awesome Support:** Uses Font Awesome icons for actions and ReBit labels.
@@ -51,15 +52,15 @@ Displays a feed of Bits with various customization options.
 
 **Examples:**
 ```
-[bitstream]                                    // Default responsive grid with 10 posts per page and load more button
-[bitstream posts_per_page="5"]                // 5 posts per page in responsive grid with load more button
-[bitstream limit="3"]                          // Show only the latest 3 posts in responsive grid, no pagination
-[bitstream infinite_scroll="true"]             // Enable infinite scroll with responsive grid layout
-[bitstream posts_per_page="15" infinite_scroll="true"]  // 15 posts per page with infinite scroll in responsive grid
-[bitstream show_load_more="false"]             // Hide the load more button (static responsive grid display)
+[bitstream]                                    // Default responsive masonry with 10 posts per page and load more button
+[bitstream posts_per_page="5"]                // 5 posts per page in responsive masonry with load more button
+[bitstream limit="3"]                          // Show only the latest 3 posts in responsive masonry, no pagination
+[bitstream infinite_scroll="true"]             // Enable infinite scroll with responsive masonry layout
+[bitstream posts_per_page="15" infinite_scroll="true"]  // 15 posts per page with infinite scroll in responsive masonry
+[bitstream show_load_more="false"]             // Hide the load more button (static responsive masonry display)
 ```
 
-**Note:** All layouts automatically use responsive columns (1 column on mobile, 2 on tablet, 3 on desktop, 4 on large screens). When using `limit` parameter, pagination is disabled and only the specified number of posts will be shown.
+**Note:** All layouts automatically use responsive masonry columns that adapt based on content height (1 column on mobile, 2 on tablet, 3 on desktop, 4 on large screens). When using `limit` parameter, pagination is disabled and only the specified number of posts will be shown.
 
 ### `[bitstream_quick_post]` - Quick Post Form
 Renders a front-end form for creating new Bits (requires logged-in user).

@@ -5,6 +5,26 @@ All notable changes to the BitStream WordPress plugin will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2025-08-20
+
+### Fixed
+- **Layout Issues**: Fixed responsive column layout overlapping and spacing problems
+- **Card Containment**: Resolved cards rendering outside page boundaries
+- **Comment Animation**: Restored smooth sliding animation for comment sections
+- **Mobile Responsiveness**: Improved spacing and layout on mobile devices
+
+### Changed
+- **Masonry Layout**: Switched from CSS Grid to CSS Columns for true masonry behavior
+- **Better Height Distribution**: Cards now flow naturally based on content height (Pinterest-style)
+- **Enhanced Spacing**: Improved gaps between cards and proper vertical spacing
+- **Animation Performance**: Smoother comment open/close transitions with increased max-height
+
+### Improved
+- **Visual Balance**: Cards of different heights now distribute evenly across columns
+- **Container Boundaries**: All content properly contained within page width
+- **Responsive Gaps**: Column gaps now adjust appropriately for each screen size
+- **Break Prevention**: Cards no longer split across columns inappropriately
+
 ## [2.1.0] - 2025-08-20
 
 ### Added

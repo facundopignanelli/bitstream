@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BitStream
  * Description: A microblogging plugin for sharing Bits and ReBits.
- * Version: 2.1.0
+ * Version: 2.1.1
  * Author: Facundo Pignanelli
  * Text Domain: bitstream
  */
@@ -10,7 +10,7 @@
 // Exit if accessed directly
 if (!defined('ABSPATH')) exit;
 
-define('BITSTREAM_VERSION', '2.1.0');
+define('BITSTREAM_VERSION', '2.1.1');
 define('BITSTREAM_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('BITSTREAM_PLUGIN_PATH', plugin_dir_path(__FILE__));
 
