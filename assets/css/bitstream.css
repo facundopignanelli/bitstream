@@ -34,19 +34,11 @@
     }
 }
 
-/* Desktop: 3 columns */
+/* Desktop: 3 columns maximum (removed 4 column option) */
 @media (min-width: 1024px) {
     .bitstream-feed {
         column-count: 3;
         column-gap: 2rem;
-    }
-}
-
-/* Large desktop: 4 columns */
-@media (min-width: 1400px) {
-    .bitstream-feed {
-        column-count: 4;
-        column-gap: 2.5rem;
     }
 }
 
@@ -80,15 +72,6 @@
   font-size: 0.85em !important;
 }
 
-
-/* Comment container hidden by default and toggle via 'open' class */
-.bit-comments {
-  display: none;
-}
-.bit-comments.open {
-  display: block;
-  margin-top: 1rem;
-}
 
 /* Hide duplicated 'says:' */
 .bit-comments .says {
@@ -364,6 +347,8 @@
 .bitstream-quoted-preview {
     margin-bottom: 15px !important;
     padding: 12px !important;
+    overflow: hidden !important;
+    word-wrap: break-word !important;
 }
 .bitstream-quoted-preview {
     border-radius: 13px;
@@ -371,6 +356,33 @@
     padding: 16px;
     background: #fafafa;
     margin-bottom: 20px;
+    overflow: hidden; /* Prevent content overflow */
+    word-wrap: break-word; /* Break long words */
+    box-sizing: border-box; /* Include padding in width calculation */
+}
+
+/* Ensure all content within quoted preview stays contained */
+.bitstream-quoted-preview * {
+    max-width: 100% !important;
+    box-sizing: border-box;
+}
+
+/* Handle images in quoted previews */
+.bitstream-quoted-preview img {
+    max-width: 100% !important;
+    height: auto !important;
+    display: block;
+    margin: 0.5em auto;
+    border-radius: 8px;
+}
+
+/* Handle links and text in quoted previews */
+.bitstream-quoted-preview a,
+.bitstream-quoted-preview p,
+.bitstream-quoted-preview div {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
 }
 
 

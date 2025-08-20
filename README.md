@@ -32,7 +32,7 @@ For detailed release notes and version history, see [CHANGELOG.md](CHANGELOG.md)
 - **Responsive Design:**
   - Consolidated CSS ensures responsive, modern layout
   - True masonry layout with automatic height distribution (Pinterest-style)
-  - Responsive columns (1-4 columns based on screen size)
+  - Responsive columns (1-3 columns based on screen size)
   - All images automatically fit cards regardless of insertion method
   - Mobile-friendly and accessible interface
 - **Font Awesome Support:** Uses Font Awesome icons for actions and ReBit labels.
@@ -60,7 +60,7 @@ Displays a feed of Bits with various customization options.
 [bitstream show_load_more="false"]             // Hide the load more button (static responsive masonry display)
 ```
 
-**Note:** All layouts automatically use responsive masonry columns that adapt based on content height (1 column on mobile, 2 on tablet, 3 on desktop, 4 on large screens). When using `limit` parameter, pagination is disabled and only the specified number of posts will be shown.
+**Note:** All layouts automatically use responsive masonry columns that adapt based on content height (1 column on mobile, 2 on tablet, 3 maximum on desktop). When using `limit` parameter, pagination is disabled and only the specified number of posts will be shown.
 
 ### `[bitstream_quick_post]` - Quick Post Form
 Renders a front-end form for creating new Bits (requires logged-in user).

@@ -10,10 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **Layout Issues**: Fixed responsive column layout overlapping and spacing problems
 - **Card Containment**: Resolved cards rendering outside page boundaries
-- **Comment Animation**: Restored smooth sliding animation for comment sections
+- **Comment Animation**: Fixed conflicting CSS rules that prevented comment sliding animation
+- **Quote Box Overflow**: Fixed elements appearing outside quote bit containers
 - **Mobile Responsiveness**: Improved spacing and layout on mobile devices
 
 ### Changed
+- **Column Limit**: Reduced maximum columns from 4 to 3 for better readability and less visual clutter
 - **Masonry Layout**: Switched from CSS Grid to CSS Columns for true masonry behavior
 - **Better Height Distribution**: Cards now flow naturally based on content height (Pinterest-style)
 - **Enhanced Spacing**: Improved gaps between cards and proper vertical spacing
@@ -21,9 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 - **Visual Balance**: Cards of different heights now distribute evenly across columns
-- **Container Boundaries**: All content properly contained within page width
+- **Container Boundaries**: All content properly contained within page width and card boundaries
 - **Responsive Gaps**: Column gaps now adjust appropriately for each screen size
 - **Break Prevention**: Cards no longer split across columns inappropriately
+- **Content Overflow**: Quote previews and embedded content properly contained
 
 ## [2.1.0] - 2025-08-20
 
