@@ -12,21 +12,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Card Containment**: Resolved cards rendering outside page boundaries
 - **Comment Animation**: Fixed conflicting CSS rules that prevented comment sliding animation
 - **Quote Box Overflow**: Fixed elements appearing outside quote bit containers
+- **Chronological Order**: Fixed issue where new posts loaded in wrong columns, breaking chronological flow
 - **Mobile Responsiveness**: Improved spacing and layout on mobile devices
 
 ### Changed
 - **Column Limit**: Reduced maximum columns from 4 to 3 for better readability and less visual clutter
-- **Masonry Layout**: Switched from CSS Grid to CSS Columns for true masonry behavior
-- **Better Height Distribution**: Cards now flow naturally based on content height (Pinterest-style)
+- **Masonry Implementation**: Switched from CSS columns to JavaScript-based masonry for proper content ordering
+- **Loading Behavior**: New posts now always appear at the bottom in chronological order
+- **Better Height Distribution**: Cards flow naturally based on content height while maintaining order
 - **Enhanced Spacing**: Improved gaps between cards and proper vertical spacing
 - **Animation Performance**: Smoother comment open/close transitions with increased max-height
 
 ### Improved
-- **Visual Balance**: Cards of different heights now distribute evenly across columns
+- **Visual Balance**: Cards of different heights distribute evenly while preserving chronological order
 - **Container Boundaries**: All content properly contained within page width and card boundaries
 - **Responsive Gaps**: Column gaps now adjust appropriately for each screen size
 - **Break Prevention**: Cards no longer split across columns inappropriately
 - **Content Overflow**: Quote previews and embedded content properly contained
+- **User Experience**: Maintains logical reading order when loading more content
 
 ## [2.1.0] - 2025-08-20
 

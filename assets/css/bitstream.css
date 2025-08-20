@@ -12,45 +12,61 @@
     box-shadow: 0 1px 6px rgba(0,0,0,0.07);
 }
 
-/* Responsive Masonry Layout for BitStream Feed */
+/* JavaScript-based Masonry Layout for BitStream Feed */
 .bitstream-feed {
-    column-gap: 1.5rem;
-    padding: 1rem;
+    position: relative;
     max-width: 1200px;
     margin: 0 auto;
     width: 100%;
+    padding: 1rem;
     box-sizing: border-box;
-    
-    /* Single column on mobile */
-    column-count: 1;
 }
 
-/* Tablet and small desktop: 2 columns */
+/* Grid sizer elements for consistent column widths */
+.bitstream-grid-sizer {
+    width: 100%;
+}
+
 @media (min-width: 768px) {
+    .bitstream-grid-sizer {
+        width: calc(50% - 1rem);
+    }
+    
     .bitstream-feed {
-        column-count: 2;
-        column-gap: 2rem;
         padding: 1.5rem;
     }
 }
 
-/* Desktop: 3 columns maximum (removed 4 column option) */
 @media (min-width: 1024px) {
+    .bitstream-grid-sizer {
+        width: calc(33.333% - 1.34rem);
+    }
+    
     .bitstream-feed {
-        column-count: 3;
-        column-gap: 2rem;
+        padding: 2rem;
     }
 }
 
-/* Card styling adjustments for masonry layout */
+/* Card styling adjustments for JavaScript masonry layout */
 .bit-card {
-    break-inside: avoid;
-    display: inline-block;
-    width: 100% !important;
-    margin: 0 0 1.5rem 0 !important;
+    position: absolute;
+    width: 100%;
+    margin: 0 !important;
     max-width: none !important;
     box-sizing: border-box;
-    page-break-inside: avoid;
+    transition: all 0.3s ease;
+}
+
+@media (min-width: 768px) {
+    .bit-card {
+        width: calc(50% - 1rem);
+    }
+}
+
+@media (min-width: 1024px) {
+    .bit-card {
+        width: calc(33.333% - 1.34rem);
+    }
 }
 
 /* Date and Edit link: italic, secondary color, clickable, smaller */
@@ -323,17 +339,20 @@
     margin-top: 1rem;
 }
 
-/* Responsive adjustments for cards in masonry layout */
+/* Responsive adjustments for JavaScript masonry layout */
 @media (max-width: 767px) {
     .bit-card {
         margin: 0 0 1rem 0 !important;
         padding: 1rem !important;
         width: 100% !important;
+        position: relative !important;
+        left: 0 !important;
+        top: 0 !important;
     }
     
     .bitstream-feed {
         padding: 0.5rem;
-        column-gap: 1rem;
+        height: auto !important;
     }
 }
 
@@ -456,12 +475,16 @@
 @media (max-width: 480px) {
     .bitstream-feed {
         padding: 0.25rem;
-        column-gap: 0.75rem;
+        height: auto !important;
     }
     
     .bit-card {
         padding: 0.75rem !important;
         border-radius: 12px !important;
         margin: 0 0 0.75rem 0 !important;
+        width: 100% !important;
+        position: relative !important;
+        left: 0 !important;
+        top: 0 !important;
     }
 }

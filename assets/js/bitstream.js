@@ -94,7 +94,7 @@ document.querySelectorAll('.bit-comment-toggle').forEach(button => {
         urlField.addEventListener('input', toggleRequired);
         toggleRequired();
     }
-    // Infinite Scroll & Load More
+    // Infinite Scroll & Load More with Masonry Layout
     const feed = document.querySelector('.bitstream-feed');
     if (!feed) return;
 
@@ -102,6 +102,62 @@ document.querySelectorAll('.bit-comment-toggle').forEach(button => {
     const loadMoreButton = document.getElementById('bitstream-load-more');
     const scrollTrigger = document.querySelector('.bitstream-scroll-trigger');
     const isInfiniteScroll = feed.dataset.infiniteScroll === 'true';
+
+    // Masonry layout implementation
+    function initMasonry() {
+        if (window.innerWidth < 768) {
+            // Single column on mobile - no masonry needed
+            feed.style.height = 'auto';
+            const cards = feed.querySelectorAll('.bit-card');
+            cards.forEach((card, index) => {
+                card.style.position = 'relative';
+                card.style.left = '0';
+                card.style.top = '0';
+                card.style.width = '100%';
+                card.style.marginBottom = '1rem';
+            });
+            return;
+        }
+
+        const cards = Array.from(feed.querySelectorAll('.bit-card'));
+        if (cards.length === 0) return;
+
+        const columns = window.innerWidth >= 1024 ? 3 : 2;
+        const gap = window.innerWidth >= 1024 ? 20 : 16;
+        const columnWidth = cards[0].offsetWidth;
+        const columnHeights = new Array(columns).fill(0);
+
+        cards.forEach((card, index) => {
+            // Find the shortest column
+            const shortestColumn = columnHeights.indexOf(Math.min(...columnHeights));
+            
+            // Position the card
+            const x = shortestColumn * (columnWidth + gap);
+            const y = columnHeights[shortestColumn];
+            
+            card.style.position = 'absolute';
+            card.style.left = x + 'px';
+            card.style.top = y + 'px';
+            card.style.width = columnWidth + 'px';
+            
+            // Update column height
+            columnHeights[shortestColumn] += card.offsetHeight + gap;
+        });
+
+        // Set container height
+        feed.style.height = Math.max(...columnHeights) + 'px';
+        feed.style.position = 'relative';
+    }
+
+    // Initialize masonry on load
+    setTimeout(initMasonry, 100);
+
+    // Reinitialize on window resize
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(initMasonry, 250);
+    });
 
     function loadNextPage() {
         const nextPage = parseInt(feed.dataset.page) + 1;
@@ -128,11 +184,18 @@ document.querySelectorAll('.bit-comment-toggle').forEach(button => {
         .then(html => {
             const temp = document.createElement('div');
             temp.innerHTML = html;
-            temp.querySelectorAll('.bit-card').forEach(card => {
+            const newCards = temp.querySelectorAll('.bit-card');
+            
+            // Append new cards to feed
+            newCards.forEach(card => {
                 feed.appendChild(card);
             });
+            
             feed.dataset.page = nextPage;
             loading = false;
+            
+            // Reinitialize masonry layout with new cards
+            setTimeout(initMasonry, 100);
             
             // Update button state
             if (loadMoreButton) {
