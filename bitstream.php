@@ -65,6 +65,8 @@ class BitStream_Plugin {
         add_action('wp_head', [$this, 'pwa_assets']);
         add_action('wp_head', [$this, 'pwa_feed_assets']);
         add_action('wp_footer', [$this, 'render_floating_quickbit_button']);
+        add_action('init', [$this, 'add_service_worker_rewrite']);
+        add_action('template_redirect', [$this, 'serve_service_worker']);
     }
     
     /**
@@ -371,17 +373,16 @@ class BitStream_Plugin {
                 // Create quoted bit preview element
                 const quotedPreview = document.createElement('div');
                 quotedPreview.id = 'bitstream-quoted-preview';
-                quotedPreview.style.cssText = \`
-                    margin: 16px 0;
-                    padding: 16px;
-                    border: 1px solid #ddd;
-                    border-radius: 8px;
-                    background: #f9f9f9;
-                    border-left: 4px solid #2c6e49;
-                    position: relative;
-                    z-index: 1000;
-                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                \`;
+                quotedPreview.style.cssText = 
+                    'margin: 16px 0;' +
+                    'padding: 16px;' +
+                    'border: 1px solid #ddd;' +
+                    'border-radius: 8px;' +
+                    'background: #f9f9f9;' +
+                    'border-left: 4px solid #2c6e49;' +
+                    'position: relative;' +
+                    'z-index: 1000;' +
+                    'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;';
                 quotedPreview.innerHTML = '<div style="color: #666; margin-bottom: 8px;">Loading quoted bit...</div>';
                 
                 // Try multiple insertion points
@@ -415,19 +416,18 @@ class BitStream_Plugin {
             const showQuoteInAlternativeWay = (quotedBitId) => {
                 // Show at the very top of the page if editor isn't found
                 const notice = document.createElement('div');
-                notice.style.cssText = \`
-                    position: fixed;
-                    top: 32px;
-                    left: 0;
-                    right: 0;
-                    background: #2c6e49;
-                    color: white;
-                    padding: 12px;
-                    text-align: center;
-                    z-index: 10000;
-                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                \`;
-                notice.innerHTML = \`You are quoting Bit #\${quotedBitId}. Loading quote content...\`;
+                notice.style.cssText = 
+                    'position: fixed;' +
+                    'top: 32px;' +
+                    'left: 0;' +
+                    'right: 0;' +
+                    'background: #2c6e49;' +
+                    'color: white;' +
+                    'padding: 12px;' +
+                    'text-align: center;' +
+                    'z-index: 10000;' +
+                    'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;';
+                notice.innerHTML = 'You are quoting Bit #' + quotedBitId + '. Loading quote content...';
                 document.body.appendChild(notice);
                 
                 fetchQuotedBitContent(quotedBitId, notice);
@@ -450,15 +450,14 @@ class BitStream_Plugin {
                 .then(data => {
                     console.log('BitStream: AJAX response:', data);
                     if(data.success) {
-                        container.innerHTML = `
-                            <div style="display: flex; align-items: center; margin-bottom: 12px; color: #2c6e49; font-weight: 600;">
-                                <i class="fa-solid fa-quote-left" style="margin-right: 8px;"></i>
-                                Quoting Bit #${quotedBitId} by ${data.data.author} • ${data.data.timestamp}
-                            </div>
-                            <div style="border-left: 3px solid #ccc; padding-left: 12px; color: #555;">
-                                ${data.data.content}
-                            </div>
-                        `;
+                        container.innerHTML = 
+                            '<div style="display: flex; align-items: center; margin-bottom: 12px; color: #2c6e49; font-weight: 600;">' +
+                                '<i class="fa-solid fa-quote-left" style="margin-right: 8px;"></i>' +
+                                'Quoting Bit #' + quotedBitId + ' by ' + data.data.author + ' • ' + data.data.timestamp +
+                            '</div>' +
+                            '<div style="border-left: 3px solid #ccc; padding-left: 12px; color: #555;">' +
+                                data.data.content +
+                            '</div>';
                         console.log('BitStream: Quote content loaded successfully');
                         
                         // Store the quoted bit ID for saving
@@ -1007,7 +1006,7 @@ JS;
         if ($should_load_quickpost) {
             $base = BITSTREAM_PLUGIN_URL;
             $manifest_url = $base . 'manifest.json';
-            $sw_url = $base . 'sw.js';
+            $sw_url = home_url('/sw.js');
             
             echo '<link rel="manifest" href="'.esc_url($manifest_url).'">';
             echo '<meta name="theme-color" content="#2c6e49">';
@@ -1075,7 +1074,7 @@ JS;
             if ($is_bit_archive || $has_feed_shortcode || $is_bitstream_page) {
                 $base = BITSTREAM_PLUGIN_URL;
                 $manifest_url = $base . 'manifest-feed.json';
-                $sw_url = $base . 'sw-feed.js';
+                $sw_url = home_url('/sw-feed.js');
                 
                 echo '<link rel="manifest" href="'.esc_url($manifest_url).'">';
                 echo '<meta name="theme-color" content="#2c6e49">';
@@ -1149,6 +1148,60 @@ JS;
             </div>
         </div>
         <?php
+    }
+
+    /**
+     * Add rewrite rules for Service Worker files
+     */
+    public function add_service_worker_rewrite() {
+        add_rewrite_rule('^sw-feed\.js$', 'index.php?bitstream_sw=feed', 'top');
+        add_rewrite_rule('^sw\.js$', 'index.php?bitstream_sw=main', 'top');
+        
+        // Add query var
+        add_filter('query_vars', function($vars) {
+            $vars[] = 'bitstream_sw';
+            return $vars;
+        });
+        
+        // Flush rewrite rules if they haven't been flushed yet
+        if (!get_option('bitstream_sw_rewrite_flushed')) {
+            flush_rewrite_rules();
+            update_option('bitstream_sw_rewrite_flushed', true);
+        }
+    }
+
+    /**
+     * Serve Service Worker files with proper headers
+     */
+    public function serve_service_worker() {
+        $sw_type = get_query_var('bitstream_sw');
+        
+        if (!$sw_type) {
+            return;
+        }
+        
+        // Set proper headers for Service Worker
+        header('Content-Type: application/javascript');
+        header('Service-Worker-Allowed: /');
+        header('Cache-Control: no-cache, no-store, must-revalidate');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+        
+        // Serve the appropriate Service Worker file
+        $file_path = '';
+        if ($sw_type === 'feed') {
+            $file_path = BITSTREAM_PLUGIN_PATH . 'sw-feed.js';
+        } elseif ($sw_type === 'main') {
+            $file_path = BITSTREAM_PLUGIN_PATH . 'sw.js';
+        }
+        
+        if ($file_path && file_exists($file_path)) {
+            readfile($file_path);
+            exit;
+        } else {
+            status_header(404);
+            exit;
+        }
     }
 }
 
