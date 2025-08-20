@@ -620,10 +620,8 @@ JS;
      * Add admin menu items
      */
     public function add_admin_menus() {
-        // 1. Add New Bit (redirect to post-new.php?post_type=bit)
-        add_submenu_page('edit.php?post_type=bit', 'Add New Bit', 'Add New Bit', 'edit_posts', 'bitstream-add-bit', [$this, 'handle_add_bit_redirect']);
-        
-        // 2. Add New ReBit (Post ReBit)
+        // 1. Add New Bit - WordPress handles this automatically as "Add New Bit"
+        // 2. Add New ReBit 
         add_submenu_page('edit.php?post_type=bit', 'Add New ReBit', 'Add New ReBit', 'edit_posts', 'bitstream-post-rebit', [$this, 'handle_post_rebit_redirect']);
         
         // 3. All Bits is automatically handled by WordPress (All Bits menu item)
@@ -993,7 +991,7 @@ JS;
             ]
         ];
         
-        echo '<div class="wrap" style="max-width: 1200px;">';
+        echo '<div class="wrap" style="max-width: 95%; margin: 0 auto;">';
         echo '<h1>RSS Feeds</h1>';
         echo '<p class="description">BitStream provides multiple RSS feeds for different content types. Choose the feed that best fits your needs.</p>';
         
@@ -1122,72 +1120,12 @@ JS;
         
         $mappings = get_option('bitstream_rebit_mappings', []);
         ?>
-        <div class="wrap" style="max-width: 1200px;">
+        <div class="wrap" style="max-width: 95%; margin: 0 auto;">
             <h1>ReBit Mappings</h1>
             <p class="description">Configure how different websites appear when shared as ReBits. Each mapping adds a custom icon and label for specific domains.</p>
             
-            <!-- Current Mappings -->
-            <form method="post" id="mappings-form">
-                <?php wp_nonce_field('bitstream_rebit_mappings_save','bitstream_rebit_mappings_nonce'); ?>
-                
-                <div class="card">
-                    <h2 class="title">Current Mappings</h2>
-                    
-                    <?php if (empty($mappings)): ?>
-                        <p class="description">No mappings configured yet. Add some presets below or create custom mappings.</p>
-                    <?php else: ?>
-                        <div id="mappings-container">
-                            <?php foreach ($mappings as $i => $map): ?>
-                                <div class="mapping-row" style="display: flex; align-items: center; margin-bottom: 15px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background: #fafafa;">
-                                    <div style="flex: 1; margin-right: 15px;">
-                                        <label><strong>Domain:</strong></label><br>
-                                        <input type="text" name="bitstream_rebit_mappings[<?php echo $i; ?>][domain]" 
-                                               value="<?php echo esc_attr($map['domain']); ?>" 
-                                               placeholder="example.com" style="width: 100%;" />
-                                    </div>
-                                    <div style="flex: 1; margin-right: 15px;">
-                                        <label><strong>Label:</strong></label><br>
-                                        <input type="text" name="bitstream_rebit_mappings[<?php echo $i; ?>][label]" 
-                                               value="<?php echo esc_attr($map['label']); ?>" 
-                                               placeholder="shared from Twitter" style="width: 100%;" />
-                                    </div>
-                                    <div style="flex: 1; margin-right: 15px;">
-                                        <label><strong>Icon Class:</strong></label><br>
-                                        <div style="position: relative;">
-                                            <input type="text" name="bitstream_rebit_mappings[<?php echo $i; ?>][icon]" 
-                                                   value="<?php echo esc_attr($map['icon']); ?>" 
-                                                   placeholder="fab fa-twitter" style="width: 100%; padding-right: 40px;" 
-                                                   id="icon-input-<?php echo $i; ?>" />
-                                            <button type="button" class="button" onclick="openIconPicker('icon-input-<?php echo $i; ?>')" 
-                                                    style="position: absolute; right: 5px; top: 2px; height: 26px; padding: 2px 8px;">
-                                                <i class="fas fa-palette"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div style="flex: 0 0 150px; margin-right: 15px;">
-                                        <label><strong>Preview:</strong></label><br>
-                                        <div class="mapping-preview" style="padding: 8px; border: 1px solid #ccc; border-radius: 3px; background: white; min-height: 30px;">
-                                            <i class="<?php echo esc_attr($map['icon']); ?>" style="margin-right: 8px; color: #2c6e49;"></i>
-                                            <span><?php echo esc_html($map['label']); ?></span>
-                                        </div>
-                                    </div>
-                                    <div style="flex: 0 0 auto;">
-                                        <button type="button" class="button button-link-delete" onclick="removeMapping(this)" style="color: #a00;">Remove</button>
-                                        <input type="hidden" name="bitstream_rebit_mappings[<?php echo $i; ?>][remove]" value="0" class="remove-flag" />
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php endif; ?>
-                </div>
-                
-                <p class="submit">
-                    <input type="submit" name="submit" class="button-primary" value="Save All Mappings" />
-                </p>
-            </form>
-            
-            <!-- Bottom Section: Quick Add and Add New Mapping -->
-            <div style="display: flex; gap: 20px; margin-top: 20px;">
+            <!-- Top Section: Quick Add and Add New Mapping -->
+            <div style="display: flex; gap: 20px; margin-bottom: 20px;">
                 <!-- Quick Presets Section -->
                 <div class="card" style="flex: 1;">
                     <h2 class="title">Quick Add Popular Sites</h2>
@@ -1250,6 +1188,66 @@ JS;
                 </div>
             </div>
             
+            <!-- Current Mappings -->
+            <form method="post" id="mappings-form">
+                <?php wp_nonce_field('bitstream_rebit_mappings_save','bitstream_rebit_mappings_nonce'); ?>
+                
+                <div class="card">
+                    <h2 class="title">Current Mappings</h2>
+                    
+                    <?php if (empty($mappings)): ?>
+                        <p class="description">No mappings configured yet. Use the sections above to add mappings.</p>
+                    <?php else: ?>
+                        <div id="mappings-container">
+                            <?php foreach ($mappings as $i => $map): ?>
+                                <div class="mapping-row" style="display: flex; align-items: center; margin-bottom: 15px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background: #fafafa;">
+                                    <div style="flex: 1; margin-right: 15px;">
+                                        <label><strong>Domain:</strong></label><br>
+                                        <input type="text" name="bitstream_rebit_mappings[<?php echo $i; ?>][domain]" 
+                                               value="<?php echo esc_attr($map['domain']); ?>" 
+                                               placeholder="example.com" style="width: 100%;" />
+                                    </div>
+                                    <div style="flex: 1; margin-right: 15px;">
+                                        <label><strong>Label:</strong></label><br>
+                                        <input type="text" name="bitstream_rebit_mappings[<?php echo $i; ?>][label]" 
+                                               value="<?php echo esc_attr($map['label']); ?>" 
+                                               placeholder="shared from Twitter" style="width: 100%;" />
+                                    </div>
+                                    <div style="flex: 1; margin-right: 15px;">
+                                        <label><strong>Icon Class:</strong></label><br>
+                                        <div style="position: relative;">
+                                            <input type="text" name="bitstream_rebit_mappings[<?php echo $i; ?>][icon]" 
+                                                   value="<?php echo esc_attr($map['icon']); ?>" 
+                                                   placeholder="fab fa-twitter" style="width: 100%; padding-right: 40px;" 
+                                                   id="icon-input-<?php echo $i; ?>" />
+                                            <button type="button" class="button" onclick="openIconPicker('icon-input-<?php echo $i; ?>')" 
+                                                    style="position: absolute; right: 5px; top: 2px; height: 26px; padding: 2px 8px;">
+                                                <i class="fas fa-palette"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div style="flex: 0 0 150px; margin-right: 15px;">
+                                        <label><strong>Preview:</strong></label><br>
+                                        <div class="mapping-preview" style="padding: 8px; border: 1px solid #ccc; border-radius: 3px; background: white; min-height: 30px;">
+                                            <i class="<?php echo esc_attr($map['icon']); ?>" style="margin-right: 8px; color: #2c6e49;"></i>
+                                            <span><?php echo esc_html($map['label']); ?></span>
+                                        </div>
+                                    </div>
+                                    <div style="flex: 0 0 auto;">
+                                        <button type="button" class="button button-link-delete" onclick="removeMapping(this)" style="color: #a00;">Remove</button>
+                                        <input type="hidden" name="bitstream_rebit_mappings[<?php echo $i; ?>][remove]" value="0" class="remove-flag" />
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+                
+                <p class="submit">
+                    <input type="submit" name="submit" class="button-primary" value="Save All Mappings" />
+                </p>
+            </form>
+            
             <!-- Icon Picker Modal -->
             <div id="icon-picker-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100000;">
                 <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 8px; max-width: 800px; max-height: 80vh; overflow-y: auto;">
@@ -1290,6 +1288,12 @@ JS;
             if (iconsLoaded) return Promise.resolve();
             
             return new Promise((resolve) => {
+                console.log('Loading Font Awesome icons...');
+                
+                // Always start with fallback icons to ensure we have something to show
+                iconLibrary = getFallbackIcons();
+                console.log('Loaded fallback library with', iconLibrary.brands.length + iconLibrary.solid.length + iconLibrary.regular.length, 'icons');
+                
                 const styleSheets = document.styleSheets;
                 const foundIcons = { brands: [], solid: [], regular: [] };
                 let foundAnyIcons = false;
@@ -1300,6 +1304,7 @@ JS;
                             // Check if this is a Font Awesome stylesheet (local or CDN)
                             if (!sheet.href || (!sheet.href.includes('font-awesome') && !sheet.href.includes('fa'))) continue;
                             
+                            console.log('Checking FA stylesheet:', sheet.href);
                             const rules = sheet.cssRules || sheet.rules;
                             if (!rules) continue;
                             
@@ -1343,13 +1348,13 @@ JS;
                     console.log('Error accessing stylesheets:', e);
                 }
                 
-                // If we found icons from local FA, use them; otherwise use expanded fallback
+                // If we found icons from local FA, use them; otherwise keep fallback
                 if (foundAnyIcons && (foundIcons.brands.length > 10 || foundIcons.solid.length > 10)) {
                     iconLibrary = foundIcons;
-                    console.log('Loaded', foundIcons.brands.length + foundIcons.solid.length + foundIcons.regular.length, 'icons from Font Awesome stylesheets');
+                    console.log('Enhanced with', foundIcons.brands.length + foundIcons.solid.length + foundIcons.regular.length, 'icons from Font Awesome stylesheets');
                 } else {
-                    // Use comprehensive fallback library
-                    iconLibrary = getFallbackIcons();
+                    console.log('Using fallback icon library');
+                }
                     console.log('Using fallback icon library with', iconLibrary.brands.length + iconLibrary.solid.length + iconLibrary.regular.length, 'icons');
                 }
                 
