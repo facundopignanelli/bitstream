@@ -97,20 +97,28 @@ class BitStream_Ajax_Handlers {
      */
     public function handle_fetch_og_data() {
         try {
+            // Debug logging
+            error_log('BitStream OG Fetch Request: ' . print_r($_POST, true));
+            
             // Verify nonce
             if (!wp_verify_nonce($_POST['nonce'] ?? '', 'bitstream_og_fetch_nonce')) {
+                error_log('BitStream OG Fetch: Invalid nonce');
                 wp_send_json_error('Invalid nonce.');
             }
 
             // Check permissions
             if (!current_user_can('edit_posts')) {
+                error_log('BitStream OG Fetch: Insufficient permissions');
                 wp_send_json_error('Insufficient permissions.');
             }
 
             $url = sanitize_url($_POST['url'] ?? '');
             $post_id = intval($_POST['post_id'] ?? 0);
             
+            error_log('BitStream OG Fetch: URL=' . $url . ', Post ID=' . $post_id);
+            
             if (empty($url) || !filter_var($url, FILTER_VALIDATE_URL)) {
+                error_log('BitStream OG Fetch: Invalid URL: ' . $url);
                 wp_send_json_error('Invalid URL.');
             }
 

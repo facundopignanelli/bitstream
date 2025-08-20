@@ -90,6 +90,24 @@ class BitStream_Plugin {
             BITSTREAM_VERSION, true
         );
         
+        // Get post ID for editor context
+        $current_post_id = 0;
+        if (is_admin() && isset($_GET['post'])) {
+            $current_post_id = intval($_GET['post']);
+        } elseif (is_admin() && isset($_POST['post_ID'])) {
+            $current_post_id = intval($_POST['post_ID']);
+        }
+
+        // Localize script for block editor
+        wp_localize_script('bitstream-block', 'bitstream_ajax', [
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'admin_url' => admin_url(),
+            'like_nonce' => wp_create_nonce('bitstream_like_nonce'),
+            'load_more_nonce' => wp_create_nonce('bitstream_load_more_nonce'),
+            'og_fetch_nonce' => wp_create_nonce('bitstream_og_fetch_nonce'),
+            'post_id' => $current_post_id
+        ]);
+        
         $inline_js = <<<'JS'
 (function(){
     const {registerBlockType,createBlock} = wp.blocks;
@@ -121,8 +139,20 @@ class BitStream_Plugin {
                     return;
                 }
                 
+                // Check if bitstream_ajax is available
+                if (!window.bitstream_ajax) {
+                    console.error('bitstream_ajax not available');
+                    setError('Configuration error: AJAX not available');
+                    return;
+                }
+                
                 setLoading(true);
                 setError(null);
+                
+                console.log('Fetching preview for:', url);
+                console.log('Post ID:', bitstream_ajax.post_id);
+                console.log('AJAX URL:', bitstream_ajax.ajax_url);
+                console.log('Nonce:', bitstream_ajax.og_fetch_nonce);
                 
                 try {
                     const response = await fetch(bitstream_ajax.ajax_url, {
@@ -138,7 +168,10 @@ class BitStream_Plugin {
                         })
                     });
                     
+                    console.log('Response status:', response.status);
                     const data = await response.json();
+                    console.log('Response data:', data);
+                    
                     if (data.success) {
                         setPreview(data.data);
                         setError(null);
@@ -147,6 +180,7 @@ class BitStream_Plugin {
                         setPreview(null);
                     }
                 } catch (err) {
+                    console.error('Fetch error:', err);
                     setError('Failed to fetch preview');
                     setPreview(null);
                 } finally {
@@ -298,13 +332,23 @@ JS;
         
         // Cache-busting version for JS
         wp_enqueue_script('bitstream-js', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream.js', ['jquery'], BITSTREAM_VERSION, true);
+        // Get post ID for editor context
+        $current_post_id = 0;
+        if (is_admin() && isset($_GET['post'])) {
+            $current_post_id = intval($_GET['post']);
+        } elseif (is_admin() && isset($_POST['post_ID'])) {
+            $current_post_id = intval($_POST['post_ID']);
+        } elseif (!is_admin()) {
+            $current_post_id = get_the_ID();
+        }
+
         wp_localize_script('bitstream-js', 'bitstream_ajax', [
             'ajax_url' => admin_url('admin-ajax.php'),
             'admin_url' => admin_url(),
             'like_nonce' => wp_create_nonce('bitstream_like_nonce'),
             'load_more_nonce' => wp_create_nonce('bitstream_load_more_nonce'),
             'og_fetch_nonce' => wp_create_nonce('bitstream_og_fetch_nonce'),
-            'post_id' => get_the_ID()
+            'post_id' => $current_post_id
         ]);
         
         // Ensure $ is available globally
