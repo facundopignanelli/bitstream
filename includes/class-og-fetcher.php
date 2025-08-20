@@ -11,8 +11,9 @@ if (!defined('ABSPATH')) exit;
 class BitStream_OG_Fetcher {
     
     public function __construct() {
-        add_action('save_post_bit', [$this, 'schedule_og_fetch'], 10, 3);
-        add_action('bitstream_fetch_og_data', [$this, 'process_og_data'], 10, 2);
+        // Remove background OG fetching since we now do it immediately via AJAX
+        // add_action('save_post_bit', [$this, 'schedule_og_fetch'], 10, 3);
+        // add_action('bitstream_fetch_og_data', [$this, 'process_og_data'], 10, 2);
     }
     
     /**

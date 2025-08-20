@@ -108,22 +108,61 @@ class BitStream_Ajax_Handlers {
             }
 
             $url = sanitize_url($_POST['url'] ?? '');
+            $post_id = intval($_POST['post_id'] ?? 0);
+            
             if (empty($url) || !filter_var($url, FILTER_VALIDATE_URL)) {
                 wp_send_json_error('Invalid URL.');
             }
 
-            // Fetch the page
+            // Check if we already have this data cached
+            if ($post_id > 0) {
+                $cached_url = get_post_meta($post_id, 'bitstream_rebit_url', true);
+                $cached_title = get_post_meta($post_id, '_bitstream_og_title', true);
+                $cached_desc = get_post_meta($post_id, '_bitstream_og_desc', true);
+                $cached_image = get_post_meta($post_id, '_bitstream_og_image', true);
+                
+                if ($cached_url === $url && !empty($cached_title)) {
+                    wp_send_json_success([
+                        'title' => $cached_title,
+                        'description' => $cached_desc,
+                        'image' => $cached_image,
+                        'url' => $url,
+                        'cached' => true
+                    ]);
+                    return;
+                }
+            }
+
+            // Fetch the page with multiple fallback strategies
             $resp = wp_remote_get($url, [
-                'timeout' => 10,
-                'user-agent' => 'Mozilla/5.0 (compatible; BitStream/1.0; +' . home_url() . ')'
+                'timeout' => 15,
+                'user-agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'headers' => [
+                    'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                    'Accept-Language' => 'en-US,en;q=0.5',
+                    'Accept-Encoding' => 'gzip, deflate',
+                    'DNT' => '1',
+                    'Connection' => 'keep-alive',
+                ]
             ]);
 
+            // If first attempt fails, try with minimal headers
+            if (is_wp_error($resp) || wp_remote_retrieve_response_code($resp) !== 200) {
+                $resp = wp_remote_get($url, [
+                    'timeout' => 10,
+                    'sslverify' => false
+                ]);
+            }
+
             if (is_wp_error($resp)) {
+                error_log('BitStream OG Fetch Error: ' . $resp->get_error_message() . ' for URL: ' . $url);
                 wp_send_json_error('Failed to fetch URL: ' . $resp->get_error_message());
             }
 
-            if (wp_remote_retrieve_response_code($resp) !== 200) {
-                wp_send_json_error('URL returned error code: ' . wp_remote_retrieve_response_code($resp));
+            $response_code = wp_remote_retrieve_response_code($resp);
+            if ($response_code !== 200) {
+                error_log('BitStream OG Fetch HTTP Error: ' . $response_code . ' for URL: ' . $url);
+                wp_send_json_error('URL returned error code: ' . $response_code);
             }
 
             $html = wp_remote_retrieve_body($resp);
@@ -165,11 +204,20 @@ class BitStream_Ajax_Handlers {
                 }
             }
 
+            // Store the data immediately if we have a post ID
+            if ($post_id > 0) {
+                update_post_meta($post_id, '_bitstream_og_title', sanitize_text_field($og_title));
+                update_post_meta($post_id, '_bitstream_og_desc', sanitize_text_field($og_desc));
+                update_post_meta($post_id, '_bitstream_og_image', esc_url_raw($og_img));
+                update_post_meta($post_id, '_bitstream_og_fetched', time());
+            }
+
             wp_send_json_success([
                 'title' => $og_title,
                 'description' => $og_desc,
                 'image' => $og_img,
-                'url' => $url
+                'url' => $url,
+                'stored' => $post_id > 0
             ]);
 
         } catch (Exception $e) {

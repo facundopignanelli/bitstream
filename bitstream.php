@@ -133,6 +133,7 @@ class BitStream_Plugin {
                         body: new URLSearchParams({
                             action: 'bitstream_fetch_og_data',
                             url: url,
+                            post_id: bitstream_ajax.post_id || 0,
                             nonce: bitstream_ajax.og_fetch_nonce
                         })
                     });
@@ -140,11 +141,14 @@ class BitStream_Plugin {
                     const data = await response.json();
                     if (data.success) {
                         setPreview(data.data);
+                        setError(null);
                     } else {
                         setError(data.data || 'Failed to fetch preview');
+                        setPreview(null);
                     }
                 } catch (err) {
                     setError('Failed to fetch preview');
+                    setPreview(null);
                 } finally {
                     setLoading(false);
                 }
@@ -299,7 +303,8 @@ JS;
             'admin_url' => admin_url(),
             'like_nonce' => wp_create_nonce('bitstream_like_nonce'),
             'load_more_nonce' => wp_create_nonce('bitstream_load_more_nonce'),
-            'og_fetch_nonce' => wp_create_nonce('bitstream_og_fetch_nonce')
+            'og_fetch_nonce' => wp_create_nonce('bitstream_og_fetch_nonce'),
+            'post_id' => get_the_ID()
         ]);
         
         // Ensure $ is available globally
