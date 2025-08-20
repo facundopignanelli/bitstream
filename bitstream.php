@@ -322,25 +322,56 @@ class BitStream_Plugin {
         if(quotedBitId) {
             // Add debugging
             console.log('BitStream: Looking for quoted bit ID:', quotedBitId);
+            console.log('BitStream: bitstream_ajax available:', typeof window.bitstream_ajax);
             
-            // Wait for editor to be ready
+            // Check if bitstream_ajax is available
+            if (!window.bitstream_ajax) {
+                console.error('BitStream: bitstream_ajax not available, trying fallback...');
+                // Fallback: try to find AJAX URL from WordPress
+                const ajaxUrl = '/wp-admin/admin-ajax.php';
+                window.bitstream_ajax = {
+                    ajax_url: ajaxUrl,
+                    og_fetch_nonce: 'fallback'
+                };
+            }
+            
+            // Wait for editor to be ready - try multiple approaches
+            let attempts = 0;
+            const maxAttempts = 50;
+            
             const waitForEditor = () => {
+                attempts++;
+                console.log('BitStream: Attempt', attempts, 'looking for editor...');
+                
                 const editorElement = document.querySelector('.edit-post-visual-editor') || 
                                     document.querySelector('.block-editor-writing-flow') ||
                                     document.querySelector('.editor-styles-wrapper') ||
-                                    document.querySelector('[data-type="core/post-content"]');
+                                    document.querySelector('[data-type="core/post-content"]') ||
+                                    document.querySelector('.wp-block-post-content') ||
+                                    document.querySelector('.edit-post-layout__content');
                                     
                 console.log('BitStream: Editor element found:', editorElement);
                 
-                if (!editorElement) {
-                    setTimeout(waitForEditor, 100);
+                if (!editorElement && attempts < maxAttempts) {
+                    setTimeout(waitForEditor, 200);
                     return;
                 }
                 
+                if (!editorElement) {
+                    console.error('BitStream: Could not find editor after', maxAttempts, 'attempts');
+                    // Try to show quote info in a different way
+                    showQuoteInAlternativeWay(quotedBitId);
+                    return;
+                }
+                
+                showQuoteInEditor(editorElement, quotedBitId);
+            };
+            
+            const showQuoteInEditor = (editorElement, quotedBitId) => {
                 // Create quoted bit preview element
                 const quotedPreview = document.createElement('div');
                 quotedPreview.id = 'bitstream-quoted-preview';
-                quotedPreview.style.cssText = `
+                quotedPreview.style.cssText = \`
                     margin: 16px 0;
                     padding: 16px;
                     border: 1px solid #ddd;
@@ -349,7 +380,8 @@ class BitStream_Plugin {
                     border-left: 4px solid #2c6e49;
                     position: relative;
                     z-index: 1000;
-                `;
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                \`;
                 quotedPreview.innerHTML = '<div style="color: #666; margin-bottom: 8px;">Loading quoted bit...</div>';
                 
                 // Try multiple insertion points
@@ -363,29 +395,62 @@ class BitStream_Plugin {
                     console.log('BitStream: Preview element inserted');
                 } else {
                     // Fallback: insert after the editor toolbar
-                    const toolbar = document.querySelector('.edit-post-header');
+                    const toolbar = document.querySelector('.edit-post-header') || 
+                                  document.querySelector('.block-editor-header');
                     if (toolbar && toolbar.parentNode) {
                         toolbar.parentNode.insertBefore(quotedPreview, toolbar.nextSibling);
                         console.log('BitStream: Preview element inserted after toolbar');
+                    } else {
+                        // Last resort: append to body
+                        document.body.insertBefore(quotedPreview, document.body.firstChild);
+                        console.log('BitStream: Preview element inserted at top of body');
                     }
                 }
                 
                 // Fetch the quoted bit content
                 console.log('BitStream: Fetching quoted bit content...');
-                fetch(bitstream_ajax.ajax_url, {
+                fetchQuotedBitContent(quotedBitId, quotedPreview);
+            };
+            
+            const showQuoteInAlternativeWay = (quotedBitId) => {
+                // Show at the very top of the page if editor isn't found
+                const notice = document.createElement('div');
+                notice.style.cssText = \`
+                    position: fixed;
+                    top: 32px;
+                    left: 0;
+                    right: 0;
+                    background: #2c6e49;
+                    color: white;
+                    padding: 12px;
+                    text-align: center;
+                    z-index: 10000;
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                \`;
+                notice.innerHTML = \`You are quoting Bit #\${quotedBitId}. Loading quote content...\`;
+                document.body.appendChild(notice);
+                
+                fetchQuotedBitContent(quotedBitId, notice);
+            };
+            
+            const fetchQuotedBitContent = (quotedBitId, container) => {
+                fetch(window.bitstream_ajax.ajax_url, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                     body: new URLSearchParams({
                         action: 'bitstream_get_quoted_bit',
                         quoted_bit_id: quotedBitId,
-                        nonce: bitstream_ajax.og_fetch_nonce
+                        nonce: window.bitstream_ajax.og_fetch_nonce
                     })
                 })
-                .then(response => response.json())
+                .then(response => {
+                    console.log('BitStream: AJAX response status:', response.status);
+                    return response.json();
+                })
                 .then(data => {
                     console.log('BitStream: AJAX response:', data);
                     if(data.success) {
-                        quotedPreview.innerHTML = `
+                        container.innerHTML = `
                             <div style="display: flex; align-items: center; margin-bottom: 12px; color: #2c6e49; font-weight: 600;">
                                 <i class="fa-solid fa-quote-left" style="margin-right: 8px;"></i>
                                 Quoting Bit #${quotedBitId} by ${data.data.author} • ${data.data.timestamp}
@@ -424,12 +489,12 @@ class BitStream_Plugin {
                         }
                         
                     } else {
-                        quotedPreview.innerHTML = '<div style="color: #d63638;">Failed to load quoted bit: ' + (data.data || 'Unknown error') + '</div>';
+                        container.innerHTML = '<div style="color: #d63638;">Failed to load quoted bit: ' + (data.data || 'Unknown error') + '</div>';
                     }
                 })
                 .catch(err => {
-                    console.error('Failed to fetch quoted bit:', err);
-                    quotedPreview.innerHTML = '<div style="color: #d63638;">Failed to load quoted bit content.</div>';
+                    console.error('BitStream: Failed to fetch quoted bit:', err);
+                    container.innerHTML = '<div style="color: #d63638;">Failed to load quoted bit content. Error: ' + err.message + '</div>';
                 });
             };
             
