@@ -66,6 +66,27 @@ document.addEventListener('DOMContentLoaded', function () {
         }
       });
     });
+
+    // Quote button functionality
+    document.querySelectorAll('.bit-quote').forEach(button => {
+      button.addEventListener('click', (e) => {
+        e.preventDefault();
+        const postId = button.dataset.postId;
+        const quoteUrl = bitstream_ajax.admin_url + 'post-new.php?post_type=bit&quoted_bit=' + postId;
+        
+        // Open quote editor in new tab/window
+        window.open(quoteUrl, '_blank');
+        
+        // Add visual feedback
+        const icon = button.querySelector('i');
+        if (icon) {
+          icon.classList.remove('pulse');
+          void icon.offsetWidth;
+          icon.classList.add('pulse');
+          setTimeout(() => icon.classList.remove('pulse'), 300);
+        }
+      });
+    });
     // Comment Toggle button
 document.querySelectorAll('.bit-comment-toggle').forEach(button => {
     button.addEventListener('click', () => {

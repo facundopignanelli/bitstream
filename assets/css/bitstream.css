@@ -512,3 +512,66 @@
         top: 0 !important;
     }
 }
+
+/* Floating QuickBit Button */
+#bitstream-floating-quickbit {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    z-index: 9999;
+}
+
+#bitstream-floating-quickbit a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 60px;
+    background: #2c6e49;
+    color: white;
+    border-radius: 50%;
+    text-decoration: none;
+    box-shadow: 0 4px 12px rgba(44, 110, 73, 0.25);
+    transition: all 0.3s ease;
+    font-size: 24px;
+    border: none;
+    cursor: pointer;
+}
+
+#bitstream-floating-quickbit a:hover {
+    transform: scale(1.1);
+    background: #1f4d35;
+    box-shadow: 0 6px 20px rgba(44, 110, 73, 0.35);
+    color: white;
+    text-decoration: none;
+}
+
+#bitstream-floating-quickbit a:focus {
+    outline: 2px solid #ffffff;
+    outline-offset: 2px;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+    #bitstream-floating-quickbit {
+        bottom: 20px;
+        right: 20px;
+    }
+    
+    #bitstream-floating-quickbit a {
+        width: 50px;
+        height: 50px;
+        font-size: 20px;
+    }
+}
+
+/* Ensure it doesn't interfere with admin bar */
+.admin-bar #bitstream-floating-quickbit {
+    bottom: 62px; /* Account for WordPress admin bar height */
+}
+
+@media screen and (max-width: 782px) {
+    .admin-bar #bitstream-floating-quickbit {
+        bottom: 76px; /* Adjust for mobile admin bar */
+    }
+}

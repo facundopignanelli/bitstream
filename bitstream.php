@@ -63,6 +63,7 @@ class BitStream_Plugin {
         add_action('template_redirect', [$this, 'handle_single_bit_display']);
         add_action('wp_head', [$this, 'pwa_assets']);
         add_action('wp_head', [$this, 'pwa_feed_assets']);
+        add_action('wp_footer', [$this, 'render_floating_quickbit_button']);
     }
     
     /**
@@ -127,6 +128,7 @@ JS;
         wp_enqueue_script('bitstream-js', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream.js', ['jquery'], BITSTREAM_VERSION, true);
         wp_localize_script('bitstream-js', 'bitstream_ajax', [
             'ajax_url' => admin_url('admin-ajax.php'),
+            'admin_url' => admin_url(),
             'like_nonce' => wp_create_nonce('bitstream_like_nonce'),
             'load_more_nonce' => wp_create_nonce('bitstream_load_more_nonce')
         ]);
@@ -576,6 +578,29 @@ JS;
             }
         }
     }
+
+    /**
+     * Render floating QuickBit button for admins
+     */
+    public function render_floating_quickbit_button() {
+        // Only show to users who can edit posts
+        if (!current_user_can('edit_posts')) {
+            return;
+        }
+
+        $quickbit_url = admin_url('post-new.php?post_type=bit');
+        ?>
+        <div id="bitstream-floating-quickbit" style="position: fixed; bottom: 30px; right: 30px; z-index: 9999;">
+            <a href="<?php echo esc_url($quickbit_url); ?>" 
+               style="display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; background: #2c6e49; color: white; border-radius: 50%; text-decoration: none; box-shadow: 0 4px 12px rgba(44,110,73,0.25); transition: all 0.3s ease; font-size: 24px;"
+               title="Quick Bit - Create new post"
+               onmouseover="this.style.transform='scale(1.1)'; this.style.background='#1f4d35';"
+               onmouseout="this.style.transform='scale(1)'; this.style.background='#2c6e49';">
+                <i class="fa-solid fa-plus" style="margin: 0;"></i>
+            </a>
+        </div>
+        <?php
+    }
 }
 
 // Bit card rendering function (kept global for compatibility)
@@ -671,6 +696,11 @@ function bitstream_render_card($post_id, $skip_content_filter = false) {
             <button class="bit-permalink bit-action" data-url="<?php echo esc_url(get_permalink($post_id)); ?>" style="background:none;border:none;cursor:pointer;" title="Copy link: <?php echo esc_attr(get_permalink($post_id)); ?>">
                 <i class="fa-solid fa-up-right-from-square"></i>
             </button>
+            <?php if (current_user_can('edit_posts')): ?>
+            <button class="bit-quote bit-action" data-post-id="<?php echo esc_attr($post_id); ?>" style="background:none;border:none;cursor:pointer;" title="Quote this bit">
+                <i class="fa-solid fa-retweet"></i>
+            </button>
+            <?php endif; ?>
         </footer>
 
         <div id="comments-<?php echo $post_id; ?>" class="bit-comments">
@@ -690,6 +720,7 @@ function bitstream_render_card($post_id, $skip_content_filter = false) {
         </div>
     </article>
     <?php
+    
     return ob_get_clean();
 }
 

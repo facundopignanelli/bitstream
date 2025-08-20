@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.1.1] - 2025-08-20
 
+### Added
+- **Admin Quote Button**: Added quote button next to comment, like, and permalink buttons for admin users to easily quote posts
+- **Floating QuickBit Button**: Added floating button in bottom-right corner for admin users to quickly create new BitStream posts
+  - Appears on all pages for users with `edit_posts` capability
+  - Direct link to create new BitStream posts
+  - Responsive design with mobile adjustments
+  - WordPress admin bar positioning awareness
+  - Smooth hover animations and accessibility features
+- **ReBit Support**: Enhanced support for sharing and displaying linked content (ReBits) with proper metadata handling
+
 ### Fixed
 - **Layout Issues**: Fixed responsive column layout overlapping and spacing problems
 - **Card Containment**: Resolved cards rendering outside page boundaries
