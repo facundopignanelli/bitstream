@@ -8,104 +8,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.1.1] - 2025-08-20
 
 ### Added
-- **Enhanced Quote Functionality**: Complete quote system with block editor integration
-  - Quote button next to comment, like, and permalink buttons for easy access
-  - Visual quoted bit preview in block editor showing original content, author, and timestamp
-  - Automatic form handling to save quote relationships
-  - Beautiful styling that integrates seamlessly with the block editor interface
-  - Full context display when quoting bits from the feed
-  - Quote detection with URL-based fallbacks for reliable bit retrieval
-  - Comprehensive debugging system for quote functionality
-- **Floating QuickBit Button with Dropdown**: Added floating button in bottom-right corner for admin users with quick access to both post types
-  - Appears on all pages for users with `edit_posts` capability
-  - Dropdown menu with two options: "Add New Bit" and "Add New ReBit"
-  - "Add New ReBit" automatically inserts the ReBit URL block for sharing external content
-  - Responsive design with mobile adjustments
-  - WordPress admin bar positioning awareness
-  - Smooth hover animations and accessibility features
-- **Enhanced ReBit Block**: Completely redesigned ReBit URL block with unified rendering system
-  - Direct URL input field in the block itself (no more sidebar-only editing)
-  - **Single rendering system**: Same preview data used in both editor and frontend
-  - Real-time link preview with immediate OpenGraph data fetching and storage
-  - Shows title, description, and image preview as you type
-  - Elegant placeholder state when no URL is entered
-  - Data is cached and reused between editor and frontend display
-  - Eliminates duplicate fetching and background processing
-  - Loading states and error handling for failed URL fetches
-  - Maintains backward compatibility with existing ReBit posts
-  - Real-time preview generation in block editor when pasting URLs
-  - Automatic saving of OpenGraph metadata (title, description, image) when publishing
-  - Rich preview cards displayed in feed with title, description, and images
-  - Fallback support for posts created outside the block editor
-  - Enhanced AJAX system with caching and error handling
-- **ReBit Support**: Enhanced support for sharing and displaying linked content (ReBits) with proper metadata handling
-- **Service Worker Management**: Custom endpoint system for serving Service Worker files
-  - Custom rewrite rules to serve SW files from root domain with proper headers
-  - Automatic Service Worker scope resolution to prevent 404 errors
-  - Proper Content-Type headers for JavaScript Service Worker files
-  - Query variable handling for Service Worker routing
-- **Single Bit Page Styling**: Comprehensive styling system for individual bit display
-  - Dedicated CSS overrides for single bit pages to prevent masonry layout conflicts
-  - Body class targeting (`bitstream-single-bit`) for precise styling control
-  - Back navigation link to BitStream feed with proper styling
-  - Card-based layout with proper borders, shadows, and spacing
-  - Avatar, timestamp, and metadata display matching feed appearance
-  - Action buttons (like, comment, quote, permalink) fully functional on single pages
-
-### Fixed
-- **JavaScript Errors**: Fixed critical jQuery undefined errors preventing functionality
-  - Replaced `$` references with `jQuery` namespace for proper WordPress compatibility
-  - Fixed template literal syntax in PHP causing JavaScript syntax errors
-  - Enhanced error handling and debugging for quote detection
-- **Service Worker Scope Issues**: Resolved Service Worker 404 errors and scope conflicts
-  - Custom endpoint serving SW files from root domain instead of plugin directory
-  - Proper JavaScript Content-Type headers for Service Worker registration
-  - Automatic scope resolution preventing browser registration failures
-- **Single Bit Display Issues**: Fixed styling problems on individual bit pages
-  - Overrode masonry layout absolute positioning with static positioning
-  - Added comprehensive CSS styling for all bit card components
-  - Fixed theme conflicts hiding bit metadata and content
-  - Ensured proper card layout with headers, content, and footer sections
-  - Resolved avatar and timestamp display issues
-  - **Fixed missing bit titles and metadata on individual bit pages**
-  - Restored display of auto-generated bit titles (format: "Bit #YYYY-MM-DD:001")
-  - **Added actual timestamp display for citing purposes alongside relative time**
-  - WordPress post meta now shows exact date/time using theme's default styling
-  - Bit card continues to show relative time ("2 hours ago") for social context
-  - Enhanced header styling with proper typography and spacing
-  - Improved citation and reference capabilities with dual time display
-- **Quote Context Display**: Fixed quoted bit not appearing in block editor
-  - Enhanced quote detection logic with multiple fallback methods
-  - URL-based bit retrieval when standard methods fail
-  - Comprehensive AJAX handling with proper error responses
-  - Visual context preview showing original bit content, author, and timestamp
-- **Layout Issues**: Fixed responsive column layout overlapping and spacing problems
-- **Card Containment**: Resolved cards rendering outside page boundaries
-- **Comment Animation**: Fixed conflicting CSS rules that prevented comment sliding animation
-- **Quote Box Overflow**: Fixed elements appearing outside quote bit containers
-- **Chronological Order**: Fixed issue where new posts loaded in wrong columns, breaking chronological flow
-- **Z-Index Layering**: Fixed bit content overlapping with footer and other page elements during fast scrolling
-- **Mobile Responsiveness**: Improved spacing and layout on mobile devices
+- Floating QuickBit button for easy access to post creation and full editor
+- PWA shortcuts for quick access from Android home screen (Add New Bit, Add New ReBit)
+- Custom PWA shortcut icons matching website theme (green #2c6e49 with Font Awesome icons)
+- RSS feed support with three dedicated feeds: all content, bits only, and rebits only
+- Comprehensive quote functionality with visual context in block editor
+- Theme-integrated post metadata display with both relative and absolute timestamps
+- Enhanced Service Worker debugging tools with dedicated endpoint
+- **Enhanced ReBit Mappings Interface** with modern card-based layout and improved UX
+- **Visual Icon Picker** for Font Awesome icons with live preview and search functionality
+- **Quick Presets** for 20+ popular platforms (Twitter/X, YouTube, GitHub, LinkedIn, etc.)
+- **Complete Font Awesome Integration** - automatically detects all available icons from FA plugin
+- **Smart Icon Categories** with filters for Brands, Solid, Regular, and All icons
+- **Real-time Preview** showing exactly how icons and labels will appear on ReBits
 
 ### Changed
-- **Column Limit**: Reduced maximum columns from 4 to 3 for better readability and less visual clutter
-- **Masonry Implementation**: Switched from CSS columns to JavaScript-based masonry for proper content ordering
-- **Loading Behavior**: New posts now always appear at the bottom in chronological order
-- **Better Height Distribution**: Cards flow naturally based on content height while maintaining order
-- **Enhanced Spacing**: Improved gaps between cards and proper vertical spacing
-- **Animation Performance**: Smoother comment open/close transitions with increased max-height
-- **Stacking Context**: Improved z-index management with proper container isolation
-- **Quote Position**: Quoted content now appears below new content (social media style) instead of above
+- Simplified PWA structure to single "BitStream" app (removed redundant QuickPost PWA)
+- **Completely redesigned ReBit mappings admin page** with card-based interface
+- **Replaced basic table layout** with modern, responsive design and visual feedback
+- **Enhanced icon selection** from manual typing to visual picker with search
+- **Improved mapping removal** with undo functionality instead of confusing checkboxes
 
-### Improved
-- **Visual Balance**: Cards of different heights distribute evenly while preserving chronological order
-- **Container Boundaries**: All content properly contained within page width and card boundaries
-- **Responsive Gaps**: Column gaps now adjust appropriately for each screen size
-- **Break Prevention**: Cards no longer split across columns inappropriately
-- **Content Overflow**: Quote previews and embedded content properly contained
-- **User Experience**: Maintains logical reading order when loading more content
-- **Layer Management**: Proper stacking context prevents content from interfering with other page elements
-- **Quote Styling**: Added left border accent and improved spacing for quoted content
+### Enhanced
+- **ReBit Mappings UX**: Visual icon picker eliminates need to memorize Font Awesome class names
+- **Platform Recognition**: Preset library includes major social media and tech platforms
+- **Icon Discovery**: Browse hundreds of icons by category with instant visual feedback
+- **Accessibility**: Better keyboard navigation and screen reader support for mappings interface
+- Updated Service Worker cache management for better performance
+- Improved single bit page styling with masonry layout compatibility
+
+### Fixed
+- JavaScript errors preventing quote functionality (template literals, jQuery references)
+- Service Worker scope issues causing 404 errors and registration failures
+- Single bit page display conflicts with masonry layouts
+- Deprecated Apple PWA meta tags causing browser warnings
+- Missing bit titles and metadata on individual bit pages
+- Quote detection system with multiple URL-based fallbacks
+
+### Removed
+- QuickBit shortcode functionality (replaced by floating button)
+- Redundant QuickPost PWA and related assets
+- Media library integration for QuickBit form
+- Unused QuickBit form CSS styling
 
 ## [2.1.0] - 2025-08-20
 

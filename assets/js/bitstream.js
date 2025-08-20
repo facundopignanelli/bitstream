@@ -130,24 +130,6 @@ document.querySelectorAll('.bit-comment-toggle').forEach(button => {
         }
     });
 });
-
-    // Quick Post validation
-    const quickForm = document.querySelector('.bitstream-form');
-    if (quickForm) {
-        const contentField = quickForm.querySelector('textarea[name="bit_content"]');
-        const urlField     = quickForm.querySelector('input[name="bit_rebit_url"]');
-
-        function toggleRequired() {
-            if (urlField.value.trim()) {
-                contentField.removeAttribute('required');
-            } else {
-                contentField.setAttribute('required', 'required');
-            }
-        }
-
-        urlField.addEventListener('input', toggleRequired);
-        toggleRequired();
-    }
     // Infinite Scroll & Load More with Masonry Layout
     const feed = document.querySelector('.bitstream-feed');
     if (!feed) return;
@@ -342,22 +324,4 @@ function applyCommentStyles() {
 // Apply comment styles on document ready
 jQuery(document).ready(function($) {
     applyCommentStyles();
-
-    // Quick Post: Media Library image selector
-    let frame;
-    $('#bitstream-select-image').on('click', function(e){
-        e.preventDefault();
-        if (frame) { frame.open(); return; }
-        frame = wp.media({
-            title: 'Select or Upload Image',
-            button: { text: 'Use this image' },
-            multiple: false
-        });
-        frame.on('select', function(){
-            const attachment = frame.state().get('selection').first().toJSON();
-            $('#bit_image_id').val(attachment.id);
-            $('#bitstream-image-preview').html('<img src="'+attachment.url+'" style="max-width:120px;max-height:120px;border-radius:8px;">');
-        });
-        frame.open();
-    });
 });

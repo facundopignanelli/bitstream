@@ -1,15 +1,43 @@
 {
-  "name": "BitStream QuickPost",
-  "short_name": "BS QuickPost",
-  "description": "Quick microblogging for WordPress",
-  "id": "bitstream-quickpost-wp-plugin",
-  "start_url": "/?bitstream_quickpost=1",
+  "name": "BitStream",
+  "short_name": "BitStream",
+  "description": "View and interact with BitStream posts",
+  "id": "bitstream-wp-plugin",
+  "start_url": "/bitstream/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#ffffff",
   "theme_color": "#2c6e49",
   "scope": "/bitstream/",
-  "categories": ["social", "productivity"],
+  "categories": ["social", "news"],
+  "shortcuts": [
+    {
+      "name": "Add New Bit",
+      "short_name": "New Bit",
+      "description": "Create a new bit post",
+      "url": "/wp-admin/post-new.php?post_type=bit",
+      "icons": [
+        {
+          "src": "assets/images/new-bit-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Add New ReBit",
+      "short_name": "New ReBit", 
+      "description": "Share external content as a ReBit",
+      "url": "/wp-admin/post-new.php?post_type=bit&rebit=1",
+      "icons": [
+        {
+          "src": "assets/images/new-rebit-192.png",
+          "sizes": "192x192", 
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
   "icons": [
     {
       "src": "assets/images/192.png",

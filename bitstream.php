@@ -63,11 +63,14 @@ class BitStream_Plugin {
         add_filter('the_content', [$this, 'display_quoted_content']);
         add_action('template_redirect', [$this, 'handle_single_bit_display']);
         add_action('wp_head', [$this, 'pwa_assets']);
-        add_action('wp_head', [$this, 'pwa_feed_assets']);
         add_action('wp_footer', [$this, 'render_floating_quickbit_button']);
         add_action('init', [$this, 'add_service_worker_rewrite']);
         add_action('template_redirect', [$this, 'serve_service_worker']);
         add_filter('query_vars', [$this, 'add_query_vars']);
+        
+        // RSS Support
+        add_action('init', [$this, 'add_rss_feeds']);
+        add_action('wp_head', [$this, 'add_rss_links']);
         
         // Add debug parameter handler
         add_action('template_redirect', [$this, 'handle_debug_requests']);
@@ -550,6 +553,30 @@ class BitStream_Plugin {
     } else {
         console.log('BitStream: No quoted_bit parameter found in URL');
     }
+    
+    // Handle PWA shortcut for ReBit creation
+    if (new URLSearchParams(window.location.search).has('rebit')) {
+        console.log('BitStream: ReBit shortcut detected, auto-inserting ReBit block');
+        
+        // Wait for editor to be ready
+        const insertRebitBlock = () => {
+            const {insertBlocks} = dispatch('core/block-editor');
+            const {getBlocks} = select('core/block-editor');
+            
+            // Check if editor is ready and no blocks exist yet
+            if (insertBlocks && getBlocks().length === 0) {
+                const rebitBlock = createBlock('bitstream/rebit-url');
+                insertBlocks(rebitBlock);
+                console.log('BitStream: ReBit block auto-inserted');
+            } else {
+                // Try again in a moment if editor isn't ready
+                setTimeout(insertRebitBlock, 100);
+            }
+        };
+        
+        // Start trying to insert the block
+        setTimeout(insertRebitBlock, 500);
+    }
 })();
 JS;
         wp_add_inline_script('bitstream-block', $inline_js);
@@ -560,12 +587,6 @@ JS;
      * Enqueue frontend assets with optimizations
      */
     public function enqueue_frontend_assets() {
-        // Only load media scripts when needed
-        global $post;
-        if (is_a($post, 'WP_Post') && has_shortcode($post->post_content, 'bitstream_quick_post')) {
-            wp_enqueue_media();
-        }
-        
         wp_enqueue_style('bitstream-css', BITSTREAM_PLUGIN_URL . 'assets/css/bitstream.css', [], BITSTREAM_VERSION);
         
         // Cache-busting version for JS
@@ -934,13 +955,14 @@ JS;
     }
     
     /**
-     * ReBit mappings admin page with enhanced security
+     * Enhanced ReBit mappings admin page with improved UX
      */
     public function rebit_mappings_page() {
         if (!current_user_can('manage_options')) {
             wp_die(__('You do not have sufficient permissions to access this page.'));
         }
         
+        // Handle form submission
         if (isset($_POST['bitstream_rebit_mappings']) && check_admin_referer('bitstream_rebit_mappings_save','bitstream_rebit_mappings_nonce')) {
             $posted = $_POST['bitstream_rebit_mappings'];
             $new = [];
@@ -953,28 +975,491 @@ JS;
                 $new[] = compact('domain','label','icon');
             }
             update_option('bitstream_rebit_mappings', $new);
-            echo '<div class="updated notice is-dismissible"><p>ReBit mappings saved.</p></div>';
+            echo '<div class="updated notice is-dismissible"><p><strong>ReBit mappings saved successfully!</strong></p></div>';
+        }
+        
+        // Handle preset addition
+        if (isset($_POST['add_preset']) && check_admin_referer('bitstream_rebit_mappings_save','bitstream_rebit_mappings_nonce')) {
+            $preset = sanitize_text_field($_POST['preset_selection']);
+            $mappings = get_option('bitstream_rebit_mappings', []);
+            
+            $presets = $this->get_rebit_presets();
+            if (isset($presets[$preset])) {
+                $new_mapping = $presets[$preset];
+                // Check if domain already exists
+                $exists = false;
+                foreach ($mappings as $mapping) {
+                    if ($mapping['domain'] === $new_mapping['domain']) {
+                        $exists = true;
+                        break;
+                    }
+                }
+                if (!$exists) {
+                    $mappings[] = $new_mapping;
+                    update_option('bitstream_rebit_mappings', $mappings);
+                    echo '<div class="updated notice is-dismissible"><p><strong>Preset added successfully!</strong></p></div>';
+                } else {
+                    echo '<div class="error notice is-dismissible"><p><strong>Error:</strong> A mapping for this domain already exists.</p></div>';
+                }
+            }
         }
         
         $mappings = get_option('bitstream_rebit_mappings', []);
-        echo '<div class="wrap"><h1>ReBit Mappings</h1><form method="post">';
-        wp_nonce_field('bitstream_rebit_mappings_save','bitstream_rebit_mappings_nonce');
-        echo '<table class="widefat fixed"><thead><tr><th>Domain</th><th>Label</th><th>Icon Class</th><th>Remove</th></tr></thead><tbody>';
-        foreach ($mappings as $i => $map) {
-            echo '<tr>';
-            echo '<td><input type="text" name="bitstream_rebit_mappings['.$i.'][domain]" value="'.esc_attr($map['domain']).'" /></td>';
-            echo '<td><input type="text" name="bitstream_rebit_mappings['.$i.'][label]"  value="'.esc_attr($map['label']).'"  /></td>';
-            echo '<td><input type="text" name="bitstream_rebit_mappings['.$i.'][icon]"   value="'.esc_attr($map['icon']).'"   /></td>';
-            echo '<td><input type="checkbox" name="bitstream_rebit_mappings['.$i.'][remove]" value="1" /></td>';
-            echo '</tr>';
+        ?>
+        <div class="wrap">
+            <h1>ReBit Mappings</h1>
+            <p class="description">Configure how different websites appear when shared as ReBits. Each mapping adds a custom icon and label for specific domains.</p>
+            
+            <!-- Quick Presets Section -->
+            <div class="card" style="margin-bottom: 20px;">
+                <h2 class="title">Quick Add Popular Sites</h2>
+                <p>Add pre-configured mappings for popular websites:</p>
+                <form method="post" style="margin-bottom: 15px;">
+                    <?php wp_nonce_field('bitstream_rebit_mappings_save','bitstream_rebit_mappings_nonce'); ?>
+                    <select name="preset_selection" style="margin-right: 10px;">
+                        <option value="">Select a website...</option>
+                        <?php foreach ($this->get_rebit_presets() as $key => $preset): ?>
+                            <option value="<?php echo esc_attr($key); ?>">
+                                <?php echo esc_html($preset['label']); ?> (<?php echo esc_html($preset['domain']); ?>)
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <button type="submit" name="add_preset" class="button button-secondary">Add Preset</button>
+                </form>
+            </div>
+            
+            <!-- Current Mappings -->
+            <form method="post" id="mappings-form">
+                <?php wp_nonce_field('bitstream_rebit_mappings_save','bitstream_rebit_mappings_nonce'); ?>
+                
+                <div class="card">
+                    <h2 class="title">Current Mappings</h2>
+                    
+                    <?php if (empty($mappings)): ?>
+                        <p class="description">No mappings configured yet. Add some presets above or create custom mappings below.</p>
+                    <?php else: ?>
+                        <div id="mappings-container">
+                            <?php foreach ($mappings as $i => $map): ?>
+                                <div class="mapping-row" style="display: flex; align-items: center; margin-bottom: 15px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background: #fafafa;">
+                                    <div style="flex: 1; margin-right: 15px;">
+                                        <label><strong>Domain:</strong></label><br>
+                                        <input type="text" name="bitstream_rebit_mappings[<?php echo $i; ?>][domain]" 
+                                               value="<?php echo esc_attr($map['domain']); ?>" 
+                                               placeholder="example.com" style="width: 100%;" />
+                                    </div>
+                                    <div style="flex: 1; margin-right: 15px;">
+                                        <label><strong>Label:</strong></label><br>
+                                        <input type="text" name="bitstream_rebit_mappings[<?php echo $i; ?>][label]" 
+                                               value="<?php echo esc_attr($map['label']); ?>" 
+                                               placeholder="shared from Twitter" style="width: 100%;" />
+                                    </div>
+                                    <div style="flex: 1; margin-right: 15px;">
+                                        <label><strong>Icon Class:</strong></label><br>
+                                        <div style="position: relative;">
+                                            <input type="text" name="bitstream_rebit_mappings[<?php echo $i; ?>][icon]" 
+                                                   value="<?php echo esc_attr($map['icon']); ?>" 
+                                                   placeholder="fab fa-twitter" style="width: 100%; padding-right: 40px;" 
+                                                   id="icon-input-<?php echo $i; ?>" />
+                                            <button type="button" class="button" onclick="openIconPicker('icon-input-<?php echo $i; ?>')" 
+                                                    style="position: absolute; right: 5px; top: 2px; height: 26px; padding: 2px 8px;">
+                                                <i class="fas fa-palette"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div style="flex: 0 0 150px; margin-right: 15px;">
+                                        <label><strong>Preview:</strong></label><br>
+                                        <div class="mapping-preview" style="padding: 8px; border: 1px solid #ccc; border-radius: 3px; background: white; min-height: 30px;">
+                                            <i class="<?php echo esc_attr($map['icon']); ?>" style="margin-right: 8px; color: #2c6e49;"></i>
+                                            <span><?php echo esc_html($map['label']); ?></span>
+                                        </div>
+                                    </div>
+                                    <div style="flex: 0 0 auto;">
+                                        <button type="button" class="button button-link-delete" onclick="removeMapping(this)" style="color: #a00;">Remove</button>
+                                        <input type="hidden" name="bitstream_rebit_mappings[<?php echo $i; ?>][remove]" value="0" class="remove-flag" />
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+                
+                <!-- Add New Mapping -->
+                <div class="card">
+                    <h2 class="title">Add New Mapping</h2>
+                    <div style="display: flex; align-items: end; gap: 15px; margin-bottom: 15px;">
+                        <div style="flex: 1;">
+                            <label><strong>Domain:</strong></label><br>
+                            <input type="text" name="bitstream_rebit_mappings[new][domain]" 
+                                   placeholder="example.com" style="width: 100%;" />
+                            <small class="description">Enter just the domain (e.g., "twitter.com")</small>
+                        </div>
+                        <div style="flex: 1;">
+                            <label><strong>Label:</strong></label><br>
+                            <input type="text" name="bitstream_rebit_mappings[new][label]" 
+                                   placeholder="shared from Example" style="width: 100%;" />
+                            <small class="description">Text shown when sharing from this site</small>
+                        </div>
+                        <div style="flex: 1;">
+                            <label><strong>Icon Class:</strong></label><br>
+                            <div style="position: relative;">
+                                <input type="text" name="bitstream_rebit_mappings[new][icon]" 
+                                       placeholder="fas fa-link" style="width: 100%; padding-right: 40px;" 
+                                       id="new-icon-input" />
+                                <button type="button" class="button" onclick="openIconPicker('new-icon-input')" 
+                                        style="position: absolute; right: 5px; top: 2px; height: 26px; padding: 2px 8px;">
+                                    <i class="fas fa-palette"></i>
+                                </button>
+                            </div>
+                            <small class="description">Font Awesome class or use the icon picker</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Icon Picker Modal -->
+                    <div id="icon-picker-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100000;">
+                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 8px; max-width: 800px; max-height: 80vh; overflow-y: auto;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #ddd; padding-bottom: 10px;">
+                                <h3 style="margin: 0;">Select an Icon</h3>
+                                <button type="button" onclick="closeIconPicker()" style="background: none; border: none; font-size: 20px; cursor: pointer;">&times;</button>
+                            </div>
+                            
+                            <div style="margin-bottom: 15px;">
+                                <input type="text" id="icon-search" placeholder="Search icons..." style="width: 100%; padding: 8px;" onkeyup="filterIcons()" />
+                            </div>
+                            
+                            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                                <button type="button" class="icon-category active" onclick="showCategory('all')" data-category="all">All</button>
+                                <button type="button" class="icon-category" onclick="showCategory('brands')" data-category="brands">Brands</button>
+                                <button type="button" class="icon-category" onclick="showCategory('solid')" data-category="solid">Solid</button>
+                                <button type="button" class="icon-category" onclick="showCategory('regular')" data-category="regular">Regular</button>
+                            </div>
+                            
+                            <div id="icon-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; max-height: 400px; overflow-y: auto;">
+                                <!-- Icons will be populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <p class="description">
+                        <strong>Icon Help:</strong> Use the icon picker button or manually enter <a href="https://fontawesome.com/icons" target="_blank">Font Awesome icons</a>.
+                    </p>
+                </div>
+                
+                <p class="submit">
+                    <input type="submit" name="submit" class="button-primary" value="Save All Mappings" />
+                </p>
+            </form>
+        </div>
+        
+        <script>
+        let currentIconInput = null;
+        let iconLibrary = { brands: [], solid: [], regular: [] };
+        let iconsLoaded = false;
+        
+        // Function to dynamically extract Font Awesome icons from loaded stylesheets
+        function loadFontAwesomeIcons() {
+            if (iconsLoaded) return Promise.resolve();
+            
+            return new Promise((resolve) => {
+                const styleSheets = document.styleSheets;
+                const foundIcons = { brands: [], solid: [], regular: [] };
+                
+                try {
+                    for (let sheet of styleSheets) {
+                        try {
+                            // Check if this is a Font Awesome stylesheet
+                            if (!sheet.href || !sheet.href.includes('font-awesome')) continue;
+                            
+                            const rules = sheet.cssRules || sheet.rules;
+                            for (let rule of rules) {
+                                if (rule.selectorText && rule.selectorText.includes('::before')) {
+                                    const selector = rule.selectorText;
+                                    
+                                    // Extract FA classes
+                                    if (selector.includes('.fab.fa-')) {
+                                        const match = selector.match(/\.fab\.fa-([^:,\s]+)/);
+                                        if (match) foundIcons.brands.push('fab fa-' + match[1]);
+                                    } else if (selector.includes('.fas.fa-')) {
+                                        const match = selector.match(/\.fas\.fa-([^:,\s]+)/);
+                                        if (match) foundIcons.solid.push('fas fa-' + match[1]);
+                                    } else if (selector.includes('.far.fa-')) {
+                                        const match = selector.match(/\.far\.fa-([^:,\s]+)/);
+                                        if (match) foundIcons.regular.push('far fa-' + match[1]);
+                                    }
+                                }
+                            }
+                        } catch (e) {
+                            // Skip inaccessible stylesheets (CORS issues)
+                            continue;
+                        }
+                    }
+                } catch (e) {
+                    console.log('Could not access all stylesheets, using fallback icons');
+                }
+                
+                // If we found icons, use them; otherwise use fallback
+                if (foundIcons.brands.length > 0 || foundIcons.solid.length > 0) {
+                    iconLibrary = foundIcons;
+                } else {
+                    // Fallback to comprehensive manual list
+                    iconLibrary = getFallbackIcons();
+                }
+                
+                // Remove duplicates and sort
+                Object.keys(iconLibrary).forEach(category => {
+                    iconLibrary[category] = [...new Set(iconLibrary[category])].sort();
+                });
+                
+                iconsLoaded = true;
+                resolve();
+            });
         }
-        echo '<tr><td><input type="text" name="bitstream_rebit_mappings[new][domain]" /></td>';
-        echo '<td><input type="text" name="bitstream_rebit_mappings[new][label]" /></td>';
-        echo '<td><input type="text" name="bitstream_rebit_mappings[new][icon]" /></td>';
-        echo '<td></td></tr>';
-        echo '</tbody></table>';
-        submit_button('Save Mappings');
-        echo '</form></div>';
+            currentIconInput = document.getElementById(inputId);
+            document.getElementById('icon-picker-modal').style.display = 'block';
+            document.body.style.overflow = 'hidden';
+            showCategory('all');
+            document.getElementById('icon-search').value = '';
+        }
+        
+        function closeIconPicker() {
+            document.getElementById('icon-picker-modal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+            currentIconInput = null;
+        }
+        
+        function showCategory(category) {
+            // Update active category button
+            document.querySelectorAll('.icon-category').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`[data-category="${category}"]`).classList.add('active');
+            
+            const grid = document.getElementById('icon-grid');
+            grid.innerHTML = '';
+            
+            let iconsToShow = [];
+            if (category === 'all') {
+                iconsToShow = [...iconLibrary.brands, ...iconLibrary.solid, ...iconLibrary.regular];
+            } else {
+                iconsToShow = iconLibrary[category] || [];
+            }
+            
+            iconsToShow.forEach(iconClass => {
+                const iconDiv = document.createElement('div');
+                iconDiv.className = 'icon-option';
+                iconDiv.style.cssText = 'padding: 15px; text-align: center; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;';
+                iconDiv.innerHTML = `<i class="${iconClass}" style="font-size: 24px; display: block; margin-bottom: 5px;"></i><small style="font-size: 10px; word-break: break-all;">${iconClass}</small>`;
+                
+                iconDiv.addEventListener('click', () => selectIcon(iconClass));
+                iconDiv.addEventListener('mouseenter', () => {
+                    iconDiv.style.backgroundColor = '#f0f0f0';
+                    iconDiv.style.borderColor = '#2c6e49';
+                });
+                iconDiv.addEventListener('mouseleave', () => {
+                    iconDiv.style.backgroundColor = '';
+                    iconDiv.style.borderColor = '#ddd';
+                });
+                
+                grid.appendChild(iconDiv);
+            });
+        }
+        
+        function filterIcons() {
+            const searchTerm = document.getElementById('icon-search').value.toLowerCase();
+            const iconOptions = document.querySelectorAll('.icon-option');
+            
+            iconOptions.forEach(option => {
+                const iconText = option.textContent.toLowerCase();
+                if (iconText.includes(searchTerm)) {
+                    option.style.display = 'block';
+                } else {
+                    option.style.display = 'none';
+                }
+            });
+        }
+        
+        function selectIcon(iconClass) {
+            if (currentIconInput) {
+                currentIconInput.value = iconClass;
+                
+                // Update preview if it exists nearby
+                const mappingRow = currentIconInput.closest('.mapping-row');
+                if (mappingRow) {
+                    const preview = mappingRow.querySelector('.mapping-preview i');
+                    if (preview) {
+                        preview.className = iconClass;
+                    }
+                }
+            }
+            closeIconPicker();
+        }
+        
+        function removeMapping(button) {
+            const row = button.closest('.mapping-row');
+            const removeFlag = row.querySelector('.remove-flag');
+            row.style.opacity = '0.5';
+            row.style.textDecoration = 'line-through';
+            removeFlag.value = '1';
+            button.textContent = 'Undo';
+            button.onclick = function() { undoRemove(this); };
+        }
+        
+        function undoRemove(button) {
+            const row = button.closest('.mapping-row');
+            const removeFlag = row.querySelector('.remove-flag');
+            row.style.opacity = '1';
+            row.style.textDecoration = 'none';
+            removeFlag.value = '0';
+            button.textContent = 'Remove';
+            button.onclick = function() { removeMapping(this); };
+        }
+        
+        // Close modal when clicking outside
+        document.addEventListener('click', function(event) {
+            const modal = document.getElementById('icon-picker-modal');
+            if (event.target === modal) {
+                closeIconPicker();
+            }
+        });
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeIconPicker();
+            }
+        });
+        </script>
+        
+        <style>
+        .mapping-row:hover {
+            background: #f0f0f1 !important;
+        }
+        .mapping-preview {
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        .card {
+            background: #fff;
+            border: 1px solid #ccd0d4;
+            border-radius: 4px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .card .title {
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+        .icon-category {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            background: #f7f7f7;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        .icon-category:hover {
+            background: #e7e7e7;
+            border-color: #2c6e49;
+        }
+        .icon-category.active {
+            background: #2c6e49;
+            color: white;
+            border-color: #2c6e49;
+        }
+        .icon-option:hover {
+            background: #f0f0f0 !important;
+            border-color: #2c6e49 !important;
+            transform: translateY(-2px);
+            box-shadow: 0 2px 8px rgba(44, 110, 73, 0.2);
+        }
+        #icon-picker-modal {
+            backdrop-filter: blur(2px);
+        }
+        #icon-grid::-webkit-scrollbar {
+            width: 8px;
+        }
+        #icon-grid::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        #icon-grid::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        #icon-grid::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        </style>
+        
+        <script>
+        // Comprehensive fallback icon list in case CSS parsing fails
+        function getFallbackIcons() {
+            return {
+                brands: [
+                    'fab fa-500px', 'fab fa-accessible-icon', 'fab fa-amazon', 'fab fa-android', 'fab fa-apple', 'fab fa-behance',
+                    'fab fa-bitcoin', 'fab fa-bootstrap', 'fab fa-chrome', 'fab fa-codepen', 'fab fa-css3', 'fab fa-dev',
+                    'fab fa-discord', 'fab fa-docker', 'fab fa-dribbble', 'fab fa-dropbox', 'fab fa-facebook', 'fab fa-figma',
+                    'fab fa-firefox', 'fab fa-github', 'fab fa-gitlab', 'fab fa-google', 'fab fa-hacker-news', 'fab fa-instagram',
+                    'fab fa-java', 'fab fa-js', 'fab fa-linkedin', 'fab fa-medium', 'fab fa-microsoft', 'fab fa-node-js',
+                    'fab fa-npm', 'fab fa-pinterest', 'fab fa-python', 'fab fa-react', 'fab fa-reddit', 'fab fa-slack',
+                    'fab fa-snapchat', 'fab fa-spotify', 'fab fa-stack-overflow', 'fab fa-steam', 'fab fa-tiktok', 'fab fa-twitch',
+                    'fab fa-twitter', 'fab fa-x-twitter', 'fab fa-whatsapp', 'fab fa-wikipedia-w', 'fab fa-wordpress', 'fab fa-youtube'
+                ],
+                solid: [
+                    'fas fa-home', 'fas fa-user', 'fas fa-cog', 'fas fa-heart', 'fas fa-star', 'fas fa-search', 'fas fa-envelope',
+                    'fas fa-phone', 'fas fa-calendar', 'fas fa-clock', 'fas fa-map-marker-alt', 'fas fa-globe', 'fas fa-link',
+                    'fas fa-newspaper', 'fas fa-rss', 'fas fa-camera', 'fas fa-video', 'fas fa-music', 'fas fa-headphones',
+                    'fas fa-microphone', 'fas fa-volume-up', 'fas fa-play', 'fas fa-pause', 'fas fa-stop', 'fas fa-shopping-cart',
+                    'fas fa-credit-card', 'fas fa-bell', 'fas fa-comment', 'fas fa-share', 'fas fa-download', 'fas fa-upload',
+                    'fas fa-file', 'fas fa-folder', 'fas fa-trash', 'fas fa-edit', 'fas fa-copy', 'fas fa-cut', 'fas fa-paste'
+                ],
+                regular: [
+                    'far fa-heart', 'far fa-star', 'far fa-bookmark', 'far fa-user', 'far fa-envelope', 'far fa-comment',
+                    'far fa-thumbs-up', 'far fa-thumbs-down', 'far fa-share-square', 'far fa-copy', 'far fa-edit', 'far fa-trash-alt',
+                    'far fa-eye', 'far fa-eye-slash', 'far fa-clock', 'far fa-calendar', 'far fa-file', 'far fa-folder',
+                    'far fa-image', 'far fa-play-circle', 'far fa-pause-circle', 'far fa-stop-circle', 'far fa-bell'
+                ]
+            };
+        }
+        
+        function openIconPicker(inputId) {
+            currentIconInput = document.getElementById(inputId);
+            document.getElementById('icon-picker-modal').style.display = 'block';
+            document.body.style.overflow = 'hidden';
+            
+            // Load icons and show the picker
+            loadFontAwesomeIcons().then(() => {
+                showCategory('all');
+                document.getElementById('icon-search').value = '';
+            });
+        }
+        <?php
+    }
+    
+    /**
+     * Get preset ReBit mappings for popular sites
+     */
+    private function get_rebit_presets() {
+        return [
+            'twitter' => ['domain' => 'twitter.com', 'label' => 'shared from Twitter', 'icon' => 'fab fa-twitter'],
+            'x' => ['domain' => 'x.com', 'label' => 'shared from X', 'icon' => 'fab fa-x-twitter'],
+            'youtube' => ['domain' => 'youtube.com', 'label' => 'shared from YouTube', 'icon' => 'fab fa-youtube'],
+            'github' => ['domain' => 'github.com', 'label' => 'shared from GitHub', 'icon' => 'fab fa-github'],
+            'linkedin' => ['domain' => 'linkedin.com', 'label' => 'shared from LinkedIn', 'icon' => 'fab fa-linkedin'],
+            'facebook' => ['domain' => 'facebook.com', 'label' => 'shared from Facebook', 'icon' => 'fab fa-facebook'],
+            'instagram' => ['domain' => 'instagram.com', 'label' => 'shared from Instagram', 'icon' => 'fab fa-instagram'],
+            'tiktok' => ['domain' => 'tiktok.com', 'label' => 'shared from TikTok', 'icon' => 'fab fa-tiktok'],
+            'reddit' => ['domain' => 'reddit.com', 'label' => 'shared from Reddit', 'icon' => 'fab fa-reddit'],
+            'medium' => ['domain' => 'medium.com', 'label' => 'shared from Medium', 'icon' => 'fab fa-medium'],
+            'dev' => ['domain' => 'dev.to', 'label' => 'shared from DEV', 'icon' => 'fab fa-dev'],
+            'hackernews' => ['domain' => 'news.ycombinator.com', 'label' => 'shared from Hacker News', 'icon' => 'fab fa-hacker-news'],
+            'stackoverflow' => ['domain' => 'stackoverflow.com', 'label' => 'shared from Stack Overflow', 'icon' => 'fab fa-stack-overflow'],
+            'wikipedia' => ['domain' => 'wikipedia.org', 'label' => 'shared from Wikipedia', 'icon' => 'fab fa-wikipedia-w'],
+            'bbc' => ['domain' => 'bbc.com', 'label' => 'shared from BBC', 'icon' => 'fas fa-newspaper'],
+            'cnn' => ['domain' => 'cnn.com', 'label' => 'shared from CNN', 'icon' => 'fas fa-newspaper'],
+            'nytimes' => ['domain' => 'nytimes.com', 'label' => 'shared from NY Times', 'icon' => 'fas fa-newspaper'],
+            'spotify' => ['domain' => 'spotify.com', 'label' => 'shared from Spotify', 'icon' => 'fab fa-spotify'],
+            'twitch' => ['domain' => 'twitch.tv', 'label' => 'shared from Twitch', 'icon' => 'fab fa-twitch'],
+            'discord' => ['domain' => 'discord.com', 'label' => 'shared from Discord', 'icon' => 'fab fa-discord'],
+        ];
     }
     
     /**
@@ -1148,28 +1633,20 @@ JS;
     }
     
     /**
-     * Add PWA assets for quick post pages
+     * Add PWA assets for BitStream pages
      */
     public function pwa_assets() {
-        // Load QuickPost PWA on quickbit pages or pages with quickpost shortcode
-        $should_load_quickpost = false;
-        
         global $post;
         
-        // Check if current page has quickpost shortcode
-        if (is_a($post, 'WP_Post') && has_shortcode($post->post_content, 'bitstream_quick_post')) {
-            $should_load_quickpost = true;
-        }
+        // Load on archive pages or pages with [bitstream] shortcode
+        $is_bit_archive = is_post_type_archive('bit');
+        $has_feed_shortcode = is_a($post, 'WP_Post') && 
+                             (has_shortcode($post->post_content, 'bitstream') || 
+                              has_shortcode($post->post_content, 'bitstream_latest'));
+        $is_bitstream_page = isset($_SERVER['REQUEST_URI']) && 
+                            strpos($_SERVER['REQUEST_URI'], '/bitstream/') !== false;
         
-        // Check if URL suggests quickbit page
-        if (isset($_SERVER['REQUEST_URI']) && 
-            (strpos($_SERVER['REQUEST_URI'], '/quickbit/') !== false || 
-             strpos($_SERVER['REQUEST_URI'], '/bitstream/quickbit/') !== false ||
-             is_page('quickbit'))) {
-            $should_load_quickpost = true;
-        }
-        
-        if ($should_load_quickpost) {
+        if ($is_bit_archive || $has_feed_shortcode || $is_bitstream_page) {
             $base = BITSTREAM_PLUGIN_URL;
             $manifest_url = $base . 'manifest.json';
             $sw_url = home_url('/sw.js');
@@ -1179,7 +1656,7 @@ JS;
             echo '<meta name="mobile-web-app-capable" content="yes">';
             echo '<meta name="apple-mobile-web-app-capable" content="yes">';
             echo '<meta name="apple-mobile-web-app-status-bar-style" content="default">';
-            echo '<meta name="apple-mobile-web-app-title" content="BitStream QuickPost">';
+            echo '<meta name="apple-mobile-web-app-title" content="BitStream">';
             
             echo '<script>
             if("serviceWorker" in navigator) {
@@ -1188,91 +1665,21 @@ JS;
                         scope: "/bitstream/",
                         updateViaCache: "none"
                     }).then(function(registration) {
-                        console.log("QuickPost SW registered with scope:", registration.scope);
+                        console.log("BitStream PWA registered with scope:", registration.scope);
                         
                         // Check for installation prompt
                         window.addEventListener("beforeinstallprompt", function(event) {
-                            console.log("BitStream QuickPost PWA installation available");
+                            console.log("BitStream PWA installation available");
                             // Store the event for later use
                             window.deferredPrompt = event;
                         });
                         
                     }).catch(function(error) {
-                        console.warn("QuickPost SW registration failed:", error);
+                        console.warn("BitStream SW registration failed:", error);
                     });
                 });
             }
             </script>';
-        }
-    }
-    
-    /**
-     * Add PWA assets for BitStream feed pages
-     */
-    public function pwa_feed_assets() {
-        global $post;
-        
-        // Don't load feed PWA if QuickPost PWA should be loaded
-        $should_load_quickpost = false;
-        
-        // Check if current page has quickpost shortcode
-        if (is_a($post, 'WP_Post') && has_shortcode($post->post_content, 'bitstream_quick_post')) {
-            $should_load_quickpost = true;
-        }
-        
-        // Check if URL suggests quickbit page
-        if (isset($_SERVER['REQUEST_URI']) && 
-            (strpos($_SERVER['REQUEST_URI'], '/quickbit/') !== false || 
-             strpos($_SERVER['REQUEST_URI'], '/bitstream/quickbit/') !== false ||
-             is_page('quickbit'))) {
-            $should_load_quickpost = true;
-        }
-        
-        // Only load feed PWA if QuickPost shouldn't be loaded
-        if (!$should_load_quickpost) {
-            // Load on archive pages or pages with [bitstream] shortcode
-            $is_bit_archive = is_post_type_archive('bit');
-            $has_feed_shortcode = is_a($post, 'WP_Post') && 
-                                 (has_shortcode($post->post_content, 'bitstream') || 
-                                  has_shortcode($post->post_content, 'bitstream_latest'));
-            $is_bitstream_page = isset($_SERVER['REQUEST_URI']) && 
-                                strpos($_SERVER['REQUEST_URI'], '/bitstream/') !== false;
-            
-            if ($is_bit_archive || $has_feed_shortcode || $is_bitstream_page) {
-                $base = BITSTREAM_PLUGIN_URL;
-                $manifest_url = $base . 'manifest-feed.json';
-                $sw_url = home_url('/sw-feed.js');
-                
-                echo '<link rel="manifest" href="'.esc_url($manifest_url).'">';
-                echo '<meta name="theme-color" content="#2c6e49">';
-                echo '<meta name="mobile-web-app-capable" content="yes">';
-                echo '<meta name="apple-mobile-web-app-capable" content="yes">';
-                echo '<meta name="apple-mobile-web-app-status-bar-style" content="default">';
-                echo '<meta name="apple-mobile-web-app-title" content="BitStream Feed">';
-                
-                echo '<script>
-                if("serviceWorker" in navigator) {
-                    window.addEventListener("load", function() {
-                        navigator.serviceWorker.register("'.esc_url($sw_url).'", {
-                            scope: "/bitstream/",
-                            updateViaCache: "none"
-                        }).then(function(registration) {
-                            console.log("BitStream Feed PWA registered with scope:", registration.scope);
-                            
-                            // Check for installation prompt
-                            window.addEventListener("beforeinstallprompt", function(event) {
-                                console.log("BitStream Feed PWA installation available");
-                                // Store the event for later use
-                                window.deferredPrompt = event;
-                            });
-                            
-                        }).catch(function(error) {
-                            console.warn("Feed SW registration failed:", error);
-                        });
-                    });
-                }
-                </script>';
-            }
         }
     }
 
@@ -1404,6 +1811,185 @@ JS;
                 wp_die('Access denied');
             }
         }
+    }
+    
+    /**
+     * Register RSS feeds for BitStream content
+     */
+    public function add_rss_feeds() {
+        add_feed('bitstream', [$this, 'bitstream_rss_feed']);
+        add_feed('bitstream-bits', [$this, 'bitstream_bits_rss_feed']);
+        add_feed('bitstream-rebits', [$this, 'bitstream_rebits_rss_feed']);
+    }
+    
+    /**
+     * Add RSS feed links to HTML head
+     */
+    public function add_rss_links() {
+        // Only add RSS links on BitStream-related pages
+        global $post;
+        $show_rss = false;
+        
+        // Show on BitStream archive pages
+        if (is_post_type_archive('bit')) {
+            $show_rss = true;
+        }
+        
+        // Show on pages with BitStream shortcodes
+        if (is_a($post, 'WP_Post') && 
+            (has_shortcode($post->post_content, 'bitstream') || 
+             has_shortcode($post->post_content, 'bitstream_latest'))) {
+            $show_rss = true;
+        }
+        
+        // Show on BitStream URL paths
+        if (isset($_SERVER['REQUEST_URI']) && 
+            strpos($_SERVER['REQUEST_URI'], '/bitstream/') !== false) {
+            $show_rss = true;
+        }
+        
+        if ($show_rss) {
+            echo '<link rel="alternate" type="application/rss+xml" title="BitStream Feed" href="' . esc_url(home_url('/feed/bitstream/')) . '">' . "\n";
+            echo '<link rel="alternate" type="application/rss+xml" title="BitStream Bits Only" href="' . esc_url(home_url('/feed/bitstream-bits/')) . '">' . "\n";
+            echo '<link rel="alternate" type="application/rss+xml" title="BitStream ReBits Only" href="' . esc_url(home_url('/feed/bitstream-rebits/')) . '">' . "\n";
+        }
+    }
+    
+    /**
+     * Generate RSS feed for all BitStream content
+     */
+    public function bitstream_rss_feed() {
+        $this->generate_rss_feed('all');
+    }
+    
+    /**
+     * Generate RSS feed for bits only (no rebits)
+     */
+    public function bitstream_bits_rss_feed() {
+        $this->generate_rss_feed('bits');
+    }
+    
+    /**
+     * Generate RSS feed for rebits only
+     */
+    public function bitstream_rebits_rss_feed() {
+        $this->generate_rss_feed('rebits');
+    }
+    
+    /**
+     * Generate RSS feed content
+     */
+    private function generate_rss_feed($type = 'all') {
+        header('Content-Type: application/rss+xml; charset=' . get_option('blog_charset'), true);
+        
+        $meta_query = [];
+        $title_suffix = '';
+        
+        if ($type === 'bits') {
+            $meta_query[] = [
+                'relation' => 'OR',
+                [
+                    'key' => 'bitstream_rebit_url',
+                    'compare' => 'NOT EXISTS'
+                ],
+                [
+                    'key' => 'bitstream_rebit_url',
+                    'value' => '',
+                    'compare' => '='
+                ]
+            ];
+            $title_suffix = ' - Bits Only';
+        } elseif ($type === 'rebits') {
+            $meta_query[] = [
+                'key' => 'bitstream_rebit_url',
+                'value' => '',
+                'compare' => '!='
+            ];
+            $title_suffix = ' - ReBits Only';
+        }
+        
+        $query = new WP_Query([
+            'post_type' => 'bit',
+            'posts_per_page' => 50,
+            'post_status' => 'publish',
+            'orderby' => 'date',
+            'order' => 'DESC',
+            'meta_query' => $meta_query
+        ]);
+        
+        $site_title = get_bloginfo('name');
+        $site_url = home_url();
+        $feed_title = 'BitStream' . $title_suffix . ' - ' . $site_title;
+        $feed_description = 'Latest BitStream posts from ' . $site_title;
+        
+        echo '<?xml version="1.0" encoding="' . get_option('blog_charset') . '"?>' . "\n";
+        ?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom">
+    <channel>
+        <title><?php echo esc_html($feed_title); ?></title>
+        <link><?php echo esc_url($site_url); ?></link>
+        <description><?php echo esc_html($feed_description); ?></description>
+        <language><?php echo esc_html(get_option('rss_language', 'en-US')); ?></language>
+        <lastBuildDate><?php echo esc_html(mysql2date('D, d M Y H:i:s +0000', get_lastpostmodified('GMT'), false)); ?></lastBuildDate>
+        <atom:link href="<?php echo esc_url(home_url('/feed/bitstream' . ($type !== 'all' ? '-' . $type : '') . '/')); ?>" rel="self" type="application/rss+xml" />
+        
+        <?php while ($query->have_posts()) : $query->the_post(); 
+            $post_id = get_the_ID();
+            $rebit_url = get_post_meta($post_id, 'bitstream_rebit_url', true);
+            $content = get_the_content();
+            $permalink = get_permalink($post_id);
+            $author = get_the_author();
+            $date = get_the_date('D, d M Y H:i:s +0000');
+            
+            // Generate title
+            $title = 'Bit #' . date('Y-m-d', strtotime(get_the_date())) . ':' . str_pad($post_id % 1000, 3, '0', STR_PAD_LEFT);
+            if ($rebit_url) {
+                $title = 'ReBit: ' . $title;
+            }
+            if ($author) {
+                $title .= ' by ' . $author;
+            }
+            
+            // Prepare description - include ReBit info if applicable
+            $description = '';
+            if ($rebit_url) {
+                $og_title = get_post_meta($post_id, 'bitstream_og_title', true);
+                $og_description = get_post_meta($post_id, 'bitstream_og_description', true);
+                
+                $description .= '<p><strong>Sharing:</strong> <a href="' . esc_url($rebit_url) . '">' . esc_html($rebit_url) . '</a></p>';
+                if ($og_title) {
+                    $description .= '<p><strong>Title:</strong> ' . esc_html($og_title) . '</p>';
+                }
+                if ($og_description) {
+                    $description .= '<p><strong>Description:</strong> ' . esc_html($og_description) . '</p>';
+                }
+                if ($content) {
+                    $description .= '<p><strong>Comment:</strong> ' . wpautop($content) . '</p>';
+                }
+            } else {
+                $description = wpautop($content);
+            }
+        ?>
+        <item>
+            <title><?php echo esc_html($title); ?></title>
+            <link><?php echo esc_url($permalink); ?></link>
+            <guid isPermaLink="true"><?php echo esc_url($permalink); ?></guid>
+            <pubDate><?php echo esc_html($date); ?></pubDate>
+            <author><?php echo esc_html($author); ?></author>
+            <description><![CDATA[<?php echo $description; ?>]]></description>
+            <content:encoded><![CDATA[<?php echo $description; ?>]]></content:encoded>
+            <?php if ($rebit_url) : ?>
+            <category>ReBit</category>
+            <?php else : ?>
+            <category>Bit</category>
+            <?php endif; ?>
+        </item>
+        <?php endwhile; ?>
+    </channel>
+</rss>
+        <?php
+        wp_reset_postdata();
+        exit;
     }
 }
 
