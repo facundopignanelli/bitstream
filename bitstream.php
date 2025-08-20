@@ -67,6 +67,7 @@ class BitStream_Plugin {
         add_action('wp_footer', [$this, 'render_floating_quickbit_button']);
         add_action('init', [$this, 'add_service_worker_rewrite']);
         add_action('template_redirect', [$this, 'serve_service_worker']);
+        add_filter('query_vars', [$this, 'add_query_vars']);
     }
     
     /**
@@ -321,27 +322,42 @@ class BitStream_Plugin {
     console.log('BitStream: Current URL:', window.location.href);
     console.log('BitStream: Search params:', window.location.search);
     
-    if(window.location.search.includes('quoted_bit=')&&select('core/editor')&&select('core/editor').isEditedPostNew()){
+    if(window.location.search.includes('quoted_bit=')) {
         console.log('BitStream: Quoted bit detected in URL');
         const urlParams = new URLSearchParams(window.location.search);
         const quotedBitId = urlParams.get('quoted_bit');
         console.log('BitStream: Quoted bit ID:', quotedBitId);
         
         if(quotedBitId) {
-            // Add debugging
-            console.log('BitStream: Looking for quoted bit ID:', quotedBitId);
-            console.log('BitStream: bitstream_ajax available:', typeof window.bitstream_ajax);
+            console.log('BitStream: Starting quote display process');
+            console.log('BitStream: Checking if editor is new post...');
             
-            // Check if bitstream_ajax is available
-            if (!window.bitstream_ajax) {
-                console.error('BitStream: bitstream_ajax not available, trying fallback...');
-                // Fallback: try to find AJAX URL from WordPress
-                const ajaxUrl = '/wp-admin/admin-ajax.php';
-                window.bitstream_ajax = {
-                    ajax_url: ajaxUrl,
-                    og_fetch_nonce: 'fallback'
-                };
-            }
+            // Function to check if we're in a new post
+            const checkIfNewPost = () => {
+                if (select && select('core/editor') && select('core/editor').isEditedPostNew) {
+                    return select('core/editor').isEditedPostNew();
+                }
+                // Fallback: check URL for new post indicators
+                return window.location.href.includes('post-new.php');
+            };
+            
+            if (checkIfNewPost()) {
+                console.log('BitStream: Confirmed this is a new post, proceeding with quote display');
+                
+                // Add debugging
+                console.log('BitStream: Looking for quoted bit ID:', quotedBitId);
+                console.log('BitStream: bitstream_ajax available:', typeof window.bitstream_ajax);
+                
+                // Check if bitstream_ajax is available
+                if (!window.bitstream_ajax) {
+                    console.error('BitStream: bitstream_ajax not available, trying fallback...');
+                    // Fallback: try to find AJAX URL from WordPress
+                    const ajaxUrl = '/wp-admin/admin-ajax.php';
+                    window.bitstream_ajax = {
+                        ajax_url: ajaxUrl,
+                        og_fetch_nonce: 'fallback'
+                    };
+                }
             
             // Wait for editor to be ready - try multiple approaches
             let attempts = 0;
@@ -504,7 +520,14 @@ class BitStream_Plugin {
             };
             
             waitForEditor();
+            } else {
+                console.log('BitStream: Not a new post, skipping quote display');
+            }
+        } else {
+            console.log('BitStream: No quoted bit ID found');
         }
+    } else {
+        console.log('BitStream: No quoted_bit parameter found in URL');
     }
 })();
 JS;
@@ -1163,17 +1186,20 @@ JS;
         add_rewrite_rule('^sw-feed\.js$', 'index.php?bitstream_sw=feed', 'top');
         add_rewrite_rule('^sw\.js$', 'index.php?bitstream_sw=main', 'top');
         
-        // Add query var
-        add_filter('query_vars', function($vars) {
-            $vars[] = 'bitstream_sw';
-            return $vars;
-        });
-        
         // Flush rewrite rules if they haven't been flushed yet
+        // Temporarily always flush for debugging
+        flush_rewrite_rules();
         if (!get_option('bitstream_sw_rewrite_flushed')) {
-            flush_rewrite_rules();
             update_option('bitstream_sw_rewrite_flushed', true);
         }
+    }
+
+    /**
+     * Add custom query vars for Service Worker routing
+     */
+    public function add_query_vars($vars) {
+        $vars[] = 'bitstream_sw';
+        return $vars;
     }
 
     /**
@@ -1182,9 +1208,15 @@ JS;
     public function serve_service_worker() {
         $sw_type = get_query_var('bitstream_sw');
         
+        error_log('BitStream: serve_service_worker called, sw_type: ' . $sw_type);
+        error_log('BitStream: REQUEST_URI: ' . $_SERVER['REQUEST_URI']);
+        
         if (!$sw_type) {
+            error_log('BitStream: No sw_type found, returning');
             return;
         }
+        
+        error_log('BitStream: Serving Service Worker type: ' . $sw_type);
         
         // Set proper headers for Service Worker
         header('Content-Type: application/javascript');
