@@ -991,7 +991,7 @@ JS;
             ]
         ];
         
-        echo '<div class="wrap" style="max-width: 95%; margin: 0 auto;">';
+        echo '<div class="wrap" style="max-width: none; width: 98%; margin: 0 auto;">';
         echo '<h1>RSS Feeds</h1>';
         echo '<p class="description">BitStream provides multiple RSS feeds for different content types. Choose the feed that best fits your needs.</p>';
         
@@ -1282,6 +1282,36 @@ JS;
         let currentIconInput = null;
         let iconLibrary = { brands: [], solid: [], regular: [] };
         let iconsLoaded = false;
+        
+        // Check if Font Awesome is available and load fallback immediately if not
+        function checkFontAwesome() {
+            // Check if any Font Awesome CSS is loaded
+            const stylesheets = Array.from(document.styleSheets);
+            const hasFontAwesome = stylesheets.some(sheet => {
+                try {
+                    return sheet.href && (sheet.href.includes('fontawesome') || sheet.href.includes('fa-'));
+                } catch (e) {
+                    return false;
+                }
+            });
+            
+            console.log('Font Awesome CSS detected:', hasFontAwesome);
+            
+            if (!hasFontAwesome) {
+                console.log('Font Awesome not detected, loading fallback immediately');
+                iconLibrary = getFallbackIcons();
+                iconsLoaded = true;
+                return false;
+            }
+            return true;
+        }
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!checkFontAwesome()) {
+                console.log('Using fallback icons from start');
+            }
+        });
         
         // Function to dynamically extract Font Awesome icons from loaded stylesheets
         function loadFontAwesomeIcons() {
