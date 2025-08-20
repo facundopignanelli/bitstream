@@ -238,20 +238,27 @@ class BitStream_Ajax_Handlers {
      * Handle getting quoted bit content for block editor display
      */
     public function handle_get_quoted_bit() {
+        error_log('BitStream: handle_get_quoted_bit called');
+        error_log('BitStream: POST data: ' . print_r($_POST, true));
+        
         try {
             // Verify nonce
             if (!wp_verify_nonce($_POST['nonce'] ?? '', 'bitstream_og_fetch_nonce')) {
+                error_log('BitStream: Nonce verification failed');
                 wp_send_json_error('Invalid nonce.');
             }
 
             // Check permissions
             if (!current_user_can('edit_posts')) {
+                error_log('BitStream: Permission check failed');
                 wp_send_json_error('Insufficient permissions.');
             }
 
             $quoted_bit_id = intval($_POST['quoted_bit_id'] ?? 0);
+            error_log('BitStream: Quoted bit ID: ' . $quoted_bit_id);
             
             if ($quoted_bit_id <= 0) {
+                error_log('BitStream: Invalid quoted bit ID');
                 wp_send_json_error('Invalid quoted bit ID.');
             }
 

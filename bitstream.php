@@ -317,9 +317,15 @@ class BitStream_Plugin {
     }
     
     // Handle quoted bit display in block editor
+    console.log('BitStream: Script loaded, checking for quoted_bit parameter');
+    console.log('BitStream: Current URL:', window.location.href);
+    console.log('BitStream: Search params:', window.location.search);
+    
     if(window.location.search.includes('quoted_bit=')&&select('core/editor')&&select('core/editor').isEditedPostNew()){
+        console.log('BitStream: Quoted bit detected in URL');
         const urlParams = new URLSearchParams(window.location.search);
         const quotedBitId = urlParams.get('quoted_bit');
+        console.log('BitStream: Quoted bit ID:', quotedBitId);
         
         if(quotedBitId) {
             // Add debugging
