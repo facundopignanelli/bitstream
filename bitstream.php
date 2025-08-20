@@ -589,15 +589,34 @@ JS;
         }
 
         $quickbit_url = admin_url('post-new.php?post_type=bit');
+        $rebit_url = admin_url('post-new.php?post_type=bit&rebit=1');
         ?>
         <div id="bitstream-floating-quickbit" style="position: fixed; bottom: 30px; right: 30px; z-index: 9999;">
-            <a href="<?php echo esc_url($quickbit_url); ?>" 
-               style="display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; background: #2c6e49; color: white; border-radius: 50%; text-decoration: none; box-shadow: 0 4px 12px rgba(44,110,73,0.25); transition: all 0.3s ease; font-size: 24px;"
-               title="Quick Bit - Create new post"
-               onmouseover="this.style.transform='scale(1.1)'; this.style.background='#1f4d35';"
-               onmouseout="this.style.transform='scale(1)'; this.style.background='#2c6e49';">
-                <i class="fa-solid fa-plus" style="margin: 0;"></i>
-            </a>
+            <div class="quickbit-menu">
+                <button class="quickbit-toggle" 
+                        style="display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; background: #2c6e49; color: white; border-radius: 50%; border: none; box-shadow: 0 4px 12px rgba(44,110,73,0.25); transition: all 0.3s ease; font-size: 24px; cursor: pointer;"
+                        title="Quick Actions"
+                        onmouseover="this.style.transform='scale(1.1)'; this.style.background='#1f4d35';"
+                        onmouseout="this.style.transform='scale(1)'; this.style.background='#2c6e49';">
+                    <i class="fa-solid fa-plus" style="margin: 0;"></i>
+                </button>
+                <div class="quickbit-dropdown" style="position: absolute; bottom: 70px; right: 0; background: white; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.15); min-width: 160px; opacity: 0; visibility: hidden; transform: translateY(10px); transition: all 0.3s ease;">
+                    <a href="<?php echo esc_url($quickbit_url); ?>" 
+                       style="display: flex; align-items: center; padding: 12px 16px; text-decoration: none; color: #333; border-bottom: 1px solid #eee;"
+                       onmouseover="this.style.background='#f5f5f5';"
+                       onmouseout="this.style.background='white';">
+                        <i class="fa-solid fa-comment" style="margin-right: 8px; color: #2c6e49;"></i>
+                        Add New Bit
+                    </a>
+                    <a href="<?php echo esc_url($rebit_url); ?>" 
+                       style="display: flex; align-items: center; padding: 12px 16px; text-decoration: none; color: #333;"
+                       onmouseover="this.style.background='#f5f5f5';"
+                       onmouseout="this.style.background='white';">
+                        <i class="fa-solid fa-retweet" style="margin-right: 8px; color: #2c6e49;"></i>
+                        Add New ReBit
+                    </a>
+                </div>
+            </div>
         </div>
         <?php
     }

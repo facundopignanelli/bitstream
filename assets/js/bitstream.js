@@ -87,6 +87,39 @@ document.addEventListener('DOMContentLoaded', function () {
         }
       });
     });
+
+    // Floating QuickBit dropdown functionality
+    const quickbitToggle = document.querySelector('.quickbit-toggle');
+    const quickbitDropdown = document.querySelector('.quickbit-dropdown');
+    
+    if (quickbitToggle && quickbitDropdown) {
+        quickbitToggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            const isOpen = quickbitDropdown.style.opacity === '1';
+            
+            if (isOpen) {
+                // Close dropdown
+                quickbitDropdown.style.opacity = '0';
+                quickbitDropdown.style.visibility = 'hidden';
+                quickbitDropdown.style.transform = 'translateY(10px)';
+            } else {
+                // Open dropdown
+                quickbitDropdown.style.opacity = '1';
+                quickbitDropdown.style.visibility = 'visible';
+                quickbitDropdown.style.transform = 'translateY(0)';
+            }
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.quickbit-menu')) {
+                quickbitDropdown.style.opacity = '0';
+                quickbitDropdown.style.visibility = 'hidden';
+                quickbitDropdown.style.transform = 'translateY(10px)';
+            }
+        });
+    }
+
     // Comment Toggle button
 document.querySelectorAll('.bit-comment-toggle').forEach(button => {
     button.addEventListener('click', () => {

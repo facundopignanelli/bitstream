@@ -9,9 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Admin Quote Button**: Added quote button next to comment, like, and permalink buttons for admin users to easily quote posts
-- **Floating QuickBit Button**: Added floating button in bottom-right corner for admin users to quickly create new BitStream posts
+- **Floating QuickBit Button with Dropdown**: Added floating button in bottom-right corner for admin users with quick access to both post types
   - Appears on all pages for users with `edit_posts` capability
-  - Direct link to create new BitStream posts
+  - Dropdown menu with two options: "Add New Bit" and "Add New ReBit"
+  - "Add New ReBit" automatically inserts the ReBit URL block for sharing external content
   - Responsive design with mobile adjustments
   - WordPress admin bar positioning awareness
   - Smooth hover animations and accessibility features
