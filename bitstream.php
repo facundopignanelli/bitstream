@@ -334,13 +334,6 @@ class BitStream_Plugin {
             
             // Function to check if we're in a new post
             const checkIfNewPost = () => {
-                // First try WordPress editor API
-                if (typeof select !== 'undefined' && select('core/editor') && select('core/editor').isEditedPostNew) {
-                    const isNew = select('core/editor').isEditedPostNew();
-                    console.log('BitStream: WordPress editor says isNew:', isNew);
-                    return isNew;
-                }
-                
                 // Fallback 1: check URL for new post indicators
                 const urlCheck = window.location.href.includes('post-new.php');
                 console.log('BitStream: URL check for post-new.php:', urlCheck);
@@ -353,8 +346,17 @@ class BitStream_Plugin {
                 const hasQuotedBit = window.location.search.includes('quoted_bit=');
                 console.log('BitStream: Has quoted_bit parameter:', hasQuotedBit);
                 
-                // If we have a quoted_bit parameter, we should proceed regardless
-                return urlCheck && postIdCheck && hasQuotedBit;
+                // If we have a quoted_bit parameter on a post-new.php page, we should proceed
+                const shouldProceed = urlCheck && postIdCheck && hasQuotedBit;
+                console.log('BitStream: Should proceed with quote display:', shouldProceed);
+                
+                // Also try WordPress editor API as additional info (but don't block on it)
+                if (typeof select !== 'undefined' && select('core/editor') && select('core/editor').isEditedPostNew) {
+                    const isNew = select('core/editor').isEditedPostNew();
+                    console.log('BitStream: WordPress editor says isNew:', isNew);
+                }
+                
+                return shouldProceed;
             };
             
             if (checkIfNewPost()) {
