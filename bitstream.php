@@ -59,6 +59,7 @@ class BitStream_Plugin {
         add_filter('post_row_actions', [$this, 'add_quote_action'], 10, 2);
         add_action('edit_form_after_title', [$this, 'show_quoted_preview']);
         add_action('save_post_bit', [$this, 'save_quoted_meta']);
+        add_action('save_post_bit', [$this, 'save_rebit_og_data']);
         add_filter('the_content', [$this, 'display_quoted_content']);
         add_action('template_redirect', [$this, 'handle_single_bit_display']);
         add_action('wp_head', [$this, 'pwa_assets']);
@@ -594,6 +595,53 @@ JS;
         } else {
             delete_post_meta($post_id, '_bitstream_quoted_bit');
         }
+    }
+    
+    /**
+     * Save ReBit OpenGraph data when post is saved
+     */
+    public function save_rebit_og_data($post_id) {
+        // Check if this is a ReBit (has a rebit_url)
+        $rebit_url = get_post_meta($post_id, 'bitstream_rebit_url', true);
+        
+        if (empty($rebit_url)) {
+            // Not a ReBit, clean up any existing OG data
+            delete_post_meta($post_id, '_bitstream_og_title');
+            delete_post_meta($post_id, '_bitstream_og_desc');
+            delete_post_meta($post_id, '_bitstream_og_image');
+            return;
+        }
+        
+        // Check if we already have OG data for this URL
+        $existing_title = get_post_meta($post_id, '_bitstream_og_title', true);
+        if (!empty($existing_title)) {
+            return; // Already has OG data, probably from AJAX fetch
+        }
+        
+        // If we reach here, it means we have a ReBit URL but no OG data
+        // This could happen if the post was saved without using the block editor
+        // In this case, we'll fetch the data synchronously
+        $ajax_handler = new BitStream_Ajax_Handlers();
+        
+        // Simulate the AJAX request data
+        $_POST_backup = $_POST;
+        $_POST = [
+            'url' => $rebit_url,
+            'post_id' => $post_id,
+            'nonce' => wp_create_nonce('bitstream_og_fetch_nonce')
+        ];
+        
+        // Temporarily allow this to run without AJAX context
+        add_filter('wp_doing_ajax', '__return_true');
+        
+        // Capture the output and handle it
+        ob_start();
+        $ajax_handler->handle_fetch_og_data();
+        $output = ob_get_clean();
+        
+        // Restore original POST data
+        $_POST = $_POST_backup;
+        remove_filter('wp_doing_ajax', '__return_true');
     }
     
     /**
