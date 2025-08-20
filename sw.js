@@ -29,8 +29,9 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  // Only handle BitStream QuickPost related requests
-  if (event.request.url.includes('bitstream_quick_post') || 
+  // Only handle BitStream related requests within scope
+  if (event.request.url.includes('/bitstream/') || 
+      event.request.url.includes('bitstream_quick_post') || 
       event.request.url.includes('bitstream_quickpost') ||
       event.request.url.includes('/wp-content/plugins/bitstream/')) {
     event.respondWith(

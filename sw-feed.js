@@ -30,10 +30,11 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  // Handle BitStream feed requests specifically - avoid QuickPost conflicts
+  // Handle BitStream feed requests specifically - avoid other plugin conflicts
   if (event.request.url.includes('/bitstream/') && 
       !event.request.url.includes('bitstream_quick_post') &&
       !event.request.url.includes('bitstream_quickpost') &&
+      !event.request.url.includes('/pup-coupons/') &&
       (event.request.url.match(/\/bitstream\/?/) || 
        event.request.url.includes('/wp-content/plugins/bitstream/') ||
        event.request.url.includes('/wp-admin/admin-ajax.php'))) {

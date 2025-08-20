@@ -5,6 +5,25 @@ All notable changes to the BitStream WordPress plugin will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2025-08-20
+
+### Added
+- **Enhanced Shortcode Parameters**: Added new parameters to `[bitstream]` shortcode for flexible display options:
+  - `limit` - Show a fixed number of posts (e.g., `limit="3"` for latest 3 posts)
+  - `infinite_scroll` - Enable automatic infinite scroll (`infinite_scroll="true"`)
+  - `show_load_more` - Control load more button visibility (`show_load_more="false"`)
+- **Improved JavaScript**: Updated infinite scroll to use Intersection Observer API for better performance
+- **Parameter-Based Display**: Single shortcode now handles all display scenarios
+
+### Removed
+- **Deprecated Shortcode**: Removed `[bitstream_latest]` shortcode (use `[bitstream limit="3"]` instead)
+- **Redundant Code**: Eliminated duplicate functionality in favor of parameter-based approach
+
+### Changed
+- **Simplified API**: Consolidated all feed display options into the main `[bitstream]` shortcode
+- **Better Performance**: More efficient scroll handling with intersection observer
+- **Enhanced Documentation**: Updated README with comprehensive shortcode parameter examples
+
 ## [2.0.4] - 2025-08-19
 
 ### Fixed
@@ -81,7 +100,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Duplicate CSS animations and redundant styling rules
 - Missing error handling in AJAX requests
 
-## [RC 1.1] - 2025-08-19
+## [2.0] - 2025-08-19
 
 ### Added
 - **Modular Architecture**: Complete refactor to class-based, modular design
@@ -116,43 +135,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `assets/css/bitstream.css` - Consolidated styles
 - `assets/js/bitstream.js` - Optimized JavaScript
 
-## [beta 0.5] - 2025-08-19
-
-### Initial Features
-- Custom post type registration for "Bits" (microblogging posts)
-- Automatic title generation with format "Bit #YYYY-MM-DD:001"
-- Quick post form with shortcode `[bitstream_quick_post]`
-- ReBit functionality for sharing/embedding external URLs
-- Like system with localStorage tracking
-- Comment system integration with WordPress native comments
-- Infinite scroll and "Load More" functionality
-- PWA support with manifest and service worker
-- Admin interface for ReBit domain mappings
-- Quote functionality for referencing other Bits
-
-### Shortcodes
-- `[bitstream]` - Main feed display with pagination
-- `[bitstream_latest]` - Display 3 most recent Bits
-- `[bitstream_quick_post]` - Frontend posting form for logged-in users
-
-### Technical Features
-- REST API support for Bits post type
-- Font Awesome icon integration
-- Responsive design with mobile-friendly interface
-- YouTube embed support for ReBit URLs
-- Open Graph data fetching for link previews
-- Media library integration for image uploads
-
----
-
 ## Version History Summary
 
 - **2.0.4** - Single bit template integration and PWA installation fixes
 - **2.0.3** - PWA scope separation and conflict resolution
 - **2.0.2** - Permalink fixes and single post display
 - **2.0.1** - Version consistency and PWA enhancements  
-- **RC 1.1** - Major architecture overhaul with security and performance improvements
-- **beta 0.5** - Initial feature-complete release
+- **2.0** - Major architecture overhaul with security and performance improvements
 
 ## Contributing
 

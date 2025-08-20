@@ -100,15 +100,20 @@ document.querySelectorAll('.bit-comment-toggle').forEach(button => {
 
     let loading = false;
     const loadMoreButton = document.getElementById('bitstream-load-more');
+    const scrollTrigger = document.querySelector('.bitstream-scroll-trigger');
+    const isInfiniteScroll = feed.dataset.infiniteScroll === 'true';
 
     function loadNextPage() {
         const nextPage = parseInt(feed.dataset.page) + 1;
         const maxPage = parseInt(feed.dataset.maxPage);
         if (loading || nextPage > maxPage) return;
         loading = true;
+        
+        // Update button text if it exists
         if (loadMoreButton) {
             loadMoreButton.textContent = 'Loading…';
         }
+        
         const formData = new FormData();
         formData.append('action', 'bitstream_load_more');
         formData.append('page', nextPage);
@@ -128,11 +133,18 @@ document.querySelectorAll('.bit-comment-toggle').forEach(button => {
             });
             feed.dataset.page = nextPage;
             loading = false;
+            
+            // Update button state
             if (loadMoreButton) {
                 loadMoreButton.textContent = 'Load More';
                 if (nextPage >= maxPage) {
                     loadMoreButton.style.display = 'none';
                 }
+            }
+            
+            // Hide scroll trigger if we've reached the end
+            if (scrollTrigger && nextPage >= maxPage) {
+                scrollTrigger.style.display = 'none';
             }
         })
         .catch(() => {
@@ -143,17 +155,22 @@ document.querySelectorAll('.bit-comment-toggle').forEach(button => {
         });
     }
 
-    // Scroll trigger
-    window.addEventListener('scroll', () => {
-        if (loading) return;
-        const scrollPosition = window.innerHeight + window.scrollY;
-        const threshold = document.body.offsetHeight - 300;
-        if (scrollPosition >= threshold) {
-            loadNextPage();
-        }
-    });
+    // Infinite scroll: only trigger on scroll if infinite scroll is enabled
+    if (isInfiniteScroll && scrollTrigger) {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting && !loading) {
+                    loadNextPage();
+                }
+            });
+        }, {
+            rootMargin: '100px'
+        });
+        
+        observer.observe(scrollTrigger);
+    }
 
-    // Button trigger
+    // Load more button: always works when present
     if (loadMoreButton) {
         loadMoreButton.addEventListener('click', loadNextPage);
     }

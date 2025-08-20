@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BitStream
  * Description: A microblogging plugin for sharing Bits and ReBits.
- * Version: 2.0.4
+ * Version: 2.1.0
  * Author: Facundo Pignanelli
  * Text Domain: bitstream
  */
@@ -10,7 +10,7 @@
 // Exit if accessed directly
 if (!defined('ABSPATH')) exit;
 
-define('BITSTREAM_VERSION', '2.0.4');
+define('BITSTREAM_VERSION', '2.1.0');
 define('BITSTREAM_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('BITSTREAM_PLUGIN_PATH', plugin_dir_path(__FILE__));
 
@@ -487,7 +487,7 @@ JS;
             if("serviceWorker" in navigator) {
                 window.addEventListener("load", function() {
                     navigator.serviceWorker.register("'.esc_url($sw_url).'", {
-                        scope: "/",
+                        scope: "/bitstream/",
                         updateViaCache: "none"
                     }).then(function(registration) {
                         console.log("QuickPost SW registered with scope:", registration.scope);
@@ -555,7 +555,7 @@ JS;
                 if("serviceWorker" in navigator) {
                     window.addEventListener("load", function() {
                         navigator.serviceWorker.register("'.esc_url($sw_url).'", {
-                            scope: "/",
+                            scope: "/bitstream/",
                             updateViaCache: "none"
                         }).then(function(registration) {
                             console.log("BitStream Feed PWA registered with scope:", registration.scope);

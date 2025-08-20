@@ -21,7 +21,7 @@ For detailed release notes and version history, see [CHANGELOG.md](CHANGELOG.md)
 - **Quoted Bits:** Bits can quote another Bit, showing the quoted content, date, and a rich preview.
 - **Likes:** AJAX-powered like/unlike buttons with localStorage tracking and enhanced security.
 - **Comments:** Native WordPress comments enabled by default, with custom styling and AJAX toggling.
-- **Infinite Scroll & Load More:** The `[bitstream]` shortcode outputs a feed of Bits with infinite scroll and a "Load More" button. `[bitstream_latest]` renders the 3 most recent Bits.
+- **Infinite Scroll & Load More:** The `[bitstream]` shortcode outputs a feed of Bits with configurable infinite scroll and "Load More" button options.
 - **PWA Support:** On the Quick Post page, the plugin loads a manifest and service worker for a minimal Progressive Web App experience (installable, offline form, unique scope to avoid PWA clashes).
 - **Dual PWA System:** Two separate PWAs available:
   - **BitStream QuickPost**: For posting new content (`/bitstream/quickbit/`)
@@ -34,6 +34,41 @@ For detailed release notes and version history, see [CHANGELOG.md](CHANGELOG.md)
   - All images automatically fit cards regardless of insertion method
   - Mobile-friendly and accessible interface
 - **Font Awesome Support:** Uses Font Awesome icons for actions and ReBit labels.
+
+## Shortcodes
+
+BitStream provides two shortcodes for displaying and creating Bits:
+
+### `[bitstream]` - Main Feed
+Displays a feed of Bits with various customization options.
+
+**Parameters:**
+- `posts_per_page` (default: 10) - Number of posts to load per page
+- `limit` - Limit total number of posts displayed (e.g., `limit="3"` for latest 3 posts)
+- `infinite_scroll` (default: false) - Enable infinite scroll instead of load more button (`infinite_scroll="true"`)
+- `show_load_more` (default: true) - Control whether to show the load more button (`show_load_more="false"`)
+
+**Examples:**
+```
+[bitstream]                                    // Default feed with 10 posts per page and load more button
+[bitstream posts_per_page="5"]                // 5 posts per page with load more button
+[bitstream limit="3"]                          // Show only the latest 3 posts, no pagination
+[bitstream infinite_scroll="true"]             // Enable infinite scroll instead of load more button
+[bitstream posts_per_page="15" infinite_scroll="true"]  // 15 posts per page with infinite scroll
+[bitstream show_load_more="false"]             // Hide the load more button (static display)
+```
+
+**Note:** When using `limit` parameter, pagination is disabled and only the specified number of posts will be shown.
+
+### `[bitstream_quick_post]` - Quick Post Form
+Renders a front-end form for creating new Bits (requires logged-in user).
+
+**Examples:**
+```
+[bitstream_quick_post]                         // Simple post form
+```
+
+**Migration Note:** The `[bitstream_latest]` shortcode has been removed. Use `[bitstream limit="3"]` instead to show the latest 3 posts.
 
 ## Usage
 
@@ -99,7 +134,11 @@ bitstream/
 - Check that non-published posts can't be interacted with
 
 ### Functionality Testing
-- Test all shortcodes: `[bitstream]`, `[bitstream_latest]`, `[bitstream_quick_post]`
+- Test all shortcodes with different parameters:
+  - `[bitstream]` with default settings
+  - `[bitstream limit="3"]` for fixed number display (replaces `[bitstream_latest]`)
+  - `[bitstream infinite_scroll="true"]` for infinite scroll
+  - `[bitstream_quick_post]` for posting form
 - Verify comment system integration
 - Test ReBit URL processing and OG data fetching
 - Validate quote functionality
