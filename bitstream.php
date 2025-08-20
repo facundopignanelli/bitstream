@@ -656,9 +656,9 @@ JS;
         global $post;
         
         if (is_single() && $post && $post->post_type === 'bit') {
-            // Ensure assets are loaded
-            wp_enqueue_style('bitstream-css');
-            wp_enqueue_script('bitstream-js');
+            // Ensure assets are loaded with proper priority
+            wp_enqueue_style('bitstream-css', BITSTREAM_PLUGIN_URL . 'assets/css/bitstream.css', [], BITSTREAM_VERSION);
+            wp_enqueue_script('bitstream-js', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream.js', ['jquery'], BITSTREAM_VERSION, true);
             
             // Add body class for better targeting
             add_filter('body_class', function($classes) {
@@ -773,18 +773,99 @@ JS;
                     text-decoration: none;
                 }
                 
-                /* Ensure BitStream card displays properly */
+                /* Ensure BitStream card displays properly - override masonry layout positioning */
                 .bitstream-single-wrapper .bit-card {
+                    position: static !important; /* Override masonry absolute positioning */
+                    width: 100% !important; /* Full width for single display */
+                    max-width: 100% !important;
+                    margin: 0 auto !important;
                     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
                     border: 1px solid #e1e1e1;
                     display: block !important;
                     visibility: visible !important;
+                    background: white;
+                    border-radius: 16px;
+                    padding: 1.5rem;
+                    transform: none !important; /* Remove masonry transforms */
+                    left: auto !important;
+                    top: auto !important;
+                }
+                    visibility: visible !important;
                 }
                 
-                /* Ensure all bit card elements are visible */
+                /* Ensure all bit card elements are visible and properly styled */
                 .bitstream-single-wrapper .bit-card * {
                     display: revert !important;
                     visibility: visible !important;
+                }
+                
+                /* Style the bit card header */
+                .bitstream-single-wrapper .bit-card-header {
+                    display: flex !important;
+                    align-items: flex-start !important;
+                    margin-bottom: 1rem !important;
+                    gap: 0.75rem !important;
+                }
+                
+                .bitstream-single-wrapper .bit-avatar {
+                    flex-shrink: 0 !important;
+                    width: 48px !important;
+                    height: 48px !important;
+                    border-radius: 50% !important;
+                    overflow: hidden !important;
+                }
+                
+                .bitstream-single-wrapper .bit-avatar img {
+                    width: 100% !important;
+                    height: 100% !important;
+                    object-fit: cover !important;
+                }
+                
+                .bitstream-single-wrapper .bit-author-info h3 {
+                    margin: 0 !important;
+                    font-size: 1rem !important;
+                    font-weight: 600 !important;
+                    color: #333 !important;
+                }
+                
+                .bitstream-single-wrapper .bit-timestamp {
+                    font-size: 0.875rem !important;
+                    color: #666 !important;
+                    margin: 0 !important;
+                }
+                
+                /* Style the bit card content */
+                .bitstream-single-wrapper .bit-card-content {
+                    margin: 1rem 0 !important;
+                    line-height: 1.6 !important;
+                    color: #333 !important;
+                }
+                
+                /* Style the bit card footer */
+                .bitstream-single-wrapper .bit-card-footer {
+                    display: flex !important;
+                    gap: 1rem !important;
+                    font-size: 0.875rem !important;
+                    align-items: center !important;
+                    margin-top: 1rem !important;
+                    padding-top: 1rem !important;
+                    border-top: 1px solid #eee !important;
+                }
+                
+                .bitstream-single-wrapper .bit-action {
+                    background: none !important;
+                    border: none !important;
+                    cursor: pointer !important;
+                    color: #666 !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    gap: 0.25rem !important;
+                    font-size: 0.875rem !important;
+                    transition: color 0.2s ease !important;
+                }
+                
+                .bitstream-single-wrapper .bit-action:hover {
+                    color: #2c6e49 !important;
                 }
                 
                 /* Handle theme-specific containers */

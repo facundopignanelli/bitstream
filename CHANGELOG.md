@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Automatic form handling to save quote relationships
   - Beautiful styling that integrates seamlessly with the block editor interface
   - Full context display when quoting bits from the feed
+  - Quote detection with URL-based fallbacks for reliable bit retrieval
+  - Comprehensive debugging system for quote functionality
 - **Floating QuickBit Button with Dropdown**: Added floating button in bottom-right corner for admin users with quick access to both post types
   - Appears on all pages for users with `edit_posts` capability
   - Dropdown menu with two options: "Add New Bit" and "Add New ReBit"
@@ -37,8 +39,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fallback support for posts created outside the block editor
   - Enhanced AJAX system with caching and error handling
 - **ReBit Support**: Enhanced support for sharing and displaying linked content (ReBits) with proper metadata handling
+- **Service Worker Management**: Custom endpoint system for serving Service Worker files
+  - Custom rewrite rules to serve SW files from root domain with proper headers
+  - Automatic Service Worker scope resolution to prevent 404 errors
+  - Proper Content-Type headers for JavaScript Service Worker files
+  - Query variable handling for Service Worker routing
+- **Single Bit Page Styling**: Comprehensive styling system for individual bit display
+  - Dedicated CSS overrides for single bit pages to prevent masonry layout conflicts
+  - Body class targeting (`bitstream-single-bit`) for precise styling control
+  - Back navigation link to BitStream feed with proper styling
+  - Card-based layout with proper borders, shadows, and spacing
+  - Avatar, timestamp, and metadata display matching feed appearance
+  - Action buttons (like, comment, quote, permalink) fully functional on single pages
 
 ### Fixed
+- **JavaScript Errors**: Fixed critical jQuery undefined errors preventing functionality
+  - Replaced `$` references with `jQuery` namespace for proper WordPress compatibility
+  - Fixed template literal syntax in PHP causing JavaScript syntax errors
+  - Enhanced error handling and debugging for quote detection
+- **Service Worker Scope Issues**: Resolved Service Worker 404 errors and scope conflicts
+  - Custom endpoint serving SW files from root domain instead of plugin directory
+  - Proper JavaScript Content-Type headers for Service Worker registration
+  - Automatic scope resolution preventing browser registration failures
+- **Single Bit Display Issues**: Fixed styling problems on individual bit pages
+  - Overrode masonry layout absolute positioning with static positioning
+  - Added comprehensive CSS styling for all bit card components
+  - Fixed theme conflicts hiding bit metadata and content
+  - Ensured proper card layout with headers, content, and footer sections
+  - Resolved avatar and timestamp display issues
+- **Quote Context Display**: Fixed quoted bit not appearing in block editor
+  - Enhanced quote detection logic with multiple fallback methods
+  - URL-based bit retrieval when standard methods fail
+  - Comprehensive AJAX handling with proper error responses
+  - Visual context preview showing original bit content, author, and timestamp
 - **Layout Issues**: Fixed responsive column layout overlapping and spacing problems
 - **Card Containment**: Resolved cards rendering outside page boundaries
 - **Comment Animation**: Fixed conflicting CSS rules that prevented comment sliding animation
