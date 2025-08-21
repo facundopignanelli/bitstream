@@ -14,83 +14,28 @@ if (!defined('ABSPATH')) exit;
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 
 <style>
-/* Prevent horizontal overflow while preserving vertical scrolling */
-html {
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
-    max-width: 100vw !important;
+/* Clean, simple layout without aggressive overflow controls */
+
+/* Basic responsive layout */
+.flex-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 20px;
 }
 
-body {
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
-    max-width: 100vw !important;
+.flex-item {
+    flex: 1;
+    min-width: 300px;
 }
 
-/* WordPress admin body override */
-body.wp-admin {
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
-    max-width: 100vw !important;
-}
-
-/* Main WordPress containers - Prevent horizontal overflow only */
-#wpwrap {
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
-    max-width: 100vw !important;
-    position: relative !important;
-}
-
-#wpcontent {
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
-    max-width: calc(100vw - 160px) !important;
-    position: relative !important;
-}
-
-#wpbody-content {
-    overflow-x: hidden !important;
-    max-width: 100% !important;
-    padding-right: 20px !important;
-    padding-left: 20px !important;
-    position: relative !important;
-}
-
-/* Universal container - Prevent horizontal overflow only */
-.wrap {
-    overflow-x: hidden !important;
-    max-width: 100% !important;
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    box-sizing: border-box !important;
-    position: relative !important;
-}
-
-/* Ensure absolutely NO element can overflow */
-.wrap,
-.wrap *,
-.wrap *::before,
-.wrap *::after {
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    overflow-wrap: break-word !important;
-    word-wrap: break-word !important;
-    word-break: break-word !important;
-}
-
-/* Card containers */
+/* Simple card styling */
 .card {
     background: #fff;
     border: 1px solid #ccd0d4;
     border-radius: 4px;
     padding: 20px;
     margin-bottom: 20px;
-    overflow: hidden !important;
-    box-sizing: border-box !important;
-    max-width: 100% !important;
-    width: 100% !important;
 }
 
 .card .title {
@@ -99,388 +44,223 @@ body.wp-admin {
     font-size: 1.1em;
 }
 
-/* Flex containers with strict width control - DEFAULT TO SINGLE COLUMN */
-.flex-container {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 20px !important;
-    max-width: 100% !important;
-    width: 100% !important;
-    overflow: hidden !important;
-    box-sizing: border-box !important;
-}
-
-.flex-item {
-    flex: none !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    box-sizing: border-box !important;
-    overflow: hidden !important;
-}
-
-/* Only use side-by-side layout on very large screens */
-@media (min-width: 1600px) {
-    .flex-container {
-        flex-direction: row !important;
-        gap: 30px !important;
-    }
-    
-    .flex-item {
-        flex: 1 1 300px !important;
-        width: auto !important;
-        max-width: calc(50% - 15px) !important;
-    }
-}
-
-/* Mapping rows with controlled width - FORCE SINGLE COLUMN EARLY */
+/* Clean mapping rows */
 .mapping-row {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 12px !important;
-    margin-bottom: 15px !important;
-    padding: 15px !important;
-    border: 1px solid #ddd !important;
-    border-radius: 5px !important;
-    background: #fafafa !important;
-    overflow: hidden !important;
-    box-sizing: border-box !important;
-    max-width: 100% !important;
-    width: 100% !important;
-    min-width: 0 !important;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    padding: 15px;
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #fafafa;
 }
 
-.mapping-field,
-.mapping-preview-field,
-.mapping-actions {
-    flex: none !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    box-sizing: border-box !important;
-    overflow: hidden !important;
-    position: relative !important;
+.mapping-field {
+    flex: 1;
+    min-width: 200px;
 }
 
-/* Only use row layout on very large screens */
-@media (min-width: 1600px) {
-    .mapping-row {
-        flex-direction: row !important;
-        gap: 15px !important;
-    }
-    
-    .mapping-field {
-        flex: 1 1 200px !important;
-        width: auto !important;
-        max-width: calc(25% - 12px) !important;
-    }
-    
-    .mapping-preview-field {
-        flex: 0 0 180px !important;
-        width: 180px !important;
-        max-width: 180px !important;
-    }
-    
-    .mapping-actions {
-        flex: 0 0 100px !important;
-        width: 100px !important;
-        max-width: 100px !important;
-    }
+.mapping-field label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
 }
 
-/* Input fields with EXTREME overflow control */
-.mapping-row input[type="text"],
-.card input[type="text"],
-.card select {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    box-sizing: border-box !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
-    border: 1px solid #ddd !important;
-    padding: 4px 6px !important;
-    margin: 0 !important;
-    position: relative !important;
-    display: block !important;
+.mapping-field input[type="text"],
+.mapping-field select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    box-sizing: border-box;
 }
 
-/* Special handling for icon input with button */
-.mapping-field input[style*="padding-right"] {
-    padding-right: 30px !important;
-}
-
-/* Icon picker button positioning */
+/* Icon picker styling */
 .icon-input-container {
-    position: relative !important;
-    overflow: visible !important;
+    position: relative;
 }
 
-/* Ensure icon picker buttons are visible and not clipped */
 .icon-picker-button {
-    position: absolute !important;
-    right: 10px !important;
-    top: 2px !important;
-    height: 26px !important;
-    padding: 2px 8px !important;
-    z-index: 10 !important;
-    background: #f0f0f1 !important;
-    border: 1px solid #8c8f94 !important;
-    border-radius: 3px !important;
-    cursor: pointer !important;
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #f0f0f1;
+    border: 1px solid #8c8f94;
+    border-radius: 3px;
+    padding: 4px 8px;
+    cursor: pointer;
+    height: 28px;
+    width: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .icon-picker-button:hover {
-    background: #e0e0e1 !important;
-    border-color: #7c7f84 !important;
-}
-.mapping-field .button {
-    max-width: 25px !important;
-    padding: 1px 4px !important;
-    font-size: 11px !important;
+    background: #e0e0e1;
 }
 
-.mapping-preview {
-    font-size: 12px;
-    line-height: 1.3;
-    padding: 6px;
-    border: 1px solid #ccc;
-    border-radius: 3px;
+/* Modal styling */
+#icon-picker-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 999999;
+}
+
+#icon-picker-modal.show {
+    display: flex;
+}
+
+.icon-picker-content {
     background: white;
-    min-height: 24px;
-    word-wrap: break-word;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
-    box-sizing: border-box !important;
-    max-width: 100% !important;
-    width: 100% !important;
-    position: relative !important;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
-/* Responsive breakpoints - ULTRA aggressive overflow prevention */
-@media (max-width: 1600px) {
-    .mapping-field {
-        flex: 1 1 140px !important;
-        max-width: calc(33.33% - 6px) !important;
-    }
+.icon-picker-header {
+    padding: 20px;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-@media (max-width: 1400px) {
-    .mapping-field {
-        flex: 1 1 120px !important;
-        max-width: calc(50% - 6px) !important;
-    }
-    
-    .mapping-preview-field {
-        flex: 1 1 120px !important;
-        max-width: calc(50% - 6px) !important;
-    }
+.icon-picker-header h3 {
+    margin: 0;
 }
 
-@media (max-width: 1200px) {
-    /* Force single column much earlier */
-    .flex-item {
-        max-width: 100% !important;
-        flex: 1 1 100% !important;
-    }
-    
-    .mapping-row {
-        flex-direction: column !important;
-        gap: 8px !important;
-    }
-    
-    .mapping-field,
-    .mapping-preview-field,
-    .mapping-actions {
-        flex: 1 1 auto !important;
-        max-width: 100% !important;
-        min-width: 0 !important;
-    }
+.icon-picker-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-@media (max-width: 900px) {
-    .wrap {
-        max-width: calc(100vw - 40px) !important;
-        padding: 0 8px !important;
-    }
-    
-    #wpcontent {
-        max-width: calc(100vw - 60px) !important;
-    }
-    
-    .flex-container {
-        flex-direction: column !important;
-        gap: 8px !important;
-    }
+.icon-picker-search {
+    padding: 10px 20px;
+    border-bottom: 1px solid #ddd;
 }
 
-@media (max-width: 782px) {
-    /* WordPress mobile admin breakpoint */
-    .wrap {
-        max-width: calc(100vw - 20px) !important;
-        padding: 0 5px !important;
-    }
-    
-    #wpcontent {
-        max-width: calc(100vw - 30px) !important;
-    }
-    
-    #wpbody-content {
-        padding-right: 10px !important;
-        padding-left: 10px !important;
-    }
-    
-    .card {
-        padding: 10px !important;
-        margin-bottom: 10px !important;
-    }
-    
-    .mapping-row {
-        padding: 8px !important;
-        gap: 5px !important;
-    }
-    
-    .mapping-row input[type="text"],
-    .card input[type="text"],
-    .card select {
-        padding: 3px 4px !important;
-        font-size: 14px !important;
-    }
+.icon-picker-search input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
 }
 
-@media (max-width: 600px) {
-    /* Ultra narrow screens */
-    .wrap {
-        max-width: calc(100vw - 10px) !important;
-        padding: 0 2px !important;
-    }
-    
-    #wpcontent {
-        max-width: calc(100vw - 20px) !important;
-    }
+.icon-picker-tabs {
+    padding: 10px 20px;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    gap: 10px;
 }
 
-/* Force all elements to never exceed container bounds - NUCLEAR OPTION */
-.wrap *,
-.card *,
-.mapping-row *,
-.flex-container *,
-.flex-item * {
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    overflow: hidden !important;
-    position: relative !important;
-}
-
-/* Ensure buttons don't cause overflow */
-.button {
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    word-break: break-all !important;
-}
-
-/* Last resort: clip anything that tries to overflow */
-.wrap {
-    clip-path: inset(0 0 0 0) !important;
-    contain: layout style paint !important;
-}
-
-.mapping-row {
-    contain: layout style !important;
-}
-
-.mapping-row:hover {
-    background: #f0f0f1 !important;
-}
 .icon-category {
     padding: 8px 16px;
+    background: #f0f0f0;
     border: 1px solid #ddd;
-    background: #f7f7f7;
+    border-radius: 4px;
     cursor: pointer;
-    border-radius: 4px;
-    transition: all 0.2s;
+    font-size: 12px;
 }
-.icon-category:hover {
-    background: #e7e7e7;
-    border-color: #2c6e49;
-}
+
 .icon-category.active {
-    background: #2c6e49;
+    background: #0073aa;
     color: white;
-    border-color: #2c6e49;
-}
-.icon-option:hover {
-    background: #f0f0f0 !important;
-    border-color: #2c6e49 !important;
-    transform: translateY(-2px);
-    box-shadow: 0 2px 8px rgba(44, 110, 73, 0.2);
-}
-#icon-picker-modal {
-    backdrop-filter: blur(2px);
-    z-index: 999999 !important;
-    position: fixed !important;
-    display: none !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    background: rgba(0,0,0,0.5) !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    padding: 20px !important;
-    box-sizing: border-box !important;
-    justify-content: center !important;
-    align-items: flex-start !important;
 }
 
-/* Ensure modal appears above everything and overrides our restrictive CSS */
-#icon-picker-modal.show {
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-}
-
-/* Modal content should be properly centered */
-#icon-picker-modal > div {
-    position: relative !important;
-    z-index: 1000000 !important;
-    max-width: 600px !important;
-    width: 90% !important;
-    max-height: 80vh !important;
-    margin: 50px auto !important;
-    background: white !important;
-    border-radius: 4px !important;
-    overflow: visible !important;
-    box-sizing: border-box !important;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
-}
-
-/* Icon grid should be scrollable */
 #icon-grid {
-    max-height: 400px !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    padding: 10px !important;
-    box-sizing: border-box !important;
+    padding: 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 10px;
+    max-height: 400px;
+    overflow-y: auto;
 }
-#icon-grid::-webkit-scrollbar {
-    width: 8px;
-}
-#icon-grid::-webkit-scrollbar-track {
-    background: #f1f1f1;
+
+.icon-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+    border: 1px solid #ddd;
     border-radius: 4px;
+    cursor: pointer;
+    text-align: center;
+    background: white;
 }
-#icon-grid::-webkit-scrollbar-thumb {
-    background: #888;
+
+.icon-option:hover {
+    background: #f0f0f0;
+    border-color: #0073aa;
+}
+
+.icon-option i {
+    font-size: 20px;
+    margin-bottom: 5px;
+    color: #444;
+}
+
+.icon-option span {
+    font-size: 10px;
+    color: #666;
+    word-break: break-all;
+}
+
+/* Preview styling */
+.mapping-preview {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    background: white;
+    border: 1px solid #ddd;
     border-radius: 4px;
+    margin-top: 10px;
 }
-#icon-grid::-webkit-scrollbar-thumb:hover {
-    background: #555;
+
+.mapping-preview i {
+    margin-right: 8px;
+    color: #2c6e49;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .flex-container {
+        flex-direction: column;
+    }
+    
+    .flex-item {
+        min-width: 100%;
+    }
+    
+    .mapping-row {
+        flex-direction: column;
+    }
+    
+    #icon-grid {
+        grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    }
 }
 </style>
 
@@ -534,12 +314,11 @@ body.wp-admin {
                 </div>
                 <div style="margin-bottom: 15px;">
                     <label><strong>Icon Class:</strong></label><br>
-                    <div style="position: relative;">
+                    <div class="icon-input-container">
                         <input type="text" name="bitstream_rebit_mappings[new][icon]" 
-                               placeholder="fas fa-link" style="width: calc(100% - 40px); padding-right: 8px; box-sizing: border-box;" 
+                               placeholder="fas fa-link" 
                                id="new-icon-input" />
-                        <button type="button" class="button" onclick="openIconPicker('new-icon-input')" 
-                                style="position: absolute; right: 5px; top: 2px; height: 26px; padding: 2px 6px; z-index: 10; width: 32px; min-width: 32px;">
+                        <button type="button" class="icon-picker-button" onclick="openIconPicker('new-icon-input')">
                             <i class="fas fa-palette"></i>
                         </button>
                     </div>
@@ -579,13 +358,12 @@ body.wp-admin {
                             </div>
                             <div class="mapping-field">
                                 <label><strong>Icon Class:</strong></label><br>
-                                <div style="position: relative;">
+                                <div class="icon-input-container">
                                     <input type="text" name="bitstream_rebit_mappings[existing][<?php echo $i; ?>][icon]" 
                                            value="<?php echo esc_attr($map['icon']); ?>" 
-                                           placeholder="fab fa-twitter" style="width: calc(100% - 40px); padding-right: 8px; box-sizing: border-box;" 
+                                           placeholder="fab fa-twitter" 
                                            id="icon-input-<?php echo $i; ?>" />
-                                    <button type="button" class="button" onclick="openIconPicker('icon-input-<?php echo $i; ?>')" 
-                                            style="position: absolute; right: 5px; top: 2px; height: 26px; padding: 2px 6px; z-index: 10; width: 32px; min-width: 32px;">
+                                    <button type="button" class="icon-picker-button" onclick="openIconPicker('icon-input-<?php echo $i; ?>')">
                                         <i class="fas fa-palette"></i>
                                     </button>
                                 </div>
@@ -614,25 +392,25 @@ body.wp-admin {
     </form>
     
     <!-- Icon Picker Modal -->
-    <div id="icon-picker-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100000;">
-        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 8px; max-width: 800px; max-height: 80vh; overflow-y: auto;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #ddd; padding-bottom: 10px;">
-                <h3 style="margin: 0;">Select an Icon</h3>
-                <button type="button" onclick="closeIconPicker()" style="background: none; border: none; font-size: 20px; cursor: pointer;">&times;</button>
+    <div id="icon-picker-modal">
+        <div class="icon-picker-content">
+            <div class="icon-picker-header">
+                <h3>Select an Icon</h3>
+                <button type="button" class="icon-picker-close" onclick="closeIconPicker()">&times;</button>
             </div>
             
-            <div style="margin-bottom: 15px;">
-                <input type="text" id="icon-search" placeholder="Search icons..." style="width: 100%; padding: 8px;" onkeyup="filterIcons()" />
+            <div class="icon-picker-search">
+                <input type="text" id="icon-search" placeholder="Search icons..." onkeyup="filterIcons()" />
             </div>
             
-            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <div class="icon-picker-tabs">
                 <button type="button" class="icon-category active" onclick="showCategory('all')" data-category="all">All</button>
                 <button type="button" class="icon-category" onclick="showCategory('brands')" data-category="brands">Brands</button>
                 <button type="button" class="icon-category" onclick="showCategory('solid')" data-category="solid">Solid</button>
                 <button type="button" class="icon-category" onclick="showCategory('regular')" data-category="regular">Regular</button>
             </div>
             
-            <div id="icon-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; max-height: 400px; overflow-y: auto;">
+            <div id="icon-grid">
                 <!-- Icons will be populated by JavaScript -->
             </div>
         </div>
@@ -1049,61 +827,5 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-    
-    function preventOverflow() {
-        const wrap = document.querySelector('.wrap');
-        if (!wrap) return;
-        
-        const viewportWidth = window.innerWidth;
-        const adminBarWidth = 160; // WordPress admin sidebar
-        const padding = 40; // Safety padding
-        const maxAllowedWidth = viewportWidth - adminBarWidth - padding;
-        
-        // Force maximum width on main container
-        wrap.style.maxWidth = maxAllowedWidth + 'px';
-        wrap.style.overflow = 'hidden';
-        wrap.style.position = 'relative';
-        
-        // Check all mapping rows
-        const mappingRows = document.querySelectorAll('.mapping-row');
-        mappingRows.forEach(function(row) {
-            if (row.scrollWidth > row.clientWidth) {
-                console.log('BitStream: Forcing single column layout due to overflow');
-                row.style.flexDirection = 'column';
-                row.style.gap = '8px';
-                
-                // Force all children to full width
-                const children = row.children;
-                for (let i = 0; i < children.length; i++) {
-                    children[i].style.flex = '1 1 auto';
-                    children[i].style.maxWidth = '100%';
-                    children[i].style.minWidth = '0';
-                }
-            }
-        });
-        
-        // Force all inputs to fit within their containers
-        const inputs = document.querySelectorAll('.mapping-row input[type="text"], .card input[type="text"], .card select');
-        inputs.forEach(function(input) {
-            input.style.maxWidth = '100%';
-            input.style.width = '100%';
-            input.style.boxSizing = 'border-box';
-            input.style.overflow = 'hidden';
-            input.style.textOverflow = 'ellipsis';
-            input.style.whiteSpace = 'nowrap';
-        });
-    }
-    
-    // Run immediately
-    preventOverflow();
-    
-    // Run on window resize
-    window.addEventListener('resize', preventOverflow);
-    
-    // Run after any DOM changes (for dynamic content)
-    const observer = new MutationObserver(preventOverflow);
-    observer.observe(document.body, { childList: true, subtree: true });
-    
-    console.log('BitStream: Overflow prevention active');
 });
 </script>
