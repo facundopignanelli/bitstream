@@ -212,6 +212,29 @@ body.wp-admin {
 }
 
 /* Icon picker button positioning */
+.icon-input-container {
+    position: relative !important;
+    overflow: visible !important;
+}
+
+/* Ensure icon picker buttons are visible and not clipped */
+.icon-picker-button {
+    position: absolute !important;
+    right: 10px !important;
+    top: 2px !important;
+    height: 26px !important;
+    padding: 2px 8px !important;
+    z-index: 10 !important;
+    background: #f0f0f1 !important;
+    border: 1px solid #8c8f94 !important;
+    border-radius: 3px !important;
+    cursor: pointer !important;
+}
+
+.icon-picker-button:hover {
+    background: #e0e0e1 !important;
+    border-color: #7c7f84 !important;
+}
 .mapping-field .button {
     max-width: 25px !important;
     padding: 1px 4px !important;
@@ -402,11 +425,29 @@ body.wp-admin {
     z-index: 999999 !important;
     position: fixed !important;
     display: none !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(0,0,0,0.5) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
 }
 
-/* Ensure modal appears above everything */
+/* Ensure modal appears above everything and overrides our restrictive CSS */
 #icon-picker-modal.show {
     display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Modal content should not be affected by parent overflow */
+#icon-picker-modal > div {
+    position: relative !important;
+    z-index: 1000000 !important;
+    max-width: 90vw !important;
+    max-height: 90vh !important;
+    overflow: visible !important;
 }
 #icon-grid::-webkit-scrollbar {
     width: 8px;
@@ -427,17 +468,6 @@ body.wp-admin {
 <div class="wrap">
     <h1>ReBit Mappings</h1>
     <p class="description">Configure how different websites appear when shared as ReBits. Each mapping adds a custom icon and label for specific domains.</p>
-    
-    <!-- Debug: Test button for icon picker -->
-    <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 10px; margin: 10px 0; border-radius: 4px;">
-        <strong>Debug:</strong> 
-        <button type="button" class="button" onclick="console.log('Test button clicked'); window.openIconPicker('new-icon-input');">
-            Test Icon Picker
-        </button>
-        <span style="margin-left: 10px; font-size: 12px; color: #666;">
-            Click to test if icon picker works. Check browser console for debug info.
-        </span>
-    </div>
     
     <!-- Top Section: Quick Add and Add New Mapping -->
     <div class="flex-container">
@@ -487,10 +517,10 @@ body.wp-admin {
                     <label><strong>Icon Class:</strong></label><br>
                     <div style="position: relative;">
                         <input type="text" name="bitstream_rebit_mappings[new][icon]" 
-                               placeholder="fas fa-link" style="width: 100%; padding-right: 40px; box-sizing: border-box;" 
+                               placeholder="fas fa-link" style="width: 100%; padding-right: 50px; box-sizing: border-box;" 
                                id="new-icon-input" />
                         <button type="button" class="button" onclick="openIconPicker('new-icon-input')" 
-                                style="position: absolute; right: 5px; top: 2px; height: 26px; padding: 2px 8px;">
+                                style="position: absolute; right: 10px; top: 2px; height: 26px; padding: 2px 8px; z-index: 10;">
                             <i class="fas fa-palette"></i>
                         </button>
                     </div>
@@ -533,10 +563,10 @@ body.wp-admin {
                                 <div style="position: relative;">
                                     <input type="text" name="bitstream_rebit_mappings[<?php echo $i; ?>][icon]" 
                                            value="<?php echo esc_attr($map['icon']); ?>" 
-                                           placeholder="fab fa-twitter" style="padding-right: 40px;" 
+                                           placeholder="fab fa-twitter" style="padding-right: 50px; width: 100%; box-sizing: border-box;" 
                                            id="icon-input-<?php echo $i; ?>" />
                                     <button type="button" class="button" onclick="openIconPicker('icon-input-<?php echo $i; ?>')" 
-                                            style="position: absolute; right: 5px; top: 2px; height: 26px; padding: 2px 8px;">
+                                            style="position: absolute; right: 10px; top: 2px; height: 26px; padding: 2px 8px; z-index: 10;">
                                         <i class="fas fa-palette"></i>
                                     </button>
                                 </div>
