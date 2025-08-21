@@ -249,6 +249,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const observer = new MutationObserver(() => {
         makeEmbedsResponsive();
         initFloatingMenu(); // Re-init floating menu if new content added
+        initCommentToggles(); // Re-init comment toggles for new content
     });
     
     observer.observe(document.body, {
@@ -256,16 +257,72 @@ document.addEventListener('DOMContentLoaded', function () {
         subtree: true
     });
 
-    // Comment Toggle button
-document.querySelectorAll('.bit-comment-toggle').forEach(button => {
-    button.addEventListener('click', () => {
-        const targetId = button.dataset.target;
-        const section = document.getElementById(targetId);
-        if (section) {
-            section.classList.toggle('open');
-        }
+    // Comment Toggle button - using event delegation for dynamic content
+    function initCommentToggles() {
+        document.querySelectorAll('.bit-comment-toggle').forEach(button => {
+            // Skip if already initialized
+            if (button.dataset.initialized === 'true') return;
+            
+            button.dataset.initialized = 'true';
+            button.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetId = button.dataset.target;
+                const section = document.getElementById(targetId);
+                if (section) {
+                    section.classList.toggle('open');
+                    
+                    // Find the parent bit-card and toggle comments-open class for z-index fix
+                    const bitCard = section.closest('.bit-card');
+                    if (bitCard) {
+                        if (section.classList.contains('open')) {
+                            bitCard.classList.add('comments-open');
+                            console.log('Comments opened for card:', bitCard); // Debug log
+                            
+                            // Force a higher z-index for desktop masonry layout
+                            if (window.innerWidth >= 768) {
+                                bitCard.style.zIndex = '100';
+                                section.style.zIndex = '101';
+                            }
+                        } else {
+                            bitCard.classList.remove('comments-open');
+                            console.log('Comments closed for card:', bitCard); // Debug log
+                            
+                            // Reset z-index when closing
+                            if (window.innerWidth >= 768) {
+                                bitCard.style.zIndex = '2';
+                                section.style.zIndex = '';
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    }
+    
+    // Initialize comment toggles
+    initCommentToggles();
+
+    // Handle window resize to adjust z-index behavior
+    window.addEventListener('resize', () => {
+        // Reset all z-index styles on resize
+        document.querySelectorAll('.bit-card.comments-open').forEach(card => {
+            if (window.innerWidth < 768) {
+                // Mobile: reset to default
+                card.style.zIndex = '';
+                const commentSection = card.querySelector('.bit-comments.open');
+                if (commentSection) {
+                    commentSection.style.zIndex = '';
+                }
+            } else {
+                // Desktop: apply masonry z-index fix
+                card.style.zIndex = '100';
+                const commentSection = card.querySelector('.bit-comments.open');
+                if (commentSection) {
+                    commentSection.style.zIndex = '101';
+                }
+            }
+        });
     });
-});
     // Infinite Scroll & Load More with Masonry Layout
     const feed = document.querySelector('.bitstream-feed');
     if (!feed) return;

@@ -69,6 +69,23 @@
     z-index: 2; /* Ensure cards stay within their container context */
 }
 
+/* When comments are open, bring the entire card to the front (desktop only) */
+@media (min-width: 768px) {
+    .bit-card:has(.bit-comments.open) {
+        z-index: 100 !important;
+    }
+    
+    /* Fallback for browsers that don't support :has() */
+    .bit-card.comments-open {
+        z-index: 100 !important;
+    }
+    
+    /* Ensure opened comments have higher z-index on desktop */
+    .bit-comments.open {
+        z-index: 101 !important;
+    }
+}
+
 @media (min-width: 768px) {
     .bit-card {
         width: calc(50% - 1rem);
@@ -348,12 +365,29 @@
     overflow: hidden;
     transition: max-height 0.4s ease-out, opacity 0.4s ease-out, margin-top 0.4s ease-out;
     margin-top: 0;
+    position: relative;
+    z-index: 1; /* Default z-index for closed comments */
 }
 
 .bit-comments.open {
     max-height: 2000px; /* Increased for longer comment threads */
     opacity: 1;
     margin-top: 1rem;
+    position: relative;
+    z-index: 15; /* Base z-index for opened comments */
+    background: white; /* Ensure background doesn't show through */
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15); /* Enhanced shadow for better depth */
+    border-radius: 8px; /* Match card styling */
+    padding: 1rem; /* Add some padding for better spacing */
+}
+
+/* Desktop-specific comment enhancements */
+@media (min-width: 768px) {
+    .bit-comments.open {
+        z-index: 101 !important; /* Higher z-index on desktop masonry */
+        box-shadow: 0 8px 24px rgba(0,0,0,0.2); /* Stronger shadow on desktop */
+        border: 1px solid #e0e0e0; /* Subtle border for definition */
+    }
 }
 
 /* Responsive adjustments for JavaScript masonry layout */
