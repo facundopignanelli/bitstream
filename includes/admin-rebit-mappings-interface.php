@@ -202,11 +202,18 @@ if (!defined('ABSPATH')) exit;
     border-radius: 4px;
     cursor: pointer;
     font-size: 12px;
+    transition: all 0.2s ease;
+}
+
+.icon-category:hover {
+    background: #e8f4f0;
+    border-color: #2c6e49;
 }
 
 .icon-category.active {
-    background: #0073aa;
+    background: #2c6e49;
     color: white;
+    border-color: #2c6e49;
 }
 
 #icon-grid {
@@ -227,6 +234,8 @@ if (!defined('ABSPATH')) exit;
     padding: 40px 20px;
     text-align: center;
     color: #666;
+    grid-column: 1 / -1;
+    width: 100%;
 }
 
 .icon-loading-spinner {

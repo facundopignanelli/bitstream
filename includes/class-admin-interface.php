@@ -240,17 +240,48 @@ class BitStream_Admin_Interface {
         // Handle form submission
         if (isset($_POST['bitstream_rebit_mappings']) && check_admin_referer('bitstream_rebit_mappings_save','bitstream_rebit_mappings_nonce')) {
             $posted = $_POST['bitstream_rebit_mappings'];
+            $current_mappings = get_option('bitstream_rebit_mappings', []);
             $new = [];
-            foreach ($posted as $map) {
-                if (isset($map['remove']) && $map['remove']) continue;
-                $domain = sanitize_text_field($map['domain'] ?? '');
-                $label  = sanitize_text_field($map['label'] ?? '');
-                $icon   = sanitize_text_field($map['icon'] ?? '');
-                if (!$domain || !$label || !$icon) continue;
-                $new[] = compact('domain','label','icon');
+            
+            // Handle existing mappings
+            if (isset($posted['existing'])) {
+                foreach ($posted['existing'] as $map) {
+                    if (isset($map['remove']) && $map['remove']) continue;
+                    $domain = sanitize_text_field($map['domain'] ?? '');
+                    $label  = sanitize_text_field($map['label'] ?? '');
+                    $icon   = sanitize_text_field($map['icon'] ?? '');
+                    if (!$domain || !$label || !$icon) continue;
+                    $new[] = compact('domain','label','icon');
+                }
             }
+            
+            // Handle new mapping
+            if (isset($posted['new'])) {
+                $domain = sanitize_text_field($posted['new']['domain'] ?? '');
+                $label  = sanitize_text_field($posted['new']['label'] ?? '');
+                $icon   = sanitize_text_field($posted['new']['icon'] ?? '');
+                if ($domain && $label && $icon) {
+                    // Check if domain already exists
+                    $exists = false;
+                    foreach ($new as $mapping) {
+                        if ($mapping['domain'] === $domain) {
+                            $exists = true;
+                            break;
+                        }
+                    }
+                    if (!$exists) {
+                        $new[] = compact('domain','label','icon');
+                        echo '<div class="updated notice is-dismissible"><p><strong>New mapping added successfully!</strong></p></div>';
+                    } else {
+                        echo '<div class="error notice is-dismissible"><p><strong>Error:</strong> A mapping for this domain already exists.</p></div>';
+                    }
+                }
+            }
+            
             update_option('bitstream_rebit_mappings', $new);
-            echo '<div class="updated notice is-dismissible"><p><strong>ReBit mappings saved successfully!</strong></p></div>';
+            if (!isset($posted['new']) || empty($posted['new']['domain'])) {
+                echo '<div class="updated notice is-dismissible"><p><strong>ReBit mappings saved successfully!</strong></p></div>';
+            }
         }
         
         // Handle preset addition
