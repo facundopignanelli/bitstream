@@ -15,15 +15,45 @@ class BitStream_RSS_Feeds {
     public function __construct() {
         add_action('init', [$this, 'add_rss_feeds']);
         add_action('wp_head', [$this, 'add_rss_links']);
+        add_filter('query_vars', [$this, 'add_query_vars']);
+    }
+    
+    /**
+     * Flush rewrite rules (call after updating feed rules)
+     */
+    public function flush_feeds() {
+        flush_rewrite_rules();
+    }
+    
+    /**
+     * Add custom query variables
+     */
+    public function add_query_vars($vars) {
+        $vars[] = 'bitstream_feed';
+        return $vars;
     }
     
     /**
      * Register RSS feeds for BitStream content
      */
     public function add_rss_feeds() {
-        add_feed('bitstream', [$this, 'bitstream_rss_feed']);
-        add_feed('bitstream-bits', [$this, 'bitstream_bits_rss_feed']);
-        add_feed('bitstream-rebits', [$this, 'bitstream_rebits_rss_feed']);
+        // Register feeds with the correct URL structure to match admin interface expectations
+        add_rewrite_rule('^bitstream/feed/?$', 'index.php?bitstream_feed=all', 'top');
+        add_rewrite_rule('^bitstream/feed/bits/?$', 'index.php?bitstream_feed=bits', 'top');
+        add_rewrite_rule('^bitstream/feed/rebits/?$', 'index.php?bitstream_feed=rebits', 'top');
+        
+        // Handle the custom query var
+        add_action('template_redirect', [$this, 'handle_feed_request']);
+    }
+    
+    /**
+     * Handle feed requests
+     */
+    public function handle_feed_request() {
+        $feed_type = get_query_var('bitstream_feed');
+        if ($feed_type) {
+            $this->generate_rss_feed($feed_type);
+        }
     }
     
     /**
@@ -53,31 +83,10 @@ class BitStream_RSS_Feeds {
         }
         
         if ($show_rss) {
-            echo '<link rel="alternate" type="application/rss+xml" title="BitStream Feed" href="' . esc_url(home_url('/feed/bitstream/')) . '">' . "\n";
-            echo '<link rel="alternate" type="application/rss+xml" title="BitStream Bits Only" href="' . esc_url(home_url('/feed/bitstream-bits/')) . '">' . "\n";
-            echo '<link rel="alternate" type="application/rss+xml" title="BitStream ReBits Only" href="' . esc_url(home_url('/feed/bitstream-rebits/')) . '">' . "\n";
+            echo '<link rel="alternate" type="application/rss+xml" title="BitStream Feed" href="' . esc_url(home_url('/bitstream/feed/')) . '">' . "\n";
+            echo '<link rel="alternate" type="application/rss+xml" title="BitStream Bits Only" href="' . esc_url(home_url('/bitstream/feed/bits/')) . '">' . "\n";
+            echo '<link rel="alternate" type="application/rss+xml" title="BitStream ReBits Only" href="' . esc_url(home_url('/bitstream/feed/rebits/')) . '">' . "\n";
         }
-    }
-    
-    /**
-     * Generate RSS feed for all BitStream content
-     */
-    public function bitstream_rss_feed() {
-        $this->generate_rss_feed('all');
-    }
-    
-    /**
-     * Generate RSS feed for bits only (no rebits)
-     */
-    public function bitstream_bits_rss_feed() {
-        $this->generate_rss_feed('bits');
-    }
-    
-    /**
-     * Generate RSS feed for rebits only
-     */
-    public function bitstream_rebits_rss_feed() {
-        $this->generate_rss_feed('rebits');
     }
     
     /**
@@ -135,7 +144,7 @@ class BitStream_RSS_Feeds {
         <description><?php echo esc_html($feed_description); ?></description>
         <language><?php echo esc_html(get_option('rss_language', 'en-US')); ?></language>
         <lastBuildDate><?php echo esc_html(mysql2date('D, d M Y H:i:s +0000', get_lastpostmodified('GMT'), false)); ?></lastBuildDate>
-        <atom:link href="<?php echo esc_url(home_url('/feed/bitstream' . ($type !== 'all' ? '-' . $type : '') . '/')); ?>" rel="self" type="application/rss+xml" />
+        <atom:link href="<?php echo esc_url(home_url('/bitstream/feed' . ($type !== 'all' ? '/' . $type : '') . '/')); ?>" rel="self" type="application/rss+xml" />
         
         <?php while ($query->have_posts()) : $query->the_post(); 
             $post_id = get_the_ID();

@@ -123,6 +123,13 @@ class BitStream_Admin_Interface {
      */
     public function rss_feeds_page() {
         $home_url = home_url();
+        
+        // Handle flush rewrite rules request
+        if (isset($_POST['flush_feeds']) && check_admin_referer('bitstream_flush_feeds', 'bitstream_flush_feeds_nonce')) {
+            flush_rewrite_rules();
+            echo '<div class="notice notice-success"><p>Rewrite rules flushed! RSS feeds should now work properly.</p></div>';
+        }
+        
         $feeds = [
             'All Content' => [
                 'url' => $home_url . '/bitstream/feed/',
@@ -193,6 +200,16 @@ class BitStream_Admin_Interface {
             echo '</div>';
         }
         
+        echo '</div>';
+        
+        // Add flush rewrite rules form
+        echo '<div style="margin-top: 30px; padding: 20px; background: #fff; border: 1px solid #ccd0d4; border-radius: 4px;">';
+        echo '<h3>Troubleshooting</h3>';
+        echo '<p>If the RSS feeds are showing 404 errors, try flushing the rewrite rules:</p>';
+        echo '<form method="post" style="margin-top: 15px;">';
+        wp_nonce_field('bitstream_flush_feeds', 'bitstream_flush_feeds_nonce');
+        echo '<button type="submit" name="flush_feeds" class="button button-secondary">Flush Rewrite Rules</button>';
+        echo '</form>';
         echo '</div>';
         
         // Add JavaScript for copy functionality
