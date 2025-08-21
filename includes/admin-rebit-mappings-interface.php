@@ -11,47 +11,52 @@ if (!defined('ABSPATH')) exit;
 
 ?>
 <style>
-/* NUCLEAR OPTION: Completely prevent horizontal overflow */
+/* Prevent horizontal overflow while preserving vertical scrolling */
 html {
     overflow-x: hidden !important;
+    overflow-y: auto !important;
     max-width: 100vw !important;
 }
 
 body {
     overflow-x: hidden !important;
+    overflow-y: auto !important;
     max-width: 100vw !important;
 }
 
 /* WordPress admin body override */
 body.wp-admin {
     overflow-x: hidden !important;
+    overflow-y: auto !important;
     max-width: 100vw !important;
 }
 
-/* Main WordPress containers - FORCE containment */
+/* Main WordPress containers - Prevent horizontal overflow only */
 #wpwrap {
-    overflow: hidden !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
     max-width: 100vw !important;
     position: relative !important;
 }
 
 #wpcontent {
-    overflow: hidden !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
     max-width: calc(100vw - 160px) !important;
     position: relative !important;
 }
 
 #wpbody-content {
-    overflow: hidden !important;
+    overflow-x: hidden !important;
     max-width: 100% !important;
     padding-right: 20px !important;
     padding-left: 20px !important;
     position: relative !important;
 }
 
-/* Universal container - NOTHING can escape */
+/* Universal container - Prevent horizontal overflow only */
 .wrap {
-    overflow: hidden !important;
+    overflow-x: hidden !important;
     max-width: 100% !important;
     width: 100% !important;
     margin: 0 !important;
@@ -391,6 +396,14 @@ body.wp-admin {
 }
 #icon-picker-modal {
     backdrop-filter: blur(2px);
+    z-index: 999999 !important;
+    position: fixed !important;
+    display: none !important;
+}
+
+/* Ensure modal appears above everything */
+#icon-picker-modal.show {
+    display: block !important;
 }
 #icon-grid::-webkit-scrollbar {
     width: 8px;
@@ -697,7 +710,9 @@ function loadFontAwesomeIcons() {
 window.loadFontAwesomeIcons = loadFontAwesomeIcons;
 
 function closeIconPicker() {
-    document.getElementById('icon-picker-modal').style.display = 'none';
+    const modal = document.getElementById('icon-picker-modal');
+    modal.style.display = 'none';
+    modal.classList.remove('show');
     document.body.style.overflow = 'auto';
     window.currentIconInput = currentIconInput = null;
 }
@@ -799,8 +814,12 @@ window.getFallbackIcons = getFallbackIcons;
 
 function openIconPicker(inputId) {
     console.log('Opening icon picker for:', inputId);
+    console.log('Input element found:', document.getElementById(inputId));
     window.currentIconInput = currentIconInput = document.getElementById(inputId);
-    document.getElementById('icon-picker-modal').style.display = 'block';
+    const modal = document.getElementById('icon-picker-modal');
+    console.log('Modal element found:', modal);
+    modal.style.display = 'block';
+    modal.classList.add('show');
     document.body.style.overflow = 'hidden';
     
     // If icons not loaded yet, try to load Font Awesome first, then fallback
@@ -906,6 +925,20 @@ document.addEventListener('keydown', function(event) {
 // NUCLEAR OPTION: Aggressive overflow prevention with JavaScript
 document.addEventListener('DOMContentLoaded', function() {
     console.log('BitStream: Initializing overflow prevention...');
+    
+    // Add event listeners for icon picker buttons as backup
+    document.addEventListener('click', function(e) {
+        if (e.target.matches('button[onclick*="openIconPicker"]')) {
+            console.log('Icon picker button clicked:', e.target);
+            const onclickValue = e.target.getAttribute('onclick');
+            const match = onclickValue.match(/openIconPicker\('([^']+)'\)/);
+            if (match) {
+                const inputId = match[1];
+                console.log('Extracted input ID:', inputId);
+                openIconPicker(inputId);
+            }
+        }
+    });
     
     function preventOverflow() {
         const wrap = document.querySelector('.wrap');
