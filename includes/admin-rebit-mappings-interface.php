@@ -813,29 +813,13 @@ function showCategory(category) {
         return;
     }
     
-    // Clear the grid first
-    grid.innerHTML = '';
+    // Always show spinner first, then render icons directly - no separate rendering message
+    showLoadingIndicator();
     
-    // For large icon sets, show spinner first, then rendering message, then icons
-    if (iconsToShow.length > 100) {
-        // Show spinner for a brief moment
-        showLoadingIndicator();
-        
-        setTimeout(() => {
-            grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #666; padding: 20px;">Rendering ' + iconsToShow.length + ' icons...</p>';
-            
-            // Then render the icons
-            setTimeout(() => {
-                renderIcons(iconsToShow, grid);
-            }, 100);
-        }, 200);
-    } else {
-        // For smaller sets, show spinner briefly then render
-        showLoadingIndicator();
-        setTimeout(() => {
-            renderIcons(iconsToShow, grid);
-        }, 150);
-    }
+    // Give a brief moment to show the spinner, then render
+    setTimeout(() => {
+        renderIcons(iconsToShow, grid);
+    }, 300);
 }
 
 // Separate function to handle icon rendering
