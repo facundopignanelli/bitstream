@@ -1,11 +1,9 @@
 <?php
 /**
  * Plugin Name: BitStream
- * Plugin URI: https://github.com/your-username/bitstream
- * Description: A social media-style micro-blogging plugin for WordPress with PWA capabilities
- * Version: 1.1.0
- * Author: Your Name
- * License: GPL v2 or later
+ * Description: A microblogging plugin for sharing Bits and ReBits.
+ * Version: 2.1.1
+ * Author: Facundo Pignanelli
  * Text Domain: bitstream
  */
 
@@ -15,7 +13,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('BITSTREAM_VERSION', '1.1.0');
+define('BITSTREAM_VERSION', '2.1.1');
 define('BITSTREAM_PLUGIN_PATH', plugin_dir_path(__FILE__));
 define('BITSTREAM_PLUGIN_URL', plugin_dir_url(__FILE__));
 
