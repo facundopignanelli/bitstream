@@ -991,7 +991,21 @@ JS;
             ]
         ];
         
-        echo '<div class="wrap" style="max-width: none; width: 98%; margin: 0 auto;">';
+        echo '<style>
+        /* Force full width for RSS feeds admin page */
+        .wrap {
+            max-width: none !important;
+            width: 98% !important;
+            margin: 0 auto !important;
+        }
+        #wpwrap, #wpcontent, #wpbody, #wpbody-content {
+            max-width: none !important;
+        }
+        .wp-admin #wpbody-content {
+            padding-right: 20px !important;
+        }
+        </style>';
+        echo '<div class="wrap" style="max-width: none !important; width: 98% !important; margin: 0 auto !important;">';
         echo '<h1>RSS Feeds</h1>';
         echo '<p class="description">BitStream provides multiple RSS feeds for different content types. Choose the feed that best fits your needs.</p>';
         
@@ -1120,7 +1134,21 @@ JS;
         
         $mappings = get_option('bitstream_rebit_mappings', []);
         ?>
-        <div class="wrap" style="max-width: none; width: 98%; margin: 0 auto;">
+        <style>
+        /* Force full width for this admin page */
+        .wrap {
+            max-width: none !important;
+            width: 98% !important;
+            margin: 0 auto !important;
+        }
+        #wpwrap, #wpcontent, #wpbody, #wpbody-content {
+            max-width: none !important;
+        }
+        .wp-admin #wpbody-content {
+            padding-right: 20px !important;
+        }
+        </style>
+        <div class="wrap" style="max-width: none !important; width: 98% !important; margin: 0 auto !important;">
             <h1>ReBit Mappings</h1>
             <p class="description">Configure how different websites appear when shared as ReBits. Each mapping adds a custom icon and label for specific domains.</p>
             
@@ -1390,7 +1418,6 @@ JS;
                     console.log('Enhanced with', foundIcons.brands.length + foundIcons.solid.length + foundIcons.regular.length, 'icons from Font Awesome stylesheets');
                 } else {
                     console.log('Using fallback icon library');
-                }
                     console.log('Using fallback icon library with', iconLibrary.brands.length + iconLibrary.solid.length + iconLibrary.regular.length, 'icons');
                 }
                 
@@ -1403,17 +1430,14 @@ JS;
                 resolve();
             });
         }
-            currentIconInput = document.getElementById(inputId);
-            document.getElementById('icon-picker-modal').style.display = 'block';
-            document.body.style.overflow = 'hidden';
-            showCategory('all');
-            document.getElementById('icon-search').value = '';
-        }
+        
+        // Make loadFontAwesomeIcons globally accessible
+        window.loadFontAwesomeIcons = loadFontAwesomeIcons;
         
         function closeIconPicker() {
             document.getElementById('icon-picker-modal').style.display = 'none';
             document.body.style.overflow = 'auto';
-            currentIconInput = null;
+            window.currentIconInput = currentIconInput = null;
         }
         
         function filterIcons() {
