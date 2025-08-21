@@ -93,29 +93,90 @@ document.addEventListener('DOMContentLoaded', function () {
     const bitstreamDropdown = document.querySelector('.bitstream-dropdown');
     
     if (bitstreamToggle && bitstreamDropdown) {
+        let isOpen = false;
+        
+        // Function to open dropdown
+        function openDropdown() {
+            isOpen = true;
+            bitstreamDropdown.style.opacity = '1';
+            bitstreamDropdown.style.visibility = 'visible';
+            bitstreamDropdown.style.transform = 'translateY(0)';
+            bitstreamDropdown.style.pointerEvents = 'auto';
+            bitstreamToggle.style.background = '#1f4d35';
+            bitstreamToggle.style.transform = 'scale(1.1)';
+        }
+        
+        // Function to close dropdown
+        function closeDropdown() {
+            isOpen = false;
+            bitstreamDropdown.style.opacity = '0';
+            bitstreamDropdown.style.visibility = 'hidden';
+            bitstreamDropdown.style.transform = 'translateY(10px)';
+            bitstreamDropdown.style.pointerEvents = 'none';
+            bitstreamToggle.style.background = '#2c6e49';
+            bitstreamToggle.style.transform = 'scale(1)';
+        }
+        
+        // Handle click/touch events
         bitstreamToggle.addEventListener('click', (e) => {
             e.preventDefault();
-            const isOpen = bitstreamDropdown.style.opacity === '1';
+            e.stopPropagation();
             
             if (isOpen) {
-                // Close dropdown
-                bitstreamDropdown.style.opacity = '0';
-                bitstreamDropdown.style.visibility = 'hidden';
-                bitstreamDropdown.style.transform = 'translateY(10px)';
+                closeDropdown();
             } else {
-                // Open dropdown
-                bitstreamDropdown.style.opacity = '1';
-                bitstreamDropdown.style.visibility = 'visible';
-                bitstreamDropdown.style.transform = 'translateY(0)';
+                openDropdown();
             }
         });
-
+        
+        // Handle touch events for mobile
+        bitstreamToggle.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (isOpen) {
+                closeDropdown();
+            } else {
+                openDropdown();
+            }
+        });
+        
+        // Add hover effects for desktop
+        bitstreamToggle.addEventListener('mouseenter', () => {
+            if (!isOpen) {
+                bitstreamToggle.style.background = '#1f4d35';
+                bitstreamToggle.style.transform = 'scale(1.05)';
+            }
+        });
+        
+        bitstreamToggle.addEventListener('mouseleave', () => {
+            if (!isOpen) {
+                bitstreamToggle.style.background = '#2c6e49';
+                bitstreamToggle.style.transform = 'scale(1)';
+            }
+        });
+        
+        // Add hover effects for dropdown links
+        document.querySelectorAll('.bitstream-dropdown-link').forEach(link => {
+            link.addEventListener('mouseenter', () => {
+                link.style.background = '#f5f5f5';
+            });
+            link.addEventListener('mouseleave', () => {
+                link.style.background = 'white';
+            });
+        });
+        
         // Close dropdown when clicking outside
         document.addEventListener('click', (e) => {
-            if (!e.target.closest('.bitstream-menu')) {
-                bitstreamDropdown.style.opacity = '0';
-                bitstreamDropdown.style.visibility = 'hidden';
-                bitstreamDropdown.style.transform = 'translateY(10px)';
+            if (!e.target.closest('.bitstream-menu') && isOpen) {
+                closeDropdown();
+            }
+        });
+        
+        // Close dropdown when touching outside (mobile)
+        document.addEventListener('touchstart', (e) => {
+            if (!e.target.closest('.bitstream-menu') && isOpen) {
+                closeDropdown();
             }
         });
     }

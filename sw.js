@@ -6,7 +6,11 @@ const ASSETS_TO_CACHE = [
   '/bitstream/new-rebit/',
   '/wp-content/plugins/bitstream/assets/css/bitstream.css',
   '/wp-content/plugins/bitstream/assets/js/bitstream.js',
-  '/wp-content/plugins/bitstream/manifest.json'
+  '/wp-content/plugins/bitstream/manifest.json',
+  '/wp-content/plugins/bitstream/assets/images/192.png',
+  '/wp-content/plugins/bitstream/assets/images/512.png',
+  '/wp-content/plugins/bitstream/assets/images/new-bit-192.png',
+  '/wp-content/plugins/bitstream/assets/images/new-rebit-192.png'
 ];
 
 self.addEventListener('install', event => {
