@@ -44,6 +44,12 @@ if (!defined('ABSPATH')) exit;
     font-size: 1.1em;
 }
 
+/* Full-width mappings container */
+.mappings-container {
+    width: 100%;
+    max-width: none;
+}
+
 /* Clean mapping rows */
 .mapping-row {
     display: flex;
@@ -54,11 +60,23 @@ if (!defined('ABSPATH')) exit;
     border: 1px solid #ddd;
     border-radius: 4px;
     background: #fafafa;
+    width: 100%;
 }
 
+/* Better field distribution for wider layout */
 .mapping-field {
     flex: 1;
+    min-width: 180px;
+}
+
+.mapping-field.preview-field {
+    flex: 1.2;
     min-width: 200px;
+}
+
+.mapping-field.actions-field {
+    flex: 0.6;
+    min-width: 120px;
 }
 
 .mapping-field label {
@@ -268,6 +286,18 @@ if (!defined('ABSPATH')) exit;
     <h1>ReBit Mappings</h1>
     <p class="description">Configure how different websites appear when shared as ReBits. Each mapping adds a custom icon and label for specific domains.</p>
     
+    <!-- Import Default Mappings -->
+    <?php if (empty($mappings)): ?>
+    <div style="background: #e7f3ff; border: 1px solid #72aee6; border-radius: 4px; padding: 15px; margin-bottom: 20px;">
+        <h3 style="margin-top: 0;">🚀 Get Started Quickly</h3>
+        <p>Import popular website mappings to get started immediately with Twitter, YouTube, GitHub, and more!</p>
+        <form method="post" style="display: inline;">
+            <?php wp_nonce_field('bitstream_rebit_mappings_save','bitstream_rebit_mappings_nonce'); ?>
+            <button type="submit" name="import_defaults" class="button button-primary">Import Default Mappings</button>
+        </form>
+    </div>
+    <?php endif; ?>
+    
     <!-- Top Section: Quick Add and Add New Mapping -->
     <div class="flex-container">
         <!-- Quick Presets Section -->
@@ -309,8 +339,8 @@ if (!defined('ABSPATH')) exit;
                 <div style="margin-bottom: 15px;">
                     <label><strong>Label:</strong></label><br>
                     <input type="text" name="bitstream_rebit_mappings[new][label]" 
-                           placeholder="shared from Example" style="width: 100%; box-sizing: border-box;" />
-                    <small class="description">Text shown when sharing from this site</small>
+                           placeholder="shared a Tweet" style="width: 100%; box-sizing: border-box;" />
+                    <small class="description">Text shown when sharing from this site (e.g., "shared a Tweet", "shared a video")</small>
                 </div>
                 <div style="margin-bottom: 15px;">
                     <label><strong>Icon Class:</strong></label><br>
@@ -332,11 +362,12 @@ if (!defined('ABSPATH')) exit;
     </div>
     
     <!-- Current Mappings -->
-    <form method="post" id="mappings-form">
-        <?php wp_nonce_field('bitstream_rebit_mappings_save','bitstream_rebit_mappings_nonce'); ?>
-        
-        <div class="card">
-            <h2 class="title">Current Mappings</h2>
+    <div class="mappings-container">
+        <form method="post" id="mappings-form">
+            <?php wp_nonce_field('bitstream_rebit_mappings_save','bitstream_rebit_mappings_nonce'); ?>
+            
+            <div class="card">
+                <h2 class="title">Current Mappings</h2>
             
             <?php if (empty($mappings)): ?>
                 <p class="description">No mappings configured yet. Use the sections above to add mappings.</p>
@@ -354,7 +385,7 @@ if (!defined('ABSPATH')) exit;
                                 <label><strong>Label:</strong></label><br>
                                 <input type="text" name="bitstream_rebit_mappings[existing][<?php echo $i; ?>][label]" 
                                        value="<?php echo esc_attr($map['label']); ?>" 
-                                       placeholder="shared from Twitter" />
+                                       placeholder="shared a Tweet" />
                             </div>
                             <div class="mapping-field">
                                 <label><strong>Icon Class:</strong></label><br>
@@ -368,14 +399,14 @@ if (!defined('ABSPATH')) exit;
                                     </button>
                                 </div>
                             </div>
-                            <div class="mapping-preview-field">
+                            <div class="mapping-field preview-field">
                                 <label><strong>Preview:</strong></label><br>
                                 <div class="mapping-preview">
                                     <i class="<?php echo esc_attr($map['icon']); ?>" style="margin-right: 8px; color: #2c6e49;"></i>
                                     <span><?php echo esc_html($map['label']); ?></span>
                                 </div>
                             </div>
-                            <div class="mapping-actions">
+                            <div class="mapping-field actions-field">
                                 <label><strong>&nbsp;</strong></label><br>
                                 <button type="button" class="button button-link-delete" onclick="removeMapping(this)" style="color: #a00;">Remove</button>
                                 <input type="hidden" name="bitstream_rebit_mappings[<?php echo $i; ?>][remove]" value="0" class="remove-flag" />
@@ -389,7 +420,8 @@ if (!defined('ABSPATH')) exit;
         <p class="submit">
             <input type="submit" name="submit" class="button-primary" value="Save All Mappings" />
         </p>
-    </form>
+        </form>
+    </div>
     
     <!-- Icon Picker Modal -->
     <div id="icon-picker-modal">

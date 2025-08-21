@@ -103,8 +103,35 @@ function bitstream_plugin_activate() {
     $plugin = new BitStream_Plugin();
     $plugin->init();
     
+    // Import default ReBit mappings if none exist
+    bitstream_import_default_mappings();
+    
     // Flush rewrite rules to ensure permalinks work
     flush_rewrite_rules();
+}
+
+/**
+ * Import default ReBit mappings if none exist
+ */
+function bitstream_import_default_mappings() {
+    $existing_mappings = get_option('bitstream_rebit_mappings', []);
+    
+    // Only import if no mappings exist
+    if (empty($existing_mappings)) {
+        $default_mappings = [
+            ['domain' => 'twitter.com', 'label' => 'shared a Tweet', 'icon' => 'fab fa-twitter'],
+            ['domain' => 'x.com', 'label' => 'shared a post', 'icon' => 'fab fa-x-twitter'],
+            ['domain' => 'youtube.com', 'label' => 'shared a video', 'icon' => 'fab fa-youtube'],
+            ['domain' => 'github.com', 'label' => 'shared a repository', 'icon' => 'fab fa-github'],
+            ['domain' => 'linkedin.com', 'label' => 'shared a post', 'icon' => 'fab fa-linkedin'],
+            ['domain' => 'facebook.com', 'label' => 'shared a post', 'icon' => 'fab fa-facebook'],
+            ['domain' => 'instagram.com', 'label' => 'shared a photo', 'icon' => 'fab fa-instagram'],
+            ['domain' => 'reddit.com', 'label' => 'shared a post', 'icon' => 'fab fa-reddit'],
+            ['domain' => 'medium.com', 'label' => 'shared an article', 'icon' => 'fab fa-medium'],
+        ];
+        
+        update_option('bitstream_rebit_mappings', $default_mappings);
+    }
 }
 
 /**
