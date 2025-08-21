@@ -86,5 +86,3 @@ class BitStream_Shortcodes {
         return ob_get_clean();
     }
 }
-
-new BitStream_Shortcodes();

@@ -109,5 +109,3 @@ class BitStream_Post_Type {
         return $data;
     }
 }
-
-new BitStream_Post_Type();

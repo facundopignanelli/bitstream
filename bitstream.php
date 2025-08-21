@@ -101,12 +101,23 @@ register_deactivation_hook(__FILE__, 'bitstream_plugin_deactivate');
  * Plugin activation callback
  */
 function bitstream_plugin_activate() {
-    // Ensure post type is registered before flushing
-    $plugin = new BitStream_Plugin();
-    $plugin->init();
+    // Create a temporary instance to register post types
+    require_once BITSTREAM_PLUGIN_PATH . 'includes/class-post-type.php';
+    $post_type_handler = new BitStream_Post_Type();
+    $post_type_handler->register_post_type();
+    
+    // Also register service worker rewrite rules
+    if (class_exists('BitStream_PWA_Manager')) {
+        require_once BITSTREAM_PLUGIN_PATH . 'includes/class-pwa-manager.php';
+        $pwa_manager = new BitStream_PWA_Manager();
+        $pwa_manager->add_service_worker_rewrite();
+    }
     
     // Flush rewrite rules to ensure permalinks work
     flush_rewrite_rules();
+    
+    // Mark permalinks as flushed for this version
+    update_option('bitstream_permalinks_flushed', BITSTREAM_VERSION);
 }
 
 /**

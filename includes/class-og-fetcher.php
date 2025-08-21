@@ -111,5 +111,3 @@ class BitStream_OG_Fetcher {
         update_post_meta($post_id, '_bitstream_og_fetched', time());
     }
 }
-
-new BitStream_OG_Fetcher();

@@ -111,5 +111,3 @@ class BitStream_Error_Logger {
         wp_send_json_success('Logs cleared');
     }
 }
-
-new BitStream_Error_Logger();

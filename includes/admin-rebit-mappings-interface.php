@@ -11,141 +11,269 @@ if (!defined('ABSPATH')) exit;
 
 ?>
 <style>
-/* Prevent horizontal overflow */
+/* Completely prevent horizontal overflow to the right */
+* {
+    box-sizing: border-box !important;
+}
+
 html, body {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+}
+
+/* WordPress admin body override */
+body.wp-admin {
     overflow-x: hidden !important;
 }
 
-/* WordPress admin structure overrides */
-#wpwrap, 
-#adminmenuwrap + #wpcontent,
-#wpcontent,
-#wpbody,
-#wpbody-content {
-    max-width: none !important;
-    width: 100% !important;
+/* Main WordPress containers - prevent right overflow */
+#wpwrap {
     overflow-x: hidden !important;
+    max-width: 100vw !important;
 }
 
 #wpcontent {
-    margin-left: 160px !important;
+    overflow-x: hidden !important;
+    max-width: calc(100vw - 160px) !important;
 }
 
 #wpbody-content {
+    overflow-x: hidden !important;
+    max-width: 100% !important;
     padding-right: 20px !important;
     padding-left: 20px !important;
+}
+
+/* Ensure main container never exceeds viewport */
+.wrap {
     overflow-x: hidden !important;
-}
-
-/* Main container overrides */
-.wrap,
-.wrap > *,
-.postbox,
-.card {
-    max-width: none !important;
+    max-width: 100% !important;
     width: 100% !important;
-    box-sizing: border-box !important;
-    overflow-x: hidden !important;
-}
-
-/* Specific WordPress card class overrides */
-.wp-admin .card,
-.wp-admin .postbox,
-.wp-admin .wrap .card,
-.wp-admin #wpbody-content .card,
-.wp-admin #wpbody-content .postbox {
-    max-width: none !important;
-    width: 100% !important;
-    margin: 0 0 20px 0 !important;
-    overflow-x: hidden !important;
-}
-
-/* Flex container overrides - prevent overflow */
-div[style*="display: flex"],
-.wp-admin div[style*="display: flex"] {
-    max-width: none !important;
-    width: 100% !important;
-    overflow-x: hidden !important;
-    flex-wrap: wrap !important;
-}
-
-/* Table and form overrides */
-.wp-admin table,
-.wp-admin .form-table,
-.wp-admin .widefat {
-    max-width: none !important;
-    width: 100% !important;
-    overflow-x: auto !important;
-}
-
-/* Remove any margin constraints */
-.wp-admin .wrap {
     margin: 0 !important;
     padding: 0 !important;
-    overflow-x: hidden !important;
+    box-sizing: border-box !important;
 }
 
-/* Mapping row specific fixes */
-.mapping-row {
-    overflow-x: hidden !important;
-    min-width: 0 !important;
-}
-
-/* Responsive adjustments */
-@media (max-width: 1200px) {
-    .mapping-row > div[style*="flex: 1"] {
-        min-width: 180px !important;
-    }
-}
-
-@media (max-width: 900px) {
-    .mapping-row {
-        flex-direction: column !important;
-        align-items: stretch !important;
-    }
-    
-    .mapping-row > div {
-        margin-right: 0 !important;
-        margin-bottom: 10px !important;
-        flex: none !important;
-        width: 100% !important;
-    }
-    
-    .mapping-row > div:last-child {
-        margin-bottom: 0 !important;
-    }
-    
-    div[style*="display: flex"][style*="gap: 20px"] {
-        flex-direction: column !important;
-        gap: 10px !important;
-    }
-}
-
-/* Input field overflow protection */
-.mapping-row input[type="text"] {
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
-}
-
-.mapping-row:hover {
-    background: #f0f0f1 !important;
-}
-.mapping-preview {
-    font-size: 14px;
-    line-height: 1.4;
-}
+/* Card containers */
 .card {
     background: #fff;
     border: 1px solid #ccd0d4;
     border-radius: 4px;
     padding: 20px;
     margin-bottom: 20px;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    max-width: 100% !important;
+    width: 100% !important;
 }
+
 .card .title {
     margin-top: 0;
     margin-bottom: 15px;
     font-size: 1.1em;
+}
+
+/* Flex containers with strict width control */
+.flex-container {
+    display: flex !important;
+    gap: 15px !important;
+    flex-wrap: wrap !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+}
+
+.flex-item {
+    flex: 1 1 300px !important;
+    min-width: 0 !important;
+    max-width: calc(50% - 10px) !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+}
+
+/* Mapping rows with controlled width - NEVER exceed container */
+.mapping-row {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+    margin-bottom: 15px !important;
+    padding: 15px !important;
+    border: 1px solid #ddd !important;
+    border-radius: 5px !important;
+    background: #fafafa !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    max-width: 100% !important;
+    width: 100% !important;
+}
+
+.mapping-field {
+    flex: 1 1 180px !important;
+    min-width: 0 !important;
+    max-width: calc(25% - 8px) !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+}
+
+.mapping-preview-field {
+    flex: 0 0 140px !important;
+    min-width: 120px !important;
+    max-width: 140px !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+}
+
+.mapping-actions {
+    flex: 0 0 80px !important;
+    min-width: 80px !important;
+    max-width: 80px !important;
+    box-sizing: border-box !important;
+}
+
+/* Input fields with strict overflow control - NEVER overflow */
+.mapping-row input[type="text"],
+.card input[type="text"],
+.card select {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    border: 1px solid #ddd !important;
+    padding: 6px 8px !important;
+}
+
+/* Special handling for icon input with button */
+.mapping-field input[style*="padding-right"] {
+    padding-right: 35px !important;
+}
+
+.mapping-preview {
+    font-size: 14px;
+    line-height: 1.4;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    background: white;
+    min-height: 30px;
+    word-wrap: break-word;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    box-sizing: border-box !important;
+    max-width: 100% !important;
+}
+
+/* Responsive breakpoints - aggressive overflow prevention */
+@media (max-width: 1400px) {
+    .mapping-field {
+        flex: 1 1 150px !important;
+        max-width: calc(33.33% - 8px) !important;
+    }
+}
+
+@media (max-width: 1200px) {
+    .flex-item {
+        max-width: 100% !important;
+        flex: 1 1 100% !important;
+    }
+    
+    .mapping-field {
+        flex: 1 1 140px !important;
+        max-width: calc(50% - 8px) !important;
+    }
+    
+    .mapping-preview-field {
+        flex: 1 1 140px !important;
+        max-width: calc(50% - 8px) !important;
+    }
+    
+    .mapping-actions {
+        flex: 1 1 100% !important;
+        max-width: 100% !important;
+    }
+}
+
+@media (max-width: 900px) {
+    .wrap {
+        max-width: calc(100vw - 40px) !important;
+        padding: 0 10px !important;
+    }
+    
+    #wpcontent {
+        max-width: calc(100vw - 60px) !important;
+    }
+    
+    .flex-container {
+        flex-direction: column !important;
+        gap: 10px !important;
+    }
+    
+    .flex-item {
+        max-width: 100% !important;
+        flex: 1 1 auto !important;
+    }
+    
+    .mapping-row {
+        flex-direction: column !important;
+        gap: 10px !important;
+    }
+    
+    .mapping-field,
+    .mapping-preview-field,
+    .mapping-actions {
+        max-width: 100% !important;
+        flex: 1 1 auto !important;
+    }
+}
+
+@media (max-width: 600px) {
+    .wrap {
+        max-width: calc(100vw - 20px) !important;
+        padding: 0 5px !important;
+    }
+    
+    #wpcontent {
+        max-width: calc(100vw - 30px) !important;
+    }
+    
+    #wpbody-content {
+        padding-right: 10px !important;
+        padding-left: 10px !important;
+    }
+    
+    .card {
+        padding: 15px !important;
+    }
+    
+    .mapping-row {
+        padding: 10px !important;
+    }
+}
+
+/* Force all elements to never exceed container bounds */
+.wrap *,
+.card *,
+.mapping-row *,
+.flex-container *,
+.flex-item * {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* Ensure buttons don't cause overflow */
+.button {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.mapping-row:hover {
+    background: #f0f0f1 !important;
 }
 .icon-category {
     padding: 8px 16px;
@@ -194,17 +322,17 @@ div[style*="display: flex"],
     <p class="description">Configure how different websites appear when shared as ReBits. Each mapping adds a custom icon and label for specific domains.</p>
     
     <!-- Top Section: Quick Add and Add New Mapping -->
-    <div style="display: flex; gap: 20px; margin-bottom: 20px;">
+    <div class="flex-container">
         <!-- Quick Presets Section -->
-        <div class="card" style="flex: 1;">
+        <div class="card flex-item">
             <h2 class="title">Quick Add Popular Sites</h2>
             <p>Add pre-configured mappings for popular websites:</p>
             <form method="post" style="margin-bottom: 15px;">
                 <?php wp_nonce_field('bitstream_rebit_mappings_save','bitstream_rebit_mappings_nonce'); ?>
-                <div style="display: flex; gap: 10px; align-items: end;">
-                    <div style="flex: 1;">
+                <div style="display: flex; gap: 10px; align-items: end; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 200px;">
                         <label><strong>Website:</strong></label><br>
-                        <select name="preset_selection" style="width: 100%;">
+                        <select name="preset_selection" style="width: 100%; box-sizing: border-box;">
                             <option value="">Select a website...</option>
                             <?php foreach ($this->get_rebit_presets() as $key => $preset): ?>
                                 <option value="<?php echo esc_attr($key); ?>">
@@ -221,27 +349,27 @@ div[style*="display: flex"],
         </div>
         
         <!-- Add New Mapping Section -->
-        <div class="card" style="flex: 1;">
+        <div class="card flex-item">
             <h2 class="title">Add New Mapping</h2>
             <form method="post">
                 <?php wp_nonce_field('bitstream_rebit_mappings_save','bitstream_rebit_mappings_nonce'); ?>
                 <div style="margin-bottom: 15px;">
                     <label><strong>Domain:</strong></label><br>
                     <input type="text" name="bitstream_rebit_mappings[new][domain]" 
-                           placeholder="example.com" style="width: 100%;" />
+                           placeholder="example.com" style="width: 100%; box-sizing: border-box;" />
                     <small class="description">Enter just the domain (e.g., "twitter.com")</small>
                 </div>
                 <div style="margin-bottom: 15px;">
                     <label><strong>Label:</strong></label><br>
                     <input type="text" name="bitstream_rebit_mappings[new][label]" 
-                           placeholder="shared from Example" style="width: 100%;" />
+                           placeholder="shared from Example" style="width: 100%; box-sizing: border-box;" />
                     <small class="description">Text shown when sharing from this site</small>
                 </div>
                 <div style="margin-bottom: 15px;">
                     <label><strong>Icon Class:</strong></label><br>
                     <div style="position: relative;">
                         <input type="text" name="bitstream_rebit_mappings[new][icon]" 
-                               placeholder="fas fa-link" style="width: 100%; padding-right: 40px;" 
+                               placeholder="fas fa-link" style="width: 100%; padding-right: 40px; box-sizing: border-box;" 
                                id="new-icon-input" />
                         <button type="button" class="button" onclick="openIconPicker('new-icon-input')" 
                                 style="position: absolute; right: 5px; top: 2px; height: 26px; padding: 2px 8px;">
@@ -269,25 +397,25 @@ div[style*="display: flex"],
             <?php else: ?>
                 <div id="mappings-container">
                     <?php foreach ($mappings as $i => $map): ?>
-                        <div class="mapping-row" style="display: flex; align-items: center; margin-bottom: 15px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background: #fafafa; flex-wrap: wrap; gap: 10px; overflow: hidden;">
-                            <div style="flex: 1; min-width: 200px; margin-right: 10px;">
+                        <div class="mapping-row">
+                            <div class="mapping-field">
                                 <label><strong>Domain:</strong></label><br>
                                 <input type="text" name="bitstream_rebit_mappings[<?php echo $i; ?>][domain]" 
                                        value="<?php echo esc_attr($map['domain']); ?>" 
-                                       placeholder="example.com" style="width: 100%; max-width: 100%; box-sizing: border-box;" />
+                                       placeholder="example.com" />
                             </div>
-                            <div style="flex: 1; min-width: 200px; margin-right: 10px;">
+                            <div class="mapping-field">
                                 <label><strong>Label:</strong></label><br>
                                 <input type="text" name="bitstream_rebit_mappings[<?php echo $i; ?>][label]" 
                                        value="<?php echo esc_attr($map['label']); ?>" 
-                                       placeholder="shared from Twitter" style="width: 100%; max-width: 100%; box-sizing: border-box;" />
+                                       placeholder="shared from Twitter" />
                             </div>
-                            <div style="flex: 1; min-width: 200px; margin-right: 10px;">
+                            <div class="mapping-field">
                                 <label><strong>Icon Class:</strong></label><br>
                                 <div style="position: relative;">
                                     <input type="text" name="bitstream_rebit_mappings[<?php echo $i; ?>][icon]" 
                                            value="<?php echo esc_attr($map['icon']); ?>" 
-                                           placeholder="fab fa-twitter" style="width: 100%; max-width: 100%; padding-right: 40px; box-sizing: border-box;" 
+                                           placeholder="fab fa-twitter" style="padding-right: 40px;" 
                                            id="icon-input-<?php echo $i; ?>" />
                                     <button type="button" class="button" onclick="openIconPicker('icon-input-<?php echo $i; ?>')" 
                                             style="position: absolute; right: 5px; top: 2px; height: 26px; padding: 2px 8px;">
@@ -295,14 +423,15 @@ div[style*="display: flex"],
                                     </button>
                                 </div>
                             </div>
-                            <div style="flex: 0 0 150px; min-width: 120px; margin-right: 10px;">
+                            <div class="mapping-preview-field">
                                 <label><strong>Preview:</strong></label><br>
-                                <div class="mapping-preview" style="padding: 8px; border: 1px solid #ccc; border-radius: 3px; background: white; min-height: 30px; word-wrap: break-word; overflow: hidden;">
+                                <div class="mapping-preview">
                                     <i class="<?php echo esc_attr($map['icon']); ?>" style="margin-right: 8px; color: #2c6e49;"></i>
                                     <span><?php echo esc_html($map['label']); ?></span>
                                 </div>
                             </div>
-                            <div style="flex: 0 0 auto;">
+                            <div class="mapping-actions">
+                                <label><strong>&nbsp;</strong></label><br>
                                 <button type="button" class="button button-link-delete" onclick="removeMapping(this)" style="color: #a00;">Remove</button>
                                 <input type="hidden" name="bitstream_rebit_mappings[<?php echo $i; ?>][remove]" value="0" class="remove-flag" />
                             </div>

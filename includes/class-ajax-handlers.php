@@ -290,5 +290,3 @@ class BitStream_Ajax_Handlers {
         }
     }
 }
-
-new BitStream_Ajax_Handlers();

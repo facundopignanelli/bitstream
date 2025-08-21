@@ -42,43 +42,58 @@ class BitStream_Admin_Interface {
      * Admin notice for permalink issues
      */
     public function permalink_admin_notice() {
-        $screen = get_current_screen();
-        if (!$screen || $screen->post_type !== 'bit') return;
+        if (!current_user_can('manage_options')) return;
+        
+        // Check if we need to flush permalinks due to debug request
+        if (isset($_GET['bitstream_debug']) && $_GET['bitstream_debug'] === 'flush_rewrite') {
+            flush_rewrite_rules();
+            update_option('bitstream_permalinks_flushed', BITSTREAM_VERSION);
+            echo '<div class="notice notice-success is-dismissible">';
+            echo '<p><strong>BitStream:</strong> Rewrite rules have been flushed. Permalinks should now work properly.</p>';
+            echo '</div>';
+            return;
+        }
         
         if (get_option('bitstream_permalinks_flushed') !== BITSTREAM_VERSION) {
             echo '<div class="notice notice-warning is-dismissible">';
-            echo '<p><strong>BitStream:</strong> Permalink issues detected. ';
-            echo '<button type="button" class="button button-primary" onclick="bitstreamFlushPermalinks()">Fix Permalinks</button></p>';
+            echo '<p><strong>BitStream:</strong> Permalink issues detected after plugin update. ';
+            echo '<button type="button" class="button button-primary" onclick="bitstreamFlushPermalinks()">Fix Permalinks</button> ';
+            echo 'or go to <a href="' . admin_url('options-permalink.php') . '">Settings > Permalinks</a> and click "Save Changes".</p>';
             echo '</div>';
             
             // Add JavaScript for AJAX call
             echo '<script>
             function bitstreamFlushPermalinks() {
+                const button = event.target;
+                button.disabled = true;
+                button.textContent = "Fixing...";
+                
+                const formData = new FormData();
+                formData.append("action", "bitstream_flush_permalinks");
+                formData.append("nonce", "' . wp_create_nonce('flush_permalinks') . '");
+                
                 fetch("' . admin_url('admin-ajax.php') . '", {
                     method: "POST",
-                    body: new FormData(Object.assign(document.createElement("form"), {
-                        innerHTML: `<input name="action" value="bitstream_flush_permalinks">
-                                   <input name="nonce" value="' . wp_create_nonce('flush_permalinks') . '">`
-                    }))
+                    body: formData
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        location.reload();
+                        button.textContent = "Fixed!";
+                        setTimeout(() => location.reload(), 1000);
                     } else {
-                        alert("Error: " + (data.data || "Unknown error"));
+                        button.textContent = "Error - Try Settings > Permalinks";
+                        button.disabled = false;
+                        console.error("BitStream permalink flush error:", data.data);
                     }
+                })
+                .catch(error => {
+                    button.textContent = "Error - Try Settings > Permalinks";
+                    button.disabled = false;
+                    console.error("BitStream permalink flush error:", error);
                 });
             }
             </script>';
-        }
-        
-        // Service Worker debug notice for admins
-        if (current_user_can('manage_options')) {
-            echo '<div class="notice notice-info is-dismissible">';
-            echo '<p><strong>BitStream Debug:</strong> If Service Worker errors occur, ';
-            echo '<a href="' . esc_url(add_query_arg('bitstream_debug', 'flush_rewrite')) . '" class="button button-secondary">Flush SW Rewrite Rules</a></p>';
-            echo '</div>';
         }
     }
     
