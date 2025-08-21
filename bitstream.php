@@ -1135,20 +1135,73 @@ JS;
         $mappings = get_option('bitstream_rebit_mappings', []);
         ?>
         <style>
-        /* Force full width for this admin page */
-        .wrap {
-            max-width: none !important;
-            width: 98% !important;
-            margin: 0 auto !important;
+        /* Ultra-aggressive full width for this admin page */
+        html, body {
+            overflow-x: auto !important;
         }
-        #wpwrap, #wpcontent, #wpbody, #wpbody-content {
+        
+        /* WordPress admin structure overrides */
+        #wpwrap, 
+        #adminmenuwrap + #wpcontent,
+        #wpcontent,
+        #wpbody,
+        #wpbody-content {
             max-width: none !important;
+            width: 100% !important;
         }
-        .wp-admin #wpbody-content {
+        
+        #wpcontent {
+            margin-left: 160px !important;
+        }
+        
+        #wpbody-content {
             padding-right: 20px !important;
+            padding-left: 20px !important;
+        }
+        
+        /* Main container overrides */
+        .wrap,
+        .wrap > *,
+        .postbox,
+        .card {
+            max-width: none !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+        
+        /* Specific WordPress card class overrides */
+        .wp-admin .card,
+        .wp-admin .postbox,
+        .wp-admin .wrap .card,
+        .wp-admin #wpbody-content .card,
+        .wp-admin #wpbody-content .postbox {
+            max-width: none !important;
+            width: 100% !important;
+            margin: 0 0 20px 0 !important;
+        }
+        
+        /* Flex container overrides */
+        div[style*="display: flex"],
+        .wp-admin div[style*="display: flex"] {
+            max-width: none !important;
+            width: 100% !important;
+        }
+        
+        /* Table and form overrides */
+        .wp-admin table,
+        .wp-admin .form-table,
+        .wp-admin .widefat {
+            max-width: none !important;
+            width: 100% !important;
+        }
+        
+        /* Remove any margin constraints */
+        .wp-admin .wrap {
+            margin: 0 !important;
+            padding: 0 !important;
         }
         </style>
-        <div class="wrap" style="max-width: none !important; width: 98% !important; margin: 0 auto !important;">
+        <div class="wrap">
             <h1>ReBit Mappings</h1>
             <p class="description">Configure how different websites appear when shared as ReBits. Each mapping adds a custom icon and label for specific domains.</p>
             
@@ -1414,19 +1467,20 @@ JS;
                 
                 // If we found icons from local FA, use them; otherwise keep fallback
                 if (foundAnyIcons && (foundIcons.brands.length > 10 || foundIcons.solid.length > 10)) {
-                    iconLibrary = foundIcons;
+                    window.iconLibrary = iconLibrary = foundIcons;
                     console.log('Enhanced with', foundIcons.brands.length + foundIcons.solid.length + foundIcons.regular.length, 'icons from Font Awesome stylesheets');
                 } else {
                     console.log('Using fallback icon library');
+                    window.iconLibrary = iconLibrary = getFallbackIcons();
                     console.log('Using fallback icon library with', iconLibrary.brands.length + iconLibrary.solid.length + iconLibrary.regular.length, 'icons');
                 }
                 
                 // Remove duplicates and sort
-                Object.keys(iconLibrary).forEach(category => {
-                    iconLibrary[category] = [...new Set(iconLibrary[category])].sort();
+                Object.keys(window.iconLibrary).forEach(category => {
+                    window.iconLibrary[category] = [...new Set(window.iconLibrary[category])].sort();
                 });
                 
-                iconsLoaded = true;
+                window.iconsLoaded = iconsLoaded = true;
                 resolve();
             });
         }
@@ -1857,22 +1911,30 @@ JS;
             document.getElementById('icon-picker-modal').style.display = 'block';
             document.body.style.overflow = 'hidden';
             
-            // Immediately load fallback icons to ensure we have something to show
+            // If icons not loaded yet, try to load Font Awesome first, then fallback
             if (!window.iconsLoaded) {
-                console.log('Loading fallback icons immediately...');
-                window.iconLibrary = iconLibrary = getFallbackIcons();
-                window.iconsLoaded = iconsLoaded = true;
-                console.log('Fallback icons loaded:', iconLibrary.brands.length, 'brands,', iconLibrary.solid.length, 'solid,', iconLibrary.regular.length, 'regular');
+                console.log('Attempting to load Font Awesome icons first...');
+                
+                // Try to load Font Awesome icons with a timeout
+                Promise.race([
+                    loadFontAwesomeIcons(),
+                    new Promise((_, reject) => setTimeout(() => reject('Timeout'), 2000))
+                ]).then(() => {
+                    console.log('Successfully loaded Font Awesome icons');
+                    showCategory('all');
+                }).catch(e => {
+                    console.log('Font Awesome loading failed or timed out, using fallback:', e);
+                    window.iconLibrary = iconLibrary = getFallbackIcons();
+                    window.iconsLoaded = iconsLoaded = true;
+                    console.log('Fallback icons loaded:', iconLibrary.brands.length, 'brands,', iconLibrary.solid.length, 'solid,', iconLibrary.regular.length, 'regular');
+                    showCategory('all');
+                });
+            } else {
+                // Icons already loaded, just show them
+                showCategory('all');
             }
             
-            // Show all icons immediately, then try to enhance with FA icons
-            showCategory('all');
             document.getElementById('icon-search').value = '';
-            
-            // Try to load FA icons in background for future use
-            loadFontAwesomeIcons().catch(e => {
-                console.log('FA loading failed, using fallback:', e);
-            });
         }
         
         // Make functions globally accessible
