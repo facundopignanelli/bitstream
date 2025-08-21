@@ -1,11 +1,9 @@
 <?php
 /**
  * Plugin Name: BitStream
- * Plugin URI: https://github.com/your-username/bitstream
- * Description: A social media-style micro-blogging plugin for WordPress with PWA capabilities
- * Version: 1.1.0
- * Author: Your Name
- * License: GPL v2 or later
+ * Description: A microblogging plugin for sharing Bits and ReBits.
+ * Version: 2.1.1
+ * Author: Facundo Pignanelli
  * Text Domain: bitstream
  */
 
@@ -15,7 +13,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('BITSTREAM_VERSION', '1.1.0');
+define('BITSTREAM_VERSION', '2.1.1');
 define('BITSTREAM_PLUGIN_PATH', plugin_dir_path(__FILE__));
 define('BITSTREAM_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -101,23 +99,12 @@ register_deactivation_hook(__FILE__, 'bitstream_plugin_deactivate');
  * Plugin activation callback
  */
 function bitstream_plugin_activate() {
-    // Create a temporary instance to register post types
-    require_once BITSTREAM_PLUGIN_PATH . 'includes/class-post-type.php';
-    $post_type_handler = new BitStream_Post_Type();
-    $post_type_handler->register_post_type();
-    
-    // Also register service worker rewrite rules
-    if (class_exists('BitStream_PWA_Manager')) {
-        require_once BITSTREAM_PLUGIN_PATH . 'includes/class-pwa-manager.php';
-        $pwa_manager = new BitStream_PWA_Manager();
-        $pwa_manager->add_service_worker_rewrite();
-    }
+    // Ensure post type is registered before flushing
+    $plugin = new BitStream_Plugin();
+    $plugin->init();
     
     // Flush rewrite rules to ensure permalinks work
     flush_rewrite_rules();
-    
-    // Mark permalinks as flushed for this version
-    update_option('bitstream_permalinks_flushed', BITSTREAM_VERSION);
 }
 
 /**
