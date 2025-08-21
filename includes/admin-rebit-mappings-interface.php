@@ -763,11 +763,11 @@ function openIconPicker(inputId) {
             document.getElementById('icon-search').value = '';
         });
     } else {
-        // Icons already loaded, but still show loading briefly for better UX
+        // Icons already loaded, but still show loading spinner briefly for better UX
         setTimeout(() => {
             showCategory('all');
             document.getElementById('icon-search').value = '';
-        }, 100); // Small delay to ensure loading indicator is visible
+        }, 300); // Longer delay to show spinner properly
     }
 }
 
@@ -816,17 +816,25 @@ function showCategory(category) {
     // Clear the grid first
     grid.innerHTML = '';
     
-    // For large icon sets, show a brief loading message while rendering
+    // For large icon sets, show spinner first, then rendering message, then icons
     if (iconsToShow.length > 100) {
-        grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #666; padding: 20px;">Rendering ' + iconsToShow.length + ' icons...</p>';
+        // Show spinner for a brief moment
+        showLoadingIndicator();
         
-        // Use setTimeout to allow the loading message to display before heavy rendering
+        setTimeout(() => {
+            grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #666; padding: 20px;">Rendering ' + iconsToShow.length + ' icons...</p>';
+            
+            // Then render the icons
+            setTimeout(() => {
+                renderIcons(iconsToShow, grid);
+            }, 100);
+        }, 200);
+    } else {
+        // For smaller sets, show spinner briefly then render
+        showLoadingIndicator();
         setTimeout(() => {
             renderIcons(iconsToShow, grid);
-        }, 50);
-    } else {
-        // For smaller sets, render immediately
-        renderIcons(iconsToShow, grid);
+        }, 150);
     }
 }
 
