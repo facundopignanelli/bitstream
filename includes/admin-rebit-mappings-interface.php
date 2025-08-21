@@ -91,11 +91,11 @@ body.wp-admin {
     font-size: 1.1em;
 }
 
-/* Flex containers with strict width control */
+/* Flex containers with strict width control - DEFAULT TO SINGLE COLUMN */
 .flex-container {
     display: flex !important;
-    gap: 15px !important;
-    flex-wrap: wrap !important;
+    flex-direction: column !important;
+    gap: 20px !important;
     max-width: 100% !important;
     width: 100% !important;
     overflow: hidden !important;
@@ -103,20 +103,35 @@ body.wp-admin {
 }
 
 .flex-item {
-    flex: 1 1 300px !important;
+    flex: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
     min-width: 0 !important;
-    max-width: calc(50% - 10px) !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
 }
 
-/* Mapping rows with controlled width - NEVER exceed container */
+/* Only use side-by-side layout on very large screens */
+@media (min-width: 1600px) {
+    .flex-container {
+        flex-direction: row !important;
+        gap: 30px !important;
+    }
+    
+    .flex-item {
+        flex: 1 1 300px !important;
+        width: auto !important;
+        max-width: calc(50% - 15px) !important;
+    }
+}
+
+/* Mapping rows with controlled width - FORCE SINGLE COLUMN EARLY */
 .mapping-row {
     display: flex !important;
-    flex-wrap: wrap !important;
-    gap: 8px !important;
+    flex-direction: column !important;
+    gap: 12px !important;
     margin-bottom: 15px !important;
-    padding: 12px !important;
+    padding: 15px !important;
     border: 1px solid #ddd !important;
     border-radius: 5px !important;
     background: #fafafa !important;
@@ -127,30 +142,42 @@ body.wp-admin {
     min-width: 0 !important;
 }
 
-.mapping-field {
-    flex: 1 1 160px !important;
-    min-width: 0 !important;
-    max-width: calc(25% - 6px) !important;
-    box-sizing: border-box !important;
-    overflow: hidden !important;
-    position: relative !important;
-}
-
-.mapping-preview-field {
-    flex: 0 0 130px !important;
-    min-width: 100px !important;
-    max-width: 130px !important;
-    box-sizing: border-box !important;
-    overflow: hidden !important;
-    position: relative !important;
-}
-
+.mapping-field,
+.mapping-preview-field,
 .mapping-actions {
-    flex: 0 0 70px !important;
-    min-width: 60px !important;
-    max-width: 70px !important;
+    flex: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
     box-sizing: border-box !important;
+    overflow: hidden !important;
     position: relative !important;
+}
+
+/* Only use row layout on very large screens */
+@media (min-width: 1600px) {
+    .mapping-row {
+        flex-direction: row !important;
+        gap: 15px !important;
+    }
+    
+    .mapping-field {
+        flex: 1 1 200px !important;
+        width: auto !important;
+        max-width: calc(25% - 12px) !important;
+    }
+    
+    .mapping-preview-field {
+        flex: 0 0 180px !important;
+        width: 180px !important;
+        max-width: 180px !important;
+    }
+    
+    .mapping-actions {
+        flex: 0 0 100px !important;
+        width: 100px !important;
+        max-width: 100px !important;
+    }
 }
 
 /* Input fields with EXTREME overflow control */
