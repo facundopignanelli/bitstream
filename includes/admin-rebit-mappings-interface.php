@@ -11,12 +11,13 @@ if (!defined('ABSPATH')) exit;
 
 ?>
 <style>
-/* Completely prevent horizontal overflow to the right */
-* {
-    box-sizing: border-box !important;
+/* NUCLEAR OPTION: Completely prevent horizontal overflow */
+html {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
 }
 
-html, body {
+body {
     overflow-x: hidden !important;
     max-width: 100vw !important;
 }
@@ -24,34 +25,51 @@ html, body {
 /* WordPress admin body override */
 body.wp-admin {
     overflow-x: hidden !important;
-}
-
-/* Main WordPress containers - prevent right overflow */
-#wpwrap {
-    overflow-x: hidden !important;
     max-width: 100vw !important;
 }
 
+/* Main WordPress containers - FORCE containment */
+#wpwrap {
+    overflow: hidden !important;
+    max-width: 100vw !important;
+    position: relative !important;
+}
+
 #wpcontent {
-    overflow-x: hidden !important;
+    overflow: hidden !important;
     max-width: calc(100vw - 160px) !important;
+    position: relative !important;
 }
 
 #wpbody-content {
-    overflow-x: hidden !important;
+    overflow: hidden !important;
     max-width: 100% !important;
     padding-right: 20px !important;
     padding-left: 20px !important;
+    position: relative !important;
 }
 
-/* Ensure main container never exceeds viewport */
+/* Universal container - NOTHING can escape */
 .wrap {
-    overflow-x: hidden !important;
+    overflow: hidden !important;
     max-width: 100% !important;
     width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
     box-sizing: border-box !important;
+    position: relative !important;
+}
+
+/* Ensure absolutely NO element can overflow */
+.wrap,
+.wrap *,
+.wrap *::before,
+.wrap *::after {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-wrap: break-word !important;
+    word-wrap: break-word !important;
+    word-break: break-word !important;
 }
 
 /* Card containers */
@@ -96,9 +114,9 @@ body.wp-admin {
 .mapping-row {
     display: flex !important;
     flex-wrap: wrap !important;
-    gap: 10px !important;
+    gap: 8px !important;
     margin-bottom: 15px !important;
-    padding: 15px !important;
+    padding: 12px !important;
     border: 1px solid #ddd !important;
     border-radius: 5px !important;
     background: #fafafa !important;
@@ -106,100 +124,128 @@ body.wp-admin {
     box-sizing: border-box !important;
     max-width: 100% !important;
     width: 100% !important;
+    min-width: 0 !important;
 }
 
 .mapping-field {
-    flex: 1 1 180px !important;
+    flex: 1 1 160px !important;
     min-width: 0 !important;
-    max-width: calc(25% - 8px) !important;
+    max-width: calc(25% - 6px) !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
+    position: relative !important;
 }
 
 .mapping-preview-field {
-    flex: 0 0 140px !important;
-    min-width: 120px !important;
-    max-width: 140px !important;
+    flex: 0 0 130px !important;
+    min-width: 100px !important;
+    max-width: 130px !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
+    position: relative !important;
 }
 
 .mapping-actions {
-    flex: 0 0 80px !important;
-    min-width: 80px !important;
-    max-width: 80px !important;
+    flex: 0 0 70px !important;
+    min-width: 60px !important;
+    max-width: 70px !important;
     box-sizing: border-box !important;
+    position: relative !important;
 }
 
-/* Input fields with strict overflow control - NEVER overflow */
+/* Input fields with EXTREME overflow control */
 .mapping-row input[type="text"],
 .card input[type="text"],
 .card select {
     width: 100% !important;
     max-width: 100% !important;
+    min-width: 0 !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;
     border: 1px solid #ddd !important;
-    padding: 6px 8px !important;
+    padding: 4px 6px !important;
+    margin: 0 !important;
+    position: relative !important;
+    display: block !important;
 }
 
 /* Special handling for icon input with button */
 .mapping-field input[style*="padding-right"] {
-    padding-right: 35px !important;
+    padding-right: 30px !important;
+}
+
+/* Icon picker button positioning */
+.mapping-field .button {
+    max-width: 25px !important;
+    padding: 1px 4px !important;
+    font-size: 11px !important;
 }
 
 .mapping-preview {
-    font-size: 14px;
-    line-height: 1.4;
-    padding: 8px;
+    font-size: 12px;
+    line-height: 1.3;
+    padding: 6px;
     border: 1px solid #ccc;
     border-radius: 3px;
     background: white;
-    min-height: 30px;
+    min-height: 24px;
     word-wrap: break-word;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;
     box-sizing: border-box !important;
     max-width: 100% !important;
+    width: 100% !important;
+    position: relative !important;
 }
 
-/* Responsive breakpoints - aggressive overflow prevention */
+/* Responsive breakpoints - ULTRA aggressive overflow prevention */
+@media (max-width: 1600px) {
+    .mapping-field {
+        flex: 1 1 140px !important;
+        max-width: calc(33.33% - 6px) !important;
+    }
+}
+
 @media (max-width: 1400px) {
     .mapping-field {
-        flex: 1 1 150px !important;
-        max-width: calc(33.33% - 8px) !important;
+        flex: 1 1 120px !important;
+        max-width: calc(50% - 6px) !important;
+    }
+    
+    .mapping-preview-field {
+        flex: 1 1 120px !important;
+        max-width: calc(50% - 6px) !important;
     }
 }
 
 @media (max-width: 1200px) {
+    /* Force single column much earlier */
     .flex-item {
         max-width: 100% !important;
         flex: 1 1 100% !important;
     }
     
-    .mapping-field {
-        flex: 1 1 140px !important;
-        max-width: calc(50% - 8px) !important;
+    .mapping-row {
+        flex-direction: column !important;
+        gap: 8px !important;
     }
     
-    .mapping-preview-field {
-        flex: 1 1 140px !important;
-        max-width: calc(50% - 8px) !important;
-    }
-    
+    .mapping-field,
+    .mapping-preview-field,
     .mapping-actions {
-        flex: 1 1 100% !important;
+        flex: 1 1 auto !important;
         max-width: 100% !important;
+        min-width: 0 !important;
     }
 }
 
 @media (max-width: 900px) {
     .wrap {
         max-width: calc(100vw - 40px) !important;
-        padding: 0 10px !important;
+        padding: 0 8px !important;
     }
     
     #wpcontent {
@@ -208,28 +254,12 @@ body.wp-admin {
     
     .flex-container {
         flex-direction: column !important;
-        gap: 10px !important;
-    }
-    
-    .flex-item {
-        max-width: 100% !important;
-        flex: 1 1 auto !important;
-    }
-    
-    .mapping-row {
-        flex-direction: column !important;
-        gap: 10px !important;
-    }
-    
-    .mapping-field,
-    .mapping-preview-field,
-    .mapping-actions {
-        max-width: 100% !important;
-        flex: 1 1 auto !important;
+        gap: 8px !important;
     }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 782px) {
+    /* WordPress mobile admin breakpoint */
     .wrap {
         max-width: calc(100vw - 20px) !important;
         padding: 0 5px !important;
@@ -245,15 +275,36 @@ body.wp-admin {
     }
     
     .card {
-        padding: 15px !important;
+        padding: 10px !important;
+        margin-bottom: 10px !important;
     }
     
     .mapping-row {
-        padding: 10px !important;
+        padding: 8px !important;
+        gap: 5px !important;
+    }
+    
+    .mapping-row input[type="text"],
+    .card input[type="text"],
+    .card select {
+        padding: 3px 4px !important;
+        font-size: 14px !important;
     }
 }
 
-/* Force all elements to never exceed container bounds */
+@media (max-width: 600px) {
+    /* Ultra narrow screens */
+    .wrap {
+        max-width: calc(100vw - 10px) !important;
+        padding: 0 2px !important;
+    }
+    
+    #wpcontent {
+        max-width: calc(100vw - 20px) !important;
+    }
+}
+
+/* Force all elements to never exceed container bounds - NUCLEAR OPTION */
 .wrap *,
 .card *,
 .mapping-row *,
@@ -261,6 +312,8 @@ body.wp-admin {
 .flex-item * {
     max-width: 100% !important;
     box-sizing: border-box !important;
+    overflow: hidden !important;
+    position: relative !important;
 }
 
 /* Ensure buttons don't cause overflow */
@@ -270,6 +323,17 @@ body.wp-admin {
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
+    word-break: break-all !important;
+}
+
+/* Last resort: clip anything that tries to overflow */
+.wrap {
+    clip-path: inset(0 0 0 0) !important;
+    contain: layout style paint !important;
+}
+
+.mapping-row {
+    contain: layout style !important;
 }
 
 .mapping-row:hover {
@@ -810,5 +874,66 @@ document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
         closeIconPicker();
     }
+});
+
+// NUCLEAR OPTION: Aggressive overflow prevention with JavaScript
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('BitStream: Initializing overflow prevention...');
+    
+    function preventOverflow() {
+        const wrap = document.querySelector('.wrap');
+        if (!wrap) return;
+        
+        const viewportWidth = window.innerWidth;
+        const adminBarWidth = 160; // WordPress admin sidebar
+        const padding = 40; // Safety padding
+        const maxAllowedWidth = viewportWidth - adminBarWidth - padding;
+        
+        // Force maximum width on main container
+        wrap.style.maxWidth = maxAllowedWidth + 'px';
+        wrap.style.overflow = 'hidden';
+        wrap.style.position = 'relative';
+        
+        // Check all mapping rows
+        const mappingRows = document.querySelectorAll('.mapping-row');
+        mappingRows.forEach(function(row) {
+            if (row.scrollWidth > row.clientWidth) {
+                console.log('BitStream: Forcing single column layout due to overflow');
+                row.style.flexDirection = 'column';
+                row.style.gap = '8px';
+                
+                // Force all children to full width
+                const children = row.children;
+                for (let i = 0; i < children.length; i++) {
+                    children[i].style.flex = '1 1 auto';
+                    children[i].style.maxWidth = '100%';
+                    children[i].style.minWidth = '0';
+                }
+            }
+        });
+        
+        // Force all inputs to fit within their containers
+        const inputs = document.querySelectorAll('.mapping-row input[type="text"], .card input[type="text"], .card select');
+        inputs.forEach(function(input) {
+            input.style.maxWidth = '100%';
+            input.style.width = '100%';
+            input.style.boxSizing = 'border-box';
+            input.style.overflow = 'hidden';
+            input.style.textOverflow = 'ellipsis';
+            input.style.whiteSpace = 'nowrap';
+        });
+    }
+    
+    // Run immediately
+    preventOverflow();
+    
+    // Run on window resize
+    window.addEventListener('resize', preventOverflow);
+    
+    // Run after any DOM changes (for dynamic content)
+    const observer = new MutationObserver(preventOverflow);
+    observer.observe(document.body, { childList: true, subtree: true });
+    
+    console.log('BitStream: Overflow prevention active');
 });
 </script>
