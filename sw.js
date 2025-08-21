@@ -2,8 +2,11 @@
 const CACHE_NAME = 'bitstream-v2.1.1';
 const ASSETS_TO_CACHE = [
   '/bitstream/',
+  '/bitstream/new-bit/',
+  '/bitstream/new-rebit/',
   '/wp-content/plugins/bitstream/assets/css/bitstream.css',
-  '/wp-content/plugins/bitstream/assets/js/bitstream.js'
+  '/wp-content/plugins/bitstream/assets/js/bitstream.js',
+  '/wp-content/plugins/bitstream/manifest.json'
 ];
 
 self.addEventListener('install', event => {
@@ -31,9 +34,12 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   // Handle BitStream requests specifically - avoid other plugin conflicts
-  if (event.request.url.includes('/bitstream/') && 
+  if ((event.request.url.includes('/bitstream/') || 
+       event.request.url.includes('/wp-content/plugins/bitstream/')) && 
       !event.request.url.includes('/pup-coupons/') &&
       (event.request.url.match(/\/bitstream\/?/) || 
+       (event.request.url.includes('/bitstream/new-bit/') ||
+        event.request.url.includes('/bitstream/new-rebit/')) ||
        event.request.url.includes('/wp-content/plugins/bitstream/') ||
        event.request.url.includes('/wp-admin/admin-ajax.php'))) {
     

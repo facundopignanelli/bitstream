@@ -14,9 +14,11 @@ class BitStream_PWA_Manager {
     
     public function __construct() {
         add_action('wp_head', [$this, 'pwa_assets']);
-        add_action('wp_footer', [$this, 'render_floating_quickbit_button']);
+        add_action('wp_footer', [$this, 'render_floating_bitstream_button']);
         add_action('init', [$this, 'add_service_worker_rewrite']);
+        add_action('init', [$this, 'add_shortcut_rewrite']);
         add_action('template_redirect', [$this, 'serve_service_worker']);
+        add_action('template_redirect', [$this, 'handle_shortcut_requests']);
         add_filter('query_vars', [$this, 'add_query_vars']);
         add_action('template_redirect', [$this, 'handle_debug_requests']);
     }
@@ -51,7 +53,7 @@ class BitStream_PWA_Manager {
             if("serviceWorker" in navigator) {
                 window.addEventListener("load", function() {
                     navigator.serviceWorker.register("'.esc_url($sw_url).'", {
-                        scope: "/bitstream/",
+                        scope: "/",
                         updateViaCache: "none"
                     }).then(function(registration) {
                         console.log("BitStream PWA registered with scope:", registration.scope);
@@ -73,28 +75,28 @@ class BitStream_PWA_Manager {
     }
 
     /**
-     * Render floating QuickBit button for admins
+     * Render floating BitStream button for admins
      */
-    public function render_floating_quickbit_button() {
+    public function render_floating_bitstream_button() {
         // Only show to users who can edit posts
         if (!current_user_can('edit_posts')) {
             return;
         }
 
-        $quickbit_url = admin_url('post-new.php?post_type=bit');
+        $new_bit_url = admin_url('post-new.php?post_type=bit');
         $rebit_url = admin_url('post-new.php?post_type=bit&rebit=1');
         ?>
-        <div id="bitstream-floating-quickbit" style="position: fixed; bottom: 30px; right: 30px; z-index: 9999;">
-            <div class="quickbit-menu">
-                <button class="quickbit-toggle" 
+        <div id="bitstream-floating-menu" style="position: fixed; bottom: 30px; right: 30px; z-index: 9999;">
+            <div class="bitstream-menu">
+                <button class="bitstream-toggle" 
                         style="display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; background: #2c6e49; color: white; border-radius: 50%; border: none; box-shadow: 0 4px 12px rgba(44,110,73,0.25); transition: all 0.3s ease; font-size: 24px; cursor: pointer;"
                         title="Quick Actions"
                         onmouseover="this.style.transform='scale(1.1)'; this.style.background='#1f4d35';"
                         onmouseout="this.style.transform='scale(1)'; this.style.background='#2c6e49';">
                     <i class="fa-solid fa-plus" style="margin: 0;"></i>
                 </button>
-                <div class="quickbit-dropdown" style="position: absolute; bottom: 70px; right: 0; background: white; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.15); min-width: 160px; opacity: 0; visibility: hidden; transform: translateY(10px); transition: all 0.3s ease;">
-                    <a href="<?php echo esc_url($quickbit_url); ?>" 
+                <div class="bitstream-dropdown" style="position: absolute; bottom: 70px; right: 0; background: white; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.15); min-width: 160px; opacity: 0; visibility: hidden; transform: translateY(10px); transition: all 0.3s ease;">
+                    <a href="<?php echo esc_url($new_bit_url); ?>" 
                        style="display: flex; align-items: center; padding: 12px 16px; text-decoration: none; color: #333; border-bottom: 1px solid #eee;"
                        onmouseover="this.style.background='#f5f5f5';"
                        onmouseout="this.style.background='white';">
@@ -131,10 +133,19 @@ class BitStream_PWA_Manager {
     }
 
     /**
+     * Add rewrite rules for PWA shortcut handling
+     */
+    public function add_shortcut_rewrite() {
+        add_rewrite_rule('^bitstream/new-bit/?$', 'index.php?bitstream_action=new-bit', 'top');
+        add_rewrite_rule('^bitstream/new-rebit/?$', 'index.php?bitstream_action=new-rebit', 'top');
+    }
+
+    /**
      * Add custom query vars for Service Worker routing
      */
     public function add_query_vars($vars) {
         $vars[] = 'bitstream_sw';
+        $vars[] = 'bitstream_action';
         return $vars;
     }
 
@@ -182,6 +193,44 @@ class BitStream_PWA_Manager {
             error_log('BitStream: SW file not found: ' . $file_path);
             status_header(404);
             echo '// Service Worker file not found';
+            exit;
+        }
+    }
+    
+    /**
+     * Handle PWA shortcut requests
+     */
+    public function handle_shortcut_requests() {
+        $action = get_query_var('bitstream_action');
+        
+        if ($action) {
+            // Check if user is logged in
+            if (!is_user_logged_in()) {
+                // Redirect to login with return URL
+                $return_url = urlencode($_SERVER['REQUEST_URI']);
+                wp_redirect(wp_login_url(home_url($_SERVER['REQUEST_URI'])));
+                exit;
+            }
+            
+            // Check if user can edit posts
+            if (!current_user_can('edit_posts')) {
+                wp_redirect(home_url('/bitstream/?error=permission_denied'));
+                exit;
+            }
+            
+            // Redirect to appropriate admin page
+            switch ($action) {
+                case 'new-bit':
+                    wp_redirect(admin_url('post-new.php?post_type=bit'));
+                    break;
+                case 'new-rebit':
+                    wp_redirect(admin_url('post-new.php?post_type=bit&rebit=1'));
+                    break;
+                default:
+                    // Default to BitStream feed
+                    wp_redirect(home_url('/bitstream/'));
+                    break;
+            }
             exit;
         }
     }

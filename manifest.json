@@ -3,22 +3,22 @@
   "short_name": "BitStream",
   "description": "View and interact with BitStream posts",
   "id": "bitstream-wp-plugin",
-  "start_url": "/bitstream/",
+  "start_url": "/bitstream/?pwa=1",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#ffffff",
   "theme_color": "#2c6e49",
-  "scope": "/bitstream/",
+  "scope": "/",
   "categories": ["social", "news"],
   "shortcuts": [
     {
       "name": "Add New Bit",
       "short_name": "New Bit",
       "description": "Create a new bit post",
-      "url": "/wp-admin/post-new.php?post_type=bit",
+      "url": "/bitstream/new-bit/",
       "icons": [
         {
-          "src": "assets/images/new-bit-192.png",
+          "src": "/wp-content/plugins/bitstream/assets/images/new-bit-192.png",
           "sizes": "192x192",
           "type": "image/png"
         }
@@ -28,10 +28,10 @@
       "name": "Add New ReBit",
       "short_name": "New ReBit", 
       "description": "Share external content as a ReBit",
-      "url": "/wp-admin/post-new.php?post_type=bit&rebit=1",
+      "url": "/bitstream/new-rebit/",
       "icons": [
         {
-          "src": "assets/images/new-rebit-192.png",
+          "src": "/wp-content/plugins/bitstream/assets/images/new-rebit-192.png",
           "sizes": "192x192", 
           "type": "image/png"
         }
@@ -40,13 +40,13 @@
   ],
   "icons": [
     {
-      "src": "assets/images/192.png",
+      "src": "/wp-content/plugins/bitstream/assets/images/192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "assets/images/512.png", 
+      "src": "/wp-content/plugins/bitstream/assets/images/512.png", 
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

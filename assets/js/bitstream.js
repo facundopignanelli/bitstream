@@ -88,34 +88,34 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     });
 
-    // Floating QuickBit dropdown functionality
-    const quickbitToggle = document.querySelector('.quickbit-toggle');
-    const quickbitDropdown = document.querySelector('.quickbit-dropdown');
+    // Floating BitStream menu functionality
+    const bitstreamToggle = document.querySelector('.bitstream-toggle');
+    const bitstreamDropdown = document.querySelector('.bitstream-dropdown');
     
-    if (quickbitToggle && quickbitDropdown) {
-        quickbitToggle.addEventListener('click', (e) => {
+    if (bitstreamToggle && bitstreamDropdown) {
+        bitstreamToggle.addEventListener('click', (e) => {
             e.preventDefault();
-            const isOpen = quickbitDropdown.style.opacity === '1';
+            const isOpen = bitstreamDropdown.style.opacity === '1';
             
             if (isOpen) {
                 // Close dropdown
-                quickbitDropdown.style.opacity = '0';
-                quickbitDropdown.style.visibility = 'hidden';
-                quickbitDropdown.style.transform = 'translateY(10px)';
+                bitstreamDropdown.style.opacity = '0';
+                bitstreamDropdown.style.visibility = 'hidden';
+                bitstreamDropdown.style.transform = 'translateY(10px)';
             } else {
                 // Open dropdown
-                quickbitDropdown.style.opacity = '1';
-                quickbitDropdown.style.visibility = 'visible';
-                quickbitDropdown.style.transform = 'translateY(0)';
+                bitstreamDropdown.style.opacity = '1';
+                bitstreamDropdown.style.visibility = 'visible';
+                bitstreamDropdown.style.transform = 'translateY(0)';
             }
         });
 
         // Close dropdown when clicking outside
         document.addEventListener('click', (e) => {
-            if (!e.target.closest('.quickbit-menu')) {
-                quickbitDropdown.style.opacity = '0';
-                quickbitDropdown.style.visibility = 'hidden';
-                quickbitDropdown.style.transform = 'translateY(10px)';
+            if (!e.target.closest('.bitstream-menu')) {
+                bitstreamDropdown.style.opacity = '0';
+                bitstreamDropdown.style.visibility = 'hidden';
+                bitstreamDropdown.style.transform = 'translateY(10px)';
             }
         });
     }

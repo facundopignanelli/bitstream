@@ -106,7 +106,7 @@ function bitstream_plugin_activate() {
     // Import default ReBit mappings if none exist
     bitstream_import_default_mappings();
     
-    // Flush rewrite rules to ensure permalinks work
+    // Flush rewrite rules to ensure permalinks work (including PWA shortcuts)
     flush_rewrite_rules();
 }
 
