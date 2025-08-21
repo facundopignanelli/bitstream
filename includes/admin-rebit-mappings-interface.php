@@ -218,6 +218,32 @@ if (!defined('ABSPATH')) exit;
     overflow-y: auto;
 }
 
+/* Loading indicator styling */
+.icon-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+    color: #666;
+}
+
+.icon-loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #2c6e49;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 15px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
 .icon-option {
     display: flex;
     flex-direction: column;
@@ -560,6 +586,18 @@ function selectIcon(iconClass) {
     closeIconPicker();
 }
 
+// Function to show loading indicator in the icon grid
+function showLoadingIndicator() {
+    const grid = document.getElementById('icon-grid');
+    grid.innerHTML = `
+        <div class="icon-loading">
+            <div class="icon-loading-spinner"></div>
+            <p>Loading Font Awesome icons...</p>
+            <small>This may take a few seconds</small>
+        </div>
+    `;
+}
+
 // Function to update the preview for new mapping as user types
 function updateNewMappingPreview() {
     const domainInput = document.querySelector('input[name="bitstream_rebit_mappings[new][domain]"]');
@@ -685,6 +723,9 @@ function openIconPicker(inputId) {
     // Prevent background scrolling
     document.body.style.overflow = 'hidden';
     
+    // Show loading indicator immediately
+    showLoadingIndicator();
+    
     console.log('=== ICON PICKER DEBUG END ===');
     
     // If icons not loaded yet, load from JSON file
@@ -694,23 +735,25 @@ function openIconPicker(inputId) {
         loadFontAwesomeIcons().then(() => {
             console.log('Successfully loaded icons from JSON');
             showCategory('all');
+            document.getElementById('icon-search').value = '';
         }).catch(e => {
             console.log('Failed to load icons, using fallback:', e);
             window.iconLibrary = iconLibrary = getFallbackIcons();
             window.iconsLoaded = iconsLoaded = true;
             showCategory('all');
+            document.getElementById('icon-search').value = '';
         });
     } else {
         // Icons already loaded, just show them
         showCategory('all');
+        document.getElementById('icon-search').value = '';
     }
-    
-    document.getElementById('icon-search').value = '';
 }
 
 // Make functions globally accessible
 window.openIconPicker = openIconPicker;
 window.updateNewMappingPreview = updateNewMappingPreview;
+window.showLoadingIndicator = showLoadingIndicator;
 
 function showCategory(category) {
     console.log('Showing category:', category);
@@ -734,6 +777,13 @@ function showCategory(category) {
     console.log('Icons to show for category', category + ':', iconsToShow.length);
     
     if (iconsToShow.length === 0) {
+        // If we're in the middle of loading, show loading indicator
+        if (!window.iconsLoaded) {
+            showLoadingIndicator();
+            return;
+        }
+        
+        // If loading is complete but still no icons, show fallback message and force load fallback
         grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #666;">No icons found. Loading fallback icons...</p>';
         // Force load fallback if we don't have any icons
         window.iconLibrary = iconLibrary = getFallbackIcons();
