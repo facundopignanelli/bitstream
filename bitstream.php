@@ -1135,70 +1135,64 @@ JS;
         $mappings = get_option('bitstream_rebit_mappings', []);
         ?>
         <style>
-        /* Ultra-aggressive full width for this admin page */
+        /* Optimized width for admin page - prevents overflow while maximizing space */
         html, body {
-            overflow-x: auto !important;
+            overflow-x: hidden !important;
         }
         
-        /* WordPress admin structure overrides */
-        #wpwrap, 
-        #adminmenuwrap + #wpcontent,
-        #wpcontent,
-        #wpbody,
+        /* WordPress admin structure - reasonable width expansion */
         #wpbody-content {
             max-width: none !important;
-            width: 100% !important;
-        }
-        
-        #wpcontent {
-            margin-left: 160px !important;
-        }
-        
-        #wpbody-content {
             padding-right: 20px !important;
             padding-left: 20px !important;
         }
         
-        /* Main container overrides */
-        .wrap,
-        .wrap > *,
-        .postbox,
-        .card {
-            max-width: none !important;
-            width: 100% !important;
+        /* Main container - use available space without overflow */
+        .wrap {
+            max-width: calc(100vw - 200px) !important;
+            width: 95% !important;
+            margin: 0 auto !important;
             box-sizing: border-box !important;
         }
         
-        /* Specific WordPress card class overrides */
-        .wp-admin .card,
-        .wp-admin .postbox,
-        .wp-admin .wrap .card,
-        .wp-admin #wpbody-content .card,
-        .wp-admin #wpbody-content .postbox {
-            max-width: none !important;
+        /* Card containers - responsive and contained */
+        .wp-admin .card {
+            max-width: 100% !important;
             width: 100% !important;
+            box-sizing: border-box !important;
             margin: 0 0 20px 0 !important;
         }
         
-        /* Flex container overrides */
-        div[style*="display: flex"],
-        .wp-admin div[style*="display: flex"] {
-            max-width: none !important;
+        /* Flex containers - prevent overflow */
+        div[style*="display: flex"] {
+            max-width: 100% !important;
             width: 100% !important;
+            box-sizing: border-box !important;
+            flex-wrap: wrap !important;
         }
         
-        /* Table and form overrides */
+        /* Form elements - ensure they fit */
+        .wp-admin input[type="text"],
+        .wp-admin select,
+        .wp-admin textarea {
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+        }
+        
+        /* Mapping rows - prevent horizontal overflow */
+        .mapping-row {
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+        }
+        
+        /* Tables - responsive behavior */
         .wp-admin table,
-        .wp-admin .form-table,
         .wp-admin .widefat {
-            max-width: none !important;
+            max-width: 100% !important;
             width: 100% !important;
-        }
-        
-        /* Remove any margin constraints */
-        .wp-admin .wrap {
-            margin: 0 !important;
-            padding: 0 !important;
+            table-layout: fixed !important;
+            box-sizing: border-box !important;
         }
         </style>
         <div class="wrap">
@@ -1206,14 +1200,14 @@ JS;
             <p class="description">Configure how different websites appear when shared as ReBits. Each mapping adds a custom icon and label for specific domains.</p>
             
             <!-- Top Section: Quick Add and Add New Mapping -->
-            <div style="display: flex; gap: 20px; margin-bottom: 20px;">
+            <div style="display: flex; gap: 20px; margin-bottom: 20px; flex-wrap: wrap;">
                 <!-- Quick Presets Section -->
-                <div class="card" style="flex: 1;">
+                <div class="card" style="flex: 1; min-width: 300px;">
                     <h2 class="title">Quick Add Popular Sites</h2>
                     <p>Add pre-configured mappings for popular websites:</p>
                     <form method="post" style="margin-bottom: 15px;">
                         <?php wp_nonce_field('bitstream_rebit_mappings_save','bitstream_rebit_mappings_nonce'); ?>
-                        <div style="display: flex; gap: 10px; align-items: end;">
+                        <div style="display: flex; gap: 10px; align-items: end; flex-wrap: wrap;">
                             <div style="flex: 1;">
                                 <label><strong>Website:</strong></label><br>
                                 <select name="preset_selection" style="width: 100%;">
@@ -1233,27 +1227,27 @@ JS;
                 </div>
                 
                 <!-- Add New Mapping Section -->
-                <div class="card" style="flex: 1;">
+                <div class="card" style="flex: 1; min-width: 300px;">
                     <h2 class="title">Add New Mapping</h2>
                     <form method="post">
                         <?php wp_nonce_field('bitstream_rebit_mappings_save','bitstream_rebit_mappings_nonce'); ?>
                         <div style="margin-bottom: 15px;">
                             <label><strong>Domain:</strong></label><br>
                             <input type="text" name="bitstream_rebit_mappings[new][domain]" 
-                                   placeholder="example.com" style="width: 100%;" />
+                                   placeholder="example.com" style="width: 100%; box-sizing: border-box;" />
                             <small class="description">Enter just the domain (e.g., "twitter.com")</small>
                         </div>
                         <div style="margin-bottom: 15px;">
                             <label><strong>Label:</strong></label><br>
                             <input type="text" name="bitstream_rebit_mappings[new][label]" 
-                                   placeholder="shared from Example" style="width: 100%;" />
+                                   placeholder="shared from Example" style="width: 100%; box-sizing: border-box;" />
                             <small class="description">Text shown when sharing from this site</small>
                         </div>
                         <div style="margin-bottom: 15px;">
                             <label><strong>Icon Class:</strong></label><br>
                             <div style="position: relative;">
                                 <input type="text" name="bitstream_rebit_mappings[new][icon]" 
-                                       placeholder="fas fa-link" style="width: 100%; padding-right: 40px;" 
+                                       placeholder="fas fa-link" style="width: 100%; padding-right: 40px; box-sizing: border-box;" 
                                        id="new-icon-input" />
                                 <button type="button" class="button" onclick="openIconPicker('new-icon-input')" 
                                         style="position: absolute; right: 5px; top: 2px; height: 26px; padding: 2px 8px;">
@@ -1281,25 +1275,25 @@ JS;
                     <?php else: ?>
                         <div id="mappings-container">
                             <?php foreach ($mappings as $i => $map): ?>
-                                <div class="mapping-row" style="display: flex; align-items: center; margin-bottom: 15px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background: #fafafa;">
-                                    <div style="flex: 1; margin-right: 15px;">
+                                <div class="mapping-row" style="display: flex; align-items: center; margin-bottom: 15px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background: #fafafa; flex-wrap: wrap; gap: 15px; box-sizing: border-box; max-width: 100%; overflow: hidden;">
+                                    <div style="flex: 1; min-width: 200px; margin-right: 0;">
                                         <label><strong>Domain:</strong></label><br>
                                         <input type="text" name="bitstream_rebit_mappings[<?php echo $i; ?>][domain]" 
                                                value="<?php echo esc_attr($map['domain']); ?>" 
-                                               placeholder="example.com" style="width: 100%;" />
+                                               placeholder="example.com" style="width: 100%; box-sizing: border-box;" />
                                     </div>
-                                    <div style="flex: 1; margin-right: 15px;">
+                                    <div style="flex: 1; min-width: 200px; margin-right: 0;">
                                         <label><strong>Label:</strong></label><br>
                                         <input type="text" name="bitstream_rebit_mappings[<?php echo $i; ?>][label]" 
                                                value="<?php echo esc_attr($map['label']); ?>" 
-                                               placeholder="shared from Twitter" style="width: 100%;" />
+                                               placeholder="shared from Twitter" style="width: 100%; box-sizing: border-box;" />
                                     </div>
-                                    <div style="flex: 1; margin-right: 15px;">
+                                    <div style="flex: 1; min-width: 200px; margin-right: 0;">
                                         <label><strong>Icon Class:</strong></label><br>
                                         <div style="position: relative;">
                                             <input type="text" name="bitstream_rebit_mappings[<?php echo $i; ?>][icon]" 
                                                    value="<?php echo esc_attr($map['icon']); ?>" 
-                                                   placeholder="fab fa-twitter" style="width: 100%; padding-right: 40px;" 
+                                                   placeholder="fab fa-twitter" style="width: 100%; padding-right: 40px; box-sizing: border-box;" 
                                                    id="icon-input-<?php echo $i; ?>" />
                                             <button type="button" class="button" onclick="openIconPicker('icon-input-<?php echo $i; ?>')" 
                                                     style="position: absolute; right: 5px; top: 2px; height: 26px; padding: 2px 8px;">
@@ -1307,14 +1301,14 @@ JS;
                                             </button>
                                         </div>
                                     </div>
-                                    <div style="flex: 0 0 150px; margin-right: 15px;">
+                                    <div style="flex: 0 0 auto; min-width: 150px; margin-right: 0;">
                                         <label><strong>Preview:</strong></label><br>
-                                        <div class="mapping-preview" style="padding: 8px; border: 1px solid #ccc; border-radius: 3px; background: white; min-height: 30px;">
+                                        <div class="mapping-preview" style="padding: 8px; border: 1px solid #ccc; border-radius: 3px; background: white; min-height: 30px; word-wrap: break-word;">
                                             <i class="<?php echo esc_attr($map['icon']); ?>" style="margin-right: 8px; color: #2c6e49;"></i>
                                             <span><?php echo esc_html($map['label']); ?></span>
                                         </div>
                                     </div>
-                                    <div style="flex: 0 0 auto;">
+                                    <div style="flex: 0 0 auto; margin-top: 20px;">
                                         <button type="button" class="button button-link-delete" onclick="removeMapping(this)" style="color: #a00;">Remove</button>
                                         <input type="hidden" name="bitstream_rebit_mappings[<?php echo $i; ?>][remove]" value="0" class="remove-flag" />
                                     </div>
@@ -1407,21 +1401,38 @@ JS;
             return new Promise((resolve) => {
                 console.log('Loading Font Awesome icons...');
                 
-                // Always start with fallback icons to ensure we have something to show
-                iconLibrary = getFallbackIcons();
-                console.log('Loaded fallback library with', iconLibrary.brands.length + iconLibrary.solid.length + iconLibrary.regular.length, 'icons');
-                
-                const styleSheets = document.styleSheets;
                 const foundIcons = { brands: [], solid: [], regular: [] };
                 let foundAnyIcons = false;
                 
+                // First check if Font Awesome is actually available by testing some common classes
+                const testElement = document.createElement('i');
+                testElement.className = 'fas fa-home';
+                testElement.style.position = 'absolute';
+                testElement.style.visibility = 'hidden';
+                document.body.appendChild(testElement);
+                
+                const computedStyle = window.getComputedStyle(testElement, '::before');
+                const fontFamily = computedStyle.fontFamily;
+                const hasFA = fontFamily && (fontFamily.includes('Font Awesome') || fontFamily.includes('FontAwesome'));
+                
+                document.body.removeChild(testElement);
+                
+                if (!hasFA) {
+                    console.log('Font Awesome not detected, using fallback icons');
+                    window.iconLibrary = iconLibrary = getFallbackIcons();
+                    window.iconsLoaded = iconsLoaded = true;
+                    resolve();
+                    return;
+                }
+                
+                console.log('Font Awesome detected, extracting icons from stylesheets...');
+                
                 try {
+                    const styleSheets = document.styleSheets;
+                    
                     for (let sheet of styleSheets) {
                         try {
-                            // Check if this is a Font Awesome stylesheet (local or CDN)
-                            if (!sheet.href || (!sheet.href.includes('font-awesome') && !sheet.href.includes('fa'))) continue;
-                            
-                            console.log('Checking FA stylesheet:', sheet.href);
+                            console.log('Checking FA stylesheet:', sheet.href || 'inline');
                             const rules = sheet.cssRules || sheet.rules;
                             if (!rules) continue;
                             
@@ -1465,14 +1476,13 @@ JS;
                     console.log('Error accessing stylesheets:', e);
                 }
                 
-                // If we found icons from local FA, use them; otherwise keep fallback
-                if (foundAnyIcons && (foundIcons.brands.length > 10 || foundIcons.solid.length > 10)) {
+                // If we found sufficient icons from Font Awesome, use them; otherwise use fallback
+                if (foundAnyIcons && (foundIcons.brands.length > 10 || foundIcons.solid.length > 50)) {
                     window.iconLibrary = iconLibrary = foundIcons;
-                    console.log('Enhanced with', foundIcons.brands.length + foundIcons.solid.length + foundIcons.regular.length, 'icons from Font Awesome stylesheets');
+                    console.log('Using Font Awesome icons:', foundIcons.brands.length, 'brands,', foundIcons.solid.length, 'solid,', foundIcons.regular.length, 'regular');
                 } else {
-                    console.log('Using fallback icon library');
+                    console.log('Insufficient Font Awesome icons found, using fallback library');
                     window.iconLibrary = iconLibrary = getFallbackIcons();
-                    console.log('Using fallback icon library with', iconLibrary.brands.length + iconLibrary.solid.length + iconLibrary.regular.length, 'icons');
                 }
                 
                 // Remove duplicates and sort
