@@ -89,14 +89,19 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Floating BitStream menu functionality
-    const bitstreamToggle = document.querySelector('.bitstream-toggle');
-    const bitstreamDropdown = document.querySelector('.bitstream-dropdown');
-    
-    if (bitstreamToggle && bitstreamDropdown) {
+    function initFloatingMenu() {
+        const bitstreamToggle = document.querySelector('.bitstream-toggle');
+        const bitstreamDropdown = document.querySelector('.bitstream-dropdown');
+        
+        if (!bitstreamToggle || !bitstreamDropdown) {
+            return; // Elements not found
+        }
+        
         let isOpen = false;
         
         // Function to open dropdown
         function openDropdown() {
+            console.log('Opening dropdown'); // Debug log
             isOpen = true;
             bitstreamDropdown.style.opacity = '1';
             bitstreamDropdown.style.visibility = 'visible';
@@ -108,6 +113,7 @@ document.addEventListener('DOMContentLoaded', function () {
         
         // Function to close dropdown
         function closeDropdown() {
+            console.log('Closing dropdown'); // Debug log
             isOpen = false;
             bitstreamDropdown.style.opacity = '0';
             bitstreamDropdown.style.visibility = 'hidden';
@@ -117,69 +123,138 @@ document.addEventListener('DOMContentLoaded', function () {
             bitstreamToggle.style.transform = 'scale(1)';
         }
         
-        // Handle click/touch events
-        bitstreamToggle.addEventListener('click', (e) => {
+        // Unified event handler for both click and touch
+        function handleToggle(e) {
             e.preventDefault();
             e.stopPropagation();
+            console.log('Toggle button activated, isOpen:', isOpen); // Debug log
             
             if (isOpen) {
                 closeDropdown();
             } else {
                 openDropdown();
             }
-        });
+        }
         
-        // Handle touch events for mobile
+        // Add both click and touchstart for maximum compatibility
+        bitstreamToggle.addEventListener('click', handleToggle);
+        bitstreamToggle.addEventListener('touchstart', handleToggle);
+        
+        // Prevent double-firing on devices that support both
         bitstreamToggle.addEventListener('touchend', (e) => {
             e.preventDefault();
-            e.stopPropagation();
+        });
+        
+        // Add hover effects for desktop only (check if touch device)
+        const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        if (!isTouch) {
+            bitstreamToggle.addEventListener('mouseenter', () => {
+                if (!isOpen) {
+                    bitstreamToggle.style.background = '#1f4d35';
+                    bitstreamToggle.style.transform = 'scale(1.05)';
+                }
+            });
             
-            if (isOpen) {
-                closeDropdown();
-            } else {
-                openDropdown();
-            }
-        });
-        
-        // Add hover effects for desktop
-        bitstreamToggle.addEventListener('mouseenter', () => {
-            if (!isOpen) {
-                bitstreamToggle.style.background = '#1f4d35';
-                bitstreamToggle.style.transform = 'scale(1.05)';
-            }
-        });
-        
-        bitstreamToggle.addEventListener('mouseleave', () => {
-            if (!isOpen) {
-                bitstreamToggle.style.background = '#2c6e49';
-                bitstreamToggle.style.transform = 'scale(1)';
-            }
-        });
-        
-        // Add hover effects for dropdown links
-        document.querySelectorAll('.bitstream-dropdown-link').forEach(link => {
-            link.addEventListener('mouseenter', () => {
-                link.style.background = '#f5f5f5';
+            bitstreamToggle.addEventListener('mouseleave', () => {
+                if (!isOpen) {
+                    bitstreamToggle.style.background = '#2c6e49';
+                    bitstreamToggle.style.transform = 'scale(1)';
+                }
             });
-            link.addEventListener('mouseleave', () => {
-                link.style.background = 'white';
-            });
-        });
+        }
         
-        // Close dropdown when clicking outside
-        document.addEventListener('click', (e) => {
+        // Add hover effects for dropdown links (desktop only)
+        if (!isTouch) {
+            // Use event delegation since links might not exist when this runs
+            bitstreamDropdown.addEventListener('mouseenter', (e) => {
+                if (e.target.classList.contains('bitstream-dropdown-link')) {
+                    e.target.style.background = '#f5f5f5';
+                }
+            });
+            bitstreamDropdown.addEventListener('mouseleave', (e) => {
+                if (e.target.classList.contains('bitstream-dropdown-link')) {
+                    e.target.style.background = 'white';
+                }
+            });
+        }
+        
+        // Close dropdown when clicking/touching outside
+        function handleOutsideClick(e) {
             if (!e.target.closest('.bitstream-menu') && isOpen) {
                 closeDropdown();
             }
+        }
+        
+        document.addEventListener('click', handleOutsideClick);
+        document.addEventListener('touchstart', handleOutsideClick);
+        
+        console.log('Floating menu initialized'); // Debug log
+    }
+    
+    // Initialize floating menu (try multiple times if needed)
+    initFloatingMenu();
+    
+    // Also try after a short delay in case elements are loaded later
+    setTimeout(initFloatingMenu, 500);
+    setTimeout(initFloatingMenu, 1000);
+
+    // Fix responsive embeds (YouTube, etc.)
+    function makeEmbedsResponsive() {
+        // Find all iframes and make them responsive
+        document.querySelectorAll('iframe').forEach(iframe => {
+            // Skip if already processed
+            if (iframe.dataset.responsive === 'true') return;
+            
+            // Mark as processed
+            iframe.dataset.responsive = 'true';
+            
+            // Set responsive styles
+            iframe.style.maxWidth = '100%';
+            iframe.style.height = 'auto';
+            
+            // For YouTube iframes, set aspect ratio
+            if (iframe.src && (iframe.src.includes('youtube.com') || iframe.src.includes('youtu.be'))) {
+                iframe.style.aspectRatio = '16/9';
+                iframe.style.width = '100%';
+            }
+            
+            // Make parent containers responsive too
+            let parent = iframe.parentElement;
+            while (parent && parent !== document.body) {
+                if (parent.classList.contains('wp-embedded-content') ||
+                    parent.classList.contains('wp-block-embed') ||
+                    parent.classList.contains('wp-embed') ||
+                    parent.classList.contains('bit-content') ||
+                    parent.classList.contains('bit-rebit-content')) {
+                    parent.style.maxWidth = '100%';
+                    parent.style.width = '100%';
+                    parent.style.overflowX = 'hidden';
+                }
+                parent = parent.parentElement;
+            }
         });
         
-        // Close dropdown when touching outside (mobile)
-        document.addEventListener('touchstart', (e) => {
-            if (!e.target.closest('.bitstream-menu') && isOpen) {
-                closeDropdown();
-            }
+        // Also handle WordPress embed containers directly
+        document.querySelectorAll('.wp-embedded-content, .wp-block-embed, .wp-embed').forEach(container => {
+            container.style.maxWidth = '100%';
+            container.style.width = '100%';
+            container.style.overflowX = 'hidden';
         });
     }
+    
+    // Run on page load
+    makeEmbedsResponsive();
+    
+    // Run when new content is loaded (for infinite scroll)
+    const observer = new MutationObserver(() => {
+        makeEmbedsResponsive();
+        initFloatingMenu(); // Re-init floating menu if new content added
+    });
+    
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
 
     // Comment Toggle button
 document.querySelectorAll('.bit-comment-toggle').forEach(button => {

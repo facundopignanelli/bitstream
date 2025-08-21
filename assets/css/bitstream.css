@@ -385,6 +385,70 @@
     max-width: 100% !important;
 }
 
+/* Responsive iframe and embed handling */
+iframe, embed, object, video {
+    max-width: 100% !important;
+    height: auto !important;
+}
+
+/* Specific YouTube embed fixes */
+iframe[src*="youtube.com"], 
+iframe[src*="youtu.be"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    aspect-ratio: 16/9;
+    height: auto !important;
+}
+
+/* Generic responsive embed container */
+.embed-container {
+    position: relative;
+    padding-bottom: 56.25%; /* 16:9 aspect ratio */
+    height: 0;
+    overflow: hidden;
+    max-width: 100%;
+}
+
+.embed-container iframe,
+.embed-container object,
+.embed-container embed {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+/* Mobile-specific embed fixes */
+@media (max-width: 768px) {
+    iframe, embed, object, video {
+        max-width: calc(100vw - 40px) !important;
+        width: 100% !important;
+    }
+    
+    iframe[src*="youtube.com"], 
+    iframe[src*="youtu.be"] {
+        max-width: calc(100vw - 40px) !important;
+        width: 100% !important;
+        height: auto !important;
+    }
+    
+    /* WordPress embed containers */
+    .wp-embedded-content,
+    .wp-block-embed,
+    .wp-embed {
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+    
+    /* BitStream specific containers */
+    .bit-content,
+    .bit-rebit-content {
+        overflow-x: hidden !important;
+        word-wrap: break-word !important;
+    }
+}
+
 /* Adjust quoted preview for masonry cells */
 .bitstream-quoted-preview {
     margin-top: 15px !important;
