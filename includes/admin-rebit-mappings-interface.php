@@ -763,9 +763,11 @@ function openIconPicker(inputId) {
             document.getElementById('icon-search').value = '';
         });
     } else {
-        // Icons already loaded, just show them
-        showCategory('all');
-        document.getElementById('icon-search').value = '';
+        // Icons already loaded, but still show loading briefly for better UX
+        setTimeout(() => {
+            showCategory('all');
+            document.getElementById('icon-search').value = '';
+        }, 100); // Small delay to ensure loading indicator is visible
     }
 }
 
@@ -784,7 +786,6 @@ function showCategory(category) {
     if (categoryBtn) categoryBtn.classList.add('active');
     
     const grid = document.getElementById('icon-grid');
-    grid.innerHTML = '';
     
     let iconsToShow = [];
     if (category === 'all') {
@@ -812,6 +813,27 @@ function showCategory(category) {
         return;
     }
     
+    // Clear the grid first
+    grid.innerHTML = '';
+    
+    // For large icon sets, show a brief loading message while rendering
+    if (iconsToShow.length > 100) {
+        grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #666; padding: 20px;">Rendering ' + iconsToShow.length + ' icons...</p>';
+        
+        // Use setTimeout to allow the loading message to display before heavy rendering
+        setTimeout(() => {
+            renderIcons(iconsToShow, grid);
+        }, 50);
+    } else {
+        // For smaller sets, render immediately
+        renderIcons(iconsToShow, grid);
+    }
+}
+
+// Separate function to handle icon rendering
+function renderIcons(iconsToShow, grid) {
+    grid.innerHTML = '';
+    
     iconsToShow.forEach(iconClass => {
         const iconDiv = document.createElement('div');
         iconDiv.className = 'icon-option';
@@ -836,6 +858,7 @@ function showCategory(category) {
 
 // Make functions globally accessible
 window.showCategory = showCategory;
+window.renderIcons = renderIcons;
 
 // Close modal when clicking outside
 document.addEventListener('click', function(event) {
