@@ -434,26 +434,30 @@ body.wp-admin {
     overflow-x: hidden !important;
     padding: 20px !important;
     box-sizing: border-box !important;
+    justify-content: center !important;
+    align-items: flex-start !important;
 }
 
 /* Ensure modal appears above everything and overrides our restrictive CSS */
 #icon-picker-modal.show {
-    display: block !important;
+    display: flex !important;
     visibility: visible !important;
     opacity: 1 !important;
 }
 
-/* Modal content should not be affected by parent overflow and be properly sized */
+/* Modal content should be properly centered */
 #icon-picker-modal > div {
     position: relative !important;
     z-index: 1000000 !important;
     max-width: 600px !important;
+    width: 90% !important;
     max-height: 80vh !important;
-    margin: 0 auto !important;
+    margin: 50px auto !important;
     background: white !important;
     border-radius: 4px !important;
     overflow: visible !important;
     box-sizing: border-box !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
 }
 
 /* Icon grid should be scrollable */
@@ -532,10 +536,10 @@ body.wp-admin {
                     <label><strong>Icon Class:</strong></label><br>
                     <div style="position: relative;">
                         <input type="text" name="bitstream_rebit_mappings[new][icon]" 
-                               placeholder="fas fa-link" style="width: calc(100% - 35px); padding-right: 5px; box-sizing: border-box;" 
+                               placeholder="fas fa-link" style="width: calc(100% - 40px); padding-right: 8px; box-sizing: border-box;" 
                                id="new-icon-input" />
                         <button type="button" class="button" onclick="openIconPicker('new-icon-input')" 
-                                style="position: absolute; right: 2px; top: 2px; height: 26px; padding: 2px 6px; z-index: 10; width: 30px;">
+                                style="position: absolute; right: 5px; top: 2px; height: 26px; padding: 2px 6px; z-index: 10; width: 32px; min-width: 32px;">
                             <i class="fas fa-palette"></i>
                         </button>
                     </div>
@@ -578,10 +582,10 @@ body.wp-admin {
                                 <div style="position: relative;">
                                     <input type="text" name="bitstream_rebit_mappings[existing][<?php echo $i; ?>][icon]" 
                                            value="<?php echo esc_attr($map['icon']); ?>" 
-                                           placeholder="fab fa-twitter" style="width: calc(100% - 35px); padding-right: 5px; box-sizing: border-box;" 
+                                           placeholder="fab fa-twitter" style="width: calc(100% - 40px); padding-right: 8px; box-sizing: border-box;" 
                                            id="icon-input-<?php echo $i; ?>" />
                                     <button type="button" class="button" onclick="openIconPicker('icon-input-<?php echo $i; ?>')" 
-                                            style="position: absolute; right: 2px; top: 2px; height: 26px; padding: 2px 6px; z-index: 10; width: 30px;">
+                                            style="position: absolute; right: 5px; top: 2px; height: 26px; padding: 2px 6px; z-index: 10; width: 32px; min-width: 32px;">
                                         <i class="fas fa-palette"></i>
                                     </button>
                                 </div>
@@ -895,8 +899,8 @@ function openIconPicker(inputId) {
     window.currentIconInput = inputElement;
     console.log('Current input stored:', window.currentIconInput);
     
-    // Show modal with multiple methods
-    modal.style.display = 'block';
+    // Show modal with flexbox centering
+    modal.style.display = 'flex';
     modal.style.visibility = 'visible';
     modal.classList.add('show');
     console.log('Modal should be visible now. Display:', modal.style.display);
