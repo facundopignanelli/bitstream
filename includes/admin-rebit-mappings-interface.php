@@ -223,6 +223,7 @@ if (!defined('ABSPATH')) exit;
     gap: 10px;
     max-height: 400px;
     overflow-y: auto;
+    overflow-x: hidden;
 }
 
 /* Loading indicator styling */
@@ -236,6 +237,7 @@ if (!defined('ABSPATH')) exit;
     color: #666;
     grid-column: 1 / -1;
     width: 100%;
+    overflow: hidden;
 }
 
 .icon-loading-spinner {
@@ -366,6 +368,14 @@ if (!defined('ABSPATH')) exit;
             <h2 class="title">Add New Mapping</h2>
             <form method="post">
                 <?php wp_nonce_field('bitstream_rebit_mappings_save','bitstream_rebit_mappings_nonce'); ?>
+                
+                <!-- Include existing mappings as hidden fields to prevent override -->
+                <?php foreach ($mappings as $i => $map): ?>
+                    <input type="hidden" name="bitstream_rebit_mappings[existing][<?php echo $i; ?>][domain]" value="<?php echo esc_attr($map['domain']); ?>" />
+                    <input type="hidden" name="bitstream_rebit_mappings[existing][<?php echo $i; ?>][label]" value="<?php echo esc_attr($map['label']); ?>" />
+                    <input type="hidden" name="bitstream_rebit_mappings[existing][<?php echo $i; ?>][icon]" value="<?php echo esc_attr($map['icon']); ?>" />
+                <?php endforeach; ?>
+                
                 <div style="margin-bottom: 15px;">
                     <label><strong>Domain:</strong></label><br>
                     <input type="text" name="bitstream_rebit_mappings[new][domain]" 
