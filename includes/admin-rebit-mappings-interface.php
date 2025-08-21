@@ -10,6 +10,9 @@
 if (!defined('ABSPATH')) exit;
 
 ?>
+<!-- Load Font Awesome for icon picker -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+
 <style>
 /* Prevent horizontal overflow while preserving vertical scrolling */
 html {
@@ -425,6 +428,17 @@ body.wp-admin {
     <h1>ReBit Mappings</h1>
     <p class="description">Configure how different websites appear when shared as ReBits. Each mapping adds a custom icon and label for specific domains.</p>
     
+    <!-- Debug: Test button for icon picker -->
+    <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 10px; margin: 10px 0; border-radius: 4px;">
+        <strong>Debug:</strong> 
+        <button type="button" class="button" onclick="console.log('Test button clicked'); window.openIconPicker('new-icon-input');">
+            Test Icon Picker
+        </button>
+        <span style="margin-left: 10px; font-size: 12px; color: #666;">
+            Click to test if icon picker works. Check browser console for debug info.
+        </span>
+    </div>
+    
     <!-- Top Section: Quick Add and Add New Mapping -->
     <div class="flex-container">
         <!-- Quick Presets Section -->
@@ -813,14 +827,39 @@ function getFallbackIcons() {
 window.getFallbackIcons = getFallbackIcons;
 
 function openIconPicker(inputId) {
-    console.log('Opening icon picker for:', inputId);
-    console.log('Input element found:', document.getElementById(inputId));
-    window.currentIconInput = currentIconInput = document.getElementById(inputId);
+    console.log('=== ICON PICKER DEBUG START ===');
+    console.log('openIconPicker called with inputId:', inputId);
+    
+    const inputElement = document.getElementById(inputId);
+    console.log('Input element found:', inputElement);
+    
     const modal = document.getElementById('icon-picker-modal');
     console.log('Modal element found:', modal);
+    
+    if (!modal) {
+        console.error('Modal not found!');
+        return;
+    }
+    
+    if (!inputElement) {
+        console.error('Input element not found!');
+        return;
+    }
+    
+    // Store reference to current input
+    window.currentIconInput = inputElement;
+    console.log('Current input stored:', window.currentIconInput);
+    
+    // Show modal with multiple methods
     modal.style.display = 'block';
+    modal.style.visibility = 'visible';
     modal.classList.add('show');
+    console.log('Modal should be visible now. Display:', modal.style.display);
+    
+    // Prevent background scrolling
     document.body.style.overflow = 'hidden';
+    
+    console.log('=== ICON PICKER DEBUG END ===');
     
     // If icons not loaded yet, try to load Font Awesome first, then fallback
     if (!window.iconsLoaded) {
@@ -922,22 +961,44 @@ document.addEventListener('keydown', function(event) {
     }
 });
 
-// NUCLEAR OPTION: Aggressive overflow prevention with JavaScript
+// Enhanced event handling for icon picker
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('BitStream: Initializing overflow prevention...');
+    console.log('BitStream: DOM loaded, setting up icon picker...');
     
-    // Add event listeners for icon picker buttons as backup
-    document.addEventListener('click', function(e) {
-        if (e.target.matches('button[onclick*="openIconPicker"]')) {
-            console.log('Icon picker button clicked:', e.target);
-            const onclickValue = e.target.getAttribute('onclick');
-            const match = onclickValue.match(/openIconPicker\('([^']+)'\)/);
+    // Test if our function exists
+    console.log('openIconPicker function exists:', typeof window.openIconPicker);
+    
+    // Add click listeners to all icon picker buttons
+    const iconPickerButtons = document.querySelectorAll('button[onclick*="openIconPicker"]');
+    console.log('Found icon picker buttons:', iconPickerButtons.length);
+    
+    iconPickerButtons.forEach(function(button, index) {
+        console.log('Setting up button', index, ':', button);
+        
+        // Add both onclick backup and direct event listener
+        button.addEventListener('click', function(e) {
+            console.log('=== BUTTON CLICKED ===');
+            console.log('Button clicked:', this);
+            console.log('Onclick attribute:', this.getAttribute('onclick'));
+            
+            // Extract input ID from onclick attribute
+            const onclickValue = this.getAttribute('onclick');
+            const match = onclickValue ? onclickValue.match(/openIconPicker\('([^']+)'\)/) : null;
+            
             if (match) {
                 const inputId = match[1];
                 console.log('Extracted input ID:', inputId);
-                openIconPicker(inputId);
+                
+                // Call function directly
+                if (typeof window.openIconPicker === 'function') {
+                    window.openIconPicker(inputId);
+                } else {
+                    console.error('openIconPicker function not available');
+                }
+            } else {
+                console.error('Could not extract input ID from onclick');
             }
-        }
+        });
     });
     
     function preventOverflow() {
