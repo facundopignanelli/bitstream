@@ -11,9 +11,9 @@ if (!defined('ABSPATH')) exit;
 
 ?>
 <style>
-/* Ultra-aggressive full width for this admin page */
+/* Prevent horizontal overflow */
 html, body {
-    overflow-x: auto !important;
+    overflow-x: hidden !important;
 }
 
 /* WordPress admin structure overrides */
@@ -24,6 +24,7 @@ html, body {
 #wpbody-content {
     max-width: none !important;
     width: 100% !important;
+    overflow-x: hidden !important;
 }
 
 #wpcontent {
@@ -33,6 +34,7 @@ html, body {
 #wpbody-content {
     padding-right: 20px !important;
     padding-left: 20px !important;
+    overflow-x: hidden !important;
 }
 
 /* Main container overrides */
@@ -43,6 +45,7 @@ html, body {
     max-width: none !important;
     width: 100% !important;
     box-sizing: border-box !important;
+    overflow-x: hidden !important;
 }
 
 /* Specific WordPress card class overrides */
@@ -54,13 +57,16 @@ html, body {
     max-width: none !important;
     width: 100% !important;
     margin: 0 0 20px 0 !important;
+    overflow-x: hidden !important;
 }
 
-/* Flex container overrides */
+/* Flex container overrides - prevent overflow */
 div[style*="display: flex"],
 .wp-admin div[style*="display: flex"] {
     max-width: none !important;
     width: 100% !important;
+    overflow-x: hidden !important;
+    flex-wrap: wrap !important;
 }
 
 /* Table and form overrides */
@@ -69,12 +75,57 @@ div[style*="display: flex"],
 .wp-admin .widefat {
     max-width: none !important;
     width: 100% !important;
+    overflow-x: auto !important;
 }
 
 /* Remove any margin constraints */
 .wp-admin .wrap {
     margin: 0 !important;
     padding: 0 !important;
+    overflow-x: hidden !important;
+}
+
+/* Mapping row specific fixes */
+.mapping-row {
+    overflow-x: hidden !important;
+    min-width: 0 !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    .mapping-row > div[style*="flex: 1"] {
+        min-width: 180px !important;
+    }
+}
+
+@media (max-width: 900px) {
+    .mapping-row {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+    
+    .mapping-row > div {
+        margin-right: 0 !important;
+        margin-bottom: 10px !important;
+        flex: none !important;
+        width: 100% !important;
+    }
+    
+    .mapping-row > div:last-child {
+        margin-bottom: 0 !important;
+    }
+    
+    div[style*="display: flex"][style*="gap: 20px"] {
+        flex-direction: column !important;
+        gap: 10px !important;
+    }
+}
+
+/* Input field overflow protection */
+.mapping-row input[type="text"] {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
 }
 
 .mapping-row:hover {
@@ -218,25 +269,25 @@ div[style*="display: flex"],
             <?php else: ?>
                 <div id="mappings-container">
                     <?php foreach ($mappings as $i => $map): ?>
-                        <div class="mapping-row" style="display: flex; align-items: center; margin-bottom: 15px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background: #fafafa;">
-                            <div style="flex: 1; margin-right: 15px;">
+                        <div class="mapping-row" style="display: flex; align-items: center; margin-bottom: 15px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background: #fafafa; flex-wrap: wrap; gap: 10px; overflow: hidden;">
+                            <div style="flex: 1; min-width: 200px; margin-right: 10px;">
                                 <label><strong>Domain:</strong></label><br>
                                 <input type="text" name="bitstream_rebit_mappings[<?php echo $i; ?>][domain]" 
                                        value="<?php echo esc_attr($map['domain']); ?>" 
-                                       placeholder="example.com" style="width: 100%;" />
+                                       placeholder="example.com" style="width: 100%; max-width: 100%; box-sizing: border-box;" />
                             </div>
-                            <div style="flex: 1; margin-right: 15px;">
+                            <div style="flex: 1; min-width: 200px; margin-right: 10px;">
                                 <label><strong>Label:</strong></label><br>
                                 <input type="text" name="bitstream_rebit_mappings[<?php echo $i; ?>][label]" 
                                        value="<?php echo esc_attr($map['label']); ?>" 
-                                       placeholder="shared from Twitter" style="width: 100%;" />
+                                       placeholder="shared from Twitter" style="width: 100%; max-width: 100%; box-sizing: border-box;" />
                             </div>
-                            <div style="flex: 1; margin-right: 15px;">
+                            <div style="flex: 1; min-width: 200px; margin-right: 10px;">
                                 <label><strong>Icon Class:</strong></label><br>
                                 <div style="position: relative;">
                                     <input type="text" name="bitstream_rebit_mappings[<?php echo $i; ?>][icon]" 
                                            value="<?php echo esc_attr($map['icon']); ?>" 
-                                           placeholder="fab fa-twitter" style="width: 100%; padding-right: 40px;" 
+                                           placeholder="fab fa-twitter" style="width: 100%; max-width: 100%; padding-right: 40px; box-sizing: border-box;" 
                                            id="icon-input-<?php echo $i; ?>" />
                                     <button type="button" class="button" onclick="openIconPicker('icon-input-<?php echo $i; ?>')" 
                                             style="position: absolute; right: 5px; top: 2px; height: 26px; padding: 2px 8px;">
@@ -244,9 +295,9 @@ div[style*="display: flex"],
                                     </button>
                                 </div>
                             </div>
-                            <div style="flex: 0 0 150px; margin-right: 15px;">
+                            <div style="flex: 0 0 150px; min-width: 120px; margin-right: 10px;">
                                 <label><strong>Preview:</strong></label><br>
-                                <div class="mapping-preview" style="padding: 8px; border: 1px solid #ccc; border-radius: 3px; background: white; min-height: 30px;">
+                                <div class="mapping-preview" style="padding: 8px; border: 1px solid #ccc; border-radius: 3px; background: white; min-height: 30px; word-wrap: break-word; overflow: hidden;">
                                     <i class="<?php echo esc_attr($map['icon']); ?>" style="margin-right: 8px; color: #2c6e49;"></i>
                                     <span><?php echo esc_html($map['label']); ?></span>
                                 </div>
