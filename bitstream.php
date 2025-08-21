@@ -1279,9 +1279,15 @@ JS;
         </div>
         
         <script>
-        let currentIconInput = null;
-        let iconLibrary = { brands: [], solid: [], regular: [] };
-        let iconsLoaded = false;
+        // Global variables for icon picker - attach to window for global access
+        window.currentIconInput = null;
+        window.iconLibrary = { brands: [], solid: [], regular: [] };
+        window.iconsLoaded = false;
+        
+        // Make variables accessible in local scope too
+        var currentIconInput = window.currentIconInput;
+        var iconLibrary = window.iconLibrary;
+        var iconsLoaded = window.iconsLoaded;
         
         // Check if Font Awesome is available and load fallback immediately if not
         function checkFontAwesome() {
@@ -1299,8 +1305,8 @@ JS;
             
             if (!hasFontAwesome) {
                 console.log('Font Awesome not detected, loading fallback immediately');
-                iconLibrary = getFallbackIcons();
-                iconsLoaded = true;
+                window.iconLibrary = iconLibrary = getFallbackIcons();
+                window.iconsLoaded = iconsLoaded = true;
                 return false;
             }
             return true;
@@ -1818,17 +1824,20 @@ JS;
             };
         }
         
+        // Make getFallbackIcons globally accessible
+        window.getFallbackIcons = getFallbackIcons;
+        
         function openIconPicker(inputId) {
             console.log('Opening icon picker for:', inputId);
-            currentIconInput = document.getElementById(inputId);
+            window.currentIconInput = currentIconInput = document.getElementById(inputId);
             document.getElementById('icon-picker-modal').style.display = 'block';
             document.body.style.overflow = 'hidden';
             
             // Immediately load fallback icons to ensure we have something to show
-            if (!iconsLoaded) {
+            if (!window.iconsLoaded) {
                 console.log('Loading fallback icons immediately...');
-                iconLibrary = getFallbackIcons();
-                iconsLoaded = true;
+                window.iconLibrary = iconLibrary = getFallbackIcons();
+                window.iconsLoaded = iconsLoaded = true;
                 console.log('Fallback icons loaded:', iconLibrary.brands.length, 'brands,', iconLibrary.solid.length, 'solid,', iconLibrary.regular.length, 'regular');
             }
             
@@ -1842,15 +1851,18 @@ JS;
             });
         }
         
+        // Make functions globally accessible
+        window.openIconPicker = openIconPicker;
+        
         function closeIconPicker() {
             document.getElementById('icon-picker-modal').style.display = 'none';
             document.body.style.overflow = 'auto';
-            currentIconInput = null;
+            window.currentIconInput = currentIconInput = null;
         }
         
         function showCategory(category) {
             console.log('Showing category:', category);
-            console.log('Available icon library:', iconLibrary);
+            console.log('Available icon library:', window.iconLibrary);
             
             // Update active category button
             document.querySelectorAll('.icon-category').forEach(btn => btn.classList.remove('active'));
@@ -1862,9 +1874,9 @@ JS;
             
             let iconsToShow = [];
             if (category === 'all') {
-                iconsToShow = [...iconLibrary.brands, ...iconLibrary.solid, ...iconLibrary.regular];
+                iconsToShow = [...window.iconLibrary.brands, ...window.iconLibrary.solid, ...window.iconLibrary.regular];
             } else {
-                iconsToShow = iconLibrary[category] || [];
+                iconsToShow = window.iconLibrary[category] || [];
             }
             
             console.log('Icons to show for category', category + ':', iconsToShow.length);
@@ -1872,8 +1884,8 @@ JS;
             if (iconsToShow.length === 0) {
                 grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #666;">No icons found. Loading fallback icons...</p>';
                 // Force load fallback if we don't have any icons
-                iconLibrary = getFallbackIcons();
-                iconsLoaded = true;
+                window.iconLibrary = iconLibrary = getFallbackIcons();
+                window.iconsLoaded = iconsLoaded = true;
                 // Retry showing category
                 setTimeout(() => showCategory(category), 100);
                 return;
@@ -1900,6 +1912,9 @@ JS;
             
             console.log('Added', iconsToShow.length, 'icons to grid');
         }
+        
+        // Make functions globally accessible
+        window.showCategory = showCategory;
         
         function filterIcons() {
             const searchTerm = document.getElementById('icon-search').value.toLowerCase();
