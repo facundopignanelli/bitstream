@@ -48,14 +48,15 @@ if (!defined('ABSPATH')) exit;
 .mappings-container {
     width: 100%;
     max-width: none;
+    margin: 0;
 }
 
-/* Clean mapping rows */
+/* Clean mapping rows - wider spacing for better use of space */
 .mapping-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 15px;
-    padding: 15px;
+    gap: 20px;
+    padding: 20px;
     margin-bottom: 15px;
     border: 1px solid #ddd;
     border-radius: 4px;
@@ -65,18 +66,18 @@ if (!defined('ABSPATH')) exit;
 
 /* Better field distribution for wider layout */
 .mapping-field {
-    flex: 1;
-    min-width: 180px;
-}
-
-.mapping-field.preview-field {
-    flex: 1.2;
+    flex: 1 1 200px;
     min-width: 200px;
 }
 
+.mapping-field.preview-field {
+    flex: 1.5 1 250px;
+    min-width: 250px;
+}
+
 .mapping-field.actions-field {
-    flex: 0.6;
-    min-width: 120px;
+    flex: 0.7 1 140px;
+    min-width: 140px;
 }
 
 .mapping-field label {
@@ -366,13 +367,14 @@ if (!defined('ABSPATH')) exit;
         <form method="post" id="mappings-form">
             <?php wp_nonce_field('bitstream_rebit_mappings_save','bitstream_rebit_mappings_nonce'); ?>
             
-            <div class="card">
-                <h2 class="title">Current Mappings</h2>
+            <h2 style="margin-top: 30px; margin-bottom: 15px; font-size: 1.3em;">Current Mappings</h2>
             
             <?php if (empty($mappings)): ?>
-                <p class="description">No mappings configured yet. Use the sections above to add mappings.</p>
+                <div class="card">
+                    <p class="description">No mappings configured yet. Use the sections above to add mappings.</p>
+                </div>
             <?php else: ?>
-                <div id="mappings-container">
+                <div id="mappings-container" style="background: #fff; border: 1px solid #ccd0d4; border-radius: 4px; padding: 20px;">
                     <?php foreach ($mappings as $i => $map): ?>
                         <div class="mapping-row">
                             <div class="mapping-field">
@@ -414,12 +416,11 @@ if (!defined('ABSPATH')) exit;
                         </div>
                     <?php endforeach; ?>
                 </div>
+                
+                <p class="submit" style="margin-top: 20px;">
+                    <input type="submit" name="submit" class="button-primary" value="Save All Mappings" />
+                </p>
             <?php endif; ?>
-        </div>
-        
-        <p class="submit">
-            <input type="submit" name="submit" class="button-primary" value="Save All Mappings" />
-        </p>
         </form>
     </div>
     
