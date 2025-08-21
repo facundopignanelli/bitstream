@@ -432,6 +432,8 @@ body.wp-admin {
     background: rgba(0,0,0,0.5) !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
+    padding: 20px !important;
+    box-sizing: border-box !important;
 }
 
 /* Ensure modal appears above everything and overrides our restrictive CSS */
@@ -441,13 +443,26 @@ body.wp-admin {
     opacity: 1 !important;
 }
 
-/* Modal content should not be affected by parent overflow */
+/* Modal content should not be affected by parent overflow and be properly sized */
 #icon-picker-modal > div {
     position: relative !important;
     z-index: 1000000 !important;
-    max-width: 90vw !important;
-    max-height: 90vh !important;
+    max-width: 600px !important;
+    max-height: 80vh !important;
+    margin: 0 auto !important;
+    background: white !important;
+    border-radius: 4px !important;
     overflow: visible !important;
+    box-sizing: border-box !important;
+}
+
+/* Icon grid should be scrollable */
+#icon-grid {
+    max-height: 400px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 10px !important;
+    box-sizing: border-box !important;
 }
 #icon-grid::-webkit-scrollbar {
     width: 8px;
@@ -517,10 +532,10 @@ body.wp-admin {
                     <label><strong>Icon Class:</strong></label><br>
                     <div style="position: relative;">
                         <input type="text" name="bitstream_rebit_mappings[new][icon]" 
-                               placeholder="fas fa-link" style="width: 100%; padding-right: 50px; box-sizing: border-box;" 
+                               placeholder="fas fa-link" style="width: calc(100% - 35px); padding-right: 5px; box-sizing: border-box;" 
                                id="new-icon-input" />
                         <button type="button" class="button" onclick="openIconPicker('new-icon-input')" 
-                                style="position: absolute; right: 10px; top: 2px; height: 26px; padding: 2px 8px; z-index: 10;">
+                                style="position: absolute; right: 2px; top: 2px; height: 26px; padding: 2px 6px; z-index: 10; width: 30px;">
                             <i class="fas fa-palette"></i>
                         </button>
                     </div>
@@ -548,25 +563,25 @@ body.wp-admin {
                         <div class="mapping-row">
                             <div class="mapping-field">
                                 <label><strong>Domain:</strong></label><br>
-                                <input type="text" name="bitstream_rebit_mappings[<?php echo $i; ?>][domain]" 
+                                <input type="text" name="bitstream_rebit_mappings[existing][<?php echo $i; ?>][domain]" 
                                        value="<?php echo esc_attr($map['domain']); ?>" 
                                        placeholder="example.com" />
                             </div>
                             <div class="mapping-field">
                                 <label><strong>Label:</strong></label><br>
-                                <input type="text" name="bitstream_rebit_mappings[<?php echo $i; ?>][label]" 
+                                <input type="text" name="bitstream_rebit_mappings[existing][<?php echo $i; ?>][label]" 
                                        value="<?php echo esc_attr($map['label']); ?>" 
                                        placeholder="shared from Twitter" />
                             </div>
                             <div class="mapping-field">
                                 <label><strong>Icon Class:</strong></label><br>
                                 <div style="position: relative;">
-                                    <input type="text" name="bitstream_rebit_mappings[<?php echo $i; ?>][icon]" 
+                                    <input type="text" name="bitstream_rebit_mappings[existing][<?php echo $i; ?>][icon]" 
                                            value="<?php echo esc_attr($map['icon']); ?>" 
-                                           placeholder="fab fa-twitter" style="padding-right: 50px; width: 100%; box-sizing: border-box;" 
+                                           placeholder="fab fa-twitter" style="width: calc(100% - 35px); padding-right: 5px; box-sizing: border-box;" 
                                            id="icon-input-<?php echo $i; ?>" />
                                     <button type="button" class="button" onclick="openIconPicker('icon-input-<?php echo $i; ?>')" 
-                                            style="position: absolute; right: 10px; top: 2px; height: 26px; padding: 2px 8px; z-index: 10;">
+                                            style="position: absolute; right: 2px; top: 2px; height: 26px; padding: 2px 6px; z-index: 10; width: 30px;">
                                         <i class="fas fa-palette"></i>
                                     </button>
                                 </div>
