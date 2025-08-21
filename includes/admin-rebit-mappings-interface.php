@@ -334,13 +334,15 @@ if (!defined('ABSPATH')) exit;
                 <div style="margin-bottom: 15px;">
                     <label><strong>Domain:</strong></label><br>
                     <input type="text" name="bitstream_rebit_mappings[new][domain]" 
-                           placeholder="example.com" style="width: 100%; box-sizing: border-box;" />
+                           placeholder="example.com" style="width: 100%; box-sizing: border-box;" 
+                           oninput="updateNewMappingPreview()" />
                     <small class="description">Enter just the domain (e.g., "twitter.com")</small>
                 </div>
                 <div style="margin-bottom: 15px;">
                     <label><strong>Label:</strong></label><br>
                     <input type="text" name="bitstream_rebit_mappings[new][label]" 
-                           placeholder="shared a Tweet" style="width: 100%; box-sizing: border-box;" />
+                           placeholder="shared a Tweet" style="width: 100%; box-sizing: border-box;" 
+                           oninput="updateNewMappingPreview()" />
                     <small class="description">Text shown when sharing from this site (e.g., "shared a Tweet", "shared a video")</small>
                 </div>
                 <div style="margin-bottom: 15px;">
@@ -348,12 +350,20 @@ if (!defined('ABSPATH')) exit;
                     <div class="icon-input-container">
                         <input type="text" name="bitstream_rebit_mappings[new][icon]" 
                                placeholder="fas fa-link" 
-                               id="new-icon-input" />
+                               id="new-icon-input" 
+                               oninput="updateNewMappingPreview()" />
                         <button type="button" class="icon-picker-button" onclick="openIconPicker('new-icon-input')">
                             <i class="fas fa-palette"></i>
                         </button>
                     </div>
                     <small class="description">Font Awesome class or use the icon picker</small>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label><strong>Preview:</strong></label><br>
+                    <div class="mapping-preview" id="new-mapping-preview">
+                        <i class="fas fa-link" style="margin-right: 8px; color: #2c6e49;"></i>
+                        <span id="new-mapping-preview-text">shared from</span>
+                    </div>
                 </div>
                 <p class="submit" style="margin-top: 15px;">
                     <input type="submit" name="submit" class="button-primary" value="Add Mapping" />
@@ -465,118 +475,42 @@ var currentIconInput = window.currentIconInput;
 var iconLibrary = window.iconLibrary;
 var iconsLoaded = window.iconsLoaded;
 
-// Check if Font Awesome is available and load fallback immediately if not
-function checkFontAwesome() {
-    // Check if any Font Awesome CSS is loaded
-    const stylesheets = Array.from(document.styleSheets);
-    const hasFontAwesome = stylesheets.some(sheet => {
-        try {
-            return sheet.href && (sheet.href.includes('fontawesome') || sheet.href.includes('fa-'));
-        } catch (e) {
-            return false;
-        }
-    });
-    
-    console.log('Font Awesome CSS detected:', hasFontAwesome);
-    
-    if (!hasFontAwesome) {
-        console.log('Font Awesome not detected, loading fallback immediately');
-        window.iconLibrary = iconLibrary = getFallbackIcons();
-        window.iconsLoaded = iconsLoaded = true;
-        return false;
-    }
-    return true;
-}
-
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
-    if (!checkFontAwesome()) {
-        console.log('Using fallback icons from start');
-    }
+    console.log('BitStream: DOM loaded, setting up icon picker...');
+    updateNewMappingPreview(); // Initialize the preview
 });
 
-// Function to dynamically extract Font Awesome icons from loaded stylesheets
+// Function to dynamically load Font Awesome icons from JSON file
 function loadFontAwesomeIcons() {
     if (iconsLoaded) return Promise.resolve();
     
-    return new Promise((resolve) => {
-        console.log('Loading Font Awesome icons...');
+    return new Promise((resolve, reject) => {
+        console.log('Loading Font Awesome icons from JSON file...');
         
-        // Always start with fallback icons to ensure we have something to show
-        iconLibrary = getFallbackIcons();
-        console.log('Loaded fallback library with', iconLibrary.brands.length + iconLibrary.solid.length + iconLibrary.regular.length, 'icons');
-        
-        const styleSheets = document.styleSheets;
-        const foundIcons = { brands: [], solid: [], regular: [] };
-        let foundAnyIcons = false;
-        
-        try {
-            for (let sheet of styleSheets) {
-                try {
-                    // Check if this is a Font Awesome stylesheet (local or CDN)
-                    if (!sheet.href || (!sheet.href.includes('font-awesome') && !sheet.href.includes('fa'))) continue;
-                    
-                    console.log('Checking FA stylesheet:', sheet.href);
-                    const rules = sheet.cssRules || sheet.rules;
-                    if (!rules) continue;
-                    
-                    for (let rule of rules) {
-                        if (rule.selectorText && rule.selectorText.includes('::before')) {
-                            const selector = rule.selectorText;
-                            
-                            // Extract FA classes - handle multiple selectors
-                            const matches = selector.split(',');
-                            for (let match of matches) {
-                                match = match.trim();
-                                if (match.includes('.fab.fa-')) {
-                                    const iconMatch = match.match(/\.fab\.fa-([^:,\s.]+)/);
-                                    if (iconMatch) {
-                                        foundIcons.brands.push('fab fa-' + iconMatch[1]);
-                                        foundAnyIcons = true;
-                                    }
-                                } else if (match.includes('.fas.fa-')) {
-                                    const iconMatch = match.match(/\.fas\.fa-([^:,\s.]+)/);
-                                    if (iconMatch) {
-                                        foundIcons.solid.push('fas fa-' + iconMatch[1]);
-                                        foundAnyIcons = true;
-                                    }
-                                } else if (match.includes('.far.fa-')) {
-                                    const iconMatch = match.match(/\.far\.fa-([^:,\s.]+)/);
-                                    if (iconMatch) {
-                                        foundIcons.regular.push('far fa-' + iconMatch[1]);
-                                        foundAnyIcons = true;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } catch (e) {
-                    // Skip inaccessible stylesheets (CORS issues)
-                    console.log('Skipping stylesheet due to CORS:', sheet.href);
-                    continue;
+        // Try to load from JSON file first
+        fetch('<?php echo plugin_dir_url(__FILE__) . '../assets/json/fontawesome6_free.json'; ?>')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to load JSON file');
                 }
-            }
-        } catch (e) {
-            console.log('Error accessing stylesheets:', e);
-        }
-        
-        // If we found icons from local FA, use them; otherwise keep fallback
-        if (foundAnyIcons && (foundIcons.brands.length > 10 || foundIcons.solid.length > 10)) {
-            window.iconLibrary = iconLibrary = foundIcons;
-            console.log('Enhanced with', foundIcons.brands.length + foundIcons.solid.length + foundIcons.regular.length, 'icons from Font Awesome stylesheets');
-        } else {
-            console.log('Using fallback icon library');
-            window.iconLibrary = iconLibrary = getFallbackIcons();
-            console.log('Using fallback icon library with', iconLibrary.brands.length + iconLibrary.solid.length + iconLibrary.regular.length, 'icons');
-        }
-        
-        // Remove duplicates and sort
-        Object.keys(window.iconLibrary).forEach(category => {
-            window.iconLibrary[category] = [...new Set(window.iconLibrary[category])].sort();
-        });
-        
-        window.iconsLoaded = iconsLoaded = true;
-        resolve();
+                return response.json();
+            })
+            .then(data => {
+                console.log('Successfully loaded icons from JSON:', data);
+                window.iconLibrary = iconLibrary = data;
+                window.iconsLoaded = iconsLoaded = true;
+                console.log('Loaded', data.brands?.length || 0, 'brand icons,', data.solid?.length || 0, 'solid icons,', data.regular?.length || 0, 'regular icons');
+                resolve();
+            })
+            .catch(error => {
+                console.log('Failed to load JSON file, using fallback:', error);
+                // Fall back to hardcoded icons
+                window.iconLibrary = iconLibrary = getFallbackIcons();
+                window.iconsLoaded = iconsLoaded = true;
+                console.log('Using fallback icon library with', iconLibrary.brands.length + iconLibrary.solid.length + iconLibrary.regular.length, 'icons');
+                resolve();
+            });
     });
 }
 
@@ -617,8 +551,40 @@ function selectIcon(iconClass) {
                 preview.className = iconClass;
             }
         }
+        
+        // Update new mapping preview if this is the new mapping input
+        if (currentIconInput.id === 'new-icon-input') {
+            updateNewMappingPreview();
+        }
     }
     closeIconPicker();
+}
+
+// Function to update the preview for new mapping as user types
+function updateNewMappingPreview() {
+    const domainInput = document.querySelector('input[name="bitstream_rebit_mappings[new][domain]"]');
+    const labelInput = document.querySelector('input[name="bitstream_rebit_mappings[new][label]"]');
+    const iconInput = document.getElementById('new-icon-input');
+    const previewIcon = document.querySelector('#new-mapping-preview i');
+    const previewText = document.getElementById('new-mapping-preview-text');
+    
+    if (previewIcon && previewText) {
+        // Update icon
+        const iconClass = iconInput?.value?.trim() || 'fas fa-link';
+        previewIcon.className = iconClass;
+        
+        // Update text
+        const label = labelInput?.value?.trim();
+        const domain = domainInput?.value?.trim();
+        
+        if (label) {
+            previewText.textContent = label;
+        } else if (domain) {
+            previewText.textContent = `shared from ${domain}`;
+        } else {
+            previewText.textContent = 'shared from';
+        }
+    }
 }
 
 function removeMapping(button) {
@@ -721,22 +687,17 @@ function openIconPicker(inputId) {
     
     console.log('=== ICON PICKER DEBUG END ===');
     
-    // If icons not loaded yet, try to load Font Awesome first, then fallback
+    // If icons not loaded yet, load from JSON file
     if (!window.iconsLoaded) {
-        console.log('Attempting to load Font Awesome icons first...');
+        console.log('Loading icons from JSON file...');
         
-        // Try to load Font Awesome icons with a timeout
-        Promise.race([
-            loadFontAwesomeIcons(),
-            new Promise((_, reject) => setTimeout(() => reject('Timeout'), 2000))
-        ]).then(() => {
-            console.log('Successfully loaded Font Awesome icons');
+        loadFontAwesomeIcons().then(() => {
+            console.log('Successfully loaded icons from JSON');
             showCategory('all');
         }).catch(e => {
-            console.log('Font Awesome loading failed or timed out, using fallback:', e);
+            console.log('Failed to load icons, using fallback:', e);
             window.iconLibrary = iconLibrary = getFallbackIcons();
             window.iconsLoaded = iconsLoaded = true;
-            console.log('Fallback icons loaded:', iconLibrary.brands.length, 'brands,', iconLibrary.solid.length, 'solid,', iconLibrary.regular.length, 'regular');
             showCategory('all');
         });
     } else {
@@ -749,6 +710,7 @@ function openIconPicker(inputId) {
 
 // Make functions globally accessible
 window.openIconPicker = openIconPicker;
+window.updateNewMappingPreview = updateNewMappingPreview;
 
 function showCategory(category) {
     console.log('Showing category:', category);
@@ -825,8 +787,12 @@ document.addEventListener('keydown', function(event) {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('BitStream: DOM loaded, setting up icon picker...');
     
+    // Initialize the new mapping preview
+    updateNewMappingPreview();
+    
     // Test if our function exists
     console.log('openIconPicker function exists:', typeof window.openIconPicker);
+    console.log('updateNewMappingPreview function exists:', typeof window.updateNewMappingPreview);
     
     // Add click listeners to all icon picker buttons
     const iconPickerButtons = document.querySelectorAll('button[onclick*="openIconPicker"]');
