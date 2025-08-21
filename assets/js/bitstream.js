@@ -271,57 +271,43 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (section) {
                     section.classList.toggle('open');
                     
-                    // Find the parent bit-card and toggle comments-open class for z-index fix
+                    // Find the parent bit-card
                     const bitCard = section.closest('.bit-card');
                     if (bitCard) {
                         if (section.classList.contains('open')) {
-                            bitCard.classList.add('comments-open');
-                            console.log('Comments opened for card:', bitCard); // Debug log
-                            
-                            // Force a higher z-index for desktop masonry layout
-                            if (window.innerWidth >= 768) {
-                                bitCard.style.zIndex = '100';
-                                section.style.zIndex = '101';
-                            }
+                            console.log('Comments opened for card:', bitCard);
                         } else {
-                            bitCard.classList.remove('comments-open');
-                            console.log('Comments closed for card:', bitCard); // Debug log
-                            
-                            // Reset z-index when closing
-                            if (window.innerWidth >= 768) {
-                                bitCard.style.zIndex = '2';
-                                section.style.zIndex = '';
-                            }
+                            console.log('Comments closed for card:', bitCard);
                         }
+                        
+                        // Trigger masonry layout recalculation after animation
+                        setTimeout(() => {
+                            triggerMasonryReflow();
+                        }, 400); // Match the CSS transition duration
                     }
                 }
             });
         });
     }
     
+    // Function to trigger masonry layout recalculation
+    function triggerMasonryReflow() {
+        // Use the existing initMasonry function to recalculate layout
+        setTimeout(() => {
+            if (typeof window.initMasonry === 'function') {
+                console.log('Triggering masonry reflow with initMasonry');
+                window.initMasonry();
+            }
+        }, 50); // Small delay to ensure DOM has updated
+    }
+    
     // Initialize comment toggles
     initCommentToggles();
 
-    // Handle window resize to adjust z-index behavior
-    window.addEventListener('resize', () => {
-        // Reset all z-index styles on resize
-        document.querySelectorAll('.bit-card.comments-open').forEach(card => {
-            if (window.innerWidth < 768) {
-                // Mobile: reset to default
-                card.style.zIndex = '';
-                const commentSection = card.querySelector('.bit-comments.open');
-                if (commentSection) {
-                    commentSection.style.zIndex = '';
-                }
-            } else {
-                // Desktop: apply masonry z-index fix
-                card.style.zIndex = '100';
-                const commentSection = card.querySelector('.bit-comments.open');
-                if (commentSection) {
-                    commentSection.style.zIndex = '101';
-                }
-            }
-        });
+    // Add masonry reflow listener if using a masonry library
+    document.addEventListener('masonryReflow', () => {
+        console.log('Masonry reflow event received');
+        // This event can be caught by masonry initialization code
     });
     // Infinite Scroll & Load More with Masonry Layout
     const feed = document.querySelector('.bitstream-feed');
@@ -333,7 +319,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const isInfiniteScroll = feed.dataset.infiniteScroll === 'true';
 
     // Masonry layout implementation
-    function initMasonry() {
+    window.initMasonry = function initMasonry() {
         if (window.innerWidth < 768) {
             // Single column on mobile - no masonry needed
             feed.style.height = 'auto';
@@ -383,16 +369,16 @@ document.addEventListener('DOMContentLoaded', function () {
         feed.style.height = (maxHeight + gap) + 'px';
         feed.style.position = 'relative';
         feed.style.overflow = 'hidden';
-    }
+    };
 
     // Initialize masonry on load
-    setTimeout(initMasonry, 100);
+    setTimeout(window.initMasonry, 100);
 
     // Reinitialize on window resize
     let resizeTimeout;
     window.addEventListener('resize', () => {
         clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(initMasonry, 250);
+        resizeTimeout = setTimeout(window.initMasonry, 250);
     });
 
     function loadNextPage() {
@@ -431,7 +417,7 @@ document.addEventListener('DOMContentLoaded', function () {
             loading = false;
             
             // Reinitialize masonry layout with new cards
-            setTimeout(initMasonry, 100);
+            setTimeout(window.initMasonry, 100);
             
             // Update button state
             if (loadMoreButton) {
