@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed floating button displaying on all pages - now only shows on BitStream-related pages
 - Added automatic cleanup of old service worker registrations with incorrect scope
 - Fixed RSS feeds not displaying ReBit URL content due to metadata key mismatch
+- Fixed floating button not responding to clicks - added missing JavaScript toggle functionality
 
 ### Added
 - Added RSS Feeds and ReBit Mappings admin page links to floating button dropdown menu

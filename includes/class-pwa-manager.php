@@ -187,6 +187,54 @@ class BitStream_PWA_Manager {
                 </div>
             </div>
         </div>
+        
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggle = document.querySelector('.bitstream-toggle');
+            const dropdown = document.querySelector('.bitstream-dropdown');
+            
+            if (toggle && dropdown) {
+                toggle.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const isVisible = dropdown.style.opacity === '1';
+                    
+                    if (isVisible) {
+                        // Hide dropdown
+                        dropdown.style.opacity = '0';
+                        dropdown.style.visibility = 'hidden';
+                        dropdown.style.transform = 'translateY(10px)';
+                        dropdown.style.pointerEvents = 'none';
+                        toggle.style.transform = 'rotate(0deg)';
+                    } else {
+                        // Show dropdown
+                        dropdown.style.opacity = '1';
+                        dropdown.style.visibility = 'visible';
+                        dropdown.style.transform = 'translateY(0)';
+                        dropdown.style.pointerEvents = 'auto';
+                        toggle.style.transform = 'rotate(45deg)';
+                    }
+                });
+                
+                // Close dropdown when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!toggle.contains(e.target) && !dropdown.contains(e.target)) {
+                        dropdown.style.opacity = '0';
+                        dropdown.style.visibility = 'hidden';
+                        dropdown.style.transform = 'translateY(10px)';
+                        dropdown.style.pointerEvents = 'none';
+                        toggle.style.transform = 'rotate(0deg)';
+                    }
+                });
+                
+                // Prevent dropdown clicks from closing it
+                dropdown.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                });
+            }
+        });
+        </script>
         <?php
     }
 
