@@ -276,8 +276,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (bitCard) {
                         if (section.classList.contains('open')) {
                             console.log('Comments opened for card:', bitCard);
+                            // Add class to boost z-index during animation
+                            bitCard.classList.add('comments-open');
                         } else {
                             console.log('Comments closed for card:', bitCard);
+                            // Remove z-index boost class after animation completes
+                            setTimeout(() => {
+                                bitCard.classList.remove('comments-open');
+                            }, 400); // Match the CSS transition duration
                         }
                         
                         // Trigger masonry layout recalculation after animation
