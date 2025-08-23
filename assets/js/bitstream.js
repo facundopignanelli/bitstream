@@ -269,21 +269,32 @@ document.addEventListener('DOMContentLoaded', function () {
                 const targetId = button.dataset.target;
                 const section = document.getElementById(targetId);
                 if (section) {
+                    // Find the parent bit-card BEFORE toggling to get proper timing
+                    const bitCard = section.closest('.bit-card');
+                    
+                    if (bitCard) {
+                        if (!section.classList.contains('open')) {
+                            // About to open - immediately boost z-index BEFORE animation starts
+                            bitCard.classList.add('comments-open');
+                            console.log('Comments opening for card:', bitCard, '- z-index boosted');
+                            
+                            // Trigger immediate masonry reflow to prevent layout conflicts
+                            setTimeout(() => {
+                                triggerMasonryReflow();
+                            }, 50); // Very quick initial reflow
+                        }
+                    }
+                    
+                    // Now toggle the comments section
                     section.classList.toggle('open');
                     
-                    // Find the parent bit-card
-                    const bitCard = section.closest('.bit-card');
                     if (bitCard) {
-                        if (section.classList.contains('open')) {
-                            console.log('Comments opened for card:', bitCard);
-                            // Add class to boost z-index during animation
-                            bitCard.classList.add('comments-open');
-                        } else {
+                        if (!section.classList.contains('open')) {
+                            // Comments were closed - remove z-index boost after animation
                             console.log('Comments closed for card:', bitCard);
-                            // Remove z-index boost class after animation completes
                             setTimeout(() => {
                                 bitCard.classList.remove('comments-open');
-                            }, 400); // Match the CSS transition duration
+                            }, 450); // Slightly longer than CSS transition duration
                         }
                         
                         // Trigger masonry layout recalculation after animation

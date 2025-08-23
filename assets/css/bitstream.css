@@ -72,7 +72,7 @@
 /* Boost z-index when comments are open to prevent visual layering issues */
 .bit-card:has(.bit-comments.open),
 .bit-card.comments-open {
-    z-index: 5; /* Higher than normal cards when comments are open */
+    z-index: 10; /* Significantly higher than normal cards when comments are open */
 }
 
 @media (min-width: 768px) {
@@ -366,7 +366,7 @@
     border-radius: 8px; /* Match card styling */
     padding: 1rem; /* Add some padding for better spacing */
     border-left: 3px solid #2c6e49; /* Green accent border */
-    z-index: 3; /* Higher z-index when open to ensure visibility above other cards */
+    z-index: 15; /* Very high z-index when open to ensure visibility above everything */
 }
 
 /* Responsive adjustments for JavaScript masonry layout */
