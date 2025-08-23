@@ -278,10 +278,13 @@ document.addEventListener('DOMContentLoaded', function () {
                             bitCard.classList.add('comments-open');
                             console.log('Comments opening for card:', bitCard, '- z-index boosted');
                             
-                            // Trigger immediate masonry reflow to prevent layout conflicts
+                            // Trigger immediate masonry reflow to reorganize layout BEFORE content becomes visible
+                            triggerMasonryReflow();
+                            
+                            // Additional reflow slightly later to ensure proper positioning
                             setTimeout(() => {
                                 triggerMasonryReflow();
-                            }, 50); // Very quick initial reflow
+                            }, 100);
                         }
                     }
                     
