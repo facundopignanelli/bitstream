@@ -8,7 +8,7 @@
   "orientation": "portrait-primary",
   "background_color": "#2c6e49",
   "theme_color": "#2c6e49",
-  "scope": "/",
+  "scope": "/bitstream/",
   "categories": ["social", "news"],
   "shortcuts": [
     {

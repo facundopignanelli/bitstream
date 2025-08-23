@@ -166,8 +166,8 @@ class BitStream_RSS_Feeds {
             // Prepare description - include ReBit info if applicable
             $description = '';
             if ($rebit_url) {
-                $og_title = get_post_meta($post_id, 'bitstream_og_title', true);
-                $og_description = get_post_meta($post_id, 'bitstream_og_description', true);
+                $og_title = get_post_meta($post_id, '_bitstream_og_title', true);
+                $og_description = get_post_meta($post_id, '_bitstream_og_desc', true);
                 
                 $description .= '<p><strong>Sharing:</strong> <a href="' . esc_url($rebit_url) . '">' . esc_html($rebit_url) . '</a></p>';
                 if ($og_title) {

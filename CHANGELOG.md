@@ -5,6 +5,18 @@ All notable changes to the BitStream WordPress plugin will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1] - 2025-08-23
+
+### Fixed
+- Fixed PWA scope being too aggressive - now only applies to `/bitstream/` pages instead of entire site
+- Fixed floating button displaying on all pages - now only shows on BitStream-related pages
+- Added automatic cleanup of old service worker registrations with incorrect scope
+- Fixed RSS feeds not displaying ReBit URL content due to metadata key mismatch
+
+### Added
+- Added RSS Feeds and ReBit Mappings admin page links to floating button dropdown menu
+- Enhanced floating button dropdown with Font Awesome icons for better visual organization
+
 ## [2.1.1] - 2025-08-20
 
 ### Added
@@ -205,6 +217,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
+- **2.2.1** - PWA scope fixes and floating button improvements
+- **2.1.1** - Enhanced ReBit mappings interface and PWA shortcuts
 - **2.0.4** - Single bit template integration and PWA installation fixes
 - **2.0.3** - PWA scope separation and conflict resolution
 - **2.0.2** - Permalink fixes and single post display

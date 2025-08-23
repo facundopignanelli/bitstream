@@ -52,8 +52,19 @@ class BitStream_PWA_Manager {
             echo '<script>
             if("serviceWorker" in navigator) {
                 window.addEventListener("load", function() {
+                    // First, unregister any existing service workers with broader scope
+                    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                        registrations.forEach(function(registration) {
+                            if (registration.scope.includes("/sw.js") || registration.scope === location.origin + "/") {
+                                console.log("Unregistering old BitStream SW with scope:", registration.scope);
+                                registration.unregister();
+                            }
+                        });
+                    });
+                    
+                    // Then register the new service worker with correct scope
                     navigator.serviceWorker.register("'.esc_url($sw_url).'", {
-                        scope: "/",
+                        scope: "/bitstream/",
                         updateViaCache: "none"
                     }).then(function(registration) {
                         console.log("BitStream PWA registered with scope:", registration.scope);
@@ -78,13 +89,30 @@ class BitStream_PWA_Manager {
      * Render floating BitStream button for admins
      */
     public function render_floating_bitstream_button() {
+        global $post;
+        
         // Only show to users who can edit posts
         if (!current_user_can('edit_posts')) {
             return;
         }
 
+        // Only show on BitStream-related pages
+        $is_bit_archive = is_post_type_archive('bit');
+        $has_feed_shortcode = is_a($post, 'WP_Post') && 
+                             (has_shortcode($post->post_content, 'bitstream') || 
+                              has_shortcode($post->post_content, 'bitstream_latest'));
+        $is_bitstream_page = isset($_SERVER['REQUEST_URI']) && 
+                            strpos($_SERVER['REQUEST_URI'], '/bitstream/') !== false;
+        
+        // Only show the floating button on BitStream-related pages
+        if (!($is_bit_archive || $has_feed_shortcode || $is_bitstream_page)) {
+            return;
+        }
+
         $new_bit_url = admin_url('post-new.php?post_type=bit');
         $rebit_url = admin_url('post-new.php?post_type=bit&rebit=1');
+        $rss_feeds_url = admin_url('edit.php?post_type=bit&page=bitstream-rss-feeds');
+        $rebit_mappings_url = admin_url('edit.php?post_type=bit&page=bitstream-rebit-mappings');
         ?>
         <style>
         /* Mobile-specific fixes for floating BitStream menu */
@@ -101,7 +129,7 @@ class BitStream_PWA_Manager {
                 -webkit-touch-callout: none !important;
             }
             .bitstream-dropdown {
-                min-width: 140px !important;
+                min-width: 160px !important;
                 bottom: 65px !important;
                 right: -10px !important;
             }
@@ -131,7 +159,7 @@ class BitStream_PWA_Manager {
                         aria-label="Open BitStream quick actions menu">
                     <i class="fa-solid fa-plus" style="margin: 0; pointer-events: none;"></i>
                 </button>
-                <div class="bitstream-dropdown" style="position: absolute; bottom: 70px; right: 0; background: white; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.15); min-width: 160px; opacity: 0; visibility: hidden; transform: translateY(10px); transition: all 0.3s ease; pointer-events: none;">
+                <div class="bitstream-dropdown" style="position: absolute; bottom: 70px; right: 0; background: white; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.15); min-width: 180px; opacity: 0; visibility: hidden; transform: translateY(10px); transition: all 0.3s ease; pointer-events: none;">
                     <a href="<?php echo esc_url($new_bit_url); ?>" 
                        style="display: flex; align-items: center; padding: 12px 16px; text-decoration: none; color: #333; border-bottom: 1px solid #eee; -webkit-tap-highlight-color: transparent;"
                        class="bitstream-dropdown-link">
@@ -139,10 +167,22 @@ class BitStream_PWA_Manager {
                         Add New Bit
                     </a>
                     <a href="<?php echo esc_url($rebit_url); ?>" 
-                       style="display: flex; align-items: center; padding: 12px 16px; text-decoration: none; color: #333; -webkit-tap-highlight-color: transparent;"
+                       style="display: flex; align-items: center; padding: 12px 16px; text-decoration: none; color: #333; border-bottom: 1px solid #eee; -webkit-tap-highlight-color: transparent;"
                        class="bitstream-dropdown-link">
                         <i class="fa-solid fa-link" style="margin-right: 8px; color: #2c6e49; pointer-events: none;"></i>
                         Add New ReBit
+                    </a>
+                    <a href="<?php echo esc_url($rss_feeds_url); ?>" 
+                       style="display: flex; align-items: center; padding: 12px 16px; text-decoration: none; color: #333; border-bottom: 1px solid #eee; -webkit-tap-highlight-color: transparent;"
+                       class="bitstream-dropdown-link">
+                        <i class="fa-solid fa-rss" style="margin-right: 8px; color: #2c6e49; pointer-events: none;"></i>
+                        RSS Feeds
+                    </a>
+                    <a href="<?php echo esc_url($rebit_mappings_url); ?>" 
+                       style="display: flex; align-items: center; padding: 12px 16px; text-decoration: none; color: #333; -webkit-tap-highlight-color: transparent;"
+                       class="bitstream-dropdown-link">
+                        <i class="fa-solid fa-sitemap" style="margin-right: 8px; color: #2c6e49; pointer-events: none;"></i>
+                        ReBit Mappings
                     </a>
                 </div>
             </div>

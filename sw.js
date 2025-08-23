@@ -1,5 +1,5 @@
 // BitStream Service Worker - PWA Support
-const CACHE_NAME = 'bitstream-v2.1.1';
+const CACHE_NAME = 'bitstream-v2.2.1';
 const ASSETS_TO_CACHE = [
   '/bitstream/',
   '/bitstream/new-bit/',
