@@ -136,6 +136,7 @@
 /* Indent nested replies */
 .bit-comments-list .children {
   margin-left: 1.5em !important;
+  margin-top: 0.75em !important; /* Add top margin to separate from Reply button */
   border-left: 1px solid var(--wp--preset--color--accent-3,#ccc) !important;
   padding-left: 1em !important;
 }

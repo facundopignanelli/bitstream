@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed RSS feeds not displaying ReBit URL content due to metadata key mismatch
 - Fixed floating button not responding to clicks - added missing JavaScript toggle functionality
 - Fixed comments section briefly appearing behind other bits on desktop during animation
+- Fixed comment replies appearing too close to Reply button - added proper top margin spacing
+- Fixed extra spaces between commenter name and "says:" text
 
 ### Added
 - Added RSS Feeds and ReBit Mappings admin page links to floating button dropdown menu

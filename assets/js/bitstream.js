@@ -485,7 +485,7 @@ document.addEventListener('DOMContentLoaded', function () {
 function applyCommentStyles() {
     const styles = {
         authorName: 'display: inline !important; font-size: 0.75em !important; font-style: normal !important; font-weight: 400 !important; margin-right: 0.25em !important; color: #2c6e49 !important;',
-        says: 'display: inline !important; font-size: 0.75em !important; font-style: normal !important; font-weight: 400 !important; margin-left: 0.2em !important; color: #2c6e49 !important;',
+        says: 'display: inline !important; font-size: 0.75em !important; font-style: normal !important; font-weight: 400 !important; margin-left: 0.3em !important; color: #2c6e49 !important;',
         dateLinks: 'color: #044389 !important; font-style: normal !important; font-size: 0.8em !important; text-decoration: underline !important; pointer-events: auto !important; cursor: pointer !important;'
     };
 
@@ -496,7 +496,7 @@ function applyCommentStyles() {
     jQuery('.bit-comments-list .comment-author').each(function() {
         var $author = jQuery(this);
         if ($author.find('.says').length === 0) {
-            $author.append(' <span class="says">says:</span>');
+            $author.append('<span class="says">says:</span>');
         }
         $author.find('.says').attr('style', styles.says);
     });
