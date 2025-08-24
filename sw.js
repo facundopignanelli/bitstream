@@ -1,5 +1,5 @@
 // BitStream Service Worker - PWA Support
-const CACHE_NAME = 'bitstream-v2.2.1';
+const CACHE_NAME = 'bitstream-v2.3.0';
 const ASSETS_TO_CACHE = [
   '/bitstream/',
   '/bitstream/new-bit/',
@@ -37,6 +37,11 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+  // Log share target requests for debugging
+  if (event.request.url.includes('/bitstream/new-rebit/') && event.request.url.includes('url=')) {
+    console.log('BitStream SW: Share target request detected:', event.request.url);
+  }
+  
   // Handle BitStream requests specifically - avoid other plugin conflicts
   if ((event.request.url.includes('/bitstream/') || 
        event.request.url.includes('/wp-content/plugins/bitstream/')) && 

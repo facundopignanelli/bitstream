@@ -5,6 +5,21 @@ All notable changes to the BitStream WordPress plugin will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2025-08-23
+
+### Added
+- **Android Share Sheet Integration**: Added support for sharing links directly from other Android apps to BitStream
+  - Added `share_target` configuration to PWA manifest for Android share menu integration
+  - Shared content automatically populates ReBit form with URL, title, and description from external apps
+  - Enhanced PWA manager to handle shared content parameters (`url`, `title`, `text`)
+  - Added visual notification when content is shared via PWA share target
+  - Updated service worker to handle share target requests with logging for debugging
+
+### Changed
+- Updated service worker cache version to v2.3.0 for share target functionality
+- Enhanced block editor JavaScript to automatically populate ReBit URL field with shared content
+- Modified rewrite rules to capture and forward shared content parameters to admin interface
+
 ## [2.2.1] - 2025-08-23
 
 ### Fixed

@@ -346,7 +346,26 @@ class BitStream_PWA_Manager {
                     wp_redirect(admin_url('post-new.php?post_type=bit'));
                     break;
                 case 'new-rebit':
-                    wp_redirect(admin_url('post-new.php?post_type=bit&rebit=1'));
+                    // Handle shared content from Android share sheet
+                    $redirect_url = admin_url('post-new.php?post_type=bit&rebit=1');
+                    
+                    // Capture shared content parameters
+                    $shared_url = isset($_GET['url']) ? sanitize_url($_GET['url']) : '';
+                    $shared_title = isset($_GET['title']) ? sanitize_text_field($_GET['title']) : '';
+                    $shared_text = isset($_GET['text']) ? sanitize_text_field($_GET['text']) : '';
+                    
+                    // Add shared content to redirect URL if available
+                    if ($shared_url) {
+                        $redirect_url = add_query_arg('shared_url', urlencode($shared_url), $redirect_url);
+                    }
+                    if ($shared_title) {
+                        $redirect_url = add_query_arg('shared_title', urlencode($shared_title), $redirect_url);
+                    }
+                    if ($shared_text) {
+                        $redirect_url = add_query_arg('shared_text', urlencode($shared_text), $redirect_url);
+                    }
+                    
+                    wp_redirect($redirect_url);
                     break;
                 default:
                     // Default to BitStream feed

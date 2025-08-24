@@ -22,7 +22,8 @@ For detailed release notes and version history, see [CHANGELOG.md](CHANGELOG.md)
 - **Likes:** AJAX-powered like/unlike buttons with localStorage tracking and enhanced security.
 - **Comments:** Native WordPress comments enabled by default, with custom styling and AJAX toggling.
 - **Infinite Scroll & Load More:** The `[bitstream]` shortcode outputs a feed of Bits with configurable infinite scroll and "Load More" button options.
-- **PWA Support:** On the Quick Post page, the plugin loads a manifest and service worker for a minimal Progressive Web App experience (installable, offline form, unique scope to avoid PWA clashes).
+- **PWA Support:** Comprehensive Progressive Web App with installable experience, offline form, and unique scope to avoid PWA clashes. Includes Android share sheet support for easy content sharing.
+- **Android Share Sheet Integration:** Share links directly from other apps to BitStream via the Android share menu. Shared content automatically populates the ReBit form with the URL, title, and description.
 - **Dual PWA System:** Two separate PWAs available:
   - **BitStream QuickPost**: For posting new content (`/bitstream/quickbit/`)
   - **BitStream Feed**: For viewing and interacting with posts (`/bitstream/`)

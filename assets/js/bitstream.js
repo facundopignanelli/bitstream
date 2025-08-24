@@ -1,4 +1,47 @@
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if this is a PWA share target launch
+    const urlParams = new URLSearchParams(window.location.search);
+    const isShareTarget = urlParams.has('url') || urlParams.has('shared_url');
+    
+    if (isShareTarget) {
+        console.log('BitStream: PWA Share target detected');
+        
+        // Show a brief notification that content is being shared
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2c6e49;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(44,110,73,0.3);
+            z-index: 10000;
+            font-size: 14px;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.3s ease;
+        `;
+        notification.textContent = 'Content shared to BitStream!';
+        document.body.appendChild(notification);
+        
+        // Animate in
+        setTimeout(() => {
+            notification.style.opacity = '1';
+            notification.style.transform = 'translateY(0)';
+        }, 100);
+        
+        // Remove after 3 seconds
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            notification.style.transform = 'translateY(-20px)';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    }
+    
+    // Continue with the rest of the initialization...
+    
     // Performance optimized like button with debouncing
     document.querySelectorAll('.bit-like').forEach(button => {
       const postId     = button.dataset.postId;

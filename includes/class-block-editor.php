@@ -316,6 +316,45 @@ class BitStream_Block_Editor {
     
     if(window.location.search.includes('rebit=1')&&select('core/editor')&&select('core/editor').isEditedPostNew()){
         dispatch('core/block-editor').insertBlock(createBlock('bitstream/rebit-url'));
+        
+        // Handle shared content from Android share sheet
+        const urlParams = new URLSearchParams(window.location.search);
+        const sharedUrl = urlParams.get('shared_url');
+        const sharedTitle = urlParams.get('shared_title');
+        const sharedText = urlParams.get('shared_text');
+        
+        if (sharedUrl) {
+            console.log('BitStream: Shared content detected - URL:', sharedUrl);
+            
+            // Wait a moment for the block to be inserted, then populate it
+            setTimeout(() => {
+                const blocks = select('core/block-editor').getBlocks();
+                const rebitBlock = blocks.find(block => block.name === 'bitstream/rebit-url');
+                
+                if (rebitBlock) {
+                    console.log('BitStream: Setting shared URL in ReBit block:', sharedUrl);
+                    dispatch('core/block-editor').updateBlockAttributes(rebitBlock.clientId, {
+                        bitstream_rebit_url: decodeURIComponent(sharedUrl)
+                    });
+                    
+                    // If we have shared title or text, add it as post content
+                    if (sharedTitle || sharedText) {
+                        let content = '';
+                        if (sharedTitle && sharedTitle !== decodeURIComponent(sharedUrl)) {
+                            content += 'Sharing: ' + decodeURIComponent(sharedTitle) + '\n\n';
+                        }
+                        if (sharedText && sharedText !== decodeURIComponent(sharedUrl) && sharedText !== sharedTitle) {
+                            content += decodeURIComponent(sharedText);
+                        }
+                        
+                        if (content.trim()) {
+                            console.log('BitStream: Adding shared content as post text:', content);
+                            dispatch('core/editor').editPost({ content: content.trim() });
+                        }
+                    }
+                }
+            }, 100);
+        }
     }
     
     // Handle quoted bit display in block editor

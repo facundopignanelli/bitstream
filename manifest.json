@@ -10,6 +10,15 @@
   "theme_color": "#2c6e49",
   "scope": "/bitstream/",
   "categories": ["social", "news"],
+  "share_target": {
+    "action": "/bitstream/new-rebit/",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
   "shortcuts": [
     {
       "name": "Add New Bit",
