@@ -228,14 +228,52 @@ class BitStream_Block_Editor {
     public function inject_shared_url_script() {
         global $post;
         
-        if ($post && $post->post_type === 'bit' && isset($_GET['shared_url'])) {
-            $shared_url = urldecode($_GET['shared_url']);
+        if ($post && $post->post_type === 'bit' && (isset($_GET['shared_url']) || isset($_GET['shared_text']) || isset($_GET['shared_title']))) {
+            $shared_url = isset($_GET['shared_url']) ? urldecode($_GET['shared_url']) : '';
+            $shared_text = isset($_GET['shared_text']) ? urldecode($_GET['shared_text']) : '';
+            $shared_title = isset($_GET['shared_title']) ? urldecode($_GET['shared_title']) : '';
             
             echo '<script type="text/javascript">
             // Immediate execution when editor loads
             (function() {
-                const sharedUrl = "' . esc_js($shared_url) . '";
-                console.log("BitStream: Inject script - shared URL:", sharedUrl);
+                const sharedUrl = "' . addslashes($shared_url) . '";
+                const sharedText = "' . addslashes($shared_text) . '";
+                const sharedTitle = "' . addslashes($shared_title) . '";
+                
+                console.log("BitStream: Inject script - Parameters received:");
+                console.log("  shared_url:", sharedUrl);
+                console.log("  shared_text:", sharedText);
+                console.log("  shared_title:", sharedTitle);
+                
+                // Function to extract URL from any parameter
+                function extractUrl() {
+                    const urlPattern = /https?:\/\/[^\s]+/g;
+                    
+                    // Priority order: shared_url, shared_text, shared_title
+                    const sources = [sharedUrl, sharedText, sharedTitle];
+                    
+                    for (const source of sources) {
+                        if (source) {
+                            const matches = source.match(urlPattern);
+                            if (matches && matches.length > 0) {
+                                // Return the first (and likely most relevant) URL found
+                                const extractedUrl = matches[0];
+                                console.log("BitStream: Extracted URL from", source === sharedUrl ? "shared_url" : source === sharedText ? "shared_text" : "shared_title", ":", extractedUrl);
+                                return extractedUrl;
+                            }
+                        }
+                    }
+                    
+                    console.log("BitStream: No URL found in any shared parameter");
+                    return "";
+                }
+                
+                const finalUrl = extractUrl();
+                
+                if (!finalUrl) {
+                    console.log("BitStream: No URL to set, skipping ReBit block update");
+                    return;
+                }
                 
                 // Function to set meta with better error handling
                 function setSharedUrl() {
@@ -265,7 +303,7 @@ class BitStream_Block_Editor {
                         
                         // Set meta via the proper method
                         dispatcher.editPost({
-                            meta: { bitstream_rebit_url: sharedUrl }
+                            meta: { bitstream_rebit_url: finalUrl }
                         });
                         
                         console.log("BitStream: Meta set successfully");
@@ -295,7 +333,7 @@ class BitStream_Block_Editor {
                         if (rebitBlock) {
                             console.log("BitStream: Meta handler found ReBit block, updating...");
                             blockDispatcher.updateBlockAttributes(rebitBlock.clientId, {
-                                bitstream_rebit_url: sharedUrl
+                                bitstream_rebit_url: finalUrl
                             });
                             console.log("BitStream: Meta handler updated block attributes");
                             return true;
