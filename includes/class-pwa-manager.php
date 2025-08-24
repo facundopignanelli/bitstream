@@ -355,8 +355,8 @@ class BitStream_PWA_Manager {
                 case 'new-rebit':
                     // Handle shared content from Android share sheet
                     
-                    // TEMPORARY: Force debug mode to capture YouTube data format
-                    $debug_mode = true; // isset($_GET['debug']) || isset($_GET['test']);
+                    // Check for debug mode (restored normal mode)
+                    $debug_mode = isset($_GET['debug']) || isset($_GET['test']);
                     
                     // Log all incoming parameters for debugging
                     error_log('BitStream Share Debug: All GET parameters: ' . print_r($_GET, true));
@@ -368,6 +368,26 @@ class BitStream_PWA_Manager {
                     
                     error_log('BitStream Share Debug: Extracted parameters - URL: ' . $shared_url . ', Title: ' . $shared_title . ', Text: ' . $shared_text);
                     
+                    // Smart URL extraction - YouTube puts URL in 'text' parameter
+                    $final_url = '';
+                    if (!empty($shared_url) && filter_var($shared_url, FILTER_VALIDATE_URL)) {
+                        $final_url = $shared_url;
+                        error_log('BitStream Share Debug: Using URL from url parameter');
+                    } elseif (!empty($shared_text) && filter_var($shared_text, FILTER_VALIDATE_URL)) {
+                        $final_url = $shared_text;
+                        error_log('BitStream Share Debug: Using URL from text parameter (YouTube format)');
+                    } else {
+                        // Fallback: extract URL from any parameter content
+                        $all_content = $shared_url . ' ' . $shared_text . ' ' . $shared_title;
+                        preg_match('/https?:\/\/[^\s]+/', $all_content, $matches);
+                        if (!empty($matches[0])) {
+                            $final_url = $matches[0];
+                            error_log('BitStream Share Debug: Extracted URL from content: ' . $final_url);
+                        }
+                    }
+                    
+                    error_log('BitStream Share Debug: Final extracted URL: ' . $final_url);
+                    
                     // Show debug page if requested or if we're testing
                     if ($debug_mode) {
                         $this->show_debug_page($shared_url, $shared_title, $shared_text, $_GET);
@@ -377,9 +397,9 @@ class BitStream_PWA_Manager {
                     // Check if user is logged in
                     if (!is_user_logged_in()) {
                         // Store the shared content in session/transient for after login
-                        if ($shared_url || $shared_title || $shared_text) {
+                        if ($final_url || $shared_title || $shared_text) {
                             $shared_data = array(
-                                'url' => $shared_url,
+                                'url' => $final_url, // Use the extracted URL
                                 'title' => $shared_title,
                                 'text' => $shared_text,
                                 'timestamp' => time()
@@ -403,15 +423,16 @@ class BitStream_PWA_Manager {
                     $redirect_url = admin_url('post-new.php?post_type=bit&rebit=1');
                     
                     // Add shared content to redirect URL if available
-                    if ($shared_url) {
-                        $redirect_url = add_query_arg('shared_url', urlencode($shared_url), $redirect_url);
-                        error_log('BitStream Share Debug: Added shared_url to redirect');
+                    if ($final_url) {
+                        $redirect_url = add_query_arg('shared_url', urlencode($final_url), $redirect_url);
+                        error_log('BitStream Share Debug: Added final_url to redirect: ' . $final_url);
                     }
                     if ($shared_title) {
                         $redirect_url = add_query_arg('shared_title', urlencode($shared_title), $redirect_url);
                         error_log('BitStream Share Debug: Added shared_title to redirect');
                     }
-                    if ($shared_text) {
+                    // Note: We use final_url instead of shared_text since shared_text might be the URL
+                    if ($shared_text && $shared_text !== $final_url) {
                         $redirect_url = add_query_arg('shared_text', urlencode($shared_text), $redirect_url);
                         error_log('BitStream Share Debug: Added shared_text to redirect');
                     }
