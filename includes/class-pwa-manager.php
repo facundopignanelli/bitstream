@@ -374,6 +374,32 @@ class BitStream_PWA_Manager {
                         exit;
                     }
                     
+                    // Check if user is logged in
+                    if (!is_user_logged_in()) {
+                        // Store the shared content in session/transient for after login
+                        if ($shared_url || $shared_title || $shared_text) {
+                            $shared_data = array(
+                                'url' => $shared_url,
+                                'title' => $shared_title,
+                                'text' => $shared_text,
+                                'timestamp' => time()
+                            );
+                            // Use a transient that expires in 10 minutes
+                            $transient_key = 'bitstream_shared_' . wp_generate_password(12, false);
+                            set_transient($transient_key, $shared_data, 10 * MINUTE_IN_SECONDS);
+                            
+                            // Redirect to login with the shared data key
+                            $login_url = wp_login_url(admin_url('post-new.php?post_type=bit&rebit=1&shared_key=' . $transient_key));
+                            error_log('BitStream Share Debug: User not logged in, redirecting to login with shared data key: ' . $transient_key);
+                        } else {
+                            // No shared data, just redirect to login
+                            $login_url = wp_login_url(admin_url('post-new.php?post_type=bit&rebit=1'));
+                            error_log('BitStream Share Debug: User not logged in, redirecting to login');
+                        }
+                        wp_redirect($login_url);
+                        exit;
+                    }
+                    
                     $redirect_url = admin_url('post-new.php?post_type=bit&rebit=1');
                     
                     // Add shared content to redirect URL if available

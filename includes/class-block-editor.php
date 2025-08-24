@@ -19,6 +19,7 @@ class BitStream_Block_Editor {
         add_filter('default_content', [$this, 'default_rebit_content'], 10, 2);
         add_action('add_meta_boxes', [$this, 'handle_shared_content_meta']);
         add_action('edit_form_after_title', [$this, 'inject_shared_url_script']);
+        add_action('admin_init', [$this, 'handle_shared_key_restoration']);
     }
     
     /**
@@ -373,6 +374,38 @@ class BitStream_Block_Editor {
                 setTimeout(waitForEditor, 500);
             })();
             </script>';
+        }
+    }
+    
+    /**
+     * Handle shared key restoration after login
+     */
+    public function handle_shared_key_restoration() {
+        // Check if we have a shared key from the login redirect
+        if (isset($_GET['shared_key']) && isset($_GET['post_type']) && $_GET['post_type'] === 'bit') {
+            $shared_key = sanitize_text_field($_GET['shared_key']);
+            $shared_data = get_transient($shared_key);
+            
+            if ($shared_data && is_array($shared_data)) {
+                // Clean up the transient
+                delete_transient($shared_key);
+                
+                // Redirect with the restored shared data
+                $redirect_url = admin_url('post-new.php?post_type=bit&rebit=1');
+                
+                if (!empty($shared_data['url'])) {
+                    $redirect_url = add_query_arg('shared_url', urlencode($shared_data['url']), $redirect_url);
+                }
+                if (!empty($shared_data['title'])) {
+                    $redirect_url = add_query_arg('shared_title', urlencode($shared_data['title']), $redirect_url);
+                }
+                if (!empty($shared_data['text'])) {
+                    $redirect_url = add_query_arg('shared_text', urlencode($shared_data['text']), $redirect_url);
+                }
+                
+                wp_redirect($redirect_url);
+                exit;
+            }
         }
     }
     

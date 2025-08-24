@@ -16,6 +16,8 @@
             margin: 10px 0; 
             text-align: center; 
         }
+        .success { background: #28a745; }
+        .warning { background: #ffc107; color: #212529; }
     </style>
 </head>
 <body>
@@ -31,15 +33,36 @@
         ✅ Test Debug Mode (With Sample YouTube Data)
     </a>
     
-    <a href="/bitstream/new-rebit/" class="test-link">
-        📝 Test Normal Mode (Should redirect to editor)
+    <a href="/bitstream/new-rebit/" class="test-link warning">
+        📝 Test Normal Mode (Will show login if not logged in)
     </a>
     
-    <p><strong>Instructions:</strong></p>
+    <a href="/bitstream/new-rebit/?url=https://www.youtube.com/watch?v=dQw4w9WgXcQ&title=Test Video&text=Check out this video!" class="test-link success">
+        🚀 Test Full Flow (With data - should preserve through login)
+    </a>
+    
+    <h2>What Should Happen:</h2>
     <ol>
-        <li>Click the "Test Debug Mode" links to see if the debug functionality works</li>
-        <li>If those work, reinstall your PWA and try sharing from YouTube</li>
-        <li>The YouTube share should now work with the normal flow</li>
+        <li><strong>Debug Mode:</strong> Shows debug page with parameters</li>
+        <li><strong>Normal Mode (not logged in):</strong> Redirects to WordPress login</li>
+        <li><strong>Normal Mode (logged in):</strong> Goes to post editor with ReBit block</li>
+        <li><strong>Full Flow:</strong> Preserves shared data through login process</li>
+    </ol>
+    
+    <h2>Expected Results:</h2>
+    <ul>
+        <li>✅ <strong>Debug tests work:</strong> Debug functionality confirmed</li>
+        <li>⚠️ <strong>Normal mode shows login:</strong> Authentication required (expected)</li>
+        <li>🚀 <strong>After login:</strong> Shared data preserved and ReBit block populated</li>
+    </ul>
+    
+    <h2>For Mobile PWA Testing:</h2>
+    <p>After confirming the above works:</p>
+    <ol>
+        <li>Make sure you're logged into WordPress on your mobile device</li>
+        <li>Or be prepared to log in when prompted</li>
+        <li>Try sharing from YouTube app to BitStream PWA</li>
+        <li>Should either work directly (if logged in) or prompt for login and preserve data</li>
     </ol>
 </body>
 </html>
