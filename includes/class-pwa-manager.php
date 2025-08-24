@@ -355,8 +355,8 @@ class BitStream_PWA_Manager {
                 case 'new-rebit':
                     // Handle shared content from Android share sheet
                     
-                    // Check for debug mode
-                    $debug_mode = isset($_GET['debug']) || isset($_GET['test']);
+                    // TEMPORARY: Force debug mode to capture YouTube data format
+                    $debug_mode = true; // isset($_GET['debug']) || isset($_GET['test']);
                     
                     // Log all incoming parameters for debugging
                     error_log('BitStream Share Debug: All GET parameters: ' . print_r($_GET, true));
@@ -540,7 +540,45 @@ class BitStream_PWA_Manager {
             </div>
             
             <div class="debug-section">
-                <h2>📱 Raw Data</h2>
+                <h2>� Detailed Parameter Analysis</h2>
+                <h3>All GET Parameters (Raw):</h3>
+                <pre><?php print_r($all_params); ?></pre>
+                
+                <h3>Parameter Analysis:</h3>
+                <ul>
+                    <li><strong>Total parameters:</strong> <?php echo count($all_params); ?></li>
+                    <li><strong>Parameter names:</strong> <?php echo implode(', ', array_keys($all_params)); ?></li>
+                    <?php foreach ($all_params as $key => $value): ?>
+                        <li><strong><?php echo htmlspecialchars($key); ?>:</strong> 
+                            <?php if (is_string($value)): ?>
+                                <code><?php echo htmlspecialchars(substr($value, 0, 100)) . (strlen($value) > 100 ? '...' : ''); ?></code>
+                                <small>(<?php echo strlen($value); ?> chars)</small>
+                            <?php else: ?>
+                                <code><?php echo htmlspecialchars(print_r($value, true)); ?></code>
+                            <?php endif; ?>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+                
+                <h3>URL Detection in Each Parameter:</h3>
+                <?php foreach ($all_params as $key => $value): ?>
+                    <?php if (is_string($value)): ?>
+                        <?php 
+                        preg_match_all('/https?:\/\/[^\s]+/', $value, $param_matches);
+                        ?>
+                        <p><strong><?php echo htmlspecialchars($key); ?>:</strong> 
+                            <?php if (!empty($param_matches[0])): ?>
+                                <span style="color: green;">✅ Contains URLs: <?php echo implode(', ', array_map('htmlspecialchars', $param_matches[0])); ?></span>
+                            <?php else: ?>
+                                <span style="color: red;">❌ No URLs</span>
+                            <?php endif; ?>
+                        </p>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            </div>
+            
+            <div class="debug-section">
+                <h2>�📱 Raw Data</h2>
                 <pre><?php print_r($all_params); ?></pre>
             </div>
             
