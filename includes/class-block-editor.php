@@ -18,6 +18,7 @@ class BitStream_Block_Editor {
         add_action('wp_enqueue_scripts', [$this, 'enqueue_frontend_assets']);
         add_filter('default_content', [$this, 'default_rebit_content'], 10, 2);
         add_action('add_meta_boxes', [$this, 'handle_shared_content_meta']);
+        add_action('edit_form_after_title', [$this, 'inject_shared_url_script']);
     }
     
     /**
@@ -145,32 +146,107 @@ class BitStream_Block_Editor {
                 $shared_url = urldecode($_GET['shared_url']);
                 error_log('BitStream: Setting shared URL in meta: ' . $shared_url);
                 
-                // Add JavaScript to set the meta field
+                // Add JavaScript to set the meta field with better error handling
                 echo '<script type="text/javascript">
                 document.addEventListener("DOMContentLoaded", function() {
-                    console.log("BitStream: Setting shared URL meta field to: ' . esc_js($shared_url) . '");
+                    console.log("BitStream: Meta handler - Setting shared URL to: ' . esc_js($shared_url) . '");
                     
-                    // Try multiple approaches to set the meta field
-                    if (wp && wp.data) {
-                        // Method 1: Direct meta update
-                        wp.data.dispatch("core/editor").editPost({
-                            meta: { bitstream_rebit_url: "' . esc_js($shared_url) . '" }
-                        });
-                        
-                        // Method 2: Wait and try again
-                        setTimeout(function() {
-                            const blocks = wp.data.select("core/block-editor").getBlocks();
-                            const rebitBlock = blocks.find(block => block.name === "bitstream/rebit-url");
-                            if (rebitBlock) {
-                                wp.data.dispatch("core/block-editor").updateBlockAttributes(rebitBlock.clientId, {
-                                    bitstream_rebit_url: "' . esc_js($shared_url) . '"
+                    // Function to set meta and block value
+                    function setSharedUrl() {
+                        if (wp && wp.data && wp.data.select("core/editor")) {
+                            console.log("BitStream: WordPress editor data available");
+                            
+                            // Method 1: Set post meta directly
+                            try {
+                                wp.data.dispatch("core/editor").editPost({
+                                    meta: { bitstream_rebit_url: "' . esc_js($shared_url) . '" }
                                 });
+                                console.log("BitStream: Meta set via editPost");
+                            } catch (error) {
+                                console.error("BitStream: Error setting meta via editPost:", error);
                             }
-                        }, 500);
+                            
+                            // Method 2: Find and update the block
+                            setTimeout(function() {
+                                try {
+                                    const blocks = wp.data.select("core/block-editor").getBlocks();
+                                    console.log("BitStream: Meta handler found blocks:", blocks.length);
+                                    
+                                    const rebitBlock = blocks.find(block => block.name === "bitstream/rebit-url");
+                                    if (rebitBlock) {
+                                        console.log("BitStream: Meta handler found ReBit block, updating...");
+                                        wp.data.dispatch("core/block-editor").updateBlockAttributes(rebitBlock.clientId, {
+                                            bitstream_rebit_url: "' . esc_js($shared_url) . '"
+                                        });
+                                        console.log("BitStream: Meta handler updated block attributes");
+                                    } else {
+                                        console.log("BitStream: Meta handler - no ReBit block found yet");
+                                    }
+                                } catch (error) {
+                                    console.error("BitStream: Error in meta handler block update:", error);
+                                }
+                            }, 1000);
+                        } else {
+                            console.log("BitStream: WordPress editor not ready, retrying...");
+                            setTimeout(setSharedUrl, 500);
+                        }
                     }
+                    
+                    // Start trying to set the URL
+                    setSharedUrl();
                 });
                 </script>';
             }
+        }
+    }
+    
+    /**
+     * Inject script directly into editor page for immediate execution
+     */
+    public function inject_shared_url_script() {
+        global $post;
+        
+        if ($post && $post->post_type === 'bit' && isset($_GET['shared_url'])) {
+            $shared_url = urldecode($_GET['shared_url']);
+            
+            echo '<script type="text/javascript">
+            // Immediate execution when editor loads
+            (function() {
+                const sharedUrl = "' . esc_js($shared_url) . '";
+                console.log("BitStream: Inject script - shared URL:", sharedUrl);
+                
+                // Function to monitor for block editor readiness
+                function waitForEditor() {
+                    if (window.wp && window.wp.data && window.wp.data.select("core/block-editor")) {
+                        console.log("BitStream: Block editor ready, setting shared URL");
+                        
+                        // Set meta immediately
+                        window.wp.data.dispatch("core/editor").editPost({
+                            meta: { bitstream_rebit_url: sharedUrl }
+                        });
+                        
+                        // Monitor for ReBit blocks and update them
+                        const unsubscribe = window.wp.data.subscribe(() => {
+                            const blocks = window.wp.data.select("core/block-editor").getBlocks();
+                            const rebitBlock = blocks.find(block => block.name === "bitstream/rebit-url");
+                            
+                            if (rebitBlock && !rebitBlock.attributes.bitstream_rebit_url) {
+                                console.log("BitStream: Updating ReBit block with shared URL");
+                                window.wp.data.dispatch("core/block-editor").updateBlockAttributes(rebitBlock.clientId, {
+                                    bitstream_rebit_url: sharedUrl
+                                });
+                                unsubscribe(); // Stop monitoring once we\'ve updated
+                            }
+                        });
+                        
+                    } else {
+                        setTimeout(waitForEditor, 100);
+                    }
+                }
+                
+                waitForEditor();
+            })();
+            </script>';
         }
     }
     
@@ -400,37 +476,57 @@ class BitStream_Block_Editor {
         if (sharedUrl) {
             console.log('BitStream: Shared content detected - URL:', sharedUrl);
             
-            // Wait a moment for the block to be inserted, then populate it
-            setTimeout(() => {
+            // Multiple attempts to populate the block with increasing delays
+            const attemptToPopulateBlock = (attempt = 1, maxAttempts = 10) => {
+                console.log(`BitStream: Attempt ${attempt} to populate ReBit block`);
+                
                 const blocks = select('core/block-editor').getBlocks();
-                console.log('BitStream: All blocks:', blocks.map(b => ({name: b.name, clientId: b.clientId})));
+                console.log('BitStream: Available blocks:', blocks.map(b => ({name: b.name, clientId: b.clientId, attributes: b.attributes})));
+                
                 const rebitBlock = blocks.find(block => block.name === 'bitstream/rebit-url');
                 
                 if (rebitBlock) {
-                    console.log('BitStream: Found ReBit block, setting shared URL:', sharedUrl);
-                    dispatch('core/block-editor').updateBlockAttributes(rebitBlock.clientId, {
-                        bitstream_rebit_url: decodeURIComponent(sharedUrl)
-                    });
+                    console.log('BitStream: Found ReBit block:', rebitBlock);
+                    console.log('BitStream: Current block attributes:', rebitBlock.attributes);
                     
-                    // If we have shared title or text, add it as post content
-                    if (sharedTitle || sharedText) {
-                        let content = '';
-                        if (sharedTitle && sharedTitle !== decodeURIComponent(sharedUrl)) {
-                            content += 'Sharing: ' + decodeURIComponent(sharedTitle) + '\n\n';
-                        }
-                        if (sharedText && sharedText !== decodeURIComponent(sharedUrl) && sharedText !== sharedTitle) {
-                            content += decodeURIComponent(sharedText);
-                        }
+                    // Try to update the block attributes
+                    try {
+                        dispatch('core/block-editor').updateBlockAttributes(rebitBlock.clientId, {
+                            bitstream_rebit_url: decodeURIComponent(sharedUrl)
+                        });
+                        console.log('BitStream: Successfully updated block attributes');
                         
-                        if (content.trim()) {
-                            console.log('BitStream: Adding shared content as post text:', content);
-                            dispatch('core/editor').editPost({ content: content.trim() });
-                        }
+                        // Also try to update the meta directly
+                        dispatch('core/editor').editPost({
+                            meta: { bitstream_rebit_url: decodeURIComponent(sharedUrl) }
+                        });
+                        console.log('BitStream: Successfully updated post meta');
+                        
+                    } catch (error) {
+                        console.error('BitStream: Error updating block:', error);
                     }
+                    
+                } else if (attempt < maxAttempts) {
+                    console.log(`BitStream: ReBit block not found, retrying in ${attempt * 100}ms...`);
+                    setTimeout(() => attemptToPopulateBlock(attempt + 1, maxAttempts), attempt * 100);
                 } else {
-                    console.error('BitStream: Could not find ReBit block to populate');
+                    console.error('BitStream: Could not find ReBit block after', maxAttempts, 'attempts');
+                    
+                    // Last resort: try to insert a new block with the URL
+                    try {
+                        const newBlock = createBlock('bitstream/rebit-url', {
+                            bitstream_rebit_url: decodeURIComponent(sharedUrl)
+                        });
+                        dispatch('core/block-editor').insertBlock(newBlock);
+                        console.log('BitStream: Inserted new ReBit block as fallback');
+                    } catch (error) {
+                        console.error('BitStream: Failed to insert fallback block:', error);
+                    }
                 }
-            }, 100);
+            };
+            
+            // Start the first attempt immediately
+            attemptToPopulateBlock();
         } else {
             console.log('BitStream: No shared URL detected in parameters');
         }
