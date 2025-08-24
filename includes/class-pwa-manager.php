@@ -260,6 +260,13 @@ class BitStream_PWA_Manager {
     public function add_shortcut_rewrite() {
         add_rewrite_rule('^bitstream/new-bit/?$', 'index.php?bitstream_action=new-bit', 'top');
         add_rewrite_rule('^bitstream/new-rebit/?$', 'index.php?bitstream_action=new-rebit', 'top');
+        
+        // Ensure rewrite rules are flushed when this version loads
+        if (!get_option('bitstream_rewrite_flushed_v2.3.0')) {
+            flush_rewrite_rules(false);
+            update_option('bitstream_rewrite_flushed_v2.3.0', true);
+            error_log('BitStream: Rewrite rules flushed for v2.3.0 (share target support)');
+        }
     }
 
     /**
@@ -349,22 +356,31 @@ class BitStream_PWA_Manager {
                     // Handle shared content from Android share sheet
                     $redirect_url = admin_url('post-new.php?post_type=bit&rebit=1');
                     
+                    // Log all incoming parameters for debugging
+                    error_log('BitStream Share Debug: All GET parameters: ' . print_r($_GET, true));
+                    
                     // Capture shared content parameters
                     $shared_url = isset($_GET['url']) ? sanitize_url($_GET['url']) : '';
                     $shared_title = isset($_GET['title']) ? sanitize_text_field($_GET['title']) : '';
                     $shared_text = isset($_GET['text']) ? sanitize_text_field($_GET['text']) : '';
                     
+                    error_log('BitStream Share Debug: Extracted parameters - URL: ' . $shared_url . ', Title: ' . $shared_title . ', Text: ' . $shared_text);
+                    
                     // Add shared content to redirect URL if available
                     if ($shared_url) {
                         $redirect_url = add_query_arg('shared_url', urlencode($shared_url), $redirect_url);
+                        error_log('BitStream Share Debug: Added shared_url to redirect');
                     }
                     if ($shared_title) {
                         $redirect_url = add_query_arg('shared_title', urlencode($shared_title), $redirect_url);
+                        error_log('BitStream Share Debug: Added shared_title to redirect');
                     }
                     if ($shared_text) {
                         $redirect_url = add_query_arg('shared_text', urlencode($shared_text), $redirect_url);
+                        error_log('BitStream Share Debug: Added shared_text to redirect');
                     }
                     
+                    error_log('BitStream Share Debug: Final redirect URL: ' . $redirect_url);
                     wp_redirect($redirect_url);
                     break;
                 default:

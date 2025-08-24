@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BitStream Share Target Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+        .test-section { margin: 30px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        .test-url { background: #f5f5f5; padding: 10px; border-radius: 4px; font-family: monospace; word-break: break-all; }
+        .button { display: inline-block; padding: 10px 20px; background: #2c6e49; color: white; text-decoration: none; border-radius: 4px; margin: 10px 5px; }
+        .button:hover { background: #1f4d35; }
+        .warning { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 4px; margin: 20px 0; }
+        .info { background: #d1ecf1; border: 1px solid #bee5eb; padding: 15px; border-radius: 4px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <h1>BitStream Share Target Test</h1>
+    
+    <div class="warning">
+        <strong>⚠️ Important:</strong> Make sure you're logged into WordPress and have the BitStream plugin activated before testing these links.
+    </div>
+    
+    <div class="test-section">
+        <h2>🎯 Test 1: YouTube Video (Like you tried)</h2>
+        <p>This simulates sharing a YouTube video exactly like from the YouTube app:</p>
+        <div class="test-url">
+            /bitstream/new-rebit/?url=https://www.youtube.com/watch?v=dQw4w9WgXcQ&title=Rick%20Astley%20-%20Never%20Gonna%20Give%20You%20Up%20(Official%20Video)&text=Official%20Video
+        </div>
+        <a href="/bitstream/new-rebit/?url=https://www.youtube.com/watch?v=dQw4w9WgXcQ&title=Rick%20Astley%20-%20Never%20Gonna%20Give%20You%20Up%20(Official%20Video)&text=Official%20Video" class="button">Test YouTube Share</a>
+    </div>
+    
+    <div class="test-section">
+        <h2>🎯 Test 2: Full Share Target</h2>
+        <p>This simulates sharing with all parameters (URL, title, and text):</p>
+        <div class="test-url">
+            /bitstream/new-rebit/?url=https://www.youtube.com/watch?v=dQw4w9WgXcQ&title=Rick%20Astley%20-%20Never%20Gonna%20Give%20You%20Up&text=Classic%20music%20video
+        </div>
+        <a href="/bitstream/new-rebit/?url=https://www.youtube.com/watch?v=dQw4w9WgXcQ&title=Rick%20Astley%20-%20Never%20Gonna%20Give%20You%20Up&text=Classic%20music%20video" class="button">Test Full Share</a>
+    </div>
+    
+    <div class="test-section">
+        <h2>🎯 Test 3: Debug Mode</h2>
+        <p>This will show you what parameters are being received (requires debug helper):</p>
+        <div class="test-url">
+            /bitstream/new-rebit/?bitstream_debug_share=1&url=https://www.youtube.com/watch?v=dQw4w9WgXcQ&title=Test%20Video&text=Debug%20test
+        </div>
+        <a href="/bitstream/new-rebit/?bitstream_debug_share=1&url=https://www.youtube.com/watch?v=dQw4w9WgXcQ&title=Test%20Video&text=Debug%20test" class="button">Test with Debug</a>
+    </div>
+    
+    <div class="info">
+        <h3>📋 Expected Behavior:</h3>
+        <ol>
+            <li>Click a test link above</li>
+            <li>You should be redirected to the WordPress admin</li>
+            <li>A new post editor should open with "ReBit" settings</li>
+            <li>The ReBit URL block should be auto-inserted</li>
+            <li>The URL field should be pre-populated with the shared URL</li>
+            <li>Any title/text should appear in the post content area</li>
+        </ol>
+    </div>
+    
+    <div class="test-section">
+        <h2>🔍 Debugging Steps</h2>
+        <ol>
+            <li><strong>Check Browser Console:</strong> Open Developer Tools (F12) and look for messages starting with "BitStream:"</li>
+            <li><strong>Check WordPress Error Log:</strong> Look for messages containing "BitStream Share Debug"</li>
+            <li><strong>Test Direct Admin Link:</strong> Try going directly to <code>/wp-admin/post-new.php?post_type=bit&rebit=1&shared_url=https://example.com</code></li>
+            <li><strong>Check PWA Installation:</strong> Make sure the BitStream PWA is properly installed on your device</li>
+        </ol>
+    </div>
+    
+    <div class="test-section">
+        <h2>📱 Real Android Share Test</h2>
+        <p>If the tests above work, but sharing from the YouTube app doesn't:</p>
+        <ol>
+            <li>Open YouTube app on Android</li>
+            <li>Find any video</li>
+            <li>Tap the Share button</li>
+            <li>Look for "BitStream" in the share menu</li>
+            <li>If it's not there, the PWA might not be properly installed</li>
+            <li>If it's there but doesn't work, check the browser console for errors</li>
+        </ol>
+    </div>
+    
+    <script>
+        // Add some client-side debugging
+        console.log('BitStream Share Test Page loaded');
+        console.log('Current URL:', window.location.href);
+        console.log('URL Parameters:', new URLSearchParams(window.location.search));
+        
+        // Check if this is a BitStream PWA
+        if (navigator.serviceWorker) {
+            navigator.serviceWorker.getRegistrations().then(registrations => {
+                const bitstreamSW = registrations.find(reg => 
+                    reg.scope.includes('bitstream') || 
+                    reg.active?.scriptURL.includes('bitstream')
+                );
+                if (bitstreamSW) {
+                    console.log('BitStream service worker found:', bitstreamSW);
+                } else {
+                    console.warn('BitStream service worker not found');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
