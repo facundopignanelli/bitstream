@@ -237,36 +237,102 @@ class BitStream_Block_Editor {
                 const sharedUrl = "' . esc_js($shared_url) . '";
                 console.log("BitStream: Inject script - shared URL:", sharedUrl);
                 
-                // Function to monitor for block editor readiness
-                function waitForEditor() {
-                    if (window.wp && window.wp.data && window.wp.data.select("core/block-editor")) {
-                        console.log("BitStream: Block editor ready, setting shared URL");
+                // Function to set meta with better error handling
+                function setSharedUrl() {
+                    try {
+                        // Check if we have a valid post ID and editor is ready
+                        if (!window.wp || !window.wp.data) {
+                            console.log("BitStream: WordPress editor not ready yet");
+                            return false;
+                        }
                         
-                        // Set meta immediately
-                        window.wp.data.dispatch("core/editor").editPost({
+                        const editor = window.wp.data.select("core/editor");
+                        const dispatcher = window.wp.data.dispatch("core/editor");
+                        
+                        if (!editor || !dispatcher) {
+                            console.log("BitStream: Editor stores not available yet");
+                            return false;
+                        }
+                        
+                        // Check if post is loaded
+                        const currentPost = editor.getCurrentPost();
+                        if (!currentPost || !currentPost.id) {
+                            console.log("BitStream: Post not loaded yet");
+                            return false;
+                        }
+                        
+                        console.log("BitStream: WordPress editor data available");
+                        
+                        // Set meta via the proper method
+                        dispatcher.editPost({
                             meta: { bitstream_rebit_url: sharedUrl }
                         });
                         
-                        // Monitor for ReBit blocks and update them
-                        const unsubscribe = window.wp.data.subscribe(() => {
-                            const blocks = window.wp.data.select("core/block-editor").getBlocks();
-                            const rebitBlock = blocks.find(block => block.name === "bitstream/rebit-url");
-                            
-                            if (rebitBlock && !rebitBlock.attributes.bitstream_rebit_url) {
-                                console.log("BitStream: Updating ReBit block with shared URL");
-                                window.wp.data.dispatch("core/block-editor").updateBlockAttributes(rebitBlock.clientId, {
-                                    bitstream_rebit_url: sharedUrl
-                                });
-                                unsubscribe(); // Stop monitoring once we\'ve updated
-                            }
-                        });
+                        console.log("BitStream: Meta set successfully");
+                        return true;
                         
-                    } else {
-                        setTimeout(waitForEditor, 100);
+                    } catch (error) {
+                        console.log("BitStream: Error setting meta via editPost:", error);
+                        return false;
                     }
                 }
                 
-                waitForEditor();
+                // Function to handle block updates
+                function handleBlockUpdates() {
+                    try {
+                        const blockEditor = window.wp.data.select("core/block-editor");
+                        const blockDispatcher = window.wp.data.dispatch("core/block-editor");
+                        
+                        if (!blockEditor || !blockDispatcher) {
+                            return false;
+                        }
+                        
+                        const blocks = blockEditor.getBlocks();
+                        console.log("BitStream: Meta handler found blocks:", blocks.length);
+                        
+                        const rebitBlock = blocks.find(block => block.name === "bitstream/rebit-url");
+                        
+                        if (rebitBlock) {
+                            console.log("BitStream: Meta handler found ReBit block, updating...");
+                            blockDispatcher.updateBlockAttributes(rebitBlock.clientId, {
+                                bitstream_rebit_url: sharedUrl
+                            });
+                            console.log("BitStream: Meta handler updated block attributes");
+                            return true;
+                        }
+                        
+                        return false;
+                    } catch (error) {
+                        console.log("BitStream: Error updating block:", error);
+                        return false;
+                    }
+                }
+                
+                // Main waiting function
+                function waitForEditor() {
+                    let metaSet = false;
+                    let blockUpdated = false;
+                    
+                    // Try to set meta
+                    if (!metaSet) {
+                        metaSet = setSharedUrl();
+                    }
+                    
+                    // Try to update blocks
+                    if (!blockUpdated) {
+                        blockUpdated = handleBlockUpdates();
+                    }
+                    
+                    // Continue waiting if either operation failed
+                    if (!metaSet || !blockUpdated) {
+                        setTimeout(waitForEditor, 250);
+                    } else {
+                        console.log("BitStream: All operations completed successfully");
+                    }
+                }
+                
+                // Start the process
+                setTimeout(waitForEditor, 500);
             })();
             </script>';
         }
