@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BitStream Share Target Test</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-link { 
+            display: block; 
+            background: #007cba; 
+            color: white; 
+            padding: 15px; 
+            text-decoration: none; 
+            border-radius: 8px; 
+            margin: 10px 0; 
+            text-align: center; 
+        }
+    </style>
+</head>
+<body>
+    <h1>BitStream Share Target Test</h1>
+    
+    <p>Click these links to test the share target functionality:</p>
+    
+    <a href="/bitstream/new-rebit/?debug=1" class="test-link">
+        🔍 Test Debug Mode (No Parameters)
+    </a>
+    
+    <a href="/bitstream/new-rebit/?debug=1&url=https://www.youtube.com/watch?v=dQw4w9WgXcQ&title=Test Video&text=Check out this video: https://www.youtube.com/watch?v=dQw4w9WgXcQ" class="test-link">
+        ✅ Test Debug Mode (With Sample YouTube Data)
+    </a>
+    
+    <a href="/bitstream/new-rebit/" class="test-link">
+        📝 Test Normal Mode (Should redirect to editor)
+    </a>
+    
+    <p><strong>Instructions:</strong></p>
+    <ol>
+        <li>Click the "Test Debug Mode" links to see if the debug functionality works</li>
+        <li>If those work, reinstall your PWA and try sharing from YouTube</li>
+        <li>The YouTube share should now work with the normal flow</li>
+    </ol>
+</body>
+</html>

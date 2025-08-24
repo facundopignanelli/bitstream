@@ -354,7 +354,9 @@ class BitStream_PWA_Manager {
                     break;
                 case 'new-rebit':
                     // Handle shared content from Android share sheet
-                    $redirect_url = admin_url('post-new.php?post_type=bit&rebit=1');
+                    
+                    // Check for debug mode
+                    $debug_mode = isset($_GET['debug']) || isset($_GET['test']);
                     
                     // Log all incoming parameters for debugging
                     error_log('BitStream Share Debug: All GET parameters: ' . print_r($_GET, true));
@@ -365,6 +367,14 @@ class BitStream_PWA_Manager {
                     $shared_text = isset($_GET['text']) ? sanitize_text_field($_GET['text']) : '';
                     
                     error_log('BitStream Share Debug: Extracted parameters - URL: ' . $shared_url . ', Title: ' . $shared_title . ', Text: ' . $shared_text);
+                    
+                    // Show debug page if requested or if we're testing
+                    if ($debug_mode) {
+                        $this->show_debug_page($shared_url, $shared_title, $shared_text, $_GET);
+                        exit;
+                    }
+                    
+                    $redirect_url = admin_url('post-new.php?post_type=bit&rebit=1');
                     
                     // Add shared content to redirect URL if available
                     if ($shared_url) {
@@ -406,5 +416,133 @@ class BitStream_PWA_Manager {
                 wp_die('Access denied');
             }
         }
+    }
+    
+    /**
+     * Show debug page for share target testing
+     */
+    private function show_debug_page($shared_url, $shared_title, $shared_text, $all_params) {
+        // Extract URLs from all content
+        $all_content = $shared_url . ' ' . $shared_text . ' ' . $shared_title;
+        preg_match_all('/https?:\/\/[^\s]+/', $all_content, $matches);
+        $found_urls = $matches[0];
+        
+        $has_any_params = !empty($all_params);
+        $has_share_data = !empty($shared_url) || !empty($shared_title) || !empty($shared_text);
+        
+        // Log to file
+        $log_entry = date('Y-m-d H:i:s') . " - Share Target Debug:\n";
+        $log_entry .= "URL: " . $shared_url . "\n";
+        $log_entry .= "Title: " . $shared_title . "\n";
+        $log_entry .= "Text: " . $shared_text . "\n";
+        $log_entry .= "Found URLs: " . implode(', ', $found_urls) . "\n";
+        $log_entry .= "All Params: " . print_r($all_params, true) . "\n";
+        $log_entry .= "---\n\n";
+        
+        $log_file = dirname(__FILE__) . '/../debug-share.log';
+        file_put_contents($log_file, $log_entry, FILE_APPEND | LOCK_EX);
+        
+        // Output HTML
+        header('Content-Type: text/html; charset=utf-8');
+        ?>
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>BitStream Share Debug</title>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+                .debug-section { background: white; padding: 15px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+                .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+                .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+                .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+                .big-text { font-size: 18px; font-weight: bold; }
+                .url-found { background: #28a745; color: white; padding: 10px; border-radius: 4px; margin: 5px 0; }
+                pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px; }
+            </style>
+        </head>
+        <body>
+            <div class="debug-section">
+                <h1>🔍 BitStream Share Target Debug</h1>
+                <p><strong>Timestamp:</strong> <?php echo date('Y-m-d H:i:s'); ?></p>
+            </div>
+            
+            <div class="debug-section <?php echo $has_any_params ? 'success' : 'error'; ?>">
+                <h2>📊 Share Target Status</h2>
+                <?php if ($has_any_params): ?>
+                    <div class="big-text">✅ SHARE TARGET TRIGGERED!</div>
+                    <p>Parameters were received from the share action.</p>
+                <?php else: ?>
+                    <div class="big-text">❌ NO PARAMETERS RECEIVED</div>
+                    <p>Share target was not triggered or no data was sent.</p>
+                <?php endif; ?>
+            </div>
+            
+            <?php if ($has_share_data): ?>
+            <div class="debug-section success">
+                <h2>📋 Shared Content</h2>
+                <div class="big-text">✅ CONTENT DETECTED!</div>
+                <ul>
+                    <?php if ($shared_url): ?>
+                        <li><strong>URL:</strong> <code><?php echo htmlspecialchars($shared_url); ?></code></li>
+                    <?php endif; ?>
+                    <?php if ($shared_title): ?>
+                        <li><strong>Title:</strong> <?php echo htmlspecialchars($shared_title); ?></li>
+                    <?php endif; ?>
+                    <?php if ($shared_text): ?>
+                        <li><strong>Text:</strong> <?php echo htmlspecialchars($shared_text); ?></li>
+                    <?php endif; ?>
+                </ul>
+            </div>
+            <?php endif; ?>
+            
+            <div class="debug-section">
+                <h2>🔗 URL Extraction Test</h2>
+                <?php if (!empty($found_urls)): ?>
+                    <div class="big-text">✅ URLS FOUND: <?php echo count($found_urls); ?></div>
+                    <?php foreach ($found_urls as $url): ?>
+                        <div class="url-found">
+                            <strong>Extracted URL:</strong><br>
+                            <?php echo htmlspecialchars($url); ?>
+                        </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <div class="big-text">❌ NO URLS DETECTED</div>
+                    <p>No URLs found in the shared content.</p>
+                <?php endif; ?>
+            </div>
+            
+            <div class="debug-section">
+                <h2>📱 Raw Data</h2>
+                <pre><?php print_r($all_params); ?></pre>
+            </div>
+            
+            <div class="debug-section">
+                <h2>📝 Next Steps</h2>
+                <?php if (!$has_any_params): ?>
+                    <div class="error">
+                        <p><strong>Issue:</strong> Share target not working</p>
+                        <p><strong>Solution:</strong> Reinstall the PWA after clearing browser cache</p>
+                    </div>
+                <?php elseif (empty($found_urls)): ?>
+                    <div class="warning">
+                        <p><strong>Issue:</strong> No URLs found in shared content</p>
+                        <p><strong>Check:</strong> The app might be sending URLs in a different format</p>
+                    </div>
+                <?php else: ?>
+                    <div class="success">
+                        <p><strong>Status:</strong> Everything looks good!</p>
+                        <p><strong>Next:</strong> Ready to implement the ReBit functionality</p>
+                    </div>
+                <?php endif; ?>
+            </div>
+            
+            <div class="debug-section">
+                <a href="/bitstream/" style="background: #007cba; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">← Back to BitStream</a>
+            </div>
+        </body>
+        </html>
+        <?php
     }
 }
