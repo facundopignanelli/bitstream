@@ -11,7 +11,7 @@
   "scope": "/bitstream/",
   "categories": ["social", "news"],
   "share_target": {
-    "action": "/bitstream/new-rebit/",
+    "action": "/bitstream/debug-share-test.php",
     "method": "GET",
     "params": {
       "title": "title",
