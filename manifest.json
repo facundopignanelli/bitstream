@@ -6,7 +6,7 @@
   "start_url": "/bitstream/?pwa=1",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#2c6e49",
+  "background_color": "#fafafa",
   "theme_color": "#2c6e49",
   "scope": "/bitstream/",
   "categories": ["social", "news"],
