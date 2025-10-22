@@ -11,7 +11,7 @@
   "scope": "/bitstream/",
   "categories": ["social", "news"],
   "share_target": {
-    "action": "/bitstream/new-bit/?share=1",
+    "action": "/bitstream/new-bit/",
     "method": "POST",
     "enctype": "multipart/form-data",
     "params": {

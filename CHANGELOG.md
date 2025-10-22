@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared media files are automatically uploaded to WordPress media library
 - Shared images/videos are automatically inserted into new bit posts
 - Support for both single and multiple file sharing via PWA
+- Added debug test page for share functionality (`?bitstream_debug=test_share`)
 
 ### Changed
 - Updated PWA icons to use new BitStream logo (SVG with PNG fallbacks)
@@ -19,11 +20,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed outdated icon files (192.png, 512.png)
 - Added new logo files: bitstream.svg, logo_192.png, logo_512.png
 - Modified PWA share target to use POST method with multipart/form-data for file uploads
-- Share target now directs to new-bit page instead of new-rebit for media sharing
+- Share target now directs to new-bit page for media sharing
+- Updated splash screen to use PNG logo instead of SVG (fixes white background issue)
+- Made SVG logo fully transparent (removed white background)
+- Improved service worker to properly handle POST requests
 
 ### Fixed
 - Added missing `bitstream_render_card()` function that was causing fatal errors
 - Removed redundant `bitstream-backup.php` file (functionality already properly refactored into class files)
+- Fixed splash screen showing white background by using PNG icon
 
 ## [2.0.0] - 2025-10-22
 

@@ -43,10 +43,11 @@ class BitStream_PWA_Manager {
             $sw_url = home_url('/sw.js');
             
             echo '<link rel="manifest" href="'.esc_url($manifest_url).'">';
+            echo '<link rel="apple-touch-icon" href="'.esc_url($base . 'assets/images/logo_192.png').'">';
             echo '<meta name="theme-color" content="#2c6e49">';
             echo '<meta name="mobile-web-app-capable" content="yes">';
             echo '<meta name="apple-mobile-web-app-capable" content="yes">';
-            echo '<meta name="apple-mobile-web-app-status-bar-style" content="default">';
+            echo '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">';
             echo '<meta name="apple-mobile-web-app-title" content="BitStream">';
             
             echo '<script>
@@ -378,9 +379,13 @@ class BitStream_PWA_Manager {
         
         // Process uploaded files
         if (!empty($_FILES['media'])) {
+            error_log('BitStream: Processing files...');
             require_once(ABSPATH . 'wp-admin/includes/file.php');
             require_once(ABSPATH . 'wp-admin/includes/media.php');
             require_once(ABSPATH . 'wp-admin/includes/image.php');
+            
+            // Increase timeout for large files
+            @set_time_limit(300);
             
             // Handle multiple files (media is an array)
             $files = $_FILES['media'];
@@ -389,6 +394,7 @@ class BitStream_PWA_Manager {
             if (is_array($files['name'])) {
                 // Multiple files
                 $file_count = count($files['name']);
+                error_log('BitStream: Found ' . $file_count . ' files');
                 for ($i = 0; $i < $file_count; $i++) {
                     if ($files['error'][$i] === UPLOAD_ERR_OK) {
                         // Create a single file array for this file
@@ -404,20 +410,34 @@ class BitStream_PWA_Manager {
                         if ($attachment_id) {
                             $attachment_ids[] = $attachment_id;
                         }
+                    } else {
+                        error_log('BitStream: File ' . $i . ' has upload error: ' . $files['error'][$i]);
                     }
                 }
             } else {
                 // Single file
+                error_log('BitStream: Found single file');
                 if ($files['error'] === UPLOAD_ERR_OK) {
                     $attachment_id = $this->handle_single_file_upload($files, $shared_title);
                     if ($attachment_id) {
                         $attachment_ids[] = $attachment_id;
                     }
+                } else {
+                    error_log('BitStream: File has upload error: ' . $files['error']);
                 }
             }
+        } else {
+            error_log('BitStream: No files in $_FILES[\'media\']');
         }
         
         error_log('BitStream: Uploaded attachment IDs: ' . print_r($attachment_ids, true));
+        
+        // If no files were uploaded successfully but we have shared text/url, just redirect
+        if (empty($attachment_ids) && (empty($shared_text) && empty($shared_url))) {
+            error_log('BitStream: No media uploaded and no shared content, redirecting to plain new bit page');
+            wp_redirect(admin_url('post-new.php?post_type=bit'));
+            exit;
+        }
         
         // Build redirect URL to new bit page with uploaded media
         $redirect_url = admin_url('post-new.php?post_type=bit');
@@ -492,17 +512,14 @@ class BitStream_PWA_Manager {
      * Handle PWA shortcut requests
      */
     public function handle_shortcut_requests() {
-        // Check for POST share request FIRST - before checking query vars
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && 
-            isset($_SERVER['REQUEST_URI']) && 
-            strpos($_SERVER['REQUEST_URI'], '/bitstream/new-bit') !== false &&
-            isset($_GET['share'])) {
-            error_log('BitStream: Detected POST share request');
+        $action = get_query_var('bitstream_action');
+        
+        // Check for POST share request (media files)
+        if ($action === 'new-bit' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            error_log('BitStream: Detected POST share request to new-bit');
             $this->handle_media_share();
             return;
         }
-        
-        $action = get_query_var('bitstream_action');
         
         if ($action) {
             // Check if user is logged in
