@@ -5,6 +5,14 @@ All notable changes to the BitStream WordPress plugin will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2025-10-22
+
+### Changed
+- Updated PWA icons to use new BitStream logo (SVG with PNG fallbacks)
+- Added BitStream logo to README.md for better GitHub presentation
+- Removed outdated icon files (192.png, 512.png)
+- Added new logo files: bitstream.svg, logo_192.png, logo_512.png
+
 ## [2.0.0] - 2025-10-22
 
 BitStream 2.0 is a complete rewrite and modernization of the plugin, transforming it into a production-ready microblogging platform with Progressive Web App capabilities, advanced layout system, and comprehensive social features.
