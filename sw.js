@@ -1,5 +1,5 @@
 // BitStream Service Worker - PWA Support
-const CACHE_NAME = 'bitstream-v2.0.1';
+const CACHE_NAME = 'bitstream-v2.0.2';
 const ASSETS_TO_CACHE = [
   '/bitstream/',
   '/bitstream/new-bit/',
@@ -43,7 +43,14 @@ self.addEventListener('fetch', event => {
     console.log('BitStream SW: Share target request detected:', event.request.method, event.request.url);
   }
   
-  // Don't intercept POST requests - let them pass through to the server
+  // Intercept POST requests to share target to show upload progress
+  if (event.request.method === 'POST' && event.request.url.includes('/bitstream/new-bit/?share=1')) {
+    console.log('BitStream SW: Intercepting share target POST to show progress');
+    event.respondWith(handleShareTargetPost(event.request));
+    return;
+  }
+  
+  // Don't intercept other POST requests - let them pass through to the server
   if (event.request.method === 'POST') {
     console.log('BitStream SW: Allowing POST request to pass through:', event.request.url);
     return;
@@ -99,3 +106,62 @@ self.addEventListener('fetch', event => {
   }
   // Let other requests pass through normally
 });
+
+// Handle share target POST requests with upload progress
+async function handleShareTargetPost(request) {
+  // Get the form data from the request
+  const formData = await request.formData();
+  
+  // Open a client window to show progress
+  const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  let progressWindow = null;
+  
+  // Try to focus an existing window or open a new one
+  if (clients.length > 0) {
+    progressWindow = clients[0];
+    await progressWindow.focus();
+  }
+  
+  // Send a message to the client to start showing progress
+  if (progressWindow) {
+    progressWindow.postMessage({
+      type: 'UPLOAD_START',
+      fileCount: formData.getAll('media[]').length
+    });
+  }
+  
+  // Perform the actual upload
+  try {
+    const response = await fetch(request.url, {
+      method: 'POST',
+      body: formData
+    });
+    
+    // Follow the redirect
+    if (response.redirected || response.status === 302) {
+      const redirectUrl = response.url || response.headers.get('Location');
+      
+      if (progressWindow) {
+        progressWindow.postMessage({
+          type: 'UPLOAD_COMPLETE',
+          redirectUrl: redirectUrl
+        });
+      }
+      
+      return Response.redirect(redirectUrl, 302);
+    }
+    
+    return response;
+  } catch (error) {
+    console.error('BitStream SW: Upload error:', error);
+    
+    if (progressWindow) {
+      progressWindow.postMessage({
+        type: 'UPLOAD_ERROR',
+        error: error.message
+      });
+    }
+    
+    return new Response('Upload failed', { status: 500 });
+  }
+}
