@@ -245,7 +245,86 @@ class BitStream_Block_Editor {
             error_log('BitStream: GET params: ' . print_r($_GET, true));
         }
         
-        if ($post_type === 'bit' && (isset($_GET['shared_url']) || isset($_GET['shared_text']) || isset($_GET['shared_title']))) {
+        // IMPORTANT: Check media_ids FIRST before other shared content
+        // This ensures PWA media sharing takes priority
+        if ($post_type === 'bit' && isset($_GET['media_ids'])) {
+            // Handle media_ids parameter for PWA shared media
+            error_log('BitStream: Post type for media check: ' . $post_type);
+            error_log('BitStream: isset($_GET[media_ids]): yes');
+            error_log('BitStream: INSIDE MEDIA IDS BLOCK - about to inject script');
+            $media_ids = sanitize_text_field($_GET['media_ids']);
+            $ids_array = array_map('intval', explode(',', $media_ids));
+            error_log('BitStream: Parsed media IDs: ' . print_r($ids_array, true));
+            
+            echo '<script type="text/javascript">
+            console.log("=== BitStream: MEDIA INSERTION SCRIPT START ===");
+            console.log("BitStream: Media insertion script loaded");
+            console.log("BitStream: Current URL:", window.location.href);
+            (function() {
+                const mediaIds = ' . json_encode($ids_array) . ';
+                console.log("BitStream: Media IDs to insert:", mediaIds);
+                
+                function insertMediaBlocks() {
+                    try {
+                        if (!window.wp || !window.wp.data || !window.wp.blocks) {
+                            console.log("BitStream: WordPress editor not ready for media insertion");
+                            return false;
+                        }
+                        
+                        const { select, dispatch } = window.wp.data;
+                        const { createBlock } = window.wp.blocks;
+                        const blockEditor = select("core/block-editor");
+                        const blockDispatcher = dispatch("core/block-editor");
+                        
+                        if (!blockEditor || !blockDispatcher) {
+                            console.log("BitStream: Block editor not available yet");
+                            return false;
+                        }
+                        
+                        const blocks = blockEditor.getBlocks();
+                        console.log("BitStream: Current blocks:", blocks.length);
+                        
+                        // Insert media blocks (image or video)
+                        const mediaBlocks = [];
+                        mediaIds.forEach(function(mediaId) {
+                            console.log("BitStream: Creating block for media ID:", mediaId);
+                            
+                            // We need to determine if its an image or video
+                            // For now, well create image blocks and let WordPress handle it
+                            const imageBlock = createBlock("core/image", {
+                                id: mediaId,
+                                sizeSlug: "large"
+                            });
+                            mediaBlocks.push(imageBlock);
+                        });
+                        
+                        // Insert blocks at the beginning
+                        if (mediaBlocks.length > 0) {
+                            blockDispatcher.insertBlocks(mediaBlocks, 0);
+                            console.log("BitStream: Inserted", mediaBlocks.length, "media blocks");
+                            return true;
+                        }
+                        
+                        return false;
+                    } catch (error) {
+                        console.error("BitStream: Error inserting media blocks:", error);
+                        return false;
+                    }
+                }
+                
+                // Try to insert media blocks, retry if editor not ready
+                function waitForEditor() {
+                    if (!insertMediaBlocks()) {
+                        setTimeout(waitForEditor, 250);
+                    } else {
+                        console.log("=== BitStream: MEDIA INSERTION COMPLETE ===");
+                    }
+                }
+                
+                setTimeout(waitForEditor, 500);
+            })();
+            </script>';
+        } elseif ($post_type === 'bit' && (isset($_GET['shared_url']) || isset($_GET['shared_text']) || isset($_GET['shared_title']))) {
             $shared_url = isset($_GET['shared_url']) ? urldecode($_GET['shared_url']) : '';
             $shared_text = isset($_GET['shared_text']) ? urldecode($_GET['shared_text']) : '';
             $shared_title = isset($_GET['shared_title']) ? urldecode($_GET['shared_title']) : '';
@@ -388,84 +467,6 @@ class BitStream_Block_Editor {
                 
                 // Start the process
                 setTimeout(waitForEditor, 500);
-            })();
-            </script>';
-        } elseif ($post_type === 'bit' && isset($_GET['media_ids'])) {
-            // Handle media_ids parameter for PWA shared media
-            error_log('BitStream: Post type for media check: ' . $post_type);
-            error_log('BitStream: isset($_GET[media_ids]): yes');
-            error_log('BitStream: INSIDE MEDIA IDS BLOCK - about to inject script');
-            error_log('BitStream: INSIDE MEDIA IDS BLOCK - about to inject script');
-            $media_ids = sanitize_text_field($_GET['media_ids']);
-            $ids_array = array_map('intval', explode(',', $media_ids));
-            error_log('BitStream: Parsed media IDs: ' . print_r($ids_array, true));
-            
-            echo '<script type="text/javascript">
-            console.log("=== BitStream: MEDIA INSERTION SCRIPT START ===");
-            console.log("BitStream: Media insertion script loaded");
-            console.log("BitStream: Current URL:", window.location.href);
-            (function() {
-                const mediaIds = ' . json_encode($ids_array) . ';
-                console.log("BitStream: Media IDs to insert:", mediaIds);
-                
-                function insertMediaBlocks() {
-                    try {
-                        if (!window.wp || !window.wp.data || !window.wp.blocks) {
-                            console.log("BitStream: WordPress editor not ready for media insertion");
-                            return false;
-                        }
-                        
-                        const { select, dispatch } = window.wp.data;
-                        const { createBlock } = window.wp.blocks;
-                        const blockEditor = select("core/block-editor");
-                        const blockDispatcher = dispatch("core/block-editor");
-                        
-                        if (!blockEditor || !blockDispatcher) {
-                            console.log("BitStream: Block editor not available yet");
-                            return false;
-                        }
-                        
-                        const blocks = blockEditor.getBlocks();
-                        console.log("BitStream: Current blocks:", blocks.length);
-                        
-                        // Insert media blocks (image or video)
-                        const mediaBlocks = [];
-                        mediaIds.forEach(function(mediaId) {
-                            console.log("BitStream: Creating block for media ID:", mediaId);
-                            
-                            // We need to determine if its an image or video
-                            // For now, well create image blocks and let WordPress handle it
-                            const imageBlock = createBlock("core/image", {
-                                id: mediaId,
-                                sizeSlug: "large"
-                            });
-                            mediaBlocks.push(imageBlock);
-                        });
-                        
-                        // Insert blocks at the beginning
-                        if (mediaBlocks.length > 0) {
-                            blockDispatcher.insertBlocks(mediaBlocks, 0);
-                            console.log("BitStream: Inserted", mediaBlocks.length, "media blocks");
-                            return true;
-                        }
-                        
-                        return false;
-                    } catch (error) {
-                        console.error("BitStream: Error inserting media blocks:", error);
-                        return false;
-                    }
-                }
-                
-                // Wait for editor to be ready
-                function waitForMediaInsertion() {
-                    if (!insertMediaBlocks()) {
-                        setTimeout(waitForMediaInsertion, 250);
-                    } else {
-                        console.log("BitStream: Media insertion completed");
-                    }
-                }
-                
-                setTimeout(waitForMediaInsertion, 1000);
             })();
             </script>';
         }
