@@ -7,11 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.0.1] - 2025-10-22
 
+### Added
+- PWA now accepts photos and videos shared from other apps
+- Shared media files are automatically uploaded to WordPress media library
+- Shared images/videos are automatically inserted into new bit posts
+- Support for both single and multiple file sharing via PWA
+
 ### Changed
 - Updated PWA icons to use new BitStream logo (SVG with PNG fallbacks)
 - Added BitStream logo to README.md for better GitHub presentation
 - Removed outdated icon files (192.png, 512.png)
 - Added new logo files: bitstream.svg, logo_192.png, logo_512.png
+- Modified PWA share target to use POST method with multipart/form-data for file uploads
+- Share target now directs to new-bit page instead of new-rebit for media sharing
 
 ### Fixed
 - Added missing `bitstream_render_card()` function that was causing fatal errors

@@ -325,12 +325,170 @@ class BitStream_PWA_Manager {
             exit;
         }
     }
+
+    /**
+     * Handle media sharing from PWA (photos/videos)
+     */
+    private function handle_media_share() {
+        error_log('BitStream: handle_media_share called');
+        error_log('BitStream: POST data: ' . print_r($_POST, true));
+        error_log('BitStream: FILES data: ' . print_r($_FILES, true));
+        
+        // Check if user is logged in
+        if (!is_user_logged_in()) {
+            // Store shared content in session and redirect to login
+            session_start();
+            $_SESSION['bitstream_pending_share'] = [
+                'files' => $_FILES,
+                'text' => isset($_POST['text']) ? $_POST['text'] : '',
+                'title' => isset($_POST['title']) ? $_POST['title'] : '',
+                'url' => isset($_POST['url']) ? $_POST['url'] : '',
+                'timestamp' => time()
+            ];
+            
+            $login_url = wp_login_url(admin_url('post-new.php?post_type=bit&restore_share=1'));
+            wp_redirect($login_url);
+            exit;
+        }
+        
+        // Check permissions
+        if (!current_user_can('upload_files') || !current_user_can('edit_posts')) {
+            wp_die('You do not have permission to upload media or create posts.');
+        }
+        
+        // Handle file uploads
+        $attachment_ids = [];
+        $shared_text = isset($_POST['text']) ? sanitize_textarea_field($_POST['text']) : '';
+        $shared_title = isset($_POST['title']) ? sanitize_text_field($_POST['title']) : '';
+        $shared_url = isset($_POST['url']) ? esc_url_raw($_POST['url']) : '';
+        
+        error_log('BitStream: Shared text: ' . $shared_text);
+        error_log('BitStream: Shared title: ' . $shared_title);
+        error_log('BitStream: Shared URL: ' . $shared_url);
+        
+        // Process uploaded files
+        if (!empty($_FILES['media'])) {
+            require_once(ABSPATH . 'wp-admin/includes/file.php');
+            require_once(ABSPATH . 'wp-admin/includes/media.php');
+            require_once(ABSPATH . 'wp-admin/includes/image.php');
+            
+            // Handle multiple files (media is an array)
+            $files = $_FILES['media'];
+            
+            // Check if it's a single file or multiple files
+            if (is_array($files['name'])) {
+                // Multiple files
+                $file_count = count($files['name']);
+                for ($i = 0; $i < $file_count; $i++) {
+                    if ($files['error'][$i] === UPLOAD_ERR_OK) {
+                        // Create a single file array for this file
+                        $file = [
+                            'name' => $files['name'][$i],
+                            'type' => $files['type'][$i],
+                            'tmp_name' => $files['tmp_name'][$i],
+                            'error' => $files['error'][$i],
+                            'size' => $files['size'][$i]
+                        ];
+                        
+                        $attachment_id = $this->handle_single_file_upload($file, $shared_title);
+                        if ($attachment_id) {
+                            $attachment_ids[] = $attachment_id;
+                        }
+                    }
+                }
+            } else {
+                // Single file
+                if ($files['error'] === UPLOAD_ERR_OK) {
+                    $attachment_id = $this->handle_single_file_upload($files, $shared_title);
+                    if ($attachment_id) {
+                        $attachment_ids[] = $attachment_id;
+                    }
+                }
+            }
+        }
+        
+        error_log('BitStream: Uploaded attachment IDs: ' . print_r($attachment_ids, true));
+        
+        // Build redirect URL to new bit page with uploaded media
+        $redirect_url = admin_url('post-new.php?post_type=bit');
+        
+        if (!empty($attachment_ids)) {
+            $redirect_url = add_query_arg('media_ids', implode(',', $attachment_ids), $redirect_url);
+        }
+        
+        if (!empty($shared_text)) {
+            $redirect_url = add_query_arg('shared_text', urlencode($shared_text), $redirect_url);
+        }
+        
+        if (!empty($shared_url)) {
+            $redirect_url = add_query_arg('shared_url', urlencode($shared_url), $redirect_url);
+            $redirect_url = add_query_arg('rebit', '1', $redirect_url);
+        }
+        
+        error_log('BitStream: Redirecting to: ' . $redirect_url);
+        wp_redirect($redirect_url);
+        exit;
+    }
     
+    /**
+     * Handle a single file upload and return attachment ID
+     */
+    private function handle_single_file_upload($file, $title = '') {
+        error_log('BitStream: Processing file: ' . $file['name']);
+        
+        // Use wp_handle_upload to process the file
+        $upload_overrides = [
+            'test_form' => false,
+            'test_type' => true
+        ];
+        
+        $uploaded_file = wp_handle_upload($file, $upload_overrides);
+        
+        if (isset($uploaded_file['error'])) {
+            error_log('BitStream: Upload error: ' . $uploaded_file['error']);
+            return false;
+        }
+        
+        error_log('BitStream: File uploaded successfully: ' . $uploaded_file['file']);
+        
+        // Prepare attachment data
+        $file_type = wp_check_filetype(basename($uploaded_file['file']), null);
+        $attachment_title = !empty($title) ? $title : preg_replace('/\.[^.]+$/', '', basename($uploaded_file['file']));
+        
+        $attachment = [
+            'post_mime_type' => $file_type['type'],
+            'post_title' => sanitize_text_field($attachment_title),
+            'post_content' => '',
+            'post_status' => 'inherit'
+        ];
+        
+        // Insert the attachment into the media library
+        $attachment_id = wp_insert_attachment($attachment, $uploaded_file['file']);
+        
+        if (is_wp_error($attachment_id)) {
+            error_log('BitStream: Error creating attachment: ' . $attachment_id->get_error_message());
+            return false;
+        }
+        
+        // Generate attachment metadata
+        $attachment_data = wp_generate_attachment_metadata($attachment_id, $uploaded_file['file']);
+        wp_update_attachment_metadata($attachment_id, $attachment_data);
+        
+        error_log('BitStream: Attachment created with ID: ' . $attachment_id);
+        return $attachment_id;
+    }
+
     /**
      * Handle PWA shortcut requests
      */
     public function handle_shortcut_requests() {
         $action = get_query_var('bitstream_action');
+        
+        // Handle POST requests from share target (media sharing)
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['share'])) {
+            $this->handle_media_share();
+            return;
+        }
         
         if ($action) {
             // Check if user is logged in

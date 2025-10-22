@@ -375,6 +375,78 @@ class BitStream_Block_Editor {
             })();
             </script>';
         }
+        
+        // Handle media_ids parameter for PWA shared media
+        if ($post && $post->post_type === 'bit' && isset($_GET['media_ids'])) {
+            $media_ids = sanitize_text_field($_GET['media_ids']);
+            $ids_array = array_map('intval', explode(',', $media_ids));
+            
+            echo '<script type="text/javascript">
+            (function() {
+                const mediaIds = ' . json_encode($ids_array) . ';
+                console.log("BitStream: Media IDs to insert:", mediaIds);
+                
+                function insertMediaBlocks() {
+                    try {
+                        if (!window.wp || !window.wp.data || !window.wp.blocks) {
+                            console.log("BitStream: WordPress editor not ready for media insertion");
+                            return false;
+                        }
+                        
+                        const { select, dispatch } = window.wp.data;
+                        const { createBlock } = window.wp.blocks;
+                        const blockEditor = select("core/block-editor");
+                        const blockDispatcher = dispatch("core/block-editor");
+                        
+                        if (!blockEditor || !blockDispatcher) {
+                            console.log("BitStream: Block editor not available yet");
+                            return false;
+                        }
+                        
+                        const blocks = blockEditor.getBlocks();
+                        console.log("BitStream: Current blocks:", blocks.length);
+                        
+                        // Insert media blocks (image or video)
+                        const mediaBlocks = [];
+                        mediaIds.forEach(function(mediaId) {
+                            console.log("BitStream: Creating block for media ID:", mediaId);
+                            
+                            // We need to determine if its an image or video
+                            // For now, well create image blocks and let WordPress handle it
+                            const imageBlock = createBlock("core/image", {
+                                id: mediaId,
+                                sizeSlug: "large"
+                            });
+                            mediaBlocks.push(imageBlock);
+                        });
+                        
+                        // Insert blocks at the beginning
+                        if (mediaBlocks.length > 0) {
+                            blockDispatcher.insertBlocks(mediaBlocks, 0);
+                            console.log("BitStream: Inserted", mediaBlocks.length, "media blocks");
+                            return true;
+                        }
+                        
+                        return false;
+                    } catch (error) {
+                        console.error("BitStream: Error inserting media blocks:", error);
+                        return false;
+                    }
+                }
+                
+                // Wait for editor to be ready
+                function waitForMediaInsertion() {
+                    if (!insertMediaBlocks()) {
+                        setTimeout(waitForMediaInsertion, 250);
+                    } else {
+                        console.log("BitStream: Media insertion completed");
+                    }
+                }
+                
+                setTimeout(waitForMediaInsertion, 1000);
+            })();
+            </script>';
+        }
     }
     
     /**
