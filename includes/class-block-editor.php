@@ -390,23 +390,11 @@ class BitStream_Block_Editor {
                 setTimeout(waitForEditor, 500);
             })();
             </script>';
-        }
-        
-        // Handle media_ids parameter for PWA shared media
-        // Check both $post and GET parameters to ensure we catch it
-        $post_type = '';
-        if (isset($_GET['post_type'])) {
-            $post_type = $_GET['post_type'];
-        } elseif ($post && isset($post->post_type)) {
-            $post_type = $post->post_type;
-        } elseif (isset($GLOBALS['typenow'])) {
-            $post_type = $GLOBALS['typenow'];
-        }
-        
-        error_log('BitStream: Post type for media check: ' . $post_type);
-        error_log('BitStream: isset($_GET[media_ids]): ' . (isset($_GET['media_ids']) ? 'yes' : 'no'));
-        
-        if ($post_type === 'bit' && isset($_GET['media_ids'])) {
+        } elseif ($post_type === 'bit' && isset($_GET['media_ids'])) {
+            // Handle media_ids parameter for PWA shared media
+            error_log('BitStream: Post type for media check: ' . $post_type);
+            error_log('BitStream: isset($_GET[media_ids]): yes');
+            error_log('BitStream: INSIDE MEDIA IDS BLOCK - about to inject script');
             error_log('BitStream: INSIDE MEDIA IDS BLOCK - about to inject script');
             $media_ids = sanitize_text_field($_GET['media_ids']);
             $ids_array = array_map('intval', explode(',', $media_ids));
