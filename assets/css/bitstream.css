@@ -98,7 +98,8 @@
 /* Nested replies separator: top border on nested comments */
 .comment .children .bit-comment {
   border-top: 1px solid var(--wp--preset--color--accent-3, #ccc) !important;
-  padding-top: 0.5em !important;
+  padding-top: 1em !important;
+  margin-top: 0.5em !important;
 }
 
 /* Reduce poster name size */
