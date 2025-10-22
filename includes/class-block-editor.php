@@ -248,16 +248,22 @@ class BitStream_Block_Editor {
         // IMPORTANT: Check media_ids FIRST before other shared content
         // This ensures PWA media sharing takes priority
         if ($post_type === 'bit' && isset($_GET['media_ids'])) {
+            // Disable all caching for this page
+            header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+            header('Cache-Control: post-check=0, pre-check=0', false);
+            header('Pragma: no-cache');
+            
             // Handle media_ids parameter for PWA shared media
             error_log('BitStream: Post type for media check: ' . $post_type);
             error_log('BitStream: isset($_GET[media_ids]): yes');
-            error_log('BitStream: INSIDE MEDIA IDS BLOCK - about to inject script');
+            error_log('BitStream: INSIDE MEDIA IDS BLOCK - about to inject script - TIMESTAMP: ' . time());
             $media_ids = sanitize_text_field($_GET['media_ids']);
             $ids_array = array_map('intval', explode(',', $media_ids));
             error_log('BitStream: Parsed media IDs: ' . print_r($ids_array, true));
             
-            echo '<!-- MEDIA INSERTION SCRIPT v2.0 --><script type="text/javascript">
-            console.log("=== BitStream: MEDIA INSERTION SCRIPT START v2.0 ===");
+            $timestamp = time();
+            echo '<!-- MEDIA INSERTION SCRIPT v2.0 - Generated at: ' . $timestamp . ' --><script type="text/javascript">
+            console.log("=== BitStream: MEDIA INSERTION SCRIPT START v2.0 - TIMESTAMP: ' . $timestamp . ' ===");
             console.log("BitStream: Media insertion script loaded - VERSION 2.0");
             console.log("BitStream: Current URL:", window.location.href);
             (function() {
