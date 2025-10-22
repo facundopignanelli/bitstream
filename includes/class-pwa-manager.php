@@ -658,8 +658,13 @@ class BitStream_PWA_Manager {
             
             if ($debug_type === 'test_share') {
                 // Simple test page to verify POST handling
+                $version_timestamp = date('Y-m-d H:i:s');
                 echo '<!DOCTYPE html><html><body style="font-family: sans-serif; padding: 20px;">';
                 echo '<h1>BitStream Share Target Test</h1>';
+                echo '<div style="background: #e8f5e9; padding: 10px; margin: 10px 0; border-left: 4px solid #4caf50;">';
+                echo '<strong>✅ Latest Version Loaded</strong><br>';
+                echo '<small>Server Time: ' . $version_timestamp . '</small>';
+                echo '</div>';
                 echo '<p>This will test if the share target handler is working.</p>';
                 echo '<form method="POST" action="/bitstream/new-bit/?share=1" enctype="multipart/form-data">';
                 echo '<p><label>Title:<br><input type="text" name="title" placeholder="Title" style="width: 300px;"></label></p>';
