@@ -256,9 +256,9 @@ class BitStream_Block_Editor {
             $ids_array = array_map('intval', explode(',', $media_ids));
             error_log('BitStream: Parsed media IDs: ' . print_r($ids_array, true));
             
-            echo '<script type="text/javascript">
-            console.log("=== BitStream: MEDIA INSERTION SCRIPT START ===");
-            console.log("BitStream: Media insertion script loaded");
+            echo '<!-- MEDIA INSERTION SCRIPT v2.0 --><script type="text/javascript">
+            console.log("=== BitStream: MEDIA INSERTION SCRIPT START v2.0 ===");
+            console.log("BitStream: Media insertion script loaded - VERSION 2.0");
             console.log("BitStream: Current URL:", window.location.href);
             (function() {
                 const mediaIds = ' . json_encode($ids_array) . ';
