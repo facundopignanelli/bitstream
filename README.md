@@ -1,4 +1,4 @@
-# <img src="assets/images/bitstream.svg" alt="BitStream Logo" height="40" align="center"> BitStream
+# <img src="assets/images/logo_192.png" alt="BitStream Logo" height="40" align="center"> BitStream
 
 **Version 2.0.0** - A Modern Microblogging Platform for WordPress
 
