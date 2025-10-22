@@ -413,6 +413,7 @@ class BitStream_Block_Editor {
             error_log('BitStream: Parsed media IDs: ' . print_r($ids_array, true));
             
             echo '<script type="text/javascript">
+            console.log("=== BitStream: MEDIA INSERTION SCRIPT START ===");
             console.log("BitStream: Media insertion script loaded");
             console.log("BitStream: Current URL:", window.location.href);
             (function() {
