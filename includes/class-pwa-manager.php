@@ -331,11 +331,15 @@ class BitStream_PWA_Manager {
      */
     private function handle_media_share() {
         error_log('BitStream: handle_media_share called');
+        error_log('BitStream: REQUEST_METHOD: ' . $_SERVER['REQUEST_METHOD']);
+        error_log('BitStream: REQUEST_URI: ' . $_SERVER['REQUEST_URI']);
         error_log('BitStream: POST data: ' . print_r($_POST, true));
         error_log('BitStream: FILES data: ' . print_r($_FILES, true));
+        error_log('BitStream: GET data: ' . print_r($_GET, true));
         
         // Check if user is logged in
         if (!is_user_logged_in()) {
+            error_log('BitStream: User not logged in, redirecting to login');
             // Store shared content in session and redirect to login
             session_start();
             $_SESSION['bitstream_pending_share'] = [
@@ -347,14 +351,20 @@ class BitStream_PWA_Manager {
             ];
             
             $login_url = wp_login_url(admin_url('post-new.php?post_type=bit&restore_share=1'));
+            error_log('BitStream: Redirecting to login: ' . $login_url);
             wp_redirect($login_url);
             exit;
         }
         
+        error_log('BitStream: User is logged in');
+        
         // Check permissions
         if (!current_user_can('upload_files') || !current_user_can('edit_posts')) {
+            error_log('BitStream: User lacks permissions');
             wp_die('You do not have permission to upload media or create posts.');
         }
+        
+        error_log('BitStream: User has permissions');
         
         // Handle file uploads
         $attachment_ids = [];
@@ -482,13 +492,17 @@ class BitStream_PWA_Manager {
      * Handle PWA shortcut requests
      */
     public function handle_shortcut_requests() {
-        $action = get_query_var('bitstream_action');
-        
-        // Handle POST requests from share target (media sharing)
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['share'])) {
+        // Check for POST share request FIRST - before checking query vars
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && 
+            isset($_SERVER['REQUEST_URI']) && 
+            strpos($_SERVER['REQUEST_URI'], '/bitstream/new-bit') !== false &&
+            isset($_GET['share'])) {
+            error_log('BitStream: Detected POST share request');
             $this->handle_media_share();
             return;
         }
+        
+        $action = get_query_var('bitstream_action');
         
         if ($action) {
             // Check if user is logged in
@@ -611,14 +625,35 @@ class BitStream_PWA_Manager {
      * Handle debug requests
      */
     public function handle_debug_requests() {
-        if (isset($_GET['bitstream_debug']) && $_GET['bitstream_debug'] === 'flush_rewrite') {
-            if (current_user_can('manage_options')) {
-                delete_option('bitstream_sw_rewrite_flushed_v2');
-                flush_rewrite_rules(false);
-                update_option('bitstream_sw_rewrite_flushed_v2', true);
-                wp_die('BitStream rewrite rules flushed! Service Worker rewrite rules have been refreshed.');
-            } else {
-                wp_die('Access denied');
+        if (isset($_GET['bitstream_debug'])) {
+            $debug_type = $_GET['bitstream_debug'];
+            
+            if ($debug_type === 'flush_rewrite') {
+                if (current_user_can('manage_options')) {
+                    delete_option('bitstream_sw_rewrite_flushed_v2');
+                    flush_rewrite_rules(false);
+                    update_option('bitstream_sw_rewrite_flushed_v2', true);
+                    wp_die('BitStream rewrite rules flushed! Service Worker rewrite rules have been refreshed.');
+                } else {
+                    wp_die('Access denied');
+                }
+            }
+            
+            if ($debug_type === 'test_share') {
+                // Simple test page to verify POST handling
+                echo '<!DOCTYPE html><html><body style="font-family: sans-serif; padding: 20px;">';
+                echo '<h1>BitStream Share Target Test</h1>';
+                echo '<p>This will test if the share target handler is working.</p>';
+                echo '<form method="POST" action="/bitstream/new-bit/?share=1" enctype="multipart/form-data">';
+                echo '<p><label>Title:<br><input type="text" name="title" placeholder="Title" style="width: 300px;"></label></p>';
+                echo '<p><label>Text:<br><textarea name="text" placeholder="Text content" style="width: 300px; height: 100px;"></textarea></label></p>';
+                echo '<p><label>Media Files:<br><input type="file" name="media[]" accept="image/*,video/*" multiple></label></p>';
+                echo '<p><button type="submit" style="padding: 10px 20px; background: #2c6e49; color: white; border: none; cursor: pointer;">Test Share</button></p>';
+                echo '</form>';
+                echo '<hr>';
+                echo '<p><small>Navigate to this page: <a href="?bitstream_debug=test_share">' . admin_url() . '?bitstream_debug=test_share</a></small></p>';
+                echo '</body></html>';
+                exit;
             }
         }
     }

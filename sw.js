@@ -1,5 +1,5 @@
 // BitStream Service Worker - PWA Support
-const CACHE_NAME = 'bitstream-v2.4.0';
+const CACHE_NAME = 'bitstream-v2.0.1';
 const ASSETS_TO_CACHE = [
   '/bitstream/',
   '/bitstream/new-bit/',
@@ -7,8 +7,9 @@ const ASSETS_TO_CACHE = [
   '/wp-content/plugins/bitstream/assets/css/bitstream.css',
   '/wp-content/plugins/bitstream/assets/js/bitstream.js',
   '/wp-content/plugins/bitstream/manifest.json',
-  '/wp-content/plugins/bitstream/assets/images/192.png',
-  '/wp-content/plugins/bitstream/assets/images/512.png',
+  '/wp-content/plugins/bitstream/assets/images/logo_192.png',
+  '/wp-content/plugins/bitstream/assets/images/logo_512.png',
+  '/wp-content/plugins/bitstream/assets/images/bitstream.svg',
   '/wp-content/plugins/bitstream/assets/images/new-bit-192.png',
   '/wp-content/plugins/bitstream/assets/images/new-rebit-192.png'
 ];
@@ -38,8 +39,14 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   // Log share target requests for debugging
-  if (event.request.url.includes('/bitstream/new-rebit/') && event.request.url.includes('url=')) {
-    console.log('BitStream SW: Share target request detected:', event.request.url);
+  if (event.request.url.includes('/bitstream/new-bit/') || event.request.url.includes('/bitstream/new-rebit/')) {
+    console.log('BitStream SW: Share target request detected:', event.request.method, event.request.url);
+  }
+  
+  // Don't intercept POST requests - let them pass through to the server
+  if (event.request.method === 'POST') {
+    console.log('BitStream SW: Allowing POST request to pass through:', event.request.url);
+    return;
   }
   
   // Handle BitStream requests specifically - avoid other plugin conflicts
