@@ -381,7 +381,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const scrollTrigger = document.querySelector('.bitstream-scroll-trigger');
     const isInfiniteScroll = feed.dataset.infiniteScroll === 'true';
 
-    // Masonry layout implementation
+    // Masonry layout implementation with improved height detection
     window.initMasonry = function initMasonry() {
         if (window.innerWidth < 768) {
             // Single column on mobile - no masonry needed
@@ -403,12 +403,33 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const columns = window.innerWidth >= 1024 ? 3 : 2;
         const gap = window.innerWidth >= 1024 ? 20 : 16;
-        const columnWidth = cards[0].offsetWidth;
+        
+        // Calculate column width based on feed width and columns
+        const feedWidth = feed.offsetWidth;
+        const totalGapWidth = gap * (columns - 1);
+        const columnWidth = Math.floor((feedWidth - totalGapWidth) / columns);
+        
         const columnHeights = new Array(columns).fill(0);
 
         cards.forEach((card, index) => {
-            // Ensure card dimensions are calculated
-            const cardHeight = card.offsetHeight || card.getBoundingClientRect().height;
+            // Force a reflow to ensure accurate height measurement
+            card.style.width = columnWidth + 'px';
+            card.style.position = 'absolute';
+            
+            // Wait for next frame to get accurate height after width is set
+            void card.offsetHeight;
+            
+            // Get accurate card height including all content
+            const cardRect = card.getBoundingClientRect();
+            let cardHeight = Math.ceil(cardRect.height);
+            
+            // If height seems wrong, recalculate with a different method
+            if (cardHeight < 50) {
+                cardHeight = card.scrollHeight || card.offsetHeight || 200;
+            }
+            
+            // Add extra padding for safety to prevent overlaps
+            cardHeight += 2;
             
             // Find the shortest column
             const shortestColumn = columnHeights.indexOf(Math.min(...columnHeights));
@@ -417,31 +438,116 @@ document.addEventListener('DOMContentLoaded', function() {
             const x = shortestColumn * (columnWidth + gap);
             const y = columnHeights[shortestColumn];
             
-            card.style.position = 'absolute';
             card.style.left = x + 'px';
             card.style.top = y + 'px';
-            card.style.width = columnWidth + 'px';
             card.style.zIndex = '2';
             
             // Update column height
             columnHeights[shortestColumn] += cardHeight + gap;
         });
 
-        // Set container height with some padding to prevent overlap
+        // Set container height with extra padding to prevent overlap
         const maxHeight = Math.max(...columnHeights);
-        feed.style.height = (maxHeight + gap) + 'px';
+        feed.style.height = (maxHeight + gap * 2) + 'px';
         feed.style.position = 'relative';
-        feed.style.overflow = 'hidden';
+        feed.style.overflow = 'visible';
+        
+        console.log('Masonry layout calculated:', {
+            cards: cards.length,
+            columns: columns,
+            columnWidth: columnWidth,
+            maxHeight: maxHeight
+        });
     };
 
     // Initialize masonry on load
     setTimeout(window.initMasonry, 100);
 
-    // Reinitialize on window resize
+    // Recalculate layout when images load
+    function setupImageLoadHandlers() {
+        const images = feed.querySelectorAll('.bit-card img');
+        let loadedImages = 0;
+        const totalImages = images.length;
+        
+        if (totalImages === 0) {
+            // No images, layout is stable
+            return;
+        }
+        
+        images.forEach(img => {
+            if (img.complete) {
+                // Image already loaded
+                loadedImages++;
+                if (loadedImages === totalImages) {
+                    setTimeout(window.initMasonry, 50);
+                }
+            } else {
+                // Wait for image to load
+                img.addEventListener('load', () => {
+                    loadedImages++;
+                    if (loadedImages === totalImages) {
+                        setTimeout(window.initMasonry, 50);
+                    }
+                });
+                img.addEventListener('error', () => {
+                    loadedImages++;
+                    if (loadedImages === totalImages) {
+                        setTimeout(window.initMasonry, 50);
+                    }
+                });
+            }
+        });
+    }
+    
+    setupImageLoadHandlers();
+    
+    // Also recalculate after fonts load
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(() => {
+            setTimeout(window.initMasonry, 100);
+        });
+    }
+
+    // Watch for content changes within cards (like expanding comments)
+    const contentObserver = new MutationObserver((mutations) => {
+        let shouldRecalculate = false;
+        
+        mutations.forEach(mutation => {
+            // Check if any cards had significant changes
+            if (mutation.type === 'childList' || mutation.type === 'attributes') {
+                const card = mutation.target.closest('.bit-card');
+                if (card) {
+                    shouldRecalculate = true;
+                }
+            }
+        });
+        
+        if (shouldRecalculate) {
+            // Debounce the recalculation
+            clearTimeout(window.masonryRecalcTimeout);
+            window.masonryRecalcTimeout = setTimeout(() => {
+                window.initMasonry();
+            }, 150);
+        }
+    });
+    
+    // Observe the feed container for changes
+    contentObserver.observe(feed, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['class', 'style']
+    });
+
+    // Reinitialize on window resize with debouncing
     let resizeTimeout;
     window.addEventListener('resize', () => {
         clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(window.initMasonry, 250);
+        resizeTimeout = setTimeout(() => {
+            window.initMasonry();
+            // Recalculate again after a short delay to catch any async changes
+            setTimeout(window.initMasonry, 100);
+        }, 250);
     });
 
     function loadNextPage() {
@@ -479,8 +585,38 @@ document.addEventListener('DOMContentLoaded', function() {
             feed.dataset.page = nextPage;
             loading = false;
             
-            // Reinitialize masonry layout with new cards
-            setTimeout(window.initMasonry, 100);
+            // Wait for new cards to be rendered in DOM
+            requestAnimationFrame(() => {
+                // Handle images in new cards
+                const newImages = Array.from(newCards).flatMap(card => 
+                    Array.from(card.querySelectorAll('img'))
+                );
+                
+                if (newImages.length > 0) {
+                    let loadedCount = 0;
+                    const checkAllLoaded = () => {
+                        loadedCount++;
+                        if (loadedCount === newImages.length) {
+                            window.initMasonry();
+                        }
+                    };
+                    
+                    newImages.forEach(img => {
+                        if (img.complete) {
+                            checkAllLoaded();
+                        } else {
+                            img.addEventListener('load', checkAllLoaded);
+                            img.addEventListener('error', checkAllLoaded);
+                        }
+                    });
+                } else {
+                    // No images, layout immediately
+                    window.initMasonry();
+                }
+                
+                // Also recalculate after a delay as a safety net
+                setTimeout(window.initMasonry, 200);
+            });
             
             // Update button state
             if (loadMoreButton) {

@@ -10,6 +10,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Increased padding for comment replies to improve readability and visual separation
 
+### Fixed
+- **Improved Masonry Layout Algorithm**: Fixed issues with bit cards overlapping or having wide gaps
+  - Enhanced height calculation with multiple fallback methods for accurate card measurements
+  - Added intelligent image load detection to recalculate layout after images finish loading
+  - Implemented MutationObserver to detect content changes (like expanding comments) and automatically adjust layout
+  - Improved column width calculation based on feed container width for more consistent spacing
+  - Added extra padding to container height to prevent bottom cards from being cut off
+  - Optimized card positioning with better CSS transitions (only animate left/top, not all properties)
+  - Added font load detection to recalculate layout after web fonts are ready
+  - Implemented requestAnimationFrame for smoother layout updates when loading new content
+  - Added debounced resize handler with double-check to catch async layout changes
+  - Fixed overflow property to allow proper card visibility instead of clipping content
+
 ## [2.3.0] - 2025-08-23
 
 ### Added

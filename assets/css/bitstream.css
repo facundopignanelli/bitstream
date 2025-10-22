@@ -10,6 +10,16 @@
     margin: 0.5em auto;
     border-radius: 10px;
     box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+    /* Prevent layout shift while images load */
+    min-height: 100px;
+}
+
+/* Remove min-height once image is loaded */
+.bit-card-content img[src]:not([src=""]),
+.bit-rebit-preview img[src]:not([src=""]),
+.bitstream-quoted-preview img[src]:not([src=""]),
+.bitstream-og-card img[src]:not([src=""]) {
+    min-height: auto;
 }
 
 /* JavaScript-based Masonry Layout for BitStream Feed */
@@ -65,8 +75,9 @@
     margin: 0 !important;
     max-width: none !important;
     box-sizing: border-box;
-    transition: all 0.3s ease;
+    transition: left 0.3s ease, top 0.3s ease;
     z-index: 2; /* Ensure cards stay within their container context */
+    will-change: transform; /* Optimize positioning performance */
 }
 
 /* Boost z-index when comments are open to prevent visual layering issues */
