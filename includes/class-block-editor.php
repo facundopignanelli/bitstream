@@ -1113,7 +1113,23 @@ class BitStream_Block_Editor {
         console.log("=== BitStream: MEDIA INSERTION SCRIPT START ===");
         console.log("BitStream: Media IDs to insert:", window.bitstream_ajax.media_ids);
         
-        function insertMediaBlocks() {
+        async function fetchMediaDetails(mediaId) {
+            try {
+                const response = await fetch(`/wp-json/wp/v2/media/${mediaId}`);
+                if (!response.ok) {
+                    console.error("BitStream: Failed to fetch media:", response.status);
+                    return null;
+                }
+                const media = await response.json();
+                console.log("BitStream: Fetched media details:", media);
+                return media;
+            } catch (error) {
+                console.error("BitStream: Error fetching media:", error);
+                return null;
+            }
+        }
+        
+        async function insertMediaBlocks() {
             try {
                 if (!window.wp || !window.wp.data || !window.wp.blocks) {
                     console.log("BitStream: WordPress editor not ready for media insertion");
@@ -1124,27 +1140,53 @@ class BitStream_Block_Editor {
                 const { createBlock } = window.wp.blocks;
                 const blockEditor = select("core/block-editor");
                 const blockDispatcher = dispatch("core/block-editor");
+                const editor = select("core/editor");
                 
-                if (!blockEditor || !blockDispatcher) {
+                if (!blockEditor || !blockDispatcher || !editor) {
                     console.log("BitStream: Block editor not available yet");
+                    return false;
+                }
+                
+                // Make sure editor is fully initialized
+                const currentPost = editor.getCurrentPost();
+                if (!currentPost || !currentPost.type) {
+                    console.log("BitStream: Editor not fully initialized");
                     return false;
                 }
                 
                 const blocks = blockEditor.getBlocks();
                 console.log("BitStream: Current blocks:", blocks.length);
                 
-                // Insert media blocks (image or video)
+                // Fetch media details and create blocks
                 const mediaBlocks = [];
-                window.bitstream_ajax.media_ids.forEach(function(mediaId) {
-                    console.log("BitStream: Creating block for media ID:", mediaId);
+                for (const mediaId of window.bitstream_ajax.media_ids) {
+                    console.log("BitStream: Fetching details for media ID:", mediaId);
+                    const media = await fetchMediaDetails(mediaId);
                     
-                    // Create image blocks - WordPress will handle the actual media type
-                    const imageBlock = createBlock("core/image", {
-                        id: mediaId,
-                        sizeSlug: "large"
-                    });
-                    mediaBlocks.push(imageBlock);
-                });
+                    if (media) {
+                        console.log("BitStream: Creating block with full media data");
+                        
+                        // Determine if it's an image or video
+                        const mediaType = media.media_type || 'image';
+                        
+                        if (mediaType === 'image') {
+                            const imageBlock = createBlock("core/image", {
+                                id: mediaId,
+                                url: media.source_url,
+                                alt: media.alt_text || '',
+                                caption: media.caption?.rendered || '',
+                                sizeSlug: "large"
+                            });
+                            mediaBlocks.push(imageBlock);
+                        } else if (mediaType === 'video') {
+                            const videoBlock = createBlock("core/video", {
+                                id: mediaId,
+                                src: media.source_url
+                            });
+                            mediaBlocks.push(videoBlock);
+                        }
+                    }
+                }
                 
                 // Insert blocks at the beginning
                 if (mediaBlocks.length > 0) {
@@ -1161,15 +1203,20 @@ class BitStream_Block_Editor {
         }
         
         // Try to insert media blocks, retry if editor not ready
-        function waitForMediaInsertion() {
-            if (!insertMediaBlocks()) {
-                setTimeout(waitForMediaInsertion, 250);
-            } else {
+        async function waitForMediaInsertion(attempt = 1, maxAttempts = 20) {
+            console.log("BitStream: Attempt", attempt, "to insert media");
+            const success = await insertMediaBlocks();
+            
+            if (!success && attempt < maxAttempts) {
+                setTimeout(() => waitForMediaInsertion(attempt + 1, maxAttempts), 500);
+            } else if (success) {
                 console.log("=== BitStream: MEDIA INSERTION COMPLETE ===");
+            } else {
+                console.error("BitStream: Failed to insert media after", maxAttempts, "attempts");
             }
         }
         
-        setTimeout(waitForMediaInsertion, 500);
+        setTimeout(() => waitForMediaInsertion(), 1000);
     }
 })();
 JS;
