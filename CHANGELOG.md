@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed outdated icon files (192.png, 512.png)
 - Added new logo files: bitstream.svg, logo_192.png, logo_512.png
 
+### Fixed
+- Added missing `bitstream_render_card()` function that was causing fatal errors
+- Removed redundant `bitstream-backup.php` file (functionality already properly refactored into class files)
+
 ## [2.0.0] - 2025-10-22
 
 BitStream 2.0 is a complete rewrite and modernization of the plugin, transforming it into a production-ready microblogging platform with Progressive Web App capabilities, advanced layout system, and comprehensive social features.
