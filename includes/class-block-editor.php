@@ -229,7 +229,23 @@ class BitStream_Block_Editor {
     public function inject_shared_url_script() {
         global $post;
         
-        if ($post && $post->post_type === 'bit' && (isset($_GET['shared_url']) || isset($_GET['shared_text']) || isset($_GET['shared_title']))) {
+        // Get post type from multiple sources
+        $post_type = '';
+        if (isset($_GET['post_type'])) {
+            $post_type = $_GET['post_type'];
+        } elseif ($post && isset($post->post_type)) {
+            $post_type = $post->post_type;
+        } elseif (isset($GLOBALS['typenow'])) {
+            $post_type = $GLOBALS['typenow'];
+        }
+        
+        // Log for debugging
+        if ($post_type === 'bit') {
+            error_log('BitStream: inject_shared_url_script running for bit post type');
+            error_log('BitStream: GET params: ' . print_r($_GET, true));
+        }
+        
+        if ($post_type === 'bit' && (isset($_GET['shared_url']) || isset($_GET['shared_text']) || isset($_GET['shared_title']))) {
             $shared_url = isset($_GET['shared_url']) ? urldecode($_GET['shared_url']) : '';
             $shared_text = isset($_GET['shared_text']) ? urldecode($_GET['shared_text']) : '';
             $shared_title = isset($_GET['shared_title']) ? urldecode($_GET['shared_title']) : '';
@@ -377,11 +393,25 @@ class BitStream_Block_Editor {
         }
         
         // Handle media_ids parameter for PWA shared media
-        if ($post && $post->post_type === 'bit' && isset($_GET['media_ids'])) {
+        // Check both $post and GET parameters to ensure we catch it
+        $post_type = '';
+        if (isset($_GET['post_type'])) {
+            $post_type = $_GET['post_type'];
+        } elseif ($post && isset($post->post_type)) {
+            $post_type = $post->post_type;
+        } elseif (isset($GLOBALS['typenow'])) {
+            $post_type = $GLOBALS['typenow'];
+        }
+        
+        if ($post_type === 'bit' && isset($_GET['media_ids'])) {
+            error_log('BitStream: Media IDs detected in URL: ' . $_GET['media_ids']);
             $media_ids = sanitize_text_field($_GET['media_ids']);
             $ids_array = array_map('intval', explode(',', $media_ids));
+            error_log('BitStream: Parsed media IDs: ' . print_r($ids_array, true));
             
             echo '<script type="text/javascript">
+            console.log("BitStream: Media insertion script loaded");
+            console.log("BitStream: Current URL:", window.location.href);
             (function() {
                 const mediaIds = ' . json_encode($ids_array) . ';
                 console.log("BitStream: Media IDs to insert:", mediaIds);
