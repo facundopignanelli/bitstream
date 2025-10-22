@@ -1,5 +1,5 @@
 // BitStream Service Worker - PWA Support
-const CACHE_NAME = 'bitstream-v2.4.0';
+const CACHE_NAME = 'bitstream-v2.0.2';
 const ASSETS_TO_CACHE = [
   '/bitstream/',
   '/bitstream/new-bit/',
@@ -7,8 +7,9 @@ const ASSETS_TO_CACHE = [
   '/wp-content/plugins/bitstream/assets/css/bitstream.css',
   '/wp-content/plugins/bitstream/assets/js/bitstream.js',
   '/wp-content/plugins/bitstream/manifest.json',
-  '/wp-content/plugins/bitstream/assets/images/192.png',
-  '/wp-content/plugins/bitstream/assets/images/512.png',
+  '/wp-content/plugins/bitstream/assets/images/logo_192.png',
+  '/wp-content/plugins/bitstream/assets/images/logo_512.png',
+  '/wp-content/plugins/bitstream/assets/images/bitstream.svg',
   '/wp-content/plugins/bitstream/assets/images/new-bit-192.png',
   '/wp-content/plugins/bitstream/assets/images/new-rebit-192.png'
 ];
@@ -38,8 +39,21 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   // Log share target requests for debugging
-  if (event.request.url.includes('/bitstream/new-rebit/') && event.request.url.includes('url=')) {
-    console.log('BitStream SW: Share target request detected:', event.request.url);
+  if (event.request.url.includes('/bitstream/new-bit/') || event.request.url.includes('/bitstream/new-rebit/')) {
+    console.log('BitStream SW: Share target request detected:', event.request.method, event.request.url);
+  }
+  
+  // Intercept POST requests to share target to show upload progress
+  if (event.request.method === 'POST' && event.request.url.includes('/bitstream/new-bit/?share=1')) {
+    console.log('BitStream SW: Intercepting share target POST to show progress');
+    event.respondWith(handleShareTargetPost(event.request));
+    return;
+  }
+  
+  // Don't intercept other POST requests - let them pass through to the server
+  if (event.request.method === 'POST') {
+    console.log('BitStream SW: Allowing POST request to pass through:', event.request.url);
+    return;
   }
   
   // Handle BitStream requests specifically - avoid other plugin conflicts
@@ -92,3 +106,62 @@ self.addEventListener('fetch', event => {
   }
   // Let other requests pass through normally
 });
+
+// Handle share target POST requests with upload progress
+async function handleShareTargetPost(request) {
+  // Get the form data from the request
+  const formData = await request.formData();
+  
+  // Open a client window to show progress
+  const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  let progressWindow = null;
+  
+  // Try to focus an existing window or open a new one
+  if (clients.length > 0) {
+    progressWindow = clients[0];
+    await progressWindow.focus();
+  }
+  
+  // Send a message to the client to start showing progress
+  if (progressWindow) {
+    progressWindow.postMessage({
+      type: 'UPLOAD_START',
+      fileCount: formData.getAll('media[]').length
+    });
+  }
+  
+  // Perform the actual upload
+  try {
+    const response = await fetch(request.url, {
+      method: 'POST',
+      body: formData
+    });
+    
+    // Follow the redirect
+    if (response.redirected || response.status === 302) {
+      const redirectUrl = response.url || response.headers.get('Location');
+      
+      if (progressWindow) {
+        progressWindow.postMessage({
+          type: 'UPLOAD_COMPLETE',
+          redirectUrl: redirectUrl
+        });
+      }
+      
+      return Response.redirect(redirectUrl, 302);
+    }
+    
+    return response;
+  } catch (error) {
+    console.error('BitStream SW: Upload error:', error);
+    
+    if (progressWindow) {
+      progressWindow.postMessage({
+        type: 'UPLOAD_ERROR',
+        error: error.message
+      });
+    }
+    
+    return new Response('Upload failed', { status: 500 });
+  }
+}

@@ -43,10 +43,11 @@ class BitStream_PWA_Manager {
             $sw_url = home_url('/sw.js');
             
             echo '<link rel="manifest" href="'.esc_url($manifest_url).'">';
+            echo '<link rel="apple-touch-icon" href="'.esc_url($base . 'assets/images/logo_192.png').'">';
             echo '<meta name="theme-color" content="#2c6e49">';
             echo '<meta name="mobile-web-app-capable" content="yes">';
             echo '<meta name="apple-mobile-web-app-capable" content="yes">';
-            echo '<meta name="apple-mobile-web-app-status-bar-style" content="default">';
+            echo '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">';
             echo '<meta name="apple-mobile-web-app-title" content="BitStream">';
             
             echo '<script>
@@ -325,12 +326,327 @@ class BitStream_PWA_Manager {
             exit;
         }
     }
+
+    /**
+     * Handle media sharing from PWA (photos/videos)
+     */
+    private function handle_media_share() {
+        error_log('BitStream: handle_media_share called');
+        error_log('BitStream: REQUEST_METHOD: ' . $_SERVER['REQUEST_METHOD']);
+        error_log('BitStream: REQUEST_URI: ' . $_SERVER['REQUEST_URI']);
+        error_log('BitStream: POST data: ' . print_r($_POST, true));
+        error_log('BitStream: FILES data: ' . print_r($_FILES, true));
+        error_log('BitStream: GET data: ' . print_r($_GET, true));
+        
+        // Check if user is logged in
+        if (!is_user_logged_in()) {
+            error_log('BitStream: User not logged in, redirecting to login');
+            // Store shared content in session and redirect to login
+            session_start();
+            $_SESSION['bitstream_pending_share'] = [
+                'files' => $_FILES,
+                'text' => isset($_POST['text']) ? $_POST['text'] : '',
+                'title' => isset($_POST['title']) ? $_POST['title'] : '',
+                'url' => isset($_POST['url']) ? $_POST['url'] : '',
+                'timestamp' => time()
+            ];
+            
+            $login_url = wp_login_url(admin_url('post-new.php?post_type=bit&restore_share=1'));
+            error_log('BitStream: Redirecting to login: ' . $login_url);
+            wp_redirect($login_url);
+            exit;
+        }
+        
+        error_log('BitStream: User is logged in');
+        
+        // Check permissions
+        if (!current_user_can('upload_files') || !current_user_can('edit_posts')) {
+            error_log('BitStream: User lacks permissions');
+            wp_die('You do not have permission to upload media or create posts.');
+        }
+        
+        error_log('BitStream: User has permissions');
+        
+        // Handle file uploads
+        $attachment_ids = [];
+        $shared_text = isset($_POST['text']) ? sanitize_textarea_field($_POST['text']) : '';
+        $shared_title = isset($_POST['title']) ? sanitize_text_field($_POST['title']) : '';
+        $shared_url = isset($_POST['url']) ? esc_url_raw($_POST['url']) : '';
+        
+        error_log('BitStream: Shared text: ' . $shared_text);
+        error_log('BitStream: Shared title: ' . $shared_title);
+        error_log('BitStream: Shared URL: ' . $shared_url);
+        
+        // Process uploaded files
+        if (!empty($_FILES['media'])) {
+            error_log('BitStream: Processing files...');
+            require_once(ABSPATH . 'wp-admin/includes/file.php');
+            require_once(ABSPATH . 'wp-admin/includes/media.php');
+            require_once(ABSPATH . 'wp-admin/includes/image.php');
+            
+            // Increase timeout for large files
+            @set_time_limit(300);
+            
+            // Handle multiple files (media is an array)
+            $files = $_FILES['media'];
+            
+            // Check if it's a single file or multiple files
+            if (is_array($files['name'])) {
+                // Multiple files
+                $file_count = count($files['name']);
+                error_log('BitStream: Found ' . $file_count . ' files');
+                for ($i = 0; $i < $file_count; $i++) {
+                    if ($files['error'][$i] === UPLOAD_ERR_OK) {
+                        // Create a single file array for this file
+                        $file = [
+                            'name' => $files['name'][$i],
+                            'type' => $files['type'][$i],
+                            'tmp_name' => $files['tmp_name'][$i],
+                            'error' => $files['error'][$i],
+                            'size' => $files['size'][$i]
+                        ];
+                        
+                        $attachment_id = $this->handle_single_file_upload($file, $shared_title);
+                        if ($attachment_id) {
+                            $attachment_ids[] = $attachment_id;
+                        }
+                    } else {
+                        error_log('BitStream: File ' . $i . ' has upload error: ' . $files['error'][$i]);
+                    }
+                }
+            } else {
+                // Single file
+                error_log('BitStream: Found single file');
+                if ($files['error'] === UPLOAD_ERR_OK) {
+                    $attachment_id = $this->handle_single_file_upload($files, $shared_title);
+                    if ($attachment_id) {
+                        $attachment_ids[] = $attachment_id;
+                    }
+                } else {
+                    error_log('BitStream: File has upload error: ' . $files['error']);
+                }
+            }
+        } else {
+            error_log('BitStream: No files in $_FILES[\'media\']');
+        }
+        
+        error_log('BitStream: Uploaded attachment IDs: ' . print_r($attachment_ids, true));
+        
+        // If no files were uploaded successfully but we have shared text/url, just redirect
+        if (empty($attachment_ids) && (empty($shared_text) && empty($shared_url))) {
+            error_log('BitStream: No media uploaded and no shared content, redirecting to plain new bit page');
+            wp_redirect(admin_url('post-new.php?post_type=bit'));
+            exit;
+        }
+        
+        // Build redirect URL to new bit page with uploaded media
+        $redirect_url = admin_url('post-new.php?post_type=bit');
+        
+        if (!empty($attachment_ids)) {
+            $redirect_url = add_query_arg('media_ids', implode(',', $attachment_ids), $redirect_url);
+        }
+        
+        if (!empty($shared_text)) {
+            $redirect_url = add_query_arg('shared_text', urlencode($shared_text), $redirect_url);
+        }
+        
+        if (!empty($shared_url)) {
+            $redirect_url = add_query_arg('shared_url', urlencode($shared_url), $redirect_url);
+            $redirect_url = add_query_arg('rebit', '1', $redirect_url);
+        }
+        
+        error_log('BitStream: Redirecting to: ' . $redirect_url);
+        wp_redirect($redirect_url);
+        exit;
+    }
     
+    /**
+     * Show upload progress page while uploading
+     */
+    private function show_upload_progress_page() {
+        // Only show this for actual file uploads
+        if (empty($_FILES['media'])) {
+            return;
+        }
+        
+        // Calculate total file size and count
+        $totalSize = 0;
+        $fileCount = 0;
+        
+        if (isset($_FILES['media']['name'])) {
+            // Check if it's multiple files (array) or single file
+            if (is_array($_FILES['media']['name'])) {
+                // Multiple files
+                $fileCount = count($_FILES['media']['name']);
+                foreach ($_FILES['media']['size'] as $size) {
+                    $totalSize += $size;
+                }
+            } else {
+                // Single file
+                $fileCount = 1;
+                $totalSize = $_FILES['media']['size'];
+            }
+        }
+        
+        $totalSizeMB = round($totalSize / (1024 * 1024), 2);
+        
+        // Output the progress page with auto-redirect meta tag
+        echo '<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uploading - BitStream</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #2c6e49 0%, #4caf50 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            color: #fff;
+        }
+        .container {
+            text-align: center;
+            padding: 40px;
+            max-width: 500px;
+            width: 90%;
+        }
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 30px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+        h1 { font-size: 28px; margin-bottom: 15px; font-weight: 600; }
+        .status { font-size: 16px; margin-bottom: 30px; opacity: 0.9; }
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .file-info { font-size: 14px; opacity: 0.8; margin-top: 15px; }
+    </style>
+    <script>
+        // Poll for completion - check if upload is done
+        let checkCount = 0;
+        const maxChecks = 60; // 30 seconds max
+        
+        function checkUploadStatus() {
+            checkCount++;
+            
+            // Update status
+            const statusEl = document.getElementById("status-text");
+            if (statusEl) {
+                const dots = ".".repeat((checkCount % 4));
+                statusEl.textContent = "Processing ' . $fileCount . ' file(s)" + dots;
+            }
+            
+            // After reasonable time, redirect to editor
+            if (checkCount < maxChecks) {
+                setTimeout(checkUploadStatus, 500);
+            }
+        }
+        
+        // Start checking after page loads
+        setTimeout(checkUploadStatus, 500);
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="100" cy="100" r="90" fill="white" opacity="0.3"/>
+                <path d="M100 40 L100 140 M70 110 L100 140 L130 110" stroke="white" stroke-width="15" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            </svg>
+        </div>
+        <h1>Uploading Media</h1>
+        <p class="status"><span class="spinner"></span><span id="status-text">Processing ' . $fileCount . ' file(s)...</span></p>
+        <p class="file-info">Total size: ' . $totalSizeMB . ' MB</p>
+        <p class="file-info" style="margin-top: 20px; font-size: 12px;">Please wait, this may take a moment...</p>
+    </div>
+    
+    <!-- Hidden iframe to handle the actual upload without blocking the UI -->
+    <iframe id="upload-frame" name="upload-frame" style="display:none;"></iframe>
+</body>
+</html>';
+        
+        // DON'T flush - let WordPress handle the redirect after upload completes
+    }
+
+    /**
+     * Handle a single file upload and return attachment ID
+     */
+    private function handle_single_file_upload($file, $title = '') {
+        error_log('BitStream: Processing file: ' . $file['name']);
+        
+        // Use wp_handle_upload to process the file
+        $upload_overrides = [
+            'test_form' => false,
+            'test_type' => true
+        ];
+        
+        $uploaded_file = wp_handle_upload($file, $upload_overrides);
+        
+        if (isset($uploaded_file['error'])) {
+            error_log('BitStream: Upload error: ' . $uploaded_file['error']);
+            return false;
+        }
+        
+        error_log('BitStream: File uploaded successfully: ' . $uploaded_file['file']);
+        
+        // Prepare attachment data
+        $file_type = wp_check_filetype(basename($uploaded_file['file']), null);
+        $attachment_title = !empty($title) ? $title : preg_replace('/\.[^.]+$/', '', basename($uploaded_file['file']));
+        
+        $attachment = [
+            'post_mime_type' => $file_type['type'],
+            'post_title' => sanitize_text_field($attachment_title),
+            'post_content' => '',
+            'post_status' => 'inherit'
+        ];
+        
+        // Insert the attachment into the media library
+        $attachment_id = wp_insert_attachment($attachment, $uploaded_file['file']);
+        
+        if (is_wp_error($attachment_id)) {
+            error_log('BitStream: Error creating attachment: ' . $attachment_id->get_error_message());
+            return false;
+        }
+        
+        // Generate attachment metadata
+        $attachment_data = wp_generate_attachment_metadata($attachment_id, $uploaded_file['file']);
+        wp_update_attachment_metadata($attachment_id, $attachment_data);
+        
+        error_log('BitStream: Attachment created with ID: ' . $attachment_id);
+        return $attachment_id;
+    }
+
     /**
      * Handle PWA shortcut requests
      */
     public function handle_shortcut_requests() {
         $action = get_query_var('bitstream_action');
+        
+        // Check for POST share request (media files)
+        if ($action === 'new-bit' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            error_log('BitStream: Detected POST share request to new-bit');
+            $this->handle_media_share();
+            return;
+        }
         
         if ($action) {
             // Check if user is logged in
@@ -453,14 +769,91 @@ class BitStream_PWA_Manager {
      * Handle debug requests
      */
     public function handle_debug_requests() {
-        if (isset($_GET['bitstream_debug']) && $_GET['bitstream_debug'] === 'flush_rewrite') {
-            if (current_user_can('manage_options')) {
-                delete_option('bitstream_sw_rewrite_flushed_v2');
-                flush_rewrite_rules(false);
-                update_option('bitstream_sw_rewrite_flushed_v2', true);
-                wp_die('BitStream rewrite rules flushed! Service Worker rewrite rules have been refreshed.');
-            } else {
-                wp_die('Access denied');
+        if (isset($_GET['bitstream_debug'])) {
+            $debug_type = $_GET['bitstream_debug'];
+            
+            if ($debug_type === 'flush_rewrite') {
+                if (current_user_can('manage_options')) {
+                    delete_option('bitstream_sw_rewrite_flushed_v2');
+                    flush_rewrite_rules(false);
+                    update_option('bitstream_sw_rewrite_flushed_v2', true);
+                    wp_die('BitStream rewrite rules flushed! Service Worker rewrite rules have been refreshed.');
+                } else {
+                    wp_die('Access denied');
+                }
+            }
+            
+            if ($debug_type === 'test_share') {
+                // Simple test page to verify POST handling
+                $version_timestamp = date('Y-m-d H:i:s');
+                echo '<!DOCTYPE html><html><body style="font-family: sans-serif; padding: 20px;">';
+                echo '<h1>BitStream Share Target Test</h1>';
+                echo '<div style="background: #e8f5e9; padding: 10px; margin: 10px 0; border-left: 4px solid #4caf50;">';
+                echo '<strong>✅ Latest Version Loaded</strong><br>';
+                echo '<small>Server Time: ' . $version_timestamp . '</small>';
+                echo '</div>';
+                echo '<p>This will test if the share target handler is working.</p>';
+                
+                echo '<div id="upload-progress" style="display: none; background: #fff3cd; padding: 15px; margin: 20px 0; border-left: 4px solid #ffc107; border-radius: 4px;">';
+                echo '<strong>📤 Uploading...</strong><br>';
+                echo '<div style="margin-top: 10px; background: #e0e0e0; height: 30px; border-radius: 15px; overflow: hidden;">';
+                echo '<div id="progress-bar" style="background: linear-gradient(90deg, #2c6e49, #4caf50); height: 100%; width: 0%; transition: width 0.3s; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;"></div>';
+                echo '</div>';
+                echo '<p id="progress-text" style="margin-top: 10px; color: #666;">Preparing upload...</p>';
+                echo '</div>';
+                
+                echo '<form id="share-form" method="POST" action="/bitstream/new-bit/?share=1" enctype="multipart/form-data">';
+                echo '<p><label>Title:<br><input type="text" name="title" placeholder="Title" style="width: 300px;"></label></p>';
+                echo '<p><label>Text:<br><textarea name="text" placeholder="Text content" style="width: 300px; height: 100px;"></textarea></label></p>';
+                echo '<p><label>Media Files:<br><input type="file" name="media[]" accept="image/*,video/*" multiple id="media-input"></label></p>';
+                echo '<p><button type="submit" style="padding: 10px 20px; background: #2c6e49; color: white; border: none; cursor: pointer; border-radius: 5px;">Test Share</button></p>';
+                echo '</form>';
+                
+                echo '<script>';
+                echo 'document.getElementById("share-form").addEventListener("submit", function(e) {';
+                echo '  e.preventDefault();';
+                echo '  const form = this;';
+                echo '  const formData = new FormData(form);';
+                echo '  const progressDiv = document.getElementById("upload-progress");';
+                echo '  const progressBar = document.getElementById("progress-bar");';
+                echo '  const progressText = document.getElementById("progress-text");';
+                echo '  progressDiv.style.display = "block";';
+                echo '  form.style.display = "none";';
+                echo '  const xhr = new XMLHttpRequest();';
+                echo '  xhr.upload.addEventListener("progress", function(e) {';
+                echo '    if (e.lengthComputable) {';
+                echo '      const percentComplete = Math.round((e.loaded / e.total) * 100);';
+                echo '      progressBar.style.width = percentComplete + "%";';
+                echo '      progressBar.textContent = percentComplete + "%";';
+                echo '      const loaded = (e.loaded / (1024 * 1024)).toFixed(2);';
+                echo '      const total = (e.total / (1024 * 1024)).toFixed(2);';
+                echo '      progressText.textContent = "Uploading: " + loaded + " MB / " + total + " MB";';
+                echo '    }';
+                echo '  });';
+                echo '  xhr.addEventListener("load", function() {';
+                echo '    if (xhr.status === 302 || xhr.status === 200) {';
+                echo '      progressText.textContent = "Upload complete! Redirecting...";';
+                echo '      const redirectUrl = xhr.getResponseHeader("Location") || xhr.responseURL;';
+                echo '      if (redirectUrl) {';
+                echo '        window.location.href = redirectUrl;';
+                echo '      } else {';
+                echo '        window.location.href = "/wp-admin/post-new.php?post_type=bit";';
+                echo '      }';
+                echo '    }';
+                echo '  });';
+                echo '  xhr.addEventListener("error", function() {';
+                echo '    progressText.textContent = "Upload failed. Please try again.";';
+                echo '    progressBar.style.background = "#dc3545";';
+                echo '  });';
+                echo '  xhr.open("POST", form.action);';
+                echo '  xhr.send(formData);';
+                echo '});';
+                echo '</script>';
+                
+                echo '<hr>';
+                echo '<p><small>Navigate to this page: <a href="?bitstream_debug=test_share">' . admin_url() . '?bitstream_debug=test_share</a></small></p>';
+                echo '</body></html>';
+                exit;
             }
         }
     }
