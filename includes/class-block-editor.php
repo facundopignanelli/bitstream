@@ -1165,11 +1165,27 @@ class BitStream_Block_Editor {
                     
                     if (media) {
                         console.log("BitStream: Creating block with full media data");
+                        console.log("BitStream: Media type:", media.media_type);
+                        console.log("BitStream: Media mime type:", media.mime_type);
+                        console.log("BitStream: Media source URL:", media.source_url);
                         
                         // Determine if it's an image or video
                         const mediaType = media.media_type || 'image';
+                        const mimeType = media.mime_type || '';
                         
-                        if (mediaType === 'image') {
+                        // Check both media_type and mime_type for video detection
+                        const isVideo = mediaType === 'video' || mimeType.startsWith('video/');
+                        
+                        if (isVideo) {
+                            console.log("BitStream: Creating VIDEO block");
+                            const videoBlock = createBlock("core/video", {
+                                id: mediaId,
+                                src: media.source_url,
+                                caption: media.caption?.rendered || ''
+                            });
+                            mediaBlocks.push(videoBlock);
+                        } else {
+                            console.log("BitStream: Creating IMAGE block");
                             const imageBlock = createBlock("core/image", {
                                 id: mediaId,
                                 url: media.source_url,
@@ -1178,13 +1194,9 @@ class BitStream_Block_Editor {
                                 sizeSlug: "large"
                             });
                             mediaBlocks.push(imageBlock);
-                        } else if (mediaType === 'video') {
-                            const videoBlock = createBlock("core/video", {
-                                id: mediaId,
-                                src: media.source_url
-                            });
-                            mediaBlocks.push(videoBlock);
                         }
+                    } else {
+                        console.error("BitStream: Failed to fetch media details for ID:", mediaId);
                     }
                 }
                 
