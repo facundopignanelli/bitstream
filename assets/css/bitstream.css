@@ -1,0 +1,686 @@
+/* Consolidated responsive image rules for all BitStream content */
+.bit-card-content img,
+.bit-rebit-preview img,
+.bitstream-quoted-preview img,
+.bitstream-og-card img {
+    max-width: 100% !important;
+    height: auto !important;
+    width: auto !important;
+    display: block;
+    margin: 0.5em auto;
+    border-radius: 10px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+    /* Prevent layout shift while images load */
+    min-height: 100px;
+}
+
+/* Remove min-height once image is loaded */
+.bit-card-content img[src]:not([src=""]),
+.bit-rebit-preview img[src]:not([src=""]),
+.bitstream-quoted-preview img[src]:not([src=""]),
+.bitstream-og-card img[src]:not([src=""]) {
+    min-height: auto;
+}
+
+/* JavaScript-based Masonry Layout for BitStream Feed */
+.bitstream-feed {
+    position: relative;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 1rem;
+    box-sizing: border-box;
+    z-index: 1; /* Establish stacking context */
+    overflow: hidden; /* Prevent content from spilling outside container */
+    isolation: isolate; /* Create new stacking context to prevent z-index issues */
+}
+
+/* Ensure the feed doesn't interfere with other page elements */
+.bitstream-feed::after {
+    content: "";
+    display: block;
+    clear: both;
+    height: 2rem; /* Add some spacing after the feed */
+}
+
+/* Grid sizer elements for consistent column widths */
+.bitstream-grid-sizer {
+    width: 100%;
+}
+
+@media (min-width: 768px) {
+    .bitstream-grid-sizer {
+        width: calc(50% - 1rem);
+    }
+    
+    .bitstream-feed {
+        padding: 1.5rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .bitstream-grid-sizer {
+        width: calc(33.333% - 1.34rem);
+    }
+    
+    .bitstream-feed {
+        padding: 2rem;
+    }
+}
+
+/* Card styling adjustments for JavaScript masonry layout */
+.bit-card {
+    position: absolute;
+    width: 100%;
+    margin: 0 !important;
+    max-width: none !important;
+    box-sizing: border-box;
+    transition: left 0.3s ease, top 0.3s ease;
+    z-index: 2; /* Ensure cards stay within their container context */
+    will-change: transform; /* Optimize positioning performance */
+}
+
+/* Boost z-index when comments are open to prevent visual layering issues */
+.bit-card:has(.bit-comments.open),
+.bit-card.comments-open {
+    z-index: 10; /* Significantly higher than normal cards when comments are open */
+}
+
+@media (min-width: 768px) {
+    .bit-card {
+        width: calc(50% - 1rem);
+    }
+}
+
+@media (min-width: 1024px) {
+    .bit-card {
+        width: calc(33.333% - 1.34rem);
+    }
+}
+
+/* Date and Edit link: italic, secondary color, clickable, smaller */
+.bit-comment-meta a {
+  color: var(--wp--preset--color--accent-2, #044389) !important;
+  font-style: italic !important;
+  font-size: 0.8em !important;
+  text-decoration: none !important;
+}
+
+/* Nested replies separator: top border on nested comments */
+.comment .children .bit-comment {
+  border-top: 1px solid var(--wp--preset--color--accent-3, #ccc) !important;
+  padding-top: 1em !important;
+  margin-top: 0.5em !important;
+}
+
+/* Reduce poster name size */
+.bit-comment-header .bit-comment-author-name {
+  font-size: 0.85em !important;
+}
+
+
+/* Hide duplicated 'says:' */
+.bit-comments .says {
+  display: none !important;
+}
+
+/* Author name styling */
+.bit-comments-list .comment-author .fn {
+  font-size: 0.9em;
+  color: var(--wp--preset--color--accent-1,#2c6e49) !important;
+  font-style: normal;
+}
+
+/* Date/time link styling (disable link) */
+.bit-comments-list .comment-metadata a:first-child {
+  pointer-events: none !important;
+  color: var(--wp--preset--color--accent-2,#044389) !important;
+  font-style: italic !important;
+  text-decoration: none !important;
+}
+
+/* Preserve edit link */
+.bit-comments-list .comment-edit-link {
+  pointer-events: auto !important;
+  font-style: normal !important;
+}
+
+/* Indent nested replies */
+.bit-comments-list .children {
+  margin-left: 1.5em !important;
+  margin-top: 0.75em !important; /* Add top margin to separate from Reply button */
+  border-left: 1px solid var(--wp--preset--color--accent-3,#ccc) !important;
+  padding-left: 1em !important;
+}
+
+/* Divider lines between comments */
+.bit-comments-list .comment {
+  border-bottom: 1px solid var(--wp--preset--color--accent-3,#ccc);
+  padding-bottom: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+
+/* BitStream Action Icons Styling */
+.bit-action i {
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    transition: color 0.2s ease;
+}
+.bit-action:hover i {
+    color: var(--wp--preset--color--accent-2, #044389);
+}
+.bit-like .bit-like-count {
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+}
+/* Liked state */
+.bit-like.liked i {
+    color: var(--wp--preset--color--accent-2, #044389);
+}
+/* Pulse animation - single definition */
+@keyframes bitstream-pulse {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+.bit-like.pulse,
+.bit-permalink i.pulse {
+  animation: bitstream-pulse 0.3s ease-in-out;
+}
+
+/* Comments Layout Tweaks */
+.bit-comments-list .bit-comment {
+    border-bottom: 1px solid #eee;
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+}
+.bit-comment .comment-author.vcard {
+    display: flex;
+    align-items: center;
+    font-size: 0.875rem;
+}
+.bit-comment .comment-author.vcard img.avatar {
+    width: 32px;
+    height: 32px;
+    margin-right: 0.5rem;
+    border-radius: 50%;
+}
+.bit-comment .comment-author.vcard b.fn {
+    margin-right: 0.25rem;
+}
+.bit-comment .comment-author.vcard .says {
+    margin-left: 0.25rem;
+}
+.bit-comment .commentmetadata a,
+.bit-comment .commentmetadata a:visited {
+    font-style: italic;
+    color: var(--wp--preset--color--accent-2, #044389);
+    text-decoration: none;
+    pointer-events: none;
+    cursor: default;
+}
+.bit-comment .children .bit-comment {
+    margin-left: 20px;
+    border-left: 2px solid #eee;
+    padding-left: 1rem;
+}
+
+
+
+
+/* BitStream Comment Form Styling */
+
+.bit-comment-form {
+    max-width: 720px;
+    margin: 0 auto;
+}
+
+.bit-comment-form textarea {
+    width: 100%;
+    min-width: 100%;
+    max-width: 100%;
+    height: 140px;
+    padding: 0.75rem;
+    border: 1px solid #ccc;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-family: inherit;
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+.bit-comment-form input[type="submit"] {
+    background-color: var(--wp--preset--color--accent-1, #2c6e49);
+    color: white;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    font-size: 1rem;
+    border-radius: 12px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background-color 0.2s ease;
+}
+
+.bit-comment-form input[type="submit"]:hover {
+    background-color: var(--wp--preset--color--accent-2, #044389);
+}
+
+.bit-comments-list .comment {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #eee;
+}
+
+.bit-comments-list .comment-author {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.25rem;
+}
+
+.bit-comments-list .comment-author .avatar {
+    border-radius: 9999px;
+    width: 40px;
+    height: 40px;
+}
+
+.bit-comments-list .comment-author b {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.bit-comments-list .comment-metadata {
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.bit-comments-list .comment-content {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin-top: 0.25rem;
+}
+
+.bit-comments-list .reply {
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+}
+
+
+/* Like button animation and active state */
+.bit-like.liked {
+    color: var(--wp--preset--color--primary, #c00);
+    font-weight: bold;
+    transform: scale(1.05);
+    transition: all 0.2s ease;
+}
+
+.bit-like:hover {
+    opacity: 0.8;
+}
+
+/* Permalink button hover effect */
+.bit-permalink {
+    transition: color 0.2s ease;
+}
+
+.bit-permalink:focus,
+.bit-permalink:hover {
+    color: var(--wp--preset--color--primary, #000);
+}
+
+/* Load More Button Styling */
+.bitstream-load-more {
+    display: block;
+    margin: 2rem auto;
+    background-color: var(--wp--preset--color--accent-1, #2c6e49);
+    color: white;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    font-size: 1rem;
+    border-radius: 12px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background-color 0.2s ease;
+    width: 100%;
+    max-width: 300px;
+    position: relative;
+    z-index: 10; /* Ensure button appears above masonry content */
+    clear: both;
+}
+
+.bitstream-load-more:hover,
+.bitstream-load-more:focus {
+    background-color: var(--wp--preset--color--accent-2, #044389);
+}
+
+/* Infinite scroll trigger styling */
+.bitstream-scroll-trigger {
+    width: 100%;
+    clear: both;
+    position: relative;
+    z-index: 10; /* Ensure trigger is above masonry content */
+}
+
+/* Enhanced comment animation */
+.bit-comments {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease-out, opacity 0.3s ease-out 0.15s, margin-top 0.4s ease-out;
+    margin-top: 0;
+    position: relative;
+    z-index: 1; /* Ensure comments appear above other content */
+    visibility: hidden; /* Initially hidden to prevent layout flash */
+}
+
+.bit-comments.open {
+    max-height: 2000px; /* Increased for longer comment threads */
+    opacity: 1;
+    margin-top: 1rem;
+    background: #f8f9fa; /* Subtle background to distinguish comments */
+    border-radius: 8px; /* Match card styling */
+    padding: 1rem; /* Add some padding for better spacing */
+    border-left: 3px solid #2c6e49; /* Green accent border */
+    z-index: 15; /* Very high z-index when open to ensure visibility above everything */
+    visibility: visible; /* Make visible when open */
+}
+
+/* Responsive adjustments for JavaScript masonry layout */
+@media (max-width: 767px) {
+    .bit-card {
+        margin: 0 0 1rem 0 !important;
+        padding: 1rem !important;
+        width: 100% !important;
+        position: relative !important;
+        left: 0 !important;
+        top: 0 !important;
+        z-index: auto !important;
+    }
+    
+    .bitstream-feed {
+        padding: 0.5rem;
+        height: auto !important;
+        overflow: visible !important;
+    }
+    
+    .bitstream-feed::after {
+        height: 1rem; /* Reduce spacing on mobile */
+    }
+}
+
+/* Ensure embedded content works properly in masonry layout */
+.bit-rebit-embed {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+/* Responsive iframe and embed handling */
+iframe, embed, object, video {
+    max-width: 100% !important;
+    height: auto !important;
+}
+
+/* Specific YouTube embed fixes */
+iframe[src*="youtube.com"], 
+iframe[src*="youtu.be"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    aspect-ratio: 16/9;
+    height: auto !important;
+}
+
+/* Generic responsive embed container */
+.embed-container {
+    position: relative;
+    padding-bottom: 56.25%; /* 16:9 aspect ratio */
+    height: 0;
+    overflow: hidden;
+    max-width: 100%;
+}
+
+.embed-container iframe,
+.embed-container object,
+.embed-container embed {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+/* Mobile-specific embed fixes */
+@media (max-width: 768px) {
+    iframe, embed, object, video {
+        max-width: calc(100vw - 40px) !important;
+        width: 100% !important;
+    }
+    
+    iframe[src*="youtube.com"], 
+    iframe[src*="youtu.be"] {
+        max-width: calc(100vw - 40px) !important;
+        width: 100% !important;
+        height: auto !important;
+    }
+    
+    /* WordPress embed containers */
+    .wp-embedded-content,
+    .wp-block-embed,
+    .wp-embed {
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+    
+    /* BitStream specific containers */
+    .bit-content,
+    .bit-rebit-content {
+        overflow-x: hidden !important;
+        word-wrap: break-word !important;
+    }
+}
+
+/* Adjust quoted preview for masonry cells */
+.bitstream-quoted-preview {
+    margin-top: 15px !important;
+    padding: 12px !important;
+    overflow: hidden !important;
+    word-wrap: break-word !important;
+}
+.bitstream-quoted-preview {
+    border-radius: 13px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.10);
+    padding: 16px;
+    background: #fafafa;
+    margin-top: 20px; /* Changed from margin-bottom to margin-top since quotes now appear after content */
+    overflow: hidden; /* Prevent content overflow */
+    word-wrap: break-word; /* Break long words */
+    box-sizing: border-box; /* Include padding in width calculation */
+    border-left: 3px solid var(--wp--preset--color--accent-1, #2c6e49); /* Add visual indicator for quoted content */
+}
+
+/* Ensure all content within quoted preview stays contained */
+.bitstream-quoted-preview * {
+    max-width: 100% !important;
+    box-sizing: border-box;
+}
+
+/* Handle images in quoted previews */
+.bitstream-quoted-preview img {
+    max-width: 100% !important;
+    height: auto !important;
+    display: block;
+    margin: 0.5em auto;
+    border-radius: 8px;
+}
+
+/* Handle links and text in quoted previews */
+.bitstream-quoted-preview a,
+.bitstream-quoted-preview p,
+.bitstream-quoted-preview div {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
+}
+
+
+
+/* Remove focus outline on action buttons and icons */
+.bit-like:focus,
+.bit-permalink:focus,
+.bit-action:focus,
+.bit-like i:focus,
+.bit-permalink i:focus,
+.bit-action i:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* Responsive typography adjustments */
+@media (max-width: 767px) {
+    .bit-card-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 0.5rem !important;
+    }
+    
+    .bit-card-footer {
+        flex-wrap: wrap !important;
+        gap: 0.75rem !important;
+    }
+    
+    .bit-meta {
+        font-size: 0.8rem !important;
+    }
+}
+
+/* Ensure proper spacing for single column on very small screens */
+@media (max-width: 480px) {
+    .bitstream-feed {
+        padding: 0.25rem;
+        height: auto !important;
+    }
+    
+    .bit-card {
+        padding: 0.75rem !important;
+        border-radius: 12px !important;
+        margin: 0 0 0.75rem 0 !important;
+        width: 100% !important;
+        position: relative !important;
+        left: 0 !important;
+        top: 0 !important;
+    }
+}
+
+/* Floating QuickBit Button */
+#bitstream-floating-quickbit {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    z-index: 9999;
+}
+
+.quickbit-menu {
+    position: relative;
+}
+
+.quickbit-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 60px;
+    background: #2c6e49;
+    color: white;
+    border-radius: 50%;
+    border: none;
+    box-shadow: 0 4px 12px rgba(44, 110, 73, 0.25);
+    transition: all 0.3s ease;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+.quickbit-toggle:hover {
+    transform: scale(1.1);
+    background: #1f4d35;
+    box-shadow: 0 6px 20px rgba(44, 110, 73, 0.35);
+}
+
+.quickbit-toggle:focus {
+    outline: 2px solid #ffffff;
+    outline-offset: 2px;
+}
+
+.quickbit-dropdown {
+    position: absolute;
+    bottom: 70px;
+    right: 0;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    min-width: 160px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(10px);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.quickbit-dropdown a {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    text-decoration: none;
+    color: #333;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+}
+
+.quickbit-dropdown a:first-child {
+    border-bottom: 1px solid #eee;
+}
+
+.quickbit-dropdown a:hover {
+    background: #f5f5f5;
+    text-decoration: none;
+}
+
+.quickbit-dropdown a i {
+    margin-right: 8px;
+    color: #2c6e49;
+    width: 16px;
+    text-align: center;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+    #bitstream-floating-quickbit {
+        bottom: 20px;
+        right: 20px;
+    }
+    
+    .quickbit-toggle {
+        width: 50px;
+        height: 50px;
+        font-size: 20px;
+    }
+    
+    .quickbit-dropdown {
+        bottom: 60px;
+        min-width: 140px;
+    }
+    
+    .quickbit-dropdown a {
+        padding: 10px 12px;
+        font-size: 13px;
+    }
+}
+
+/* Ensure it doesn't interfere with admin bar */
+.admin-bar #bitstream-floating-quickbit {
+    bottom: 62px; /* Account for WordPress admin bar height */
+}
+
+@media screen and (max-width: 782px) {
+    .admin-bar #bitstream-floating-quickbit {
+        bottom: 76px; /* Adjust for mobile admin bar */
+    }
+}

@@ -1,20 +1,70 @@
 {
-  "name": "BitStream QuickPost",
-  "short_name": "BS QuickPost",
-  "start_url": "/bitstream/quickbit/",
+  "name": "BitStream",
+  "short_name": "BitStream",
+  "description": "View and interact with BitStream posts",
+  "id": "bitstream-wp-plugin",
+  "start_url": "/bitstream/?pwa=1",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "orientation": "portrait-primary",
+  "background_color": "#000000",
   "theme_color": "#2c6e49",
-  "icons": [
+  "scope": "/bitstream/",
+  "categories": ["social", "news"],
+  "share_target": {
+    "action": "/bitstream/new-rebit/",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
+  "shortcuts": [
     {
-      "src": "192.png",
-      "sizes": "192x192",
-      "type": "image/png"
+      "name": "Add New Bit",
+      "short_name": "New Bit",
+      "description": "Create a new bit post",
+      "url": "/bitstream/new-bit/",
+      "icons": [
+        {
+          "src": "/wp-content/plugins/bitstream/assets/images/new-bit-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     },
     {
-      "src": "512.png",
+      "name": "Add New ReBit",
+      "short_name": "New ReBit", 
+      "description": "Share external content as a ReBit",
+      "url": "/bitstream/new-rebit/",
+      "icons": [
+        {
+          "src": "/wp-content/plugins/bitstream/assets/images/new-rebit-192.png",
+          "sizes": "192x192", 
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "icons": [
+    {
+      "src": "/wp-content/plugins/bitstream/assets/images/192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/wp-content/plugins/bitstream/assets/images/512.png", 
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/wp-content/plugins/bitstream/assets/images/192.png",
+      "sizes": "72x72 96x96 128x128 144x144 152x152 180x180 192x192",
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }
