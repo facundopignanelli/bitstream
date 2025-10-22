@@ -1,10 +1,12 @@
 <?php
 /**
  * Plugin Name: BitStream
- * Description: A microblogging plugin for sharing Bits and ReBits.
- * Version: 2.2.1
+ * Description: A lightweight microblogging platform for WordPress with PWA support, masonry layout, and social sharing.
+ * Version: 2.0.0
  * Author: Facundo Pignanelli
  * Text Domain: bitstream
+ * Requires at least: 5.8
+ * Requires PHP: 7.4
  */
 
 // Prevent direct access
@@ -13,7 +15,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('BITSTREAM_VERSION', '2.2.1');
+define('BITSTREAM_VERSION', '2.0.0');
 define('BITSTREAM_PLUGIN_PATH', plugin_dir_path(__FILE__));
 define('BITSTREAM_PLUGIN_URL', plugin_dir_url(__FILE__));
 
