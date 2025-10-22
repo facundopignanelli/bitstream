@@ -403,8 +403,11 @@ class BitStream_Block_Editor {
             $post_type = $GLOBALS['typenow'];
         }
         
+        error_log('BitStream: Post type for media check: ' . $post_type);
+        error_log('BitStream: isset($_GET[media_ids]): ' . (isset($_GET['media_ids']) ? 'yes' : 'no'));
+        
         if ($post_type === 'bit' && isset($_GET['media_ids'])) {
-            error_log('BitStream: Media IDs detected in URL: ' . $_GET['media_ids']);
+            error_log('BitStream: INSIDE MEDIA IDS BLOCK - about to inject script');
             $media_ids = sanitize_text_field($_GET['media_ids']);
             $ids_array = array_map('intval', explode(',', $media_ids));
             error_log('BitStream: Parsed media IDs: ' . print_r($ids_array, true));
