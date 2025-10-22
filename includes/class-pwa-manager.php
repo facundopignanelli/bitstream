@@ -331,9 +331,6 @@ class BitStream_PWA_Manager {
      * Handle media sharing from PWA (photos/videos)
      */
     private function handle_media_share() {
-        // Output upload progress page immediately
-        $this->show_upload_progress_page();
-        
         error_log('BitStream: handle_media_share called');
         error_log('BitStream: REQUEST_METHOD: ' . $_SERVER['REQUEST_METHOD']);
         error_log('BitStream: REQUEST_URI: ' . $_SERVER['REQUEST_URI']);
@@ -472,19 +469,28 @@ class BitStream_PWA_Manager {
             return;
         }
         
-        // Calculate total file size
+        // Calculate total file size and count
         $totalSize = 0;
         $fileCount = 0;
-        if (isset($_FILES['media']['size'])) {
-            foreach ($_FILES['media']['size'] as $size) {
-                $totalSize += $size;
-                $fileCount++;
+        
+        if (isset($_FILES['media']['name'])) {
+            // Check if it's multiple files (array) or single file
+            if (is_array($_FILES['media']['name'])) {
+                // Multiple files
+                $fileCount = count($_FILES['media']['name']);
+                foreach ($_FILES['media']['size'] as $size) {
+                    $totalSize += $size;
+                }
+            } else {
+                // Single file
+                $fileCount = 1;
+                $totalSize = $_FILES['media']['size'];
             }
         }
         
         $totalSizeMB = round($totalSize / (1024 * 1024), 2);
         
-        // Output the progress page and flush it immediately
+        // Output the progress page with auto-redirect meta tag
         echo '<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -534,6 +540,30 @@ class BitStream_PWA_Manager {
         @keyframes spin { to { transform: rotate(360deg); } }
         .file-info { font-size: 14px; opacity: 0.8; margin-top: 15px; }
     </style>
+    <script>
+        // Poll for completion - check if upload is done
+        let checkCount = 0;
+        const maxChecks = 60; // 30 seconds max
+        
+        function checkUploadStatus() {
+            checkCount++;
+            
+            // Update status
+            const statusEl = document.getElementById("status-text");
+            if (statusEl) {
+                const dots = ".".repeat((checkCount % 4));
+                statusEl.textContent = "Processing ' . $fileCount . ' file(s)" + dots;
+            }
+            
+            // After reasonable time, redirect to editor
+            if (checkCount < maxChecks) {
+                setTimeout(checkUploadStatus, 500);
+            }
+        }
+        
+        // Start checking after page loads
+        setTimeout(checkUploadStatus, 500);
+    </script>
 </head>
 <body>
     <div class="container">
@@ -548,16 +578,13 @@ class BitStream_PWA_Manager {
         <p class="file-info">Total size: ' . $totalSizeMB . ' MB</p>
         <p class="file-info" style="margin-top: 20px; font-size: 12px;">Please wait, this may take a moment...</p>
     </div>
+    
+    <!-- Hidden iframe to handle the actual upload without blocking the UI -->
+    <iframe id="upload-frame" name="upload-frame" style="display:none;"></iframe>
 </body>
 </html>';
         
-        // Flush the output so the user sees the progress page immediately
-        if (ob_get_level()) {
-            ob_end_flush();
-        }
-        flush();
-        
-        // Continue with the upload in the background
+        // DON'T flush - let WordPress handle the redirect after upload completes
     }
 
     /**
