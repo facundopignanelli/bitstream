@@ -22,6 +22,7 @@ class BitStream_Ajax_Handlers {
         add_action('wp_ajax_bitstream_crop_media', [$this, 'handle_crop_media']);
         add_action('wp_ajax_bitstream_get_audio_meta', [$this, 'handle_get_audio_meta']);
         add_action('wp_ajax_bitstream_update_audio_meta', [$this, 'handle_update_audio_meta']);
+        add_action('wp_ajax_bitstream_delete_post', [$this, 'handle_delete_post']);
     }
 
     /**
@@ -577,6 +578,44 @@ class BitStream_Ajax_Handlers {
         } catch (Exception $e) {
             error_log('BitStream like error: ' . $e->getMessage());
             wp_send_json_error('An error occurred while processing your request.');
+        }
+    }
+
+    /**
+     * Handle delete Bit post requests
+     */
+    public function handle_delete_post() {
+        try {
+            if (!is_user_logged_in()) {
+                wp_send_json_error('You must be logged in to delete posts.');
+            }
+
+            if (!wp_verify_nonce($_POST['nonce'] ?? '', 'bitstream_delete_post_nonce')) {
+                wp_send_json_error('Invalid nonce.');
+            }
+
+            if (empty($_POST['post_id']) || !is_numeric($_POST['post_id'])) {
+                wp_send_json_error('Invalid post ID.');
+            }
+
+            $post_id = intval($_POST['post_id']);
+            $post = get_post($post_id);
+            if (!$post || $post->post_type !== 'bit') {
+                wp_send_json_error('Post not found.');
+            }
+
+            if (!current_user_can('delete_post', $post_id)) {
+                wp_send_json_error('Insufficient permissions.');
+            }
+
+            $deleted = wp_delete_post($post_id, true);
+            if (!$deleted) {
+                wp_send_json_error('Could not delete post.');
+            }
+
+            wp_send_json_success(['post_id' => $post_id]);
+        } catch (Exception $e) {
+            wp_send_json_error($e->getMessage() ?: 'Could not delete post.');
         }
     }
     

@@ -221,6 +221,11 @@ function bitstream_render_card($post_id, $skip_content_filter = false) {
                 <i class="fa-solid fa-retweet"></i>
             </button>
             <?php endif; ?>
+            <?php if (is_user_logged_in() && current_user_can('delete_post', $post_id)): ?>
+            <button class="bit-delete bit-action" data-post-id="<?php echo esc_attr($post_id); ?>" style="background:none;border:none;cursor:pointer;" title="Delete this bit">
+                <i class="fa-solid fa-trash"></i>
+            </button>
+            <?php endif; ?>
         </footer>
 
         <div id="comments-<?php echo $post_id; ?>" class="bit-comments">

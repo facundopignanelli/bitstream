@@ -105,6 +105,7 @@ class BitStream_Block_Editor {
             'media_upload_nonce' => wp_create_nonce('bitstream_media_upload_nonce'),
             'media_crop_nonce' => wp_create_nonce('bitstream_media_crop_nonce'),
             'audio_meta_nonce' => wp_create_nonce('bitstream_audio_meta_nonce'),
+            'delete_post_nonce' => wp_create_nonce('bitstream_delete_post_nonce'),
             'post_id' => $current_post_id,
             'poster_url' => class_exists('BitStream_Shortcodes') ? BitStream_Shortcodes::get_poster_page_url() : home_url('/bitstream/')
         ]);

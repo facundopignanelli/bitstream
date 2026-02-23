@@ -1377,6 +1377,72 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
 
+        // Delete button functionality (delegated for dynamically loaded cards)
+        document.addEventListener('click', (event) => {
+            const button = event.target.closest('.bit-delete');
+            if (!button) {
+                return;
+            }
+
+            event.preventDefault();
+
+            const postId = parseInt(button.dataset.postId || '0', 10);
+            if (!postId) {
+                return;
+            }
+
+            if (!window.bitstream_ajax || !bitstream_ajax.ajax_url || !bitstream_ajax.delete_post_nonce) {
+                alert('Delete endpoint is unavailable.');
+                return;
+            }
+
+            const confirmed = window.confirm('Are you sure you want to delete this Bit? This action cannot be undone.');
+            if (!confirmed) {
+                return;
+            }
+
+            button.classList.add('is-active');
+
+            const payload = new FormData();
+            payload.append('action', 'bitstream_delete_post');
+            payload.append('post_id', postId);
+            payload.append('nonce', bitstream_ajax.delete_post_nonce);
+
+            fetch(bitstream_ajax.ajax_url, {
+                method: 'POST',
+                credentials: 'same-origin',
+                body: payload
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) {
+                        throw new Error(data.data || 'Could not delete post.');
+                    }
+
+                    const card = button.closest('.bit-card');
+                    if (card) {
+                        const lockedHeight = card.offsetHeight;
+                        card.style.minHeight = lockedHeight + 'px';
+                        card.classList.add('bit-card-delete-pending');
+                        card.innerHTML = '<div class="bit-delete-toast">Deleted successfully</div>';
+
+                        setTimeout(() => {
+                            card.classList.add('bit-card-delete-fade');
+                            setTimeout(() => {
+                                card.remove();
+                                if (typeof window.initMasonry === 'function') {
+                                    setTimeout(window.initMasonry, 30);
+                                }
+                            }, 350);
+                        }, 3000);
+                    }
+                })
+                .catch(error => {
+                    alert(error.message || 'Could not delete post.');
+                    button.classList.remove('is-active');
+                });
+        });
+
     // Floating BitStream menu functionality
     function initFloatingMenu() {
         const bitstreamToggle = document.querySelector('.bitstream-toggle');

@@ -105,6 +105,30 @@
     will-change: transform; /* Optimize positioning performance */
 }
 
+.bit-card.bit-card-delete-pending {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+    transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.bit-card.bit-card-delete-fade {
+    opacity: 0;
+    transform: scale(0.98);
+}
+
+.bit-delete-toast {
+    width: 100%;
+    text-align: center;
+    font-weight: 600;
+    color: #2c6e49;
+    background: #fafafa;
+    border: 1px solid #d9e3dc;
+    border-radius: 15px;
+    padding: 0.9rem 1rem;
+}
+
 /* Boost z-index when comments are open to prevent visual layering issues */
 .bit-card:has(.bit-comments.open),
 .bit-card.comments-open {
@@ -196,6 +220,16 @@
 }
 .bit-like .bit-like-count {
     color: var(--wp--preset--color--accent-1, #2c6e49);
+}
+
+.bit-delete i {
+    color: #c0392b;
+}
+
+.bit-delete:hover i,
+.bit-delete:focus i,
+.bit-delete.is-active i {
+    color: #e74c3c;
 }
 /* Liked state */
 .bit-like.liked i {
@@ -687,7 +721,8 @@ iframe, embed, object, video {
     aspect-ratio: 1.1 / 1;
     min-height: 72px;
     border-radius: 15px;
-    object-fit: contain;
+    object-fit: cover;
+    object-position: center;
     border: 1px solid #ddd;
     background: #e9eceb;
 }
@@ -764,7 +799,8 @@ iframe, embed, object, video {
     width: 64px;
     height: 64px;
     border-radius: 15px;
-    object-fit: contain;
+    object-fit: cover;
+    object-position: center;
     border: 1px solid #ddd;
     background: #e9eceb;
 }
@@ -785,7 +821,8 @@ iframe, embed, object, video {
     min-height: 0 !important;
     margin: 0 !important;
     display: block !important;
-    object-fit: contain !important;
+    object-fit: cover !important;
+    object-position: center !important;
 }
 
 .bitstream-audio-title {
