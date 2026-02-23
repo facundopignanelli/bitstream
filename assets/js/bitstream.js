@@ -173,11 +173,74 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (!attachment) {
                 previewEl.innerHTML = '';
+                previewEl.removeAttribute('data-attachment-id');
+                previewEl.removeAttribute('data-attachment-url');
+                previewEl.removeAttribute('data-attachment-mime');
                 return;
             }
 
             const mimeType = attachment.mime || '';
             const previewUrl = (attachment.sizes && attachment.sizes.medium && attachment.sizes.medium.url) || attachment.url || '';
+
+            if (attachment.id) {
+                previewEl.dataset.attachmentId = attachment.id;
+            }
+            if (previewUrl) {
+                previewEl.dataset.attachmentUrl = previewUrl;
+            }
+            if (mimeType) {
+                previewEl.dataset.attachmentMime = mimeType;
+            }
+
+            const buildAudioMetaBlock = (item) => {
+                const meta = item.audio_meta || item.meta || (item.media_details && item.media_details.meta) || {};
+                const title = meta.title || item.title || item.filename || 'Audio';
+                const artist = meta.artist || '';
+                const album = meta.album || '';
+                const artwork = meta.artwork || '';
+
+                if (!title && !artist && !album && !artwork) {
+                    return null;
+                }
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'bitstream-audio-meta';
+
+                if (artwork) {
+                    const img = document.createElement('img');
+                    img.className = 'bitstream-audio-artwork';
+                    img.src = artwork;
+                    img.alt = '';
+                    wrapper.appendChild(img);
+                }
+
+                const details = document.createElement('div');
+                details.className = 'bitstream-audio-details';
+
+                if (title) {
+                    const titleEl = document.createElement('div');
+                    titleEl.className = 'bitstream-audio-title';
+                    titleEl.textContent = title;
+                    details.appendChild(titleEl);
+                }
+
+                if (artist) {
+                    const artistEl = document.createElement('div');
+                    artistEl.className = 'bitstream-audio-artist';
+                    artistEl.textContent = artist;
+                    details.appendChild(artistEl);
+                }
+
+                if (album) {
+                    const albumEl = document.createElement('div');
+                    albumEl.className = 'bitstream-audio-album';
+                    albumEl.textContent = album;
+                    details.appendChild(albumEl);
+                }
+
+                wrapper.appendChild(details);
+                return wrapper;
+            };
 
             if (mimeType.startsWith('image/')) {
                 previewEl.innerHTML = '<img src="' + previewUrl + '" alt="">';
@@ -199,6 +262,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 audio.controls = true;
                 previewEl.innerHTML = '';
                 previewEl.appendChild(audio);
+                const metaBlock = buildAudioMetaBlock(attachment);
+                if (metaBlock) {
+                    previewEl.appendChild(metaBlock);
+                }
                 return;
             }
 
@@ -208,6 +275,7 @@ document.addEventListener('DOMContentLoaded', function() {
         function bindMediaButtons() {
             const removeButtons = posterRoot.querySelectorAll('.bitstream-media-remove');
             const cropLinks = posterRoot.querySelectorAll('.bitstream-media-crop');
+            const audioTagLinks = posterRoot.querySelectorAll('.bitstream-media-audio-tags');
             const dropzones = posterRoot.querySelectorAll('.bitstream-media-dropzone');
             const cropperModal = posterRoot.querySelector('.bitstream-cropper-modal');
             const cropperImage = cropperModal ? cropperModal.querySelector('.bitstream-cropper-image') : null;
@@ -216,6 +284,17 @@ document.addEventListener('DOMContentLoaded', function() {
             const cropperApply = cropperModal ? cropperModal.querySelector('.bitstream-cropper-apply') : null;
             const cropperSizeLabel = cropperModal ? cropperModal.querySelector('.bitstream-cropper-size') : null;
             const cropperCloseButtons = cropperModal ? cropperModal.querySelectorAll('[data-cropper-close="true"]') : [];
+            const audioTagsModal = posterRoot.querySelector('.bitstream-audio-tags-modal');
+            const audioTagsCloseButtons = audioTagsModal ? audioTagsModal.querySelectorAll('[data-audio-tags-close="true"]') : [];
+            const audioTagsSelectButton = audioTagsModal ? audioTagsModal.querySelector('.bitstream-audio-tags-select') : null;
+            const audioTagsClearButton = audioTagsModal ? audioTagsModal.querySelector('.bitstream-audio-tags-clear') : null;
+            const audioTagsSaveButton = audioTagsModal ? audioTagsModal.querySelector('.bitstream-audio-tags-save') : null;
+            const audioTagsPreview = audioTagsModal ? audioTagsModal.querySelector('.bitstream-audio-tags-preview') : null;
+            const audioTagInputs = audioTagsModal ? audioTagsModal.querySelectorAll('.bitstream-audio-tags-input') : [];
+            let audioTagsTargetInputId = '';
+            let audioTagsTargetPreviewId = '';
+            let audioTagsArtworkId = 0;
+            let audioTagsArtworkUrl = '';
             let cropperState = null;
 
             function setRemoveVisibility(targetInputId) {
@@ -237,6 +316,105 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 const isImage = mimeType && mimeType.startsWith('image/');
                 cropLink.classList.toggle('is-hidden', !isImage);
+            }
+
+            function setAudioTagVisibility(targetInputId, mimeType) {
+                const tagLink = posterRoot.querySelector('.bitstream-media-audio-tags[data-target-input="' + targetInputId + '"]');
+                if (!tagLink) {
+                    return;
+                }
+
+                const isAudio = mimeType && mimeType.startsWith('audio/');
+                tagLink.classList.toggle('is-hidden', !isAudio);
+            }
+
+            function closeAudioTagsModal() {
+                if (!audioTagsModal) {
+                    return;
+                }
+                audioTagsModal.hidden = true;
+                audioTagsTargetInputId = '';
+                audioTagsTargetPreviewId = '';
+            }
+
+            function updateAudioArtworkPreview(url) {
+                if (!audioTagsPreview) {
+                    return;
+                }
+                if (url) {
+                    audioTagsPreview.src = url;
+                    audioTagsPreview.hidden = false;
+                } else {
+                    audioTagsPreview.src = '';
+                    audioTagsPreview.hidden = true;
+                }
+            }
+
+            function fillAudioTagFields(meta, fallbackTitle) {
+                const title = meta.title || fallbackTitle || '';
+                const artist = meta.artist || '';
+                const album = meta.album || '';
+
+                audioTagInputs.forEach(input => {
+                    const field = input.dataset.audioTagsField;
+                    if (field === 'title') {
+                        input.value = title;
+                    } else if (field === 'artist') {
+                        input.value = artist;
+                    } else if (field === 'album') {
+                        input.value = album;
+                    }
+                });
+
+                audioTagsArtworkId = meta.artwork_id ? parseInt(meta.artwork_id, 10) : 0;
+                audioTagsArtworkUrl = meta.artwork || '';
+                updateAudioArtworkPreview(audioTagsArtworkUrl);
+            }
+
+            function openAudioTagsModal(targetInputId, targetPreviewId) {
+                if (!audioTagsModal) {
+                    setStatus('Audio tag editor is unavailable.', true);
+                    return;
+                }
+
+                const input = document.getElementById(targetInputId);
+                const attachmentId = input ? parseInt(input.value || '0', 10) : 0;
+                if (!attachmentId) {
+                    setStatus('Select an audio file first.', true);
+                    return;
+                }
+
+                if (!bitstream_ajax || !bitstream_ajax.ajax_url || !bitstream_ajax.audio_meta_nonce) {
+                    setStatus('Audio tag editor is unavailable.', true);
+                    return;
+                }
+
+                audioTagsTargetInputId = targetInputId;
+                audioTagsTargetPreviewId = targetPreviewId;
+                audioTagsModal.hidden = false;
+
+                const payload = new FormData();
+                payload.append('action', 'bitstream_get_audio_meta');
+                payload.append('nonce', bitstream_ajax.audio_meta_nonce);
+                payload.append('attachment_id', attachmentId);
+
+                fetch(bitstream_ajax.ajax_url, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    body: payload
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (!data.success) {
+                            throw new Error(data.data || 'Unable to load audio tags.');
+                        }
+                        const meta = data.data && data.data.meta ? data.data.meta : {};
+                        const fallbackTitle = data.data && data.data.title ? data.data.title : '';
+                        fillAudioTagFields(meta, fallbackTitle);
+                    })
+                    .catch(error => {
+                        setStatus(error.message || 'Unable to load audio tags.', true);
+                    });
             }
 
             function closeCropper() {
@@ -472,6 +650,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 renderMediaPreview(targetPreview, attachment);
                 setRemoveVisibility(targetInputId);
                 setCropVisibility(targetInputId, attachment.mime || '');
+                setAudioTagVisibility(targetInputId, attachment.mime || '');
             }
 
             function uploadMediaFile(file, targetInputId, targetPreviewId) {
@@ -561,6 +740,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         id: media.id,
                         url: media.url,
                         mime: media.mime,
+                        audio_meta: media.audio_meta || null,
                         sizes: {
                             medium: { url: media.url }
                         }
@@ -592,6 +772,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (button.dataset.targetInput) {
                         setRemoveVisibility(button.dataset.targetInput);
                         setCropVisibility(button.dataset.targetInput, '');
+                        setAudioTagVisibility(button.dataset.targetInput, '');
                     }
                 });
             });
@@ -610,6 +791,125 @@ document.addEventListener('DOMContentLoaded', function() {
                     openCropper(targetInputId, targetPreviewId);
                 });
             });
+
+            audioTagLinks.forEach(link => {
+                link.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    if (link.classList.contains('is-hidden')) {
+                        return;
+                    }
+                    const targetInputId = link.dataset.targetInput;
+                    const targetPreviewId = link.dataset.targetPreview || '';
+                    openAudioTagsModal(targetInputId, targetPreviewId);
+                });
+            });
+
+            if (audioTagsCloseButtons) {
+                audioTagsCloseButtons.forEach(button => {
+                    button.addEventListener('click', closeAudioTagsModal);
+                });
+            }
+
+            if (audioTagsSelectButton) {
+                audioTagsSelectButton.addEventListener('click', () => {
+                    if (!window.wp || !wp.media) {
+                        setStatus('Media library is unavailable.', true);
+                        return;
+                    }
+
+                    const frame = wp.media({
+                        title: 'Select artwork',
+                        button: { text: 'Use artwork' },
+                        multiple: false,
+                        library: { type: 'image' }
+                    });
+
+                    frame.on('select', () => {
+                        const selection = frame.state().get('selection').first();
+                        if (!selection) {
+                            return;
+                        }
+                        const data = selection.toJSON();
+                        audioTagsArtworkId = data.id || 0;
+                        audioTagsArtworkUrl = data.url || '';
+                        updateAudioArtworkPreview(audioTagsArtworkUrl);
+                    });
+
+                    frame.open();
+                });
+            }
+
+            if (audioTagsClearButton) {
+                audioTagsClearButton.addEventListener('click', () => {
+                    audioTagsArtworkId = 0;
+                    audioTagsArtworkUrl = '';
+                    updateAudioArtworkPreview('');
+                });
+            }
+
+            if (audioTagsSaveButton) {
+                audioTagsSaveButton.addEventListener('click', () => {
+                    const input = document.getElementById(audioTagsTargetInputId);
+                    const attachmentId = input ? parseInt(input.value || '0', 10) : 0;
+                    if (!attachmentId) {
+                        setStatus('Select an audio file first.', true);
+                        return;
+                    }
+
+                    if (!bitstream_ajax || !bitstream_ajax.ajax_url || !bitstream_ajax.audio_meta_nonce) {
+                        setStatus('Audio tag editor is unavailable.', true);
+                        return;
+                    }
+
+                    const payload = new FormData();
+                    payload.append('action', 'bitstream_update_audio_meta');
+                    payload.append('nonce', bitstream_ajax.audio_meta_nonce);
+                    payload.append('attachment_id', attachmentId);
+
+                    audioTagInputs.forEach(inputEl => {
+                        const field = inputEl.dataset.audioTagsField;
+                        if (field) {
+                            payload.append(field, inputEl.value || '');
+                        }
+                    });
+
+                    payload.append('artwork_id', audioTagsArtworkId || 0);
+                    payload.append('artwork_url', audioTagsArtworkUrl || '');
+
+                    fetch(bitstream_ajax.ajax_url, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        body: payload
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (!data.success) {
+                                throw new Error(data.data || 'Unable to save audio tags.');
+                            }
+
+                            const meta = data.data && data.data.meta ? data.data.meta : {};
+                            const previewEl = audioTagsTargetPreviewId
+                                ? document.getElementById(audioTagsTargetPreviewId)
+                                : null;
+                            if (previewEl) {
+                                const url = previewEl.dataset.attachmentUrl || '';
+                                const mime = previewEl.dataset.attachmentMime || 'audio/mpeg';
+                                renderMediaPreview(previewEl, {
+                                    id: attachmentId,
+                                    url: url,
+                                    mime: mime,
+                                    audio_meta: meta,
+                                    sizes: { medium: { url: url } }
+                                });
+                            }
+
+                            closeAudioTagsModal();
+                        })
+                        .catch(error => {
+                            setStatus(error.message || 'Unable to save audio tags.', true);
+                        });
+                });
+            }
 
             if (cropperStage && cropperSelection) {
                 cropperStage.addEventListener('mousedown', beginSelection);
@@ -760,6 +1060,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     renderMediaPreview(previewEl, attachment.toJSON());
                     setRemoveVisibility(input.id);
                     setCropVisibility(input.id, attachment.get('mime'));
+                    setAudioTagVisibility(input.id, attachment.get('mime'));
                 }).catch(() => {});
             });
         }

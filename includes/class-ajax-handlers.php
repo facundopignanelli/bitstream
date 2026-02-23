@@ -20,6 +20,8 @@ class BitStream_Ajax_Handlers {
         add_action('wp_ajax_bitstream_submit_poster', [$this, 'handle_submit_poster']);
         add_action('wp_ajax_bitstream_upload_media', [$this, 'handle_upload_media']);
         add_action('wp_ajax_bitstream_crop_media', [$this, 'handle_crop_media']);
+        add_action('wp_ajax_bitstream_get_audio_meta', [$this, 'handle_get_audio_meta']);
+        add_action('wp_ajax_bitstream_update_audio_meta', [$this, 'handle_update_audio_meta']);
     }
 
     /**
@@ -62,7 +64,37 @@ class BitStream_Ajax_Handlers {
         if (wp_attachment_is('audio', $attachment_id)) {
             $audio_url = wp_get_attachment_url($attachment_id);
             if ($audio_url) {
-                return wp_audio_shortcode(['src' => $audio_url]);
+                $audio_markup = wp_audio_shortcode(['src' => $audio_url]);
+                $audio_meta = $this->get_audio_meta($attachment_id);
+                $title = !empty($audio_meta['title']) ? $audio_meta['title'] : get_the_title($attachment_id);
+                $artist = $audio_meta['artist'] ?? '';
+                $album = $audio_meta['album'] ?? '';
+                $artwork = $audio_meta['artwork'] ?? '';
+
+                $meta_markup = '';
+                if ($title || $artist || $album || $artwork) {
+                    $meta_markup .= '<div class="bitstream-audio-meta">';
+                    if ($artwork) {
+                        $meta_markup .= '<img class="bitstream-audio-artwork" src="' . esc_attr($artwork) . '" alt="">';
+                    }
+                    $meta_markup .= '<div class="bitstream-audio-details">';
+                    if ($title) {
+                        $meta_markup .= '<div class="bitstream-audio-title">' . esc_html($title) . '</div>';
+                    }
+                    if ($artist) {
+                        $meta_markup .= '<div class="bitstream-audio-artist">' . esc_html($artist) . '</div>';
+                    }
+                    if ($album) {
+                        $meta_markup .= '<div class="bitstream-audio-album">' . esc_html($album) . '</div>';
+                    }
+                    $meta_markup .= '</div></div>';
+                }
+
+                if ($meta_markup) {
+                    return '<div class="bitstream-audio-wrap">' . $audio_markup . $meta_markup . '</div>';
+                }
+
+                return $audio_markup;
             }
         }
 
@@ -72,6 +104,135 @@ class BitStream_Ajax_Handlers {
         }
 
         return '';
+    }
+
+    /**
+     * Extract audio tags and cache them on the attachment
+     */
+    private function get_audio_meta($attachment_id, $file_path = '') {
+        $stored = get_post_meta($attachment_id, '_bitstream_audio_meta', true);
+        $stored = is_array($stored) ? $stored : [];
+
+        if (!$file_path) {
+            $file_path = get_attached_file($attachment_id);
+        }
+
+        if (!$file_path || !file_exists($file_path)) {
+            return [];
+        }
+
+        require_once ABSPATH . 'wp-admin/includes/media.php';
+        $raw = wp_read_audio_metadata($file_path);
+        if (empty($raw) || !is_array($raw)) {
+            return [];
+        }
+
+        $meta = [
+            'title' => isset($raw['title']) ? sanitize_text_field($raw['title']) : '',
+            'artist' => isset($raw['artist']) ? sanitize_text_field($raw['artist']) : '',
+            'album' => isset($raw['album']) ? sanitize_text_field($raw['album']) : '',
+            'artwork' => $stored['artwork'] ?? '',
+            'artwork_id' => isset($stored['artwork_id']) ? intval($stored['artwork_id']) : 0,
+        ];
+
+        if (!empty($meta['artwork_id']) && empty($meta['artwork'])) {
+            $meta['artwork'] = wp_get_attachment_url($meta['artwork_id']);
+        }
+
+        if (empty($meta['artwork']) && !empty($raw['image']['data']) && !empty($raw['image']['mime'])) {
+            $mime = sanitize_mime_type($raw['image']['mime']);
+            $meta['artwork'] = 'data:' . $mime . ';base64,' . base64_encode($raw['image']['data']);
+        }
+
+        $meta = array_merge($meta, array_intersect_key($stored, $meta));
+        $meta = array_filter($meta, static function($value) {
+            return $value !== '' && $value !== null && $value !== false;
+        });
+
+        update_post_meta($attachment_id, '_bitstream_audio_meta', $meta);
+        return $meta;
+    }
+
+    /**
+     * Fetch stored audio metadata
+     */
+    public function handle_get_audio_meta() {
+        try {
+            check_ajax_referer('bitstream_audio_meta_nonce', 'nonce');
+
+            if (!current_user_can('upload_files') || !current_user_can('edit_posts')) {
+                wp_send_json_error('Insufficient permissions.');
+            }
+
+            $attachment_id = $this->get_valid_attachment_id($_POST['attachment_id'] ?? 0);
+            if ($attachment_id <= 0 || !wp_attachment_is('audio', $attachment_id)) {
+                wp_send_json_error('Invalid audio attachment.');
+            }
+
+            $meta = $this->get_audio_meta($attachment_id);
+
+            wp_send_json_success([
+                'meta' => $meta,
+                'title' => get_the_title($attachment_id),
+            ]);
+        } catch (Exception $e) {
+            wp_send_json_error($e->getMessage() ?: 'Unable to fetch audio metadata.');
+        }
+    }
+
+    /**
+     * Update audio tags and artwork
+     */
+    public function handle_update_audio_meta() {
+        try {
+            check_ajax_referer('bitstream_audio_meta_nonce', 'nonce');
+
+            if (!current_user_can('upload_files') || !current_user_can('edit_posts')) {
+                wp_send_json_error('Insufficient permissions.');
+            }
+
+            $attachment_id = $this->get_valid_attachment_id($_POST['attachment_id'] ?? 0);
+            if ($attachment_id <= 0 || !wp_attachment_is('audio', $attachment_id)) {
+                wp_send_json_error('Invalid audio attachment.');
+            }
+
+            $title = sanitize_text_field(wp_unslash($_POST['title'] ?? ''));
+            $artist = sanitize_text_field(wp_unslash($_POST['artist'] ?? ''));
+            $album = sanitize_text_field(wp_unslash($_POST['album'] ?? ''));
+            $artwork_id = intval($_POST['artwork_id'] ?? 0);
+            $artwork_url = esc_url_raw(wp_unslash($_POST['artwork_url'] ?? ''));
+
+            if ($artwork_id > 0 && !wp_attachment_is('image', $artwork_id)) {
+                $artwork_id = 0;
+            }
+
+            if ($artwork_id > 0) {
+                $artwork_url = wp_get_attachment_url($artwork_id);
+            }
+
+            $meta = [
+                'title' => $title,
+                'artist' => $artist,
+                'album' => $album,
+                'artwork' => $artwork_url,
+                'artwork_id' => $artwork_id,
+            ];
+
+            update_post_meta($attachment_id, '_bitstream_audio_meta', $meta);
+
+            if ($title) {
+                wp_update_post([
+                    'ID' => $attachment_id,
+                    'post_title' => $title,
+                ]);
+            }
+
+            wp_send_json_success([
+                'meta' => $meta,
+            ]);
+        } catch (Exception $e) {
+            wp_send_json_error($e->getMessage() ?: 'Unable to update audio metadata.');
+        }
     }
 
     /**
@@ -162,10 +323,16 @@ class BitStream_Ajax_Handlers {
             $attachment_data = wp_generate_attachment_metadata($attachment_id, $file_path);
             wp_update_attachment_metadata($attachment_id, $attachment_data);
 
+            $audio_meta = [];
+            if (strpos($file_type['type'], 'audio/') === 0) {
+                $audio_meta = $this->get_audio_meta($attachment_id, $file_path);
+            }
+
             wp_send_json_success([
                 'id' => $attachment_id,
                 'url' => $file_url,
                 'mime' => $file_type['type'],
+                'audio_meta' => $audio_meta,
                 'edit_url' => get_edit_post_link($attachment_id, ''),
             ]);
         } catch (Exception $e) {

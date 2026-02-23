@@ -262,6 +262,7 @@ class BitStream_Shortcodes {
                         <div class="bitstream-media-controls">
                             <button type="button" class="bitstream-media-remove is-hidden" data-target-input="bitstream-bit-attachment-id" data-target-preview="bitstream-bit-media-preview">Remove media</button>
                             <a class="bitstream-media-crop is-hidden" data-target-input="bitstream-bit-attachment-id" href="#" target="_blank" rel="noopener">Crop image</a>
+                            <a class="bitstream-media-audio-tags is-hidden" data-target-input="bitstream-bit-attachment-id" data-target-preview="bitstream-bit-media-preview" href="#">Edit audio tags</a>
                         </div>
                     </div>
 
@@ -333,6 +334,40 @@ class BitStream_Shortcodes {
                         <div class="bitstream-rebit-preview-content">
                             <h4 class="bitstream-rebit-preview-title"></h4>
                             <p class="bitstream-rebit-preview-description"></p>
+                        </div>
+
+                        <div class="bitstream-audio-tags-modal" hidden>
+                            <div class="bitstream-audio-tags-backdrop" data-audio-tags-close="true"></div>
+                            <div class="bitstream-audio-tags-dialog" role="dialog" aria-modal="true" aria-labelledby="bitstream-audio-tags-title">
+                                <header class="bitstream-audio-tags-header">
+                                    <h3 id="bitstream-audio-tags-title">Edit audio tags</h3>
+                                    <button type="button" class="bitstream-audio-tags-close" data-audio-tags-close="true">Close</button>
+                                </header>
+                                <div class="bitstream-audio-tags-body">
+                                    <div class="bitstream-audio-tags-artwork">
+                                        <img class="bitstream-audio-tags-preview" src="" alt="" hidden>
+                                        <div class="bitstream-audio-tags-buttons">
+                                            <button type="button" class="bitstream-audio-tags-select">Choose artwork</button>
+                                            <button type="button" class="bitstream-audio-tags-clear">Remove artwork</button>
+                                        </div>
+                                    </div>
+                                    <label>
+                                        <span>Title</span>
+                                        <input type="text" class="bitstream-audio-tags-input" data-audio-tags-field="title" placeholder="Track title">
+                                    </label>
+                                    <label>
+                                        <span>Artist</span>
+                                        <input type="text" class="bitstream-audio-tags-input" data-audio-tags-field="artist" placeholder="Artist name">
+                                    </label>
+                                    <label>
+                                        <span>Album</span>
+                                        <input type="text" class="bitstream-audio-tags-input" data-audio-tags-field="album" placeholder="Album name">
+                                    </label>
+                                </div>
+                                <footer class="bitstream-audio-tags-footer">
+                                    <button type="button" class="bitstream-audio-tags-save">Save tags</button>
+                                </footer>
+                            </div>
                         </div>
                     </div>
 

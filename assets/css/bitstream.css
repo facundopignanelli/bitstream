@@ -14,6 +14,31 @@
     min-height: 100px;
 }
 
+/* Constrain video/mediaelement output inside cards */
+.bit-card-content video,
+.bit-rebit-preview video,
+.bitstream-quoted-preview video,
+.bitstream-og-card video,
+.bit-card-content .wp-video,
+.bit-rebit-preview .wp-video,
+.bitstream-quoted-preview .wp-video,
+.bitstream-og-card .wp-video,
+.bit-card-content .wp-video-shortcode,
+.bit-rebit-preview .wp-video-shortcode,
+.bitstream-quoted-preview .wp-video-shortcode,
+.bitstream-og-card .wp-video-shortcode,
+.bit-card-content .mejs-container,
+.bit-rebit-preview .mejs-container,
+.bitstream-quoted-preview .mejs-container,
+.bitstream-og-card .mejs-container {
+    max-width: 100% !important;
+    width: 100% !important;
+    height: auto !important;
+    display: block;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
 /* Remove min-height once image is loaded */
 .bit-card-content img[src]:not([src=""]),
 .bit-rebit-preview img[src]:not([src=""]),
@@ -526,6 +551,22 @@ iframe, embed, object, video {
     display: none;
 }
 
+.bitstream-media-audio-tags {
+    border: none;
+    border-radius: 10px;
+    padding: 0.6rem 0.9rem;
+    background: #3d5a80;
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+}
+
+.bitstream-media-audio-tags.is-hidden {
+    display: none;
+}
+
 .bitstream-media-controls {
     display: flex;
     gap: 0.6rem;
@@ -591,6 +632,44 @@ iframe, embed, object, video {
     border: 1px solid #ddd;
 }
 
+.bitstream-audio-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.bitstream-audio-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-align: left;
+}
+
+.bitstream-audio-artwork {
+    width: 56px;
+    height: 56px;
+    border-radius: 10px;
+    object-fit: cover;
+    border: 1px solid #ddd;
+}
+
+.bitstream-audio-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.bitstream-audio-title {
+    font-weight: 600;
+    color: #1f1f1f;
+}
+
+.bitstream-audio-artist,
+.bitstream-audio-album {
+    font-size: 0.9rem;
+    color: #5b5b5b;
+}
+
 .bitstream-media-progress {
     display: flex;
     flex-direction: column;
@@ -641,6 +720,128 @@ iframe, embed, object, video {
 
 .bitstream-cropper-modal[hidden] {
     display: none;
+}
+
+.bitstream-audio-tags-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bitstream-audio-tags-modal[hidden] {
+    display: none;
+}
+
+.bitstream-audio-tags-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 20, 0.6);
+}
+
+.bitstream-audio-tags-dialog {
+    position: relative;
+    width: min(520px, 92vw);
+    max-height: 90vh;
+    background: #fff;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+    z-index: 1;
+}
+
+.bitstream-audio-tags-header,
+.bitstream-audio-tags-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid #e6e6e6;
+}
+
+.bitstream-audio-tags-footer {
+    border-bottom: none;
+    border-top: 1px solid #e6e6e6;
+}
+
+.bitstream-audio-tags-header h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.bitstream-audio-tags-close {
+    background: #ff9900;
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.bitstream-audio-tags-body {
+    padding: 1rem;
+    display: grid;
+    gap: 0.75rem;
+}
+
+.bitstream-audio-tags-body label {
+    display: grid;
+    gap: 0.35rem;
+    font-weight: 600;
+}
+
+.bitstream-audio-tags-body input {
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    padding: 0.55rem 0.7rem;
+    font-family: inherit;
+    font-size: 0.95rem;
+}
+
+.bitstream-audio-tags-artwork {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.bitstream-audio-tags-preview {
+    width: 72px;
+    height: 72px;
+    border-radius: 12px;
+    object-fit: cover;
+    border: 1px solid #ddd;
+}
+
+.bitstream-audio-tags-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.bitstream-audio-tags-select,
+.bitstream-audio-tags-clear,
+.bitstream-audio-tags-save {
+    border: none;
+    border-radius: 10px;
+    padding: 0.55rem 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.bitstream-audio-tags-select,
+.bitstream-audio-tags-save {
+    background: var(--wp--preset--color--accent-1, #2c6e49);
+    color: #fff;
+}
+
+.bitstream-audio-tags-clear {
+    background: #e8e8e8;
+    color: #333;
 }
 
 .bitstream-cropper-backdrop {
