@@ -202,14 +202,31 @@ class BitStream_Ajax_Handlers {
             $artist = sanitize_text_field(wp_unslash($_POST['artist'] ?? ''));
             $album = sanitize_text_field(wp_unslash($_POST['album'] ?? ''));
             $artwork_id = intval($_POST['artwork_id'] ?? 0);
-            $artwork_url = esc_url_raw(wp_unslash($_POST['artwork_url'] ?? ''));
+            $artwork_clear = isset($_POST['artwork_clear']) && intval($_POST['artwork_clear']) === 1;
+            $raw_artwork_url = trim(wp_unslash($_POST['artwork_url'] ?? ''));
+            $existing_meta = get_post_meta($attachment_id, '_bitstream_audio_meta', true);
+            $existing_meta = is_array($existing_meta) ? $existing_meta : [];
 
-            if ($artwork_id > 0 && !wp_attachment_is('image', $artwork_id)) {
+            if ($artwork_clear) {
                 $artwork_id = 0;
-            }
+                $artwork_url = '';
+            } else {
+                if ($artwork_id > 0 && wp_attachment_is('image', $artwork_id)) {
+                    $artwork_url = wp_get_attachment_url($artwork_id);
+                } else {
+                    $artwork_id = 0;
 
-            if ($artwork_id > 0) {
-                $artwork_url = wp_get_attachment_url($artwork_id);
+                    if ($raw_artwork_url !== '') {
+                        if (preg_match('#^data:image\/[a-zA-Z0-9.+-]+;base64,#', $raw_artwork_url)) {
+                            $artwork_url = $raw_artwork_url;
+                        } else {
+                            $artwork_url = esc_url_raw($raw_artwork_url);
+                        }
+                    } else {
+                        $artwork_url = isset($existing_meta['artwork']) ? (string) $existing_meta['artwork'] : '';
+                        $artwork_id = isset($existing_meta['artwork_id']) ? intval($existing_meta['artwork_id']) : 0;
+                    }
+                }
             }
 
             $meta = [

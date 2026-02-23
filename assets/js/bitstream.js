@@ -337,6 +337,7 @@ document.addEventListener('DOMContentLoaded', function() {
             let audioTagsTargetPreviewId = '';
             let audioTagsArtworkId = 0;
             let audioTagsArtworkUrl = '';
+            let audioTagsArtworkCleared = false;
             let cropperState = null;
 
             function setRemoveVisibility(targetInputId) {
@@ -377,6 +378,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 audioTagsModal.hidden = true;
                 audioTagsTargetInputId = '';
                 audioTagsTargetPreviewId = '';
+                audioTagsArtworkCleared = false;
             }
 
             function updateAudioArtworkPreview(url) {
@@ -410,6 +412,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 audioTagsArtworkId = meta.artwork_id ? parseInt(meta.artwork_id, 10) : 0;
                 audioTagsArtworkUrl = meta.artwork || '';
+                audioTagsArtworkCleared = false;
                 updateAudioArtworkPreview(audioTagsArtworkUrl);
             }
 
@@ -433,6 +436,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 audioTagsTargetInputId = targetInputId;
                 audioTagsTargetPreviewId = targetPreviewId;
+                audioTagsArtworkCleared = false;
                 audioTagsModal.hidden = false;
 
                 const payload = new FormData();
@@ -874,6 +878,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         const data = selection.toJSON();
                         audioTagsArtworkId = data.id || 0;
                         audioTagsArtworkUrl = data.url || '';
+                        audioTagsArtworkCleared = false;
                         updateAudioArtworkPreview(audioTagsArtworkUrl);
                     });
 
@@ -885,6 +890,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 audioTagsClearButton.addEventListener('click', () => {
                     audioTagsArtworkId = 0;
                     audioTagsArtworkUrl = '';
+                    audioTagsArtworkCleared = true;
                     updateAudioArtworkPreview('');
                 });
             }
@@ -917,6 +923,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     payload.append('artwork_id', audioTagsArtworkId || 0);
                     payload.append('artwork_url', audioTagsArtworkUrl || '');
+                    payload.append('artwork_clear', audioTagsArtworkCleared ? '1' : '0');
 
                     fetch(bitstream_ajax.ajax_url, {
                         method: 'POST',
