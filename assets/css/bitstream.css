@@ -502,8 +502,8 @@ iframe, embed, object, video {
 }
 
 .bitstream-media-remove {
-    background: #eee;
-    color: #333;
+    background: #ff9900;
+    color: #fff;
 }
 
 .bitstream-media-remove.is-hidden {
@@ -514,8 +514,8 @@ iframe, embed, object, video {
     border: none;
     border-radius: 10px;
     padding: 0.6rem 0.9rem;
-    background: #eee;
-    color: #333;
+    background: #044389;
+    color: #fff;
     text-decoration: none;
     font-weight: 600;
     display: inline-flex;
@@ -635,19 +635,20 @@ iframe, embed, object, video {
     font-size: 1rem;
 }
 
-.bitstream-cropper-close,
 .bitstream-cropper-cancel {
-    background: #111;
+    background: #ff9900;
     color: #fff;
     border: none;
     border-radius: 999px;
     padding: 0.4rem 0.9rem;
     font-size: 0.85rem;
+    cursor: pointer;
 }
 
 .bitstream-cropper-body {
     padding: 1rem;
     overflow: auto;
+    background: #fff;
 }
 
 .bitstream-cropper-stage {
@@ -737,11 +738,12 @@ iframe, embed, object, video {
     margin: 0.35rem 0 0;
     font-size: 0.85rem;
     color: #2f3c36;
+    font-weight: 600;
 }
 
 .bitstream-cropper-help {
     margin: 0.75rem 0 0;
-    color: #5a6a63;
+    color: #2f3c36;
     font-size: 0.85rem;
 }
 

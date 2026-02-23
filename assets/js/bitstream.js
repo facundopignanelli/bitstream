@@ -661,6 +661,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const value = parseInt(input.value || '0', 10);
                 if (!value || !window.wp || !wp.media) {
                     setRemoveVisibility(input.id);
+                    setCropVisibility(input.id, '');
                     return;
                 }
 

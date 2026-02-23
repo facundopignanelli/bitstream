@@ -380,7 +380,6 @@ class BitStream_Shortcodes {
                 <div class="bitstream-cropper-dialog" role="dialog" aria-modal="true" aria-label="Crop Image">
                     <div class="bitstream-cropper-header">
                         <h3>Crop Image</h3>
-                        <button type="button" class="bitstream-cropper-close" data-cropper-close="true">Close</button>
                     </div>
                     <div class="bitstream-cropper-body">
                         <div class="bitstream-cropper-stage">
