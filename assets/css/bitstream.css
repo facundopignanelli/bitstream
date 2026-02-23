@@ -634,7 +634,7 @@ iframe, embed, object, video {
 
 .bitstream-audio-embed {
     display: grid;
-    grid-template-columns: auto 1fr;
+    grid-template-columns: 72px 1fr;
     gap: 0.75rem;
     align-items: center;
     padding: 0.75rem;
@@ -649,11 +649,20 @@ iframe, embed, object, video {
     flex-direction: column;
     gap: 0.4rem;
     min-width: 0;
+    width: 100%;
 }
 
 .bitstream-audio-player audio {
     width: 100%;
     display: block;
+}
+
+.bitstream-audio-player,
+.bitstream-audio-player .wp-audio-shortcode,
+.bitstream-audio-player audio,
+.bitstream-audio-player .mejs-container {
+    width: 100% !important;
+    display: block !important;
 }
 
 .bitstream-audio-meta {
