@@ -267,12 +267,19 @@ class BitStream_Shortcodes {
                     <?php endif; ?>
 
                     <details class="bitstream-post-options">
-                        <summary>Post options</summary>
-                        <label class="bitstream-schedule-toggle">
-                            <input type="checkbox" name="bit_schedule_enabled" value="1" data-schedule-toggle="bit">
-                            Schedule this Bit
-                        </label>
+                        <summary>Schedule</summary>
+                        <div class="bitstream-schedule-options">
+                            <label class="bitstream-schedule-radio">
+                                <input type="radio" name="bit_schedule_mode" value="now" data-schedule-toggle="bit" checked>
+                                Post now
+                            </label>
+                            <label class="bitstream-schedule-radio">
+                                <input type="radio" name="bit_schedule_mode" value="later" data-schedule-toggle="bit">
+                                Schedule for later
+                            </label>
+                        </div>
                         <input type="datetime-local" name="bit_schedule_datetime" class="bitstream-schedule-datetime" data-schedule-input="bit" disabled>
+                        <input type="hidden" name="bit_schedule_enabled" value="0" data-schedule-hidden="bit">
                     </details>
 
                     <button type="submit" class="bitstream-poster-submit">Publish Bit</button>
@@ -318,12 +325,19 @@ class BitStream_Shortcodes {
                     </div>
 
                     <details class="bitstream-post-options">
-                        <summary>Post options</summary>
-                        <label class="bitstream-schedule-toggle">
-                            <input type="checkbox" name="rebit_schedule_enabled" value="1" data-schedule-toggle="rebit">
-                            Schedule this Rebit
-                        </label>
+                        <summary>Schedule</summary>
+                        <div class="bitstream-schedule-options">
+                            <label class="bitstream-schedule-radio">
+                                <input type="radio" name="rebit_schedule_mode" value="now" data-schedule-toggle="rebit" checked>
+                                Post now
+                            </label>
+                            <label class="bitstream-schedule-radio">
+                                <input type="radio" name="rebit_schedule_mode" value="later" data-schedule-toggle="rebit">
+                                Schedule for later
+                            </label>
+                        </div>
                         <input type="datetime-local" name="rebit_schedule_datetime" class="bitstream-schedule-datetime" data-schedule-input="rebit" disabled>
+                        <input type="hidden" name="rebit_schedule_enabled" value="0" data-schedule-hidden="rebit">
                     </details>
 
                     <button type="submit" class="bitstream-poster-submit">Publish Rebit</button>

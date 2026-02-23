@@ -857,7 +857,35 @@ body.bitstream-cropper-open {
 .bitstream-post-options summary {
     cursor: pointer;
     font-weight: 600;
-    margin-bottom: 0.45rem;
+    margin-bottom: 0.65rem;
+}
+
+.bitstream-schedule-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.bitstream-schedule-radio {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    padding: 0.4rem 0.5rem;
+    border-radius: 8px;
+    transition: background 0.2s ease;
+}
+
+.bitstream-schedule-radio:hover {
+    background: #f0f0f0;
+}
+
+.bitstream-schedule-radio input[type="radio"] {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+    margin: 0;
 }
 
 .bitstream-schedule-toggle {
@@ -873,6 +901,13 @@ body.bitstream-cropper-open {
     border-radius: 10px;
     padding: 0.55rem 0.7rem;
     box-sizing: border-box;
+    font-family: inherit;
+    font-size: 0.95rem;
+}
+
+.bitstream-schedule-datetime:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .bitstream-scheduled-filter {

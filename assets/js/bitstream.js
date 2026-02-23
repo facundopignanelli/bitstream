@@ -125,14 +125,18 @@ document.addEventListener('DOMContentLoaded', function() {
         scheduleToggles.forEach(toggle => {
             const key = toggle.dataset.scheduleToggle;
             const datetimeInput = posterRoot.querySelector('[data-schedule-input="' + key + '"]');
+            const hiddenInput = posterRoot.querySelector('[data-schedule-hidden="' + key + '"]');
 
             if (!datetimeInput) {
                 return;
             }
 
             toggle.addEventListener('change', () => {
-                const enabled = !!toggle.checked;
+                const enabled = toggle.value === 'later' && toggle.checked;
                 datetimeInput.disabled = !enabled;
+                if (hiddenInput) {
+                    hiddenInput.value = enabled ? '1' : '0';
+                }
                 if (!enabled) {
                     datetimeInput.value = '';
                 }
@@ -802,7 +806,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const posterType = form.dataset.posterType || 'bit';
                 const scheduleEnabledInput = form.querySelector('[name="' + posterType + '_schedule_enabled"]');
                 const scheduleDatetimeInput = form.querySelector('[name="' + posterType + '_schedule_datetime"]');
-                if (scheduleEnabledInput && scheduleEnabledInput.checked && scheduleDatetimeInput && !scheduleDatetimeInput.value) {
+                if (scheduleEnabledInput && scheduleEnabledInput.value === '1' && scheduleDatetimeInput && !scheduleDatetimeInput.value) {
                     setStatus('Please choose a date and time for the schedule.', true);
                     return;
                 }

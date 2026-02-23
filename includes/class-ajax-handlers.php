@@ -20,19 +20,6 @@ class BitStream_Ajax_Handlers {
         add_action('wp_ajax_bitstream_submit_poster', [$this, 'handle_submit_poster']);
         add_action('wp_ajax_bitstream_upload_media', [$this, 'handle_upload_media']);
         add_action('wp_ajax_bitstream_crop_media', [$this, 'handle_crop_media']);
-        add_filter('upload_mimes', [$this, 'allow_audio_mimes']);
-    }
-
-    /**
-     * Allow audio file uploads
-     */
-    public function allow_audio_mimes($mimes) {
-        $mimes['mp3'] = 'audio/mpeg';
-        $mimes['m4a'] = 'audio/mp4';
-        $mimes['ogg'] = 'audio/ogg';
-        $mimes['wav'] = 'audio/wav';
-        $mimes['flac'] = 'audio/flac';
-        return $mimes;
     }
 
     /**
@@ -149,13 +136,6 @@ class BitStream_Ajax_Handlers {
 
             $upload_overrides = [
                 'test_form' => false,
-                'mimes' => array_merge(get_allowed_mime_types(), [
-                    'mp3' => 'audio/mpeg',
-                    'm4a' => 'audio/mp4',
-                    'ogg' => 'audio/ogg',
-                    'wav' => 'audio/wav',
-                    'flac' => 'audio/flac',
-                ]),
             ];
 
             $uploaded_file = wp_handle_upload($_FILES['media'], $upload_overrides);

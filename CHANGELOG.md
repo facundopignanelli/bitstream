@@ -1,7 +1,5 @@
 # Changelog
 
-All notable changes to the BitStream WordPress plugin will be documented in this file.
-
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
@@ -21,13 +19,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Edit post
   - Open/Preview post
 - Scheduling controls in Post options for both Bit and Rebit
+- Schedule UI with radio buttons: "Post now" (default) and "Schedule for later"
+- Native datetime picker with calendar and clock selection for scheduling
 - Scheduled posts tab filter controls (All / Bits / Rebits)
 - Drag-and-drop media upload areas for Bit and Rebit poster forms
-- Audio file support in Bit posts
+- Audio file support in Bit posts (MP3, M4A, OGG, WAV, FLAC)
 - Custom image cropper with free-form selection and live size readout
 
 ### Changed
 - Unified posting workflow around the custom poster interface instead of Gutenberg new-post flow
+- Schedule section now uses radio buttons with "Post now" as default (was checkbox)
 - Admin new post creation (`post-new.php?post_type=bit`) now redirects to the poster page
 - Admin “Add New ReBit” route now redirects to the poster page Rebit tab
 - Admin quote action now routes to the poster page with quote prefill context
