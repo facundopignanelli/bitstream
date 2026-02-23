@@ -676,13 +676,13 @@ iframe, embed, object, video {
 
 .bitstream-audio-embed {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: fit-content(120px) minmax(0, 1fr);
     grid-template-areas:
         "art meta"
         "player player";
     column-gap: 0.75rem;
     row-gap: 0.6rem;
-    align-items: stretch;
+    align-items: start;
     padding: 0.75rem;
     border: 1px solid #e0e0e0;
     border-radius: 15px;
@@ -704,13 +704,16 @@ iframe, embed, object, video {
 
 .bitstream-audio-artwork-wrap {
     grid-area: art;
-    align-self: stretch;
+    align-self: start;
     display: flex;
     align-items: center;
     justify-content: center;
     height: 100%;
-    width: auto;
+    width: 100%;
     min-height: 72px;
+    max-height: 120px;
+    min-width: 72px;
+    max-width: 120px;
     border-radius: 15px;
     overflow: hidden;
     border: 1px solid #ddd;
@@ -721,9 +724,9 @@ iframe, embed, object, video {
 .bitstream-audio-embed > .bitstream-audio-artwork {
     grid-area: art;
     width: auto;
-    height: 100%;
-    max-width: none;
-    max-height: none;
+    height: auto;
+    max-width: 120px;
+    max-height: 120px;
     min-height: 72px;
     border-radius: 15px;
     object-fit: contain;
@@ -801,8 +804,10 @@ iframe, embed, object, video {
 }
 
 .bitstream-audio-artwork {
-    width: 64px;
-    height: 64px;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
     border-radius: 15px;
     object-fit: contain;
     object-position: center;
@@ -812,9 +817,9 @@ iframe, embed, object, video {
 
 .bitstream-audio-artwork-wrap > .bitstream-audio-artwork {
     width: auto;
-    height: 100%;
-    max-width: none;
-    max-height: none;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
     border-radius: 15px;
     border: 0;
 }
@@ -823,9 +828,9 @@ iframe, embed, object, video {
 .bitstream-audio-artwork-wrap > .bitstream-audio-artwork,
 .bitstream-audio-embed > .bitstream-audio-artwork {
     width: auto !important;
-    height: 100% !important;
-    max-width: none !important;
-    max-height: none !important;
+    height: auto !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
     min-height: 0 !important;
     margin: 0 !important;
     display: block !important;
@@ -837,6 +842,8 @@ iframe, embed, object, video {
 .bitstream-audio-player .mejs-container {
     box-sizing: border-box;
     margin: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden;
 }
 
 .bitstream-audio-title {
