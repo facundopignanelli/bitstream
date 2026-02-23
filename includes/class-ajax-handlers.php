@@ -93,8 +93,8 @@ class BitStream_Ajax_Handlers {
                 return '<div class="bitstream-audio-embed">'
                     . $artwork_markup
                     . '<div class="bitstream-audio-content">'
-                    . '<div class="bitstream-audio-player">' . $audio_markup . '</div>'
                     . $meta_markup
+                    . '<div class="bitstream-audio-player">' . $audio_markup . '</div>'
                     . '</div></div>';
             }
         }

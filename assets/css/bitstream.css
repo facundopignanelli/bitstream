@@ -687,18 +687,16 @@ iframe, embed, object, video {
 .bitstream-audio-title {
     font-weight: 600;
     color: #1f1f1f;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal;
+    word-break: break-word;
 }
 
 .bitstream-audio-artist,
 .bitstream-audio-album {
     font-size: 0.9rem;
     color: #5b5b5b;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal;
+    word-break: break-word;
 }
 
 .bitstream-media-progress {

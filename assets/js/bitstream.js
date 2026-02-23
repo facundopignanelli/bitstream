@@ -296,12 +296,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 player.className = 'bitstream-audio-player';
                 player.appendChild(audio);
 
-                content.appendChild(player);
-
                 const metaBlock = buildAudioMetaBlock(attachment);
                 if (metaBlock) {
                     content.appendChild(metaBlock);
                 }
+
+                content.appendChild(player);
 
                 embed.appendChild(content);
 
