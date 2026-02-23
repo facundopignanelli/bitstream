@@ -22,6 +22,22 @@ class BitStream_PWA_Manager {
         add_filter('query_vars', [$this, 'add_query_vars']);
         add_action('template_redirect', [$this, 'handle_debug_requests']);
     }
+
+    /**
+     * Resolve poster page URL
+     */
+    private function get_poster_url($query_args = []) {
+        if (class_exists('BitStream_Shortcodes')) {
+            return BitStream_Shortcodes::get_poster_page_url($query_args);
+        }
+
+        $fallback = home_url('/bitstream/');
+        if (!empty($query_args)) {
+            return add_query_arg($query_args, $fallback);
+        }
+
+        return $fallback;
+    }
     
     /**
      * Add PWA assets for BitStream pages
@@ -32,8 +48,9 @@ class BitStream_PWA_Manager {
         // Load on archive pages or pages with [bitstream] shortcode
         $is_bit_archive = is_post_type_archive('bit');
         $has_feed_shortcode = is_a($post, 'WP_Post') && 
-                             (has_shortcode($post->post_content, 'bitstream') || 
-                              has_shortcode($post->post_content, 'bitstream_latest'));
+                     (has_shortcode($post->post_content, 'bitstream') || 
+                      has_shortcode($post->post_content, 'bitstream_latest') ||
+                      has_shortcode($post->post_content, 'bitstream_poster'));
         $is_bitstream_page = isset($_SERVER['REQUEST_URI']) && 
                             strpos($_SERVER['REQUEST_URI'], '/bitstream/') !== false;
         
@@ -100,8 +117,9 @@ class BitStream_PWA_Manager {
         // Only show on BitStream-related pages
         $is_bit_archive = is_post_type_archive('bit');
         $has_feed_shortcode = is_a($post, 'WP_Post') && 
-                             (has_shortcode($post->post_content, 'bitstream') || 
-                              has_shortcode($post->post_content, 'bitstream_latest'));
+                     (has_shortcode($post->post_content, 'bitstream') || 
+                      has_shortcode($post->post_content, 'bitstream_latest') ||
+                      has_shortcode($post->post_content, 'bitstream_poster'));
         $is_bitstream_page = isset($_SERVER['REQUEST_URI']) && 
                             strpos($_SERVER['REQUEST_URI'], '/bitstream/') !== false;
         
@@ -110,8 +128,8 @@ class BitStream_PWA_Manager {
             return;
         }
 
-        $new_bit_url = admin_url('post-new.php?post_type=bit');
-        $rebit_url = admin_url('post-new.php?post_type=bit&rebit=1');
+        $new_bit_url = $this->get_poster_url(['poster_tab' => 'bit']);
+        $rebit_url = $this->get_poster_url(['poster_tab' => 'rebit']);
         $rss_feeds_url = admin_url('edit.php?post_type=bit&page=bitstream-rss-feeds');
         $rebit_mappings_url = admin_url('edit.php?post_type=bit&page=bitstream-rebit-mappings');
         ?>
@@ -351,7 +369,7 @@ class BitStream_PWA_Manager {
                 'timestamp' => time()
             ];
             
-            $login_url = wp_login_url(admin_url('post-new.php?post_type=bit&restore_share=1'));
+            $login_url = wp_login_url($this->get_poster_url(['poster_tab' => 'bit']));
             error_log('BitStream: Redirecting to login: ' . $login_url);
             wp_redirect($login_url);
             exit;
@@ -435,12 +453,12 @@ class BitStream_PWA_Manager {
         // If no files were uploaded successfully but we have shared text/url, just redirect
         if (empty($attachment_ids) && (empty($shared_text) && empty($shared_url))) {
             error_log('BitStream: No media uploaded and no shared content, redirecting to plain new bit page');
-            wp_redirect(admin_url('post-new.php?post_type=bit'));
+            wp_redirect($this->get_poster_url(['poster_tab' => 'bit']));
             exit;
         }
         
-        // Build redirect URL to new bit page with uploaded media
-        $redirect_url = admin_url('post-new.php?post_type=bit');
+        // Build redirect URL to frontend poster page
+        $redirect_url = $this->get_poster_url(['poster_tab' => empty($shared_url) ? 'bit' : 'rebit']);
         
         if (!empty($attachment_ids)) {
             $redirect_url = add_query_arg('media_ids', implode(',', $attachment_ids), $redirect_url);
@@ -452,7 +470,7 @@ class BitStream_PWA_Manager {
         
         if (!empty($shared_url)) {
             $redirect_url = add_query_arg('shared_url', urlencode($shared_url), $redirect_url);
-            $redirect_url = add_query_arg('rebit', '1', $redirect_url);
+            $redirect_url = add_query_arg('poster_tab', 'rebit', $redirect_url);
         }
         
         error_log('BitStream: Redirecting to: ' . $redirect_url);
@@ -666,7 +684,7 @@ class BitStream_PWA_Manager {
             // Redirect to appropriate admin page
             switch ($action) {
                 case 'new-bit':
-                    wp_redirect(admin_url('post-new.php?post_type=bit'));
+                    wp_redirect($this->get_poster_url(['poster_tab' => 'bit']));
                     break;
                 case 'new-rebit':
                     // Handle shared content from Android share sheet
@@ -725,18 +743,18 @@ class BitStream_PWA_Manager {
                             set_transient($transient_key, $shared_data, 10 * MINUTE_IN_SECONDS);
                             
                             // Redirect to login with the shared data key
-                            $login_url = wp_login_url(admin_url('post-new.php?post_type=bit&rebit=1&shared_key=' . $transient_key));
+                            $login_url = wp_login_url($this->get_poster_url(['poster_tab' => 'rebit', 'shared_key' => $transient_key]));
                             error_log('BitStream Share Debug: User not logged in, redirecting to login with shared data key: ' . $transient_key);
                         } else {
                             // No shared data, just redirect to login
-                            $login_url = wp_login_url(admin_url('post-new.php?post_type=bit&rebit=1'));
+                            $login_url = wp_login_url($this->get_poster_url(['poster_tab' => 'rebit']));
                             error_log('BitStream Share Debug: User not logged in, redirecting to login');
                         }
                         wp_redirect($login_url);
                         exit;
                     }
                     
-                    $redirect_url = admin_url('post-new.php?post_type=bit&rebit=1');
+                    $redirect_url = $this->get_poster_url(['poster_tab' => 'rebit']);
                     
                     // Add shared content to redirect URL if available
                     if ($final_url) {
@@ -837,7 +855,7 @@ class BitStream_PWA_Manager {
                 echo '      if (redirectUrl) {';
                 echo '        window.location.href = redirectUrl;';
                 echo '      } else {';
-                echo '        window.location.href = "/wp-admin/post-new.php?post_type=bit";';
+                echo '        window.location.href = "/bitstream/?poster_tab=bit";';
                 echo '      }';
                 echo '    }';
                 echo '  });';

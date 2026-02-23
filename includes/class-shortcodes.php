@@ -9,9 +9,47 @@
 if (!defined('ABSPATH')) exit;
 
 class BitStream_Shortcodes {
+
+    /**
+     * Resolve the frontend poster page URL
+     */
+    public static function get_poster_page_url($query_args = []) {
+        static $cached_url = null;
+
+        if ($cached_url === null) {
+            $cached_url = '';
+
+            $candidates = get_posts([
+                'post_type' => ['page', 'post'],
+                'post_status' => 'publish',
+                'posts_per_page' => -1,
+                'fields' => 'ids',
+                'no_found_rows' => true,
+            ]);
+
+            foreach ($candidates as $candidate_id) {
+                $content = get_post_field('post_content', $candidate_id);
+                if ($content && has_shortcode($content, 'bitstream_poster')) {
+                    $cached_url = get_permalink($candidate_id);
+                    break;
+                }
+            }
+
+            if (empty($cached_url)) {
+                $cached_url = home_url('/bitstream/');
+            }
+        }
+
+        if (!empty($query_args)) {
+            return add_query_arg($query_args, $cached_url);
+        }
+
+        return $cached_url;
+    }
     
     public function __construct() {
         add_action('init', [$this, 'register_shortcodes']);
+        add_action('wp_enqueue_scripts', [$this, 'enqueue_shortcode_assets']);
     }
     
     /**
@@ -19,6 +57,25 @@ class BitStream_Shortcodes {
      */
     public function register_shortcodes() {
         add_shortcode('bitstream', [$this, 'render_feed']);
+        add_shortcode('bitstream_poster', [$this, 'render_poster']);
+    }
+
+    /**
+     * Enqueue assets required by shortcodes
+     */
+    public function enqueue_shortcode_assets() {
+        if (is_admin()) {
+            return;
+        }
+
+        global $post;
+        if (!($post instanceof WP_Post)) {
+            return;
+        }
+
+        if (has_shortcode($post->post_content, 'bitstream_poster')) {
+            wp_enqueue_media();
+        }
     }
     
     /**
@@ -83,6 +140,236 @@ class BitStream_Shortcodes {
         }
         
         wp_reset_postdata();
+        return ob_get_clean();
+    }
+
+    /**
+     * Render tabbed frontend poster (Bit/Rebit)
+     */
+    public function render_poster($atts) {
+        if (!is_user_logged_in()) {
+            return '<p>Please log in to post.</p>';
+        }
+
+        if (!current_user_can('edit_posts')) {
+            return '<p>You do not have permission to create Bits.</p>';
+        }
+
+        $submit_nonce = wp_create_nonce('bitstream_poster_submit_nonce');
+        $requested_tab = isset($_GET['poster_tab']) ? sanitize_key(wp_unslash($_GET['poster_tab'])) : 'bit';
+        $initial_tab = in_array($requested_tab, ['bit', 'rebit', 'scheduled'], true) ? $requested_tab : 'bit';
+
+        $shared_url = isset($_GET['shared_url']) ? esc_url_raw(wp_unslash($_GET['shared_url'])) : '';
+        $shared_title = isset($_GET['shared_title']) ? sanitize_text_field(wp_unslash($_GET['shared_title'])) : '';
+        $shared_text = isset($_GET['shared_text']) ? sanitize_textarea_field(wp_unslash($_GET['shared_text'])) : '';
+
+        if (!empty($_GET['shared_key'])) {
+            $shared_key = sanitize_text_field(wp_unslash($_GET['shared_key']));
+            $shared_data = get_transient($shared_key);
+
+            if (is_array($shared_data)) {
+                delete_transient($shared_key);
+                $shared_url = !empty($shared_data['url']) ? esc_url_raw($shared_data['url']) : $shared_url;
+                $shared_title = !empty($shared_data['title']) ? sanitize_text_field($shared_data['title']) : $shared_title;
+                $shared_text = !empty($shared_data['text']) ? sanitize_textarea_field($shared_data['text']) : $shared_text;
+            }
+        }
+        $quote_post_id = isset($_GET['quote_post_id']) ? intval($_GET['quote_post_id']) : 0;
+
+        if (!empty($shared_url)) {
+            $initial_tab = 'rebit';
+        }
+
+        $media_id = 0;
+        if (!empty($_GET['media_ids'])) {
+            $media_ids_raw = sanitize_text_field(wp_unslash($_GET['media_ids']));
+            $media_ids = array_filter(array_map('intval', explode(',', $media_ids_raw)));
+            if (!empty($media_ids)) {
+                $media_id = intval(reset($media_ids));
+            }
+        }
+
+        $bit_content_prefill = '';
+        $rebit_commentary_prefill = '';
+
+        if (!empty($shared_url)) {
+            if (!empty($shared_text) && $shared_text !== $shared_url) {
+                $rebit_commentary_prefill = $shared_text;
+            }
+        } elseif (!empty($shared_text)) {
+            $bit_content_prefill = $shared_text;
+        }
+
+        $is_bit_active = ($initial_tab === 'bit');
+        $is_rebit_active = ($initial_tab === 'rebit');
+        $is_scheduled_active = ($initial_tab === 'scheduled');
+
+        $scheduled_query = new WP_Query([
+            'post_type' => 'bit',
+            'post_status' => 'future',
+            'posts_per_page' => 50,
+            'orderby' => 'date',
+            'order' => 'ASC',
+            'author' => get_current_user_id(),
+            'no_found_rows' => true,
+        ]);
+
+        $quote_preview = '';
+        if ($quote_post_id > 0) {
+            $quoted_post = get_post($quote_post_id);
+            if ($quoted_post && $quoted_post->post_type === 'bit' && $quoted_post->post_status === 'publish') {
+                $quote_preview = bitstream_render_card($quote_post_id, true);
+            } else {
+                $quote_post_id = 0;
+            }
+        }
+
+        ob_start();
+        ?>
+        <section class="bitstream-poster" data-submit-nonce="<?php echo esc_attr($submit_nonce); ?>">
+            <div class="bitstream-poster-tabs" role="tablist" aria-label="Create a Bit or Rebit">
+                <button type="button" class="bitstream-poster-tab <?php echo $is_bit_active ? 'is-active' : ''; ?>" data-tab="bit" role="tab" aria-selected="<?php echo $is_bit_active ? 'true' : 'false'; ?>" aria-controls="bitstream-poster-panel-bit" id="bitstream-poster-tab-bit">
+                    Post a Bit
+                </button>
+                <button type="button" class="bitstream-poster-tab <?php echo $is_rebit_active ? 'is-active' : ''; ?>" data-tab="rebit" role="tab" aria-selected="<?php echo $is_rebit_active ? 'true' : 'false'; ?>" aria-controls="bitstream-poster-panel-rebit" id="bitstream-poster-tab-rebit">
+                    Post a Rebit
+                </button>
+                <button type="button" class="bitstream-poster-tab <?php echo $is_scheduled_active ? 'is-active' : ''; ?>" data-tab="scheduled" role="tab" aria-selected="<?php echo $is_scheduled_active ? 'true' : 'false'; ?>" aria-controls="bitstream-poster-panel-scheduled" id="bitstream-poster-tab-scheduled">
+                    Scheduled
+                </button>
+            </div>
+
+            <div class="bitstream-poster-panel <?php echo $is_bit_active ? 'is-active' : ''; ?>" id="bitstream-poster-panel-bit" role="tabpanel" aria-labelledby="bitstream-poster-tab-bit" <?php echo $is_bit_active ? '' : 'hidden'; ?>>
+                <form class="bitstream-poster-form" data-poster-type="bit">
+                    <label for="bitstream-bit-content"><strong>Bit content</strong></label>
+                    <textarea id="bitstream-bit-content" name="bit_content" rows="5" placeholder="What’s happening?"><?php echo esc_textarea($bit_content_prefill); ?></textarea>
+
+                    <input type="hidden" name="quote_post_id" value="<?php echo esc_attr($quote_post_id); ?>">
+
+                    <div class="bitstream-media-field">
+                        <input type="hidden" id="bitstream-bit-attachment-id" name="bit_attachment_id" value="<?php echo esc_attr($media_id); ?>">
+                        <div class="bitstream-media-controls">
+                            <button type="button" class="bitstream-media-select" data-target-input="bitstream-bit-attachment-id" data-target-preview="bitstream-bit-media-preview">Choose media</button>
+                            <button type="button" class="bitstream-media-remove" data-target-input="bitstream-bit-attachment-id" data-target-preview="bitstream-bit-media-preview">Remove media</button>
+                        </div>
+                        <div class="bitstream-media-preview" id="bitstream-bit-media-preview"></div>
+                    </div>
+
+                    <?php if (!empty($quote_preview)): ?>
+                        <div class="bitstream-poster-quote-preview">
+                            <p><strong>You are quoting this bit:</strong></p>
+                            <?php echo $quote_preview; ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <details class="bitstream-post-options">
+                        <summary>Post options</summary>
+                        <label class="bitstream-schedule-toggle">
+                            <input type="checkbox" name="bit_schedule_enabled" value="1" data-schedule-toggle="bit">
+                            Schedule this Bit
+                        </label>
+                        <input type="datetime-local" name="bit_schedule_datetime" class="bitstream-schedule-datetime" data-schedule-input="bit" disabled>
+                    </details>
+
+                    <button type="submit" class="bitstream-poster-submit">Publish Bit</button>
+                </form>
+            </div>
+
+            <div class="bitstream-poster-panel <?php echo $is_rebit_active ? 'is-active' : ''; ?>" id="bitstream-poster-panel-rebit" role="tabpanel" aria-labelledby="bitstream-poster-tab-rebit" <?php echo $is_rebit_active ? '' : 'hidden'; ?>>
+                <form class="bitstream-poster-form" data-poster-type="rebit">
+                    <label for="bitstream-rebit-url"><strong>Link URL</strong></label>
+                    <div class="bitstream-rebit-url-row">
+                        <input type="url" id="bitstream-rebit-url" name="rebit_url" required placeholder="https://example.com/post" value="<?php echo esc_attr($shared_url); ?>">
+                        <button type="button" class="bitstream-fetch-og">Fetch metadata</button>
+                    </div>
+
+                    <label for="bitstream-rebit-commentary"><strong>Commentary</strong></label>
+                    <textarea id="bitstream-rebit-commentary" name="rebit_commentary" rows="4" placeholder="Add your thoughts"><?php echo esc_textarea($rebit_commentary_prefill); ?></textarea>
+
+                    <label for="bitstream-rebit-og-title"><strong>Preview title</strong></label>
+                    <input type="text" id="bitstream-rebit-og-title" name="rebit_og_title" placeholder="Auto-filled from metadata" value="<?php echo esc_attr($shared_title); ?>">
+
+                    <label for="bitstream-rebit-og-desc"><strong>Preview description</strong></label>
+                    <textarea id="bitstream-rebit-og-desc" name="rebit_og_desc" rows="3" placeholder="Auto-filled from metadata"></textarea>
+
+                    <div class="bitstream-media-field">
+                        <input type="hidden" id="bitstream-rebit-attachment-id" name="rebit_attachment_id" value="">
+                        <input type="url" id="bitstream-rebit-og-image" name="rebit_og_image" placeholder="Image URL fallback (optional)">
+                        <div class="bitstream-media-controls">
+                            <button type="button" class="bitstream-media-select" data-target-input="bitstream-rebit-attachment-id" data-target-preview="bitstream-rebit-media-preview">Choose image from Media Library</button>
+                            <button type="button" class="bitstream-media-remove" data-target-input="bitstream-rebit-attachment-id" data-target-preview="bitstream-rebit-media-preview">Remove selected image</button>
+                        </div>
+                        <div class="bitstream-media-preview" id="bitstream-rebit-media-preview"></div>
+                    </div>
+
+                    <div class="bitstream-rebit-preview-card" id="bitstream-rebit-og-preview" hidden>
+                        <img src="" alt="" class="bitstream-rebit-preview-image">
+                        <div class="bitstream-rebit-preview-content">
+                            <h4 class="bitstream-rebit-preview-title"></h4>
+                            <p class="bitstream-rebit-preview-description"></p>
+                        </div>
+                    </div>
+
+                    <details class="bitstream-post-options">
+                        <summary>Post options</summary>
+                        <label class="bitstream-schedule-toggle">
+                            <input type="checkbox" name="rebit_schedule_enabled" value="1" data-schedule-toggle="rebit">
+                            Schedule this Rebit
+                        </label>
+                        <input type="datetime-local" name="rebit_schedule_datetime" class="bitstream-schedule-datetime" data-schedule-input="rebit" disabled>
+                    </details>
+
+                    <button type="submit" class="bitstream-poster-submit">Publish Rebit</button>
+                </form>
+            </div>
+
+            <div class="bitstream-poster-panel <?php echo $is_scheduled_active ? 'is-active' : ''; ?>" id="bitstream-poster-panel-scheduled" role="tabpanel" aria-labelledby="bitstream-poster-tab-scheduled" <?php echo $is_scheduled_active ? '' : 'hidden'; ?>>
+                <div class="bitstream-scheduled-filter">
+                    <button type="button" class="bitstream-scheduled-filter-btn is-active" data-filter="all">All</button>
+                    <button type="button" class="bitstream-scheduled-filter-btn" data-filter="bit">Bits</button>
+                    <button type="button" class="bitstream-scheduled-filter-btn" data-filter="rebit">Rebits</button>
+                </div>
+                <div class="bitstream-scheduled-list">
+                    <?php if ($scheduled_query->have_posts()): ?>
+                        <?php while ($scheduled_query->have_posts()): $scheduled_query->the_post(); ?>
+                            <?php
+                            $scheduled_id = get_the_ID();
+                            $is_rebit = !empty(get_post_meta($scheduled_id, 'bitstream_rebit_url', true));
+                            $row_type = $is_rebit ? 'rebit' : 'bit';
+                            ?>
+                            <article class="bitstream-scheduled-item" data-type="<?php echo esc_attr($row_type); ?>">
+                                <div>
+                                    <strong><?php echo $is_rebit ? 'Rebit' : 'Bit'; ?></strong>
+                                    <p><?php echo esc_html(wp_trim_words(get_post_field('post_content', $scheduled_id), 16)); ?></p>
+                                    <small>Scheduled for <?php echo esc_html(get_the_date('Y-m-d H:i', $scheduled_id)); ?></small>
+                                </div>
+                                <div class="bitstream-scheduled-actions">
+                                    <a href="<?php echo esc_url(get_edit_post_link($scheduled_id, '')); ?>" target="_blank" rel="noopener">Edit</a>
+                                    <a href="<?php echo esc_url(get_preview_post_link($scheduled_id)); ?>" target="_blank" rel="noopener">Preview</a>
+                                </div>
+                            </article>
+                        <?php endwhile; ?>
+                        <?php wp_reset_postdata(); ?>
+                    <?php else: ?>
+                        <p>No scheduled Bits or Rebits yet.</p>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <div class="bitstream-poster-status" aria-live="polite"></div>
+
+            <div class="bitstream-poster-result" hidden>
+                <h3>Published preview</h3>
+                <div class="bitstream-poster-result-actions">
+                    <a class="bitstream-poster-action-edit" href="#" target="_blank" rel="noopener">Edit</a>
+                    <button type="button" class="bitstream-poster-action-copy">Copy permalink</button>
+                    <a class="bitstream-poster-action-view" href="#" target="_blank" rel="noopener">Open post</a>
+                </div>
+                <div class="bitstream-poster-result-card"></div>
+            </div>
+        </section>
+        <?php
+
         return ob_get_clean();
     }
 }

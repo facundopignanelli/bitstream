@@ -17,6 +17,231 @@ class BitStream_Ajax_Handlers {
         add_action('wp_ajax_nopriv_bitstream_load_more', [$this, 'handle_load_more']);
         add_action('wp_ajax_bitstream_fetch_og_data', [$this, 'handle_fetch_og_data']);
         add_action('wp_ajax_bitstream_get_quoted_bit', [$this, 'handle_get_quoted_bit']);
+        add_action('wp_ajax_bitstream_submit_poster', [$this, 'handle_submit_poster']);
+    }
+
+    /**
+     * Normalize attachment ID and ensure it's valid
+     */
+    private function get_valid_attachment_id($attachment_id) {
+        $attachment_id = intval($attachment_id);
+
+        if ($attachment_id <= 0) {
+            return 0;
+        }
+
+        $attachment_post = get_post($attachment_id);
+        if (!$attachment_post || $attachment_post->post_type !== 'attachment') {
+            return 0;
+        }
+
+        return $attachment_id;
+    }
+
+    /**
+     * Build media markup for Bit post content
+     */
+    private function build_media_markup($attachment_id) {
+        if ($attachment_id <= 0) {
+            return '';
+        }
+
+        if (wp_attachment_is('image', $attachment_id)) {
+            return wp_get_attachment_image($attachment_id, 'large');
+        }
+
+        if (wp_attachment_is('video', $attachment_id)) {
+            $video_url = wp_get_attachment_url($attachment_id);
+            if ($video_url) {
+                return wp_video_shortcode(['src' => $video_url]);
+            }
+        }
+
+        $file_url = wp_get_attachment_url($attachment_id);
+        if ($file_url) {
+            return '<p><a href="' . esc_url($file_url) . '" target="_blank" rel="noopener">Attached media</a></p>';
+        }
+
+        return '';
+    }
+
+    /**
+     * Build post status and date args from schedule form inputs
+     */
+    private function build_schedule_args($schedule_enabled_key, $schedule_datetime_key) {
+        $schedule_enabled = !empty($_POST[$schedule_enabled_key]) && $_POST[$schedule_enabled_key] === '1';
+
+        if (!$schedule_enabled) {
+            return [
+                'post_status' => 'publish',
+                'post_date' => current_time('mysql'),
+                'post_date_gmt' => current_time('mysql', true),
+                'is_scheduled' => false,
+            ];
+        }
+
+        $datetime_raw = sanitize_text_field(wp_unslash($_POST[$schedule_datetime_key] ?? ''));
+        if (empty($datetime_raw)) {
+            throw new Exception('Please choose a date and time to schedule this post.');
+        }
+
+        $timezone = wp_timezone();
+        $dt = DateTime::createFromFormat('Y-m-d\\TH:i', $datetime_raw, $timezone);
+        if (!$dt) {
+            throw new Exception('Invalid schedule date/time format.');
+        }
+
+        if ($dt->getTimestamp() <= current_time('timestamp')) {
+            throw new Exception('Scheduled time must be in the future.');
+        }
+
+        $dt_gmt = clone $dt;
+        $dt_gmt->setTimezone(new DateTimeZone('UTC'));
+
+        return [
+            'post_status' => 'future',
+            'post_date' => $dt->format('Y-m-d H:i:s'),
+            'post_date_gmt' => $dt_gmt->format('Y-m-d H:i:s'),
+            'is_scheduled' => true,
+        ];
+    }
+
+    /**
+     * Handle tabbed frontend poster submissions
+     */
+    public function handle_submit_poster() {
+        try {
+            check_ajax_referer('bitstream_poster_submit_nonce', 'nonce');
+
+            if (!is_user_logged_in() || !current_user_can('edit_posts')) {
+                wp_send_json_error('Insufficient permissions.');
+            }
+
+            $poster_type = sanitize_key($_POST['poster_type'] ?? '');
+            if (!in_array($poster_type, ['bit', 'rebit'], true)) {
+                wp_send_json_error('Invalid poster type.');
+            }
+
+            $author_id = get_current_user_id();
+
+            if ($poster_type === 'bit') {
+                $raw_content = wp_unslash($_POST['bit_content'] ?? '');
+                $content = wp_kses_post($raw_content);
+                $attachment_id = $this->get_valid_attachment_id($_POST['bit_attachment_id'] ?? 0);
+                $quote_post_id = intval($_POST['quote_post_id'] ?? 0);
+                $schedule = $this->build_schedule_args('bit_schedule_enabled', 'bit_schedule_datetime');
+
+                if (trim(wp_strip_all_tags($content)) === '' && $attachment_id <= 0) {
+                    wp_send_json_error('Bit content or media is required.');
+                }
+
+                $media_markup = $this->build_media_markup($attachment_id);
+                $post_content = $content;
+                if (!empty($media_markup)) {
+                    $post_content .= (empty($post_content) ? '' : "\n\n") . $media_markup;
+                }
+
+                $post_id = wp_insert_post([
+                    'post_type' => 'bit',
+                    'post_status' => $schedule['post_status'],
+                    'post_author' => $author_id,
+                    'post_content' => $post_content,
+                    'comment_status' => 'open',
+                    'post_date' => $schedule['post_date'],
+                    'post_date_gmt' => $schedule['post_date_gmt'],
+                ], true);
+
+                if (is_wp_error($post_id)) {
+                    wp_send_json_error('Failed to create Bit.');
+                }
+
+                if ($quote_post_id > 0) {
+                    $quoted_post = get_post($quote_post_id);
+                    if ($quoted_post && $quoted_post->post_type === 'bit' && $quoted_post->post_status === 'publish') {
+                        update_post_meta($post_id, '_bitstream_quoted_bit', $quote_post_id);
+                    }
+                }
+
+                wp_send_json_success([
+                    'message' => $schedule['is_scheduled'] ? 'Bit scheduled successfully.' : 'Bit published successfully.',
+                    'post_id' => $post_id,
+                    'permalink' => get_permalink($post_id),
+                    'view_url' => $schedule['is_scheduled'] ? get_preview_post_link($post_id) : get_permalink($post_id),
+                    'edit_url' => get_edit_post_link($post_id, ''),
+                    'rendered_html' => bitstream_render_card($post_id),
+                    'is_scheduled' => $schedule['is_scheduled'],
+                ]);
+            }
+
+            $url = esc_url_raw(wp_unslash($_POST['rebit_url'] ?? ''));
+            if (empty($url) || !filter_var($url, FILTER_VALIDATE_URL)) {
+                wp_send_json_error('A valid URL is required for Rebit.');
+            }
+
+            $commentary = wp_kses_post(wp_unslash($_POST['rebit_commentary'] ?? ''));
+            $manual_title = sanitize_text_field(wp_unslash($_POST['rebit_og_title'] ?? ''));
+            $manual_desc = sanitize_textarea_field(wp_unslash($_POST['rebit_og_desc'] ?? ''));
+            $manual_image = esc_url_raw(wp_unslash($_POST['rebit_og_image'] ?? ''));
+            $attachment_id = $this->get_valid_attachment_id($_POST['rebit_attachment_id'] ?? 0);
+            $schedule = $this->build_schedule_args('rebit_schedule_enabled', 'rebit_schedule_datetime');
+
+            $og_data = [];
+            if (class_exists('BitStream_OG_Fetcher')) {
+                $fetcher = new BitStream_OG_Fetcher();
+                $fetched = $fetcher->fetch_og_data($url);
+                if (is_array($fetched)) {
+                    $og_data = $fetched;
+                }
+            }
+
+            $og_title = !empty($manual_title) ? $manual_title : ($og_data['title'] ?? '');
+            $og_desc = !empty($manual_desc) ? $manual_desc : ($og_data['description'] ?? '');
+            $og_image = !empty($manual_image) ? $manual_image : ($og_data['image'] ?? '');
+
+            if ($attachment_id > 0) {
+                $attachment_image = wp_get_attachment_image_url($attachment_id, 'large');
+                if ($attachment_image) {
+                    $og_image = $attachment_image;
+                }
+            }
+
+            $post_id = wp_insert_post([
+                'post_type' => 'bit',
+                'post_status' => $schedule['post_status'],
+                'post_author' => $author_id,
+                'post_content' => $commentary,
+                'comment_status' => 'open',
+                'post_date' => $schedule['post_date'],
+                'post_date_gmt' => $schedule['post_date_gmt'],
+            ], true);
+
+            if (is_wp_error($post_id)) {
+                wp_send_json_error('Failed to create Rebit.');
+            }
+
+            update_post_meta($post_id, 'bitstream_rebit_url', esc_url_raw($url));
+            update_post_meta($post_id, '_bitstream_og_title', sanitize_text_field($og_title));
+            update_post_meta($post_id, '_bitstream_og_desc', sanitize_text_field($og_desc));
+            update_post_meta($post_id, '_bitstream_og_image', esc_url_raw($og_image));
+            update_post_meta($post_id, '_bitstream_og_fetched', time());
+
+            wp_send_json_success([
+                'message' => $schedule['is_scheduled'] ? 'Rebit scheduled successfully.' : 'Rebit published successfully.',
+                'post_id' => $post_id,
+                'permalink' => get_permalink($post_id),
+                'view_url' => $schedule['is_scheduled'] ? get_preview_post_link($post_id) : get_permalink($post_id),
+                'edit_url' => get_edit_post_link($post_id, ''),
+                'rendered_html' => bitstream_render_card($post_id),
+                'is_scheduled' => $schedule['is_scheduled'],
+                'og' => [
+                    'title' => $og_title,
+                    'description' => $og_desc,
+                    'image' => $og_image,
+                ]
+            ]);
+        } catch (Exception $e) {
+            wp_send_json_error($e->getMessage() ?: 'An error occurred while creating the post.');
+        }
     }
     
     /**

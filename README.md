@@ -1,6 +1,6 @@
 # <img src="assets/images/logo_192.png" alt="BitStream Logo" height="40" align="center"> BitStream
 
-**Version 2.0.1** - A Modern Microblogging Platform for WordPress
+**Version 3.0.0** - A Modern Microblogging Platform for WordPress
 
 ![License](https://img.shields.io/badge/license-GPL--2.0%2B-blue.svg)
 ![WordPress](https://img.shields.io/badge/WordPress-5.8%2B-blue.svg)
@@ -191,6 +191,24 @@ Shows 20 posts per page with load more button.
 [bitstream limit="5" show_load_more="false"]
 ```
 Shows exactly 5 posts, no pagination controls.
+
+### `[bitstream_poster]` - Tabbed Bit/Rebit Poster
+
+Renders a custom frontend posting interface with two tabs:
+
+- **Post a Bit**: text + optional media from WordPress Media Library
+- **Post a Rebit**: URL + commentary + OpenGraph metadata fetch + manual overrides
+
+The poster uses native WordPress media modal (`wp.media`), so uploads and media processing stay in WordPress core. ReBit metadata fetch uses the existing BitStream OG fetch pipeline.
+
+**Usage**
+```
+[bitstream_poster]
+```
+
+**Requirements**
+- User must be logged in
+- User must have permission to edit posts
 
 #### Responsive Behavior
 

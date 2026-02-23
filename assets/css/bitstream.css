@@ -419,6 +419,294 @@ iframe, embed, object, video {
     height: auto !important;
 }
 
+/* Frontend tabbed poster */
+.bitstream-poster {
+    max-width: 760px;
+    margin: 1.5rem auto;
+    padding: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    background: #fff;
+}
+
+.bitstream-poster-tabs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.bitstream-poster-tab {
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    background: #fff;
+    color: #222;
+    padding: 0.7rem 0.9rem;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.bitstream-poster-tab.is-active {
+    border-color: var(--wp--preset--color--accent-1, #2c6e49);
+    background: var(--wp--preset--color--accent-1, #2c6e49);
+    color: #fff;
+}
+
+.bitstream-poster-panel {
+    display: none;
+}
+
+.bitstream-poster-panel.is-active {
+    display: block;
+}
+
+.bitstream-poster-form {
+    display: grid;
+    gap: 0.65rem;
+}
+
+.bitstream-poster-form input[type="text"],
+.bitstream-poster-form input[type="url"],
+.bitstream-poster-form textarea {
+    width: 100%;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    padding: 0.65rem 0.8rem;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+.bitstream-rebit-url-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.65rem;
+}
+
+.bitstream-fetch-og,
+.bitstream-media-select,
+.bitstream-media-remove,
+.bitstream-poster-submit {
+    border: none;
+    border-radius: 10px;
+    padding: 0.6rem 0.9rem;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 600;
+}
+
+.bitstream-fetch-og,
+.bitstream-media-select,
+.bitstream-poster-submit {
+    background: var(--wp--preset--color--accent-1, #2c6e49);
+    color: #fff;
+}
+
+.bitstream-media-remove {
+    background: #eee;
+    color: #333;
+}
+
+.bitstream-media-controls {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.bitstream-media-preview img {
+    max-width: 220px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+}
+
+.bitstream-rebit-preview-card {
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #fafafa;
+}
+
+.bitstream-rebit-preview-image {
+    width: 100%;
+    display: block;
+}
+
+.bitstream-rebit-preview-content {
+    padding: 0.75rem;
+}
+
+.bitstream-rebit-preview-title {
+    margin: 0 0 0.35rem;
+}
+
+.bitstream-rebit-preview-description {
+    margin: 0;
+    color: #555;
+}
+
+.bitstream-poster-status {
+    margin-top: 0.85rem;
+    font-size: 0.95rem;
+}
+
+.bitstream-poster-status.is-error {
+    color: #b42318;
+}
+
+.bitstream-poster-status.is-success {
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+}
+
+.bitstream-poster-quote-preview {
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 0.75rem;
+    background: #fafafa;
+}
+
+.bitstream-poster-quote-preview .bit-card {
+    position: static !important;
+    width: 100% !important;
+    left: auto !important;
+    top: auto !important;
+    margin: 0 !important;
+}
+
+.bitstream-poster-result {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #ddd;
+}
+
+.bitstream-poster-result-actions {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+}
+
+.bitstream-poster-result-actions a,
+.bitstream-poster-result-actions button {
+    border: none;
+    border-radius: 10px;
+    padding: 0.55rem 0.8rem;
+    background: var(--wp--preset--color--accent-1, #2c6e49);
+    color: #fff;
+    text-decoration: none;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 600;
+}
+
+.bitstream-poster-result-card .bit-card {
+    position: static !important;
+    width: 100% !important;
+    left: auto !important;
+    top: auto !important;
+    margin: 0 !important;
+}
+
+.bitstream-post-options {
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 0.65rem 0.8rem;
+    background: #fafafa;
+}
+
+.bitstream-post-options summary {
+    cursor: pointer;
+    font-weight: 600;
+    margin-bottom: 0.45rem;
+}
+
+.bitstream-schedule-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.5rem;
+}
+
+.bitstream-schedule-datetime {
+    width: 100%;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    padding: 0.55rem 0.7rem;
+    box-sizing: border-box;
+}
+
+.bitstream-scheduled-filter {
+    display: flex;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.8rem;
+}
+
+.bitstream-scheduled-filter-btn {
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    background: #fff;
+    color: #333;
+    padding: 0.45rem 0.7rem;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.bitstream-scheduled-filter-btn.is-active {
+    background: var(--wp--preset--color--accent-1, #2c6e49);
+    border-color: var(--wp--preset--color--accent-1, #2c6e49);
+    color: #fff;
+}
+
+.bitstream-scheduled-list {
+    display: grid;
+    gap: 0.6rem;
+}
+
+.bitstream-scheduled-item {
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    background: #fff;
+    padding: 0.7rem;
+    display: flex;
+    justify-content: space-between;
+    gap: 0.8rem;
+    align-items: flex-start;
+}
+
+.bitstream-scheduled-item p,
+.bitstream-scheduled-item small {
+    margin: 0.25rem 0 0;
+}
+
+.bitstream-scheduled-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.bitstream-scheduled-actions a {
+    text-decoration: none;
+    background: var(--wp--preset--color--accent-1, #2c6e49);
+    color: #fff;
+    border-radius: 8px;
+    padding: 0.35rem 0.55rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+@media (max-width: 640px) {
+    .bitstream-rebit-url-row {
+        grid-template-columns: 1fr;
+    }
+
+    .bitstream-scheduled-item {
+        flex-direction: column;
+    }
+
+    .bitstream-scheduled-actions {
+        flex-direction: row;
+    }
+}
+
 /* Specific YouTube embed fixes */
 iframe[src*="youtube.com"], 
 iframe[src*="youtu.be"] {

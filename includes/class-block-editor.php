@@ -102,7 +102,8 @@ class BitStream_Block_Editor {
             'like_nonce' => wp_create_nonce('bitstream_like_nonce'),
             'load_more_nonce' => wp_create_nonce('bitstream_load_more_nonce'),
             'og_fetch_nonce' => wp_create_nonce('bitstream_og_fetch_nonce'),
-            'post_id' => $current_post_id
+            'post_id' => $current_post_id,
+            'poster_url' => class_exists('BitStream_Shortcodes') ? BitStream_Shortcodes::get_poster_page_url() : home_url('/bitstream/')
         ]);
         
         // Ensure $ is available globally
@@ -273,7 +274,7 @@ class BitStream_Block_Editor {
             $timestamp = time();
             echo '<!-- MEDIA INSERTION SCRIPT v2.0 - Generated at: ' . $timestamp . ' --><script type="text/javascript">
             console.log("=== BitStream: MEDIA INSERTION SCRIPT START v2.0 - TIMESTAMP: ' . $timestamp . ' ===");
-            console.log("BitStream: Media insertion script loaded - VERSION 2.0");
+            console.log("BitStream: Media insertion script loaded - VERSION 3.0.0");
             console.log("BitStream: Current URL:", window.location.href);
             (function() {
                 const mediaIds = ' . json_encode($ids_array) . ';
@@ -501,7 +502,9 @@ class BitStream_Block_Editor {
                 delete_transient($shared_key);
                 
                 // Redirect with the restored shared data
-                $redirect_url = admin_url('post-new.php?post_type=bit&rebit=1');
+                $redirect_url = class_exists('BitStream_Shortcodes')
+                    ? BitStream_Shortcodes::get_poster_page_url(['poster_tab' => 'rebit'])
+                    : home_url('/bitstream/?poster_tab=rebit');
                 
                 if (!empty($shared_data['url'])) {
                     $redirect_url = add_query_arg('shared_url', urlencode($shared_data['url']), $redirect_url);

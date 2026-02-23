@@ -5,6 +5,40 @@ All notable changes to the BitStream WordPress plugin will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-02-23
+
+### Added
+- New frontend tabbed poster shortcode: `[bitstream_poster]`
+- Dedicated posting tabs for:
+  - Post a Bit
+  - Post a Rebit
+  - Scheduled (review upcoming posts)
+- Native WordPress Media Library support in poster forms (`wp.media`) for Bit/Rebit attachments
+- Rebit metadata fetch action in poster UI with OG preview population and manual overrides
+- In-window publish result panel showing the exact frontend-rendered card preview
+- Post-publish quick actions in poster result panel:
+  - Copy permalink
+  - Edit post
+  - Open/Preview post
+- Scheduling controls in Post options for both Bit and Rebit
+- Scheduled posts tab filter controls (All / Bits / Rebits)
+
+### Changed
+- Unified posting workflow around the custom poster interface instead of Gutenberg new-post flow
+- Admin new post creation (`post-new.php?post_type=bit`) now redirects to the poster page
+- Admin “Add New ReBit” route now redirects to the poster page Rebit tab
+- Admin quote action now routes to the poster page with quote prefill context
+- Floating quick action menu now links to poster tabs (Bit/Rebit) instead of editor creation screens
+- PWA shortcut/share routing now resolves the page containing `[bitstream_poster]` and forwards payload
+- Poster now supports shared payload prefill (`shared_url`, `shared_title`, `shared_text`, `media_ids`, `shared_key`)
+- Poster submit handler now supports `publish` and `future` statuses based on schedule options
+- Schedule validation added (requires valid future datetime when scheduling is enabled)
+- Schedule-aware preview links returned for future posts
+
+### Fixed
+- Preserved existing Rebit OG fetcher behavior while moving to the custom poster workflow
+- Ensured shared-content/login restoration paths continue to work with poster-based posting
+
 ## [2.0.1] - 2025-10-22
 
 ### Added

@@ -19,6 +19,62 @@ class BitStream_Admin_Interface {
         add_filter('post_row_actions', [$this, 'add_quote_action'], 10, 2);
         add_action('edit_form_after_title', [$this, 'show_quoted_preview']);
         add_action('save_post_bit', [$this, 'save_quoted_meta']);
+        add_action('admin_init', [$this, 'redirect_new_bit_creation']);
+    }
+
+    /**
+     * Resolve poster page URL
+     */
+    private function get_poster_url($query_args = []) {
+        if (class_exists('BitStream_Shortcodes')) {
+            return BitStream_Shortcodes::get_poster_page_url($query_args);
+        }
+
+        $fallback = home_url('/bitstream/');
+        if (!empty($query_args)) {
+            return add_query_arg($query_args, $fallback);
+        }
+
+        return $fallback;
+    }
+
+    /**
+     * Force new bit creation to use frontend poster
+     */
+    public function redirect_new_bit_creation() {
+        global $pagenow;
+
+        if (!is_admin() || $pagenow !== 'post-new.php') {
+            return;
+        }
+
+        if (!isset($_GET['post_type']) || $_GET['post_type'] !== 'bit') {
+            return;
+        }
+
+        if (!current_user_can('edit_posts')) {
+            return;
+        }
+
+        $poster_tab = (isset($_GET['rebit']) && $_GET['rebit'] === '1') ? 'rebit' : 'bit';
+        $query_args = ['poster_tab' => $poster_tab];
+
+        $forward_keys = ['shared_url', 'shared_title', 'shared_text', 'media_ids', 'quote_post_id', 'shared_key'];
+        foreach ($forward_keys as $key) {
+            if (isset($_GET[$key]) && $_GET[$key] !== '') {
+                $value = wp_unslash($_GET[$key]);
+                if ($key === 'shared_url') {
+                    $query_args[$key] = esc_url_raw($value);
+                } elseif ($key === 'quote_post_id') {
+                    $query_args[$key] = intval($value);
+                } else {
+                    $query_args[$key] = sanitize_text_field($value);
+                }
+            }
+        }
+
+        wp_redirect($this->get_poster_url($query_args));
+        exit;
     }
     
     /**
@@ -114,7 +170,7 @@ class BitStream_Admin_Interface {
      * Handle ReBit redirect
      */
     public function handle_post_rebit_redirect() {
-        wp_redirect(admin_url('post-new.php?post_type=bit&rebit=1'));
+        wp_redirect($this->get_poster_url(['poster_tab' => 'rebit']));
         exit;
     }
     
@@ -400,7 +456,7 @@ class BitStream_Admin_Interface {
      */
     public function add_quote_action($actions, $post) {
         if ($post->post_type === 'bit') {
-            $url = admin_url('post-new.php?post_type=bit&quoted_bit=' . $post->ID);
+            $url = $this->get_poster_url(['poster_tab' => 'bit', 'quote_post_id' => $post->ID]);
             $actions['quote'] = '<a href="' . esc_url($url) . '">Quote</a>';
         }
         return $actions;
