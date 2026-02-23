@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Scheduling controls in Post options for both Bit and Rebit
 - Scheduled posts tab filter controls (All / Bits / Rebits)
 - Drag-and-drop media upload areas for Bit and Rebit poster forms
+- Audio file support in Bit posts
+- Custom image cropper with free-form selection and live size readout
 
 ### Changed
 - Unified posting workflow around the custom poster interface instead of Gutenberg new-post flow

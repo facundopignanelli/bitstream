@@ -59,6 +59,13 @@ class BitStream_Ajax_Handlers {
             }
         }
 
+        if (wp_attachment_is('audio', $attachment_id)) {
+            $audio_url = wp_get_attachment_url($attachment_id);
+            if ($audio_url) {
+                return wp_audio_shortcode(['src' => $audio_url]);
+            }
+        }
+
         $file_url = wp_get_attachment_url($attachment_id);
         if ($file_url) {
             return '<p><a href="' . esc_url($file_url) . '" target="_blank" rel="noopener">Attached media</a></p>';

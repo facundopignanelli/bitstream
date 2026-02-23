@@ -248,10 +248,10 @@ class BitStream_Shortcodes {
 
                     <div class="bitstream-media-field">
                         <input type="hidden" id="bitstream-bit-attachment-id" name="bit_attachment_id" value="<?php echo esc_attr($media_id); ?>">
-                        <div class="bitstream-media-dropzone" data-target-input="bitstream-bit-attachment-id" data-target-preview="bitstream-bit-media-preview" data-accept="image/*,video/*">
+                        <div class="bitstream-media-dropzone" data-target-input="bitstream-bit-attachment-id" data-target-preview="bitstream-bit-media-preview" data-accept="image/*,video/*,audio/*">
                             <span>Drag and drop media here, or click to upload</span>
                             <div class="bitstream-media-preview" id="bitstream-bit-media-preview"></div>
-                            <input type="file" class="bitstream-media-file" accept="image/*,video/*">
+                            <input type="file" class="bitstream-media-file" accept="image/*,video/*,audio/*">
                         </div>
                         <div class="bitstream-media-controls">
                             <button type="button" class="bitstream-media-remove is-hidden" data-target-input="bitstream-bit-attachment-id" data-target-preview="bitstream-bit-media-preview">Remove media</button>

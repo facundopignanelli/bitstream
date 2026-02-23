@@ -203,7 +203,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
 
-                const hasValue = input && input.value && input.value.trim() !== '';
+                const hasValue = input && parseInt(input.value || '0', 10) > 0;
                 removeButton.classList.toggle('is-hidden', !hasValue);
             }
 
