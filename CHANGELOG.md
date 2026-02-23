@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Drag-and-drop media upload areas for Bit and Rebit poster forms
 - Audio file support in Bit posts (MP3, M4A, OGG, WAV, FLAC)
 - Custom image cropper with free-form selection and live size readout
+- In-feed Delete Bit action (trash icon) for logged-in users with `delete_post` capability
 
 ### Changed
 - Unified posting workflow around the custom poster interface instead of Gutenberg new-post flow
@@ -38,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Poster submit handler now supports `publish` and `future` statuses based on schedule options
 - Schedule validation added (requires valid future datetime when scheduling is enabled)
 - Schedule-aware preview links returned for future posts
+- Unified UI corner radius to 15px across cards, controls, and avatars
 
 ### Fixed
 - Preserved existing Rebit OG fetcher behavior while moving to the custom poster workflow
