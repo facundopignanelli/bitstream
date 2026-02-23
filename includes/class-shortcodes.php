@@ -253,6 +253,12 @@ class BitStream_Shortcodes {
                             <div class="bitstream-media-preview" id="bitstream-bit-media-preview"></div>
                             <input type="file" class="bitstream-media-file" accept="image/*,video/*,audio/*">
                         </div>
+                        <div class="bitstream-media-progress is-hidden" data-progress-bar="bitstream-bit-attachment-id">
+                            <div class="bitstream-media-progress-track">
+                                <div class="bitstream-media-progress-bar"></div>
+                            </div>
+                            <span class="bitstream-media-progress-text">Uploading...</span>
+                        </div>
                         <div class="bitstream-media-controls">
                             <button type="button" class="bitstream-media-remove is-hidden" data-target-input="bitstream-bit-attachment-id" data-target-preview="bitstream-bit-media-preview">Remove media</button>
                             <a class="bitstream-media-crop is-hidden" data-target-input="bitstream-bit-attachment-id" href="#" target="_blank" rel="noopener">Crop image</a>
@@ -309,6 +315,12 @@ class BitStream_Shortcodes {
                             <span>Drag and drop image here, or click to upload</span>
                             <div class="bitstream-media-preview" id="bitstream-rebit-media-preview"></div>
                             <input type="file" class="bitstream-media-file" accept="image/*">
+                        </div>
+                        <div class="bitstream-media-progress is-hidden" data-progress-bar="bitstream-rebit-attachment-id">
+                            <div class="bitstream-media-progress-track">
+                                <div class="bitstream-media-progress-bar"></div>
+                            </div>
+                            <span class="bitstream-media-progress-text">Uploading...</span>
                         </div>
                         <div class="bitstream-media-controls">
                             <button type="button" class="bitstream-media-remove is-hidden" data-target-input="bitstream-rebit-attachment-id" data-target-preview="bitstream-rebit-media-preview">Remove selected image</button>

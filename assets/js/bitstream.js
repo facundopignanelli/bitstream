@@ -184,6 +184,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
+            if (mimeType.startsWith('video/')) {
+                const video = document.createElement('video');
+                video.src = previewUrl;
+                video.controls = true;
+                previewEl.innerHTML = '';
+                previewEl.appendChild(video);
+                return;
+            }
+
+            if (mimeType.startsWith('audio/')) {
+                const audio = document.createElement('audio');
+                audio.src = previewUrl;
+                audio.controls = true;
+                previewEl.innerHTML = '';
+                previewEl.appendChild(audio);
+                return;
+            }
+
             previewEl.innerHTML = '<p>Selected: ' + (attachment.filename || attachment.title || 'media') + '</p>';
         }
 
@@ -462,39 +480,103 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
 
+                const progressContainer = document.querySelector(`[data-progress-bar="${targetInputId}"]`);
+                const progressBar = progressContainer ? progressContainer.querySelector('.bitstream-media-progress-bar') : null;
+                const progressText = progressContainer ? progressContainer.querySelector('.bitstream-media-progress-text') : null;
+
+                const showProgress = () => {
+                    if (!progressContainer) {
+                        return;
+                    }
+                    progressContainer.classList.remove('is-hidden');
+                    if (progressBar) progressBar.style.width = '0%';
+                    if (progressText) progressText.textContent = 'Uploading...';
+                };
+
+                const updateProgress = (percent, text) => {
+                    if (progressBar) {
+                        progressBar.style.width = percent + '%';
+                    }
+                    if (progressText && text) {
+                        progressText.textContent = text;
+                    }
+                };
+
+                const hideProgress = () => {
+                    if (progressContainer) {
+                        progressContainer.classList.add('is-hidden');
+                    }
+                };
+
+                showProgress();
+
                 const formData = new FormData();
                 formData.append('action', 'bitstream_upload_media');
                 formData.append('nonce', bitstream_ajax.media_upload_nonce);
                 formData.append('media', file);
 
-                setStatus('Uploading media...');
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', bitstream_ajax.ajax_url, true);
+                xhr.withCredentials = true;
 
-                fetch(bitstream_ajax.ajax_url, {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    body: formData
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (!data.success) {
-                            throw new Error(data.data || 'Upload failed.');
+                xhr.upload.addEventListener('progress', (event) => {
+                    if (event.lengthComputable) {
+                        const percent = Math.max(1, Math.round((event.loaded / event.total) * 100));
+                        updateProgress(percent, 'Uploading... ' + percent + '%');
+                    } else {
+                        updateProgress(50, 'Uploading...');
+                    }
+                });
+
+                xhr.onreadystatechange = () => {
+                    if (xhr.readyState !== 4) {
+                        return;
+                    }
+
+                    if (xhr.status < 200 || xhr.status >= 300) {
+                        hideProgress();
+                        setStatus('Upload failed.', true);
+                        return;
+                    }
+
+                    let response;
+                    try {
+                        response = JSON.parse(xhr.responseText || '{}');
+                    } catch (error) {
+                        hideProgress();
+                        setStatus('Upload failed.', true);
+                        return;
+                    }
+
+                    if (!response.success) {
+                        hideProgress();
+                        setStatus(response.data || 'Upload failed.', true);
+                        return;
+                    }
+
+                    updateProgress(100, 'Upload complete!');
+
+                    const media = response.data || {};
+                    handleMediaSelection(targetInputId, targetPreviewId, {
+                        id: media.id,
+                        url: media.url,
+                        mime: media.mime,
+                        sizes: {
+                            medium: { url: media.url }
                         }
-
-                        const media = data.data || {};
-                        handleMediaSelection(targetInputId, targetPreviewId, {
-                            id: media.id,
-                            url: media.url,
-                            mime: media.mime,
-                            sizes: {
-                                medium: { url: media.url }
-                            }
-                        });
-
-                        setStatus('Media uploaded.');
-                    })
-                    .catch(error => {
-                        setStatus(error.message || 'Upload failed.', true);
                     });
+
+                    setTimeout(() => {
+                        hideProgress();
+                    }, 1000);
+                };
+
+                xhr.onerror = () => {
+                    hideProgress();
+                    setStatus('Upload failed.', true);
+                };
+
+                xhr.send(formData);
             }
 
             removeButtons.forEach(button => {

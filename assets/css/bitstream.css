@@ -584,6 +584,41 @@ iframe, embed, object, video {
     object-fit: contain;
 }
 
+.bitstream-media-preview video,
+.bitstream-media-preview audio {
+    max-width: 100%;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+}
+
+.bitstream-media-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    width: 100%;
+    margin-bottom: 0.6rem;
+}
+
+.bitstream-media-progress-track {
+    width: 100%;
+    height: 8px;
+    background: #e3e6e5;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.bitstream-media-progress-bar {
+    height: 100%;
+    width: 0%;
+    background: var(--wp--preset--color--accent-1, #2c6e49);
+    transition: width 0.2s ease;
+}
+
+.bitstream-media-progress-text {
+    font-size: 0.85rem;
+    color: #5b5b5b;
+}
+
 .bitstream-cropper-modal {
     position: fixed;
     inset: 0;
@@ -861,10 +896,16 @@ body.bitstream-cropper-open {
 }
 
 .bitstream-schedule-options {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.5rem;
     margin-bottom: 0.75rem;
+}
+
+@media (max-width: 600px) {
+    .bitstream-schedule-options {
+        grid-template-columns: 1fr;
+    }
 }
 
 .bitstream-schedule-radio {
