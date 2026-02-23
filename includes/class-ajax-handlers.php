@@ -72,12 +72,8 @@ class BitStream_Ajax_Handlers {
                 $artwork = $audio_meta['artwork'] ?? '';
 
                 $meta_markup = '';
-                if ($title || $artist || $album || $artwork) {
+                if ($title || $artist || $album) {
                     $meta_markup .= '<div class="bitstream-audio-meta">';
-                    if ($artwork) {
-                        $meta_markup .= '<img class="bitstream-audio-artwork" src="' . esc_attr($artwork) . '" alt="">';
-                    }
-                    $meta_markup .= '<div class="bitstream-audio-details">';
                     if ($title) {
                         $meta_markup .= '<div class="bitstream-audio-title">' . esc_html($title) . '</div>';
                     }
@@ -87,14 +83,19 @@ class BitStream_Ajax_Handlers {
                     if ($album) {
                         $meta_markup .= '<div class="bitstream-audio-album">' . esc_html($album) . '</div>';
                     }
-                    $meta_markup .= '</div></div>';
+                    $meta_markup .= '</div>';
                 }
 
-                if ($meta_markup) {
-                    return '<div class="bitstream-audio-wrap">' . $audio_markup . $meta_markup . '</div>';
-                }
+                $artwork_markup = $artwork
+                    ? '<img class="bitstream-audio-artwork" src="' . esc_attr($artwork) . '" alt="">'
+                    : '';
 
-                return $audio_markup;
+                return '<div class="bitstream-audio-embed">'
+                    . $artwork_markup
+                    . '<div class="bitstream-audio-content">'
+                    . '<div class="bitstream-audio-player">' . $audio_markup . '</div>'
+                    . $meta_markup
+                    . '</div></div>';
             }
         }
 

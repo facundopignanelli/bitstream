@@ -40,6 +40,30 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 3000);
     }
     
+    function applyMediaDeterrents(scope) {
+        const root = scope || document;
+        root.querySelectorAll('video, audio').forEach(mediaEl => {
+            mediaEl.setAttribute('controlsList', 'nodownload noplaybackrate');
+            mediaEl.setAttribute('disablepictureinpicture', '');
+            mediaEl.disablePictureInPicture = true;
+        });
+        root.querySelectorAll('img').forEach(img => {
+            img.addEventListener('dragstart', (event) => event.preventDefault());
+        });
+    }
+
+    document.addEventListener('contextmenu', (event) => {
+        const container = event.target.closest('.bitstream-feed, .bitstream-poster, .bitstream-poster-result');
+        if (!container) {
+            return;
+        }
+
+        const mediaTarget = event.target.closest('img, video, audio, .mejs-container');
+        if (mediaTarget) {
+            event.preventDefault();
+        }
+    });
+
     // Continue with the rest of the initialization...
     function initBitstreamPoster() {
         const posterRoot = document.querySelector('.bitstream-poster');
@@ -76,6 +100,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             resultCard.innerHTML = renderedHtml;
             resultRoot.hidden = false;
+            applyMediaDeterrents(resultCard);
 
             if (resultEdit) {
                 resultEdit.href = data.edit_url || '#';
@@ -197,48 +222,35 @@ document.addEventListener('DOMContentLoaded', function() {
                 const title = meta.title || item.title || item.filename || 'Audio';
                 const artist = meta.artist || '';
                 const album = meta.album || '';
-                const artwork = meta.artwork || '';
 
-                if (!title && !artist && !album && !artwork) {
+                if (!title && !artist && !album) {
                     return null;
                 }
 
                 const wrapper = document.createElement('div');
                 wrapper.className = 'bitstream-audio-meta';
 
-                if (artwork) {
-                    const img = document.createElement('img');
-                    img.className = 'bitstream-audio-artwork';
-                    img.src = artwork;
-                    img.alt = '';
-                    wrapper.appendChild(img);
-                }
-
-                const details = document.createElement('div');
-                details.className = 'bitstream-audio-details';
-
                 if (title) {
                     const titleEl = document.createElement('div');
                     titleEl.className = 'bitstream-audio-title';
                     titleEl.textContent = title;
-                    details.appendChild(titleEl);
+                    wrapper.appendChild(titleEl);
                 }
 
                 if (artist) {
                     const artistEl = document.createElement('div');
                     artistEl.className = 'bitstream-audio-artist';
                     artistEl.textContent = artist;
-                    details.appendChild(artistEl);
+                    wrapper.appendChild(artistEl);
                 }
 
                 if (album) {
                     const albumEl = document.createElement('div');
                     albumEl.className = 'bitstream-audio-album';
                     albumEl.textContent = album;
-                    details.appendChild(albumEl);
+                    wrapper.appendChild(albumEl);
                 }
 
-                wrapper.appendChild(details);
                 return wrapper;
             };
 
@@ -251,6 +263,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 const video = document.createElement('video');
                 video.src = previewUrl;
                 video.controls = true;
+                video.setAttribute('controlsList', 'nodownload noplaybackrate');
+                video.setAttribute('disablepictureinpicture', '');
+                video.disablePictureInPicture = true;
                 previewEl.innerHTML = '';
                 previewEl.appendChild(video);
                 return;
@@ -260,12 +275,39 @@ document.addEventListener('DOMContentLoaded', function() {
                 const audio = document.createElement('audio');
                 audio.src = previewUrl;
                 audio.controls = true;
-                previewEl.innerHTML = '';
-                previewEl.appendChild(audio);
+                audio.setAttribute('controlsList', 'nodownload noplaybackrate');
+                const meta = attachment.audio_meta || attachment.meta || (attachment.media_details && attachment.media_details.meta) || {};
+                const artwork = meta.artwork || '';
+                const embed = document.createElement('div');
+                embed.className = 'bitstream-audio-embed';
+
+                if (artwork) {
+                    const img = document.createElement('img');
+                    img.className = 'bitstream-audio-artwork';
+                    img.src = artwork;
+                    img.alt = '';
+                    embed.appendChild(img);
+                }
+
+                const content = document.createElement('div');
+                content.className = 'bitstream-audio-content';
+
+                const player = document.createElement('div');
+                player.className = 'bitstream-audio-player';
+                player.appendChild(audio);
+
+                content.appendChild(player);
+
                 const metaBlock = buildAudioMetaBlock(attachment);
                 if (metaBlock) {
-                    previewEl.appendChild(metaBlock);
+                    content.appendChild(metaBlock);
                 }
+
+                embed.appendChild(content);
+
+                previewEl.innerHTML = '';
+                previewEl.appendChild(embed);
+                applyMediaDeterrents(previewEl);
                 return;
             }
 
@@ -1241,6 +1283,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     initBitstreamPoster();
+    applyMediaDeterrents(document);
     
     // Performance optimized like button with debouncing
     document.querySelectorAll('.bit-like').forEach(button => {
