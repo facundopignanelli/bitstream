@@ -86,16 +86,16 @@ class BitStream_Ajax_Handlers {
                     $meta_markup .= '</div>';
                 }
 
-                $artwork_markup = $artwork
-                    ? '<img class="bitstream-audio-artwork" src="' . esc_attr($artwork) . '" alt="">'
+                $has_artwork = !empty($artwork);
+                $artwork_markup = $has_artwork
+                    ? '<div class="bitstream-audio-artwork-wrap"><img class="bitstream-audio-artwork" src="' . esc_attr($artwork) . '" alt=""></div>'
                     : '';
 
-                return '<div class="bitstream-audio-embed">'
+                return '<div class="bitstream-audio-embed' . ($has_artwork ? '' : ' no-artwork') . '">'
                     . $artwork_markup
-                    . '<div class="bitstream-audio-content">'
                     . $meta_markup
                     . '<div class="bitstream-audio-player">' . $audio_markup . '</div>'
-                    . '</div></div>';
+                    . '</div>';
             }
         }
 

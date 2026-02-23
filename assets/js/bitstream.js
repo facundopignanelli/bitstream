@@ -282,15 +282,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 embed.className = 'bitstream-audio-embed';
 
                 if (artwork) {
+                    const artworkWrap = document.createElement('div');
+                    artworkWrap.className = 'bitstream-audio-artwork-wrap';
                     const img = document.createElement('img');
                     img.className = 'bitstream-audio-artwork';
                     img.src = artwork;
                     img.alt = '';
-                    embed.appendChild(img);
+                    artworkWrap.appendChild(img);
+                    embed.appendChild(artworkWrap);
+                } else {
+                    embed.classList.add('no-artwork');
                 }
-
-                const content = document.createElement('div');
-                content.className = 'bitstream-audio-content';
 
                 const player = document.createElement('div');
                 player.className = 'bitstream-audio-player';
@@ -298,12 +300,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 const metaBlock = buildAudioMetaBlock(attachment);
                 if (metaBlock) {
-                    content.appendChild(metaBlock);
+                    embed.appendChild(metaBlock);
                 }
 
-                content.appendChild(player);
-
-                embed.appendChild(content);
+                embed.appendChild(player);
 
                 previewEl.innerHTML = '';
                 previewEl.appendChild(embed);

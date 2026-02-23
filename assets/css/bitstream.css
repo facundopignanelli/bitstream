@@ -308,6 +308,14 @@
     height: 40px;
 }
 
+.bit-avatar,
+.bit-avatar img,
+.bit-avatar-img,
+img.avatar {
+    border-radius: 15px !important;
+    overflow: hidden;
+}
+
 .bit-comments-list .comment-author b {
     font-size: 1rem;
     font-weight: 600;
@@ -634,9 +642,13 @@ iframe, embed, object, video {
 
 .bitstream-audio-embed {
     display: grid;
-    grid-template-columns: 72px 1fr;
-    gap: 0.75rem;
-    align-items: start;
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+        "art meta"
+        "player player";
+    column-gap: 0.75rem;
+    row-gap: 0.6rem;
+    align-items: stretch;
     padding: 0.75rem;
     border: 1px solid #e0e0e0;
     border-radius: 15px;
@@ -644,12 +656,28 @@ iframe, embed, object, video {
     width: 100%;
 }
 
+.bitstream-audio-embed.no-artwork {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+        "meta"
+        "player";
+}
+
 .bitstream-audio-content {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    min-width: 0;
-    width: 100%;
+    display: contents;
+}
+
+.bitstream-audio-artwork-wrap {
+    grid-area: art;
+    align-self: stretch;
+    height: 100%;
+    aspect-ratio: 1.1 / 1;
+    min-height: 72px;
+    max-width: 120px;
+    border-radius: 15px;
+    overflow: hidden;
+    border: 1px solid #ddd;
+    background: #e9eceb;
 }
 
 .bitstream-audio-player audio {
@@ -658,8 +686,7 @@ iframe, embed, object, video {
 }
 
 .bitstream-audio-player {
-    margin-top: 0.15rem;
-    order: 2;
+    grid-area: player;
     border-radius: 15px;
     overflow: hidden;
 }
@@ -674,19 +701,22 @@ iframe, embed, object, video {
 }
 
 .bitstream-audio-meta {
+    grid-area: meta;
     display: flex;
     flex-direction: column;
     gap: 0.2rem;
     text-align: left;
-    order: 1;
+    justify-content: center;
+    min-height: 72px;
+    min-width: 0;
 }
 
 .bitstream-audio-artwork {
-    width: 64px;
-    height: 64px;
-    border-radius: 15px;
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
     object-fit: cover;
-    border: 1px solid #ddd;
+    border: 0;
 }
 
 .bitstream-audio-title {

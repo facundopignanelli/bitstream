@@ -207,7 +207,7 @@ class BitStream_Content_Display {
                     flex-shrink: 0 !important;
                     width: 48px !important;
                     height: 48px !important;
-                    border-radius: 50% !important;
+                    border-radius: 15px !important;
                     overflow: hidden !important;
                 }
                 
