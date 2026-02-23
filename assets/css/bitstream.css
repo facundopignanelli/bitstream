@@ -652,7 +652,7 @@ iframe, embed, object, video {
     padding: 0.75rem;
     border: 1px solid #e0e0e0;
     border-radius: 15px;
-    background: #f4f7f5;
+    background: #fafafa;
     width: 100%;
 }
 
@@ -687,7 +687,7 @@ iframe, embed, object, video {
     aspect-ratio: 1.1 / 1;
     min-height: 72px;
     border-radius: 15px;
-    object-fit: cover;
+    object-fit: contain;
     border: 1px solid #ddd;
     background: #e9eceb;
 }
@@ -695,6 +695,20 @@ iframe, embed, object, video {
 .bitstream-audio-player audio {
     width: 100%;
     display: block;
+    color-scheme: light;
+    background: #fff;
+}
+
+.bitstream-audio-player audio::-webkit-media-controls-panel {
+    background: #fff;
+}
+
+.bitstream-audio-player audio::-webkit-media-controls-play-button,
+.bitstream-audio-player audio::-webkit-media-controls-mute-button,
+.bitstream-audio-player audio::-webkit-media-controls-timeline,
+.bitstream-audio-player audio::-webkit-media-controls-current-time-display,
+.bitstream-audio-player audio::-webkit-media-controls-time-remaining-display {
+    filter: none;
 }
 
 .bitstream-audio-player {
@@ -712,6 +726,29 @@ iframe, embed, object, video {
     border-radius: 15px;
 }
 
+.bitstream-audio-player .mejs-container,
+.bitstream-audio-player .mejs-container .mejs-controls {
+    background: #fff !important;
+}
+
+.bitstream-audio-player .mejs-container .mejs-time,
+.bitstream-audio-player .mejs-container .mejs-time span {
+    color: #111 !important;
+}
+
+.bitstream-audio-player .mejs-container .mejs-button > button {
+    filter: brightness(0) !important;
+}
+
+.bitstream-audio-player .mejs-container .mejs-time-rail .mejs-time-total {
+    background: #d8d8d8 !important;
+}
+
+.bitstream-audio-player .mejs-container .mejs-time-rail .mejs-time-current,
+.bitstream-audio-player .mejs-container .mejs-horizontal-volume-current {
+    background: #111 !important;
+}
+
 .bitstream-audio-meta {
     grid-area: meta;
     display: flex;
@@ -727,15 +764,15 @@ iframe, embed, object, video {
     width: 64px;
     height: 64px;
     border-radius: 15px;
-    object-fit: cover;
+    object-fit: contain;
     border: 1px solid #ddd;
+    background: #e9eceb;
 }
 
-.bitstream-audio-artwork-wrap > .bitstream-audio-artwork,
-.bitstream-audio-embed > .bitstream-audio-artwork {
+.bitstream-audio-artwork-wrap > .bitstream-audio-artwork {
     width: 100%;
     height: 100%;
-    border-radius: 0;
+    border-radius: 15px;
     border: 0;
 }
 
