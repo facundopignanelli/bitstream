@@ -8,7 +8,7 @@
     width: auto !important;
     display: block;
     margin: 0.5em auto;
-    border-radius: 10px;
+    border-radius: 15px;
     box-shadow: 0 1px 6px rgba(0,0,0,0.07);
     /* Prevent layout shift while images load */
     min-height: 100px;
@@ -35,7 +35,7 @@
     width: 100% !important;
     height: auto !important;
     display: block;
-    border-radius: 10px;
+    border-radius: 15px;
     overflow: hidden;
 }
 
@@ -227,7 +227,7 @@
     width: 32px;
     height: 32px;
     margin-right: 0.5rem;
-    border-radius: 50%;
+    border-radius: 15px;
 }
 .bit-comment .comment-author.vcard b.fn {
     margin-right: 0.25rem;
@@ -266,7 +266,7 @@
     height: 140px;
     padding: 0.75rem;
     border: 1px solid #ccc;
-    border-radius: 12px;
+    border-radius: 15px;
     font-size: 1rem;
     font-family: inherit;
     resize: vertical;
@@ -279,7 +279,7 @@
     border: none;
     padding: 0.6rem 1.2rem;
     font-size: 1rem;
-    border-radius: 12px;
+    border-radius: 15px;
     cursor: pointer;
     font-family: inherit;
     transition: background-color 0.2s ease;
@@ -303,7 +303,7 @@
 }
 
 .bit-comments-list .comment-author .avatar {
-    border-radius: 9999px;
+    border-radius: 15px;
     width: 40px;
     height: 40px;
 }
@@ -361,7 +361,7 @@
     border: none;
     padding: 0.6rem 1.2rem;
     font-size: 1rem;
-    border-radius: 12px;
+    border-radius: 15px;
     cursor: pointer;
     font-family: inherit;
     transition: background-color 0.2s ease;
@@ -402,7 +402,7 @@
     opacity: 1;
     margin-top: 1rem;
     background: #f8f9fa; /* Subtle background to distinguish comments */
-    border-radius: 8px; /* Match card styling */
+    border-radius: 15px; /* Match card styling */
     padding: 1rem; /* Add some padding for better spacing */
     border-left: 3px solid #2c6e49; /* Green accent border */
     z-index: 15; /* Very high z-index when open to ensure visibility above everything */
@@ -450,7 +450,7 @@ iframe, embed, object, video {
     margin: 1.5rem auto;
     padding: 1rem;
     border: 1px solid #ddd;
-    border-radius: 12px;
+    border-radius: 15px;
     background: #fff;
 }
 
@@ -463,7 +463,7 @@ iframe, embed, object, video {
 
 .bitstream-poster-tab {
     border: 1px solid #ccc;
-    border-radius: 10px;
+    border-radius: 15px;
     background: #fff;
     color: #222;
     padding: 0.7rem 0.9rem;
@@ -495,7 +495,7 @@ iframe, embed, object, video {
 .bitstream-poster-form textarea {
     width: 100%;
     border: 1px solid #ccc;
-    border-radius: 10px;
+    border-radius: 15px;
     padding: 0.65rem 0.8rem;
     box-sizing: border-box;
     font-family: inherit;
@@ -512,7 +512,7 @@ iframe, embed, object, video {
 .bitstream-media-remove,
 .bitstream-poster-submit {
     border: none;
-    border-radius: 10px;
+    border-radius: 15px;
     padding: 0.6rem 0.9rem;
     cursor: pointer;
     font-family: inherit;
@@ -537,7 +537,7 @@ iframe, embed, object, video {
 
 .bitstream-media-crop {
     border: none;
-    border-radius: 10px;
+    border-radius: 15px;
     padding: 0.6rem 0.9rem;
     background: #044389;
     color: #fff;
@@ -553,7 +553,7 @@ iframe, embed, object, video {
 
 .bitstream-media-audio-tags {
     border: none;
-    border-radius: 10px;
+    border-radius: 15px;
     padding: 0.6rem 0.9rem;
     background: #3d5a80;
     color: #fff;
@@ -578,12 +578,12 @@ iframe, embed, object, video {
 .bitstream-media-controls a {
     font-size: 0.8rem;
     padding: 0.35rem 0.6rem;
-    border-radius: 8px;
+    border-radius: 15px;
 }
 
 .bitstream-media-dropzone {
     border: 2px dashed #cbd5d1;
-    border-radius: 12px;
+    border-radius: 15px;
     padding: 1rem;
     text-align: center;
     color: #51615a;
@@ -620,7 +620,7 @@ iframe, embed, object, video {
 .bitstream-media-preview img {
     max-width: 100%;
     max-height: 240px;
-    border-radius: 8px;
+    border-radius: 15px;
     border: 1px solid #ddd;
     object-fit: contain;
 }
@@ -628,7 +628,7 @@ iframe, embed, object, video {
 .bitstream-media-preview video,
 .bitstream-media-preview audio {
     max-width: 100%;
-    border-radius: 8px;
+    border-radius: 15px;
     border: 1px solid #ddd;
 }
 
@@ -639,7 +639,7 @@ iframe, embed, object, video {
     align-items: start;
     padding: 0.75rem;
     border: 1px solid #e0e0e0;
-    border-radius: 14px;
+    border-radius: 15px;
     background: #f4f7f5;
     width: 100%;
 }
@@ -659,6 +659,9 @@ iframe, embed, object, video {
 
 .bitstream-audio-player {
     margin-top: 0.15rem;
+    order: 2;
+    border-radius: 15px;
+    overflow: hidden;
 }
 
 .bitstream-audio-player,
@@ -667,6 +670,7 @@ iframe, embed, object, video {
 .bitstream-audio-player .mejs-container {
     width: 100% !important;
     display: block !important;
+    border-radius: 15px;
 }
 
 .bitstream-audio-meta {
@@ -674,12 +678,13 @@ iframe, embed, object, video {
     flex-direction: column;
     gap: 0.2rem;
     text-align: left;
+    order: 1;
 }
 
 .bitstream-audio-artwork {
     width: 64px;
     height: 64px;
-    border-radius: 12px;
+    border-radius: 15px;
     object-fit: cover;
     border: 1px solid #ddd;
 }
@@ -722,7 +727,7 @@ iframe, embed, object, video {
     width: 100%;
     height: 8px;
     background: #e3e6e5;
-    border-radius: 999px;
+    border-radius: 15px;
     overflow: hidden;
 }
 
@@ -775,7 +780,7 @@ iframe, embed, object, video {
     width: min(520px, 92vw);
     max-height: 90vh;
     background: #fff;
-    border-radius: 14px;
+    border-radius: 15px;
     overflow: hidden;
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
     display: flex;
@@ -806,7 +811,7 @@ iframe, embed, object, video {
     background: #ff9900;
     color: #fff;
     border: none;
-    border-radius: 999px;
+    border-radius: 15px;
     padding: 0.4rem 0.9rem;
     font-size: 0.85rem;
     cursor: pointer;
@@ -826,7 +831,7 @@ iframe, embed, object, video {
 
 .bitstream-audio-tags-body input {
     border: 1px solid #ccc;
-    border-radius: 10px;
+    border-radius: 15px;
     padding: 0.55rem 0.7rem;
     font-family: inherit;
     font-size: 0.95rem;
@@ -841,7 +846,7 @@ iframe, embed, object, video {
 .bitstream-audio-tags-preview {
     width: 72px;
     height: 72px;
-    border-radius: 12px;
+    border-radius: 15px;
     object-fit: cover;
     border: 1px solid #ddd;
 }
@@ -856,7 +861,7 @@ iframe, embed, object, video {
 .bitstream-audio-tags-clear,
 .bitstream-audio-tags-save {
     border: none;
-    border-radius: 10px;
+    border-radius: 15px;
     padding: 0.55rem 0.85rem;
     font-weight: 600;
     cursor: pointer;
@@ -884,7 +889,7 @@ iframe, embed, object, video {
     width: min(620px, 92vw);
     max-height: 90vh;
     background: #fff;
-    border-radius: 14px;
+    border-radius: 15px;
     overflow: hidden;
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
     display: flex;
@@ -915,7 +920,7 @@ iframe, embed, object, video {
     background: #ff9900;
     color: #fff;
     border: none;
-    border-radius: 999px;
+    border-radius: 15px;
     padding: 0.4rem 0.9rem;
     font-size: 0.85rem;
     cursor: pointer;
@@ -930,7 +935,7 @@ iframe, embed, object, video {
 .bitstream-cropper-stage {
     position: relative;
     background: #c7c7c7;
-    border-radius: 10px;
+    border-radius: 15px;
     padding: 0.5rem;
     display: flex;
     align-items: center;
@@ -955,7 +960,7 @@ iframe, embed, object, video {
     width: 12px;
     height: 12px;
     background: #4c9ffe;
-    border-radius: 50%;
+    border-radius: 15px;
 }
 
 .bitstream-cropper-handle.handle-nw {
@@ -1027,7 +1032,7 @@ iframe, embed, object, video {
     background: var(--wp--preset--color--accent-1, #2c6e49);
     color: #fff;
     border: none;
-    border-radius: 999px;
+    border-radius: 15px;
     padding: 0.45rem 1rem;
     font-size: 0.85rem;
 }
@@ -1038,7 +1043,7 @@ body.bitstream-cropper-open {
 
 .bitstream-rebit-preview-card {
     border: 1px solid #ddd;
-    border-radius: 10px;
+    border-radius: 15px;
     overflow: hidden;
     background: #fafafa;
 }
@@ -1076,7 +1081,7 @@ body.bitstream-cropper-open {
 
 .bitstream-poster-quote-preview {
     border: 1px solid #ddd;
-    border-radius: 10px;
+    border-radius: 15px;
     padding: 0.75rem;
     background: #fafafa;
 }
@@ -1105,7 +1110,7 @@ body.bitstream-cropper-open {
 .bitstream-poster-result-actions a,
 .bitstream-poster-result-actions button {
     border: none;
-    border-radius: 10px;
+    border-radius: 15px;
     padding: 0.55rem 0.8rem;
     background: var(--wp--preset--color--accent-1, #2c6e49);
     color: #fff;
@@ -1125,7 +1130,7 @@ body.bitstream-cropper-open {
 
 .bitstream-post-options {
     border: 1px solid #ddd;
-    border-radius: 10px;
+    border-radius: 15px;
     padding: 0.65rem 0.8rem;
     background: #fafafa;
 }
@@ -1155,7 +1160,7 @@ body.bitstream-cropper-open {
     gap: 0.5rem;
     cursor: pointer;
     padding: 0.4rem 0.5rem;
-    border-radius: 8px;
+    border-radius: 15px;
     transition: background 0.2s ease;
 }
 
@@ -1180,7 +1185,7 @@ body.bitstream-cropper-open {
 .bitstream-schedule-datetime {
     width: 100%;
     border: 1px solid #ccc;
-    border-radius: 10px;
+    border-radius: 15px;
     padding: 0.55rem 0.7rem;
     box-sizing: border-box;
     font-family: inherit;
@@ -1201,7 +1206,7 @@ body.bitstream-cropper-open {
 
 .bitstream-scheduled-filter-btn {
     border: 1px solid #ccc;
-    border-radius: 10px;
+    border-radius: 15px;
     background: #fff;
     color: #333;
     padding: 0.45rem 0.7rem;
@@ -1222,7 +1227,7 @@ body.bitstream-cropper-open {
 
 .bitstream-scheduled-item {
     border: 1px solid #ddd;
-    border-radius: 10px;
+    border-radius: 15px;
     background: #fff;
     padding: 0.7rem;
     display: flex;
@@ -1246,7 +1251,7 @@ body.bitstream-cropper-open {
     text-decoration: none;
     background: var(--wp--preset--color--accent-1, #2c6e49);
     color: #fff;
-    border-radius: 8px;
+    border-radius: 15px;
     padding: 0.35rem 0.55rem;
     font-weight: 600;
     font-size: 0.85rem;
@@ -1332,7 +1337,7 @@ iframe[src*="youtu.be"] {
     word-wrap: break-word !important;
 }
 .bitstream-quoted-preview {
-    border-radius: 13px;
+    border-radius: 15px;
     box-shadow: 0 2px 12px rgba(0,0,0,0.10);
     padding: 16px;
     background: #fafafa;
@@ -1355,7 +1360,7 @@ iframe[src*="youtu.be"] {
     height: auto !important;
     display: block;
     margin: 0.5em auto;
-    border-radius: 8px;
+    border-radius: 15px;
 }
 
 /* Handle links and text in quoted previews */
@@ -1407,7 +1412,7 @@ iframe[src*="youtu.be"] {
     
     .bit-card {
         padding: 0.75rem !important;
-        border-radius: 12px !important;
+        border-radius: 15px !important;
         margin: 0 0 0.75rem 0 !important;
         width: 100% !important;
         position: relative !important;
@@ -1436,7 +1441,7 @@ iframe[src*="youtu.be"] {
     height: 60px;
     background: #2c6e49;
     color: white;
-    border-radius: 50%;
+    border-radius: 15px;
     border: none;
     box-shadow: 0 4px 12px rgba(44, 110, 73, 0.25);
     transition: all 0.3s ease;
@@ -1460,7 +1465,7 @@ iframe[src*="youtu.be"] {
     bottom: 70px;
     right: 0;
     background: white;
-    border-radius: 8px;
+    border-radius: 15px;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
     min-width: 160px;
     opacity: 0;
