@@ -776,6 +776,18 @@ iframe, embed, object, video {
     border: 0;
 }
 
+.bitstream-audio-artwork,
+.bitstream-audio-artwork-wrap > .bitstream-audio-artwork,
+.bitstream-audio-embed > .bitstream-audio-artwork {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    object-fit: contain !important;
+}
+
 .bitstream-audio-title {
     font-weight: 600;
     color: #1f1f1f;
