@@ -250,14 +250,13 @@ class BitStream_Shortcodes {
                         <input type="hidden" id="bitstream-bit-attachment-id" name="bit_attachment_id" value="<?php echo esc_attr($media_id); ?>">
                         <div class="bitstream-media-dropzone" data-target-input="bitstream-bit-attachment-id" data-target-preview="bitstream-bit-media-preview" data-accept="image/*,video/*">
                             <span>Drag and drop media here, or click to upload</span>
+                            <div class="bitstream-media-preview" id="bitstream-bit-media-preview"></div>
                             <input type="file" class="bitstream-media-file" accept="image/*,video/*">
                         </div>
                         <div class="bitstream-media-controls">
-                            <button type="button" class="bitstream-media-select" data-target-input="bitstream-bit-attachment-id" data-target-preview="bitstream-bit-media-preview">Choose media</button>
                             <button type="button" class="bitstream-media-remove is-hidden" data-target-input="bitstream-bit-attachment-id" data-target-preview="bitstream-bit-media-preview">Remove media</button>
                             <a class="bitstream-media-crop is-hidden" data-target-input="bitstream-bit-attachment-id" href="#" target="_blank" rel="noopener">Crop image</a>
                         </div>
-                        <div class="bitstream-media-preview" id="bitstream-bit-media-preview"></div>
                     </div>
 
                     <?php if (!empty($quote_preview)): ?>
@@ -300,16 +299,14 @@ class BitStream_Shortcodes {
                     <div class="bitstream-media-field">
                         <input type="hidden" id="bitstream-rebit-attachment-id" name="rebit_attachment_id" value="">
                         <div class="bitstream-media-dropzone" data-target-input="bitstream-rebit-attachment-id" data-target-preview="bitstream-rebit-media-preview" data-accept="image/*">
-                            <span>Drag and drop an image here, or click to upload</span>
+                            <span>Drag and drop image here, or click to upload</span>
+                            <div class="bitstream-media-preview" id="bitstream-rebit-media-preview"></div>
                             <input type="file" class="bitstream-media-file" accept="image/*">
                         </div>
-                        <input type="url" id="bitstream-rebit-og-image" name="rebit_og_image" placeholder="Image URL fallback (optional)">
                         <div class="bitstream-media-controls">
-                            <button type="button" class="bitstream-media-select" data-target-input="bitstream-rebit-attachment-id" data-target-preview="bitstream-rebit-media-preview">Choose image from Media Library</button>
                             <button type="button" class="bitstream-media-remove is-hidden" data-target-input="bitstream-rebit-attachment-id" data-target-preview="bitstream-rebit-media-preview">Remove selected image</button>
                             <a class="bitstream-media-crop is-hidden" data-target-input="bitstream-rebit-attachment-id" href="#" target="_blank" rel="noopener">Crop image</a>
                         </div>
-                        <div class="bitstream-media-preview" id="bitstream-rebit-media-preview"></div>
                     </div>
 
                     <div class="bitstream-rebit-preview-card" id="bitstream-rebit-og-preview" hidden>
@@ -376,6 +373,37 @@ class BitStream_Shortcodes {
                     <a class="bitstream-poster-action-view" href="#" target="_blank" rel="noopener">Open post</a>
                 </div>
                 <div class="bitstream-poster-result-card"></div>
+            </div>
+
+            <div class="bitstream-cropper-modal" hidden>
+                <div class="bitstream-cropper-backdrop" data-cropper-close="true"></div>
+                <div class="bitstream-cropper-dialog" role="dialog" aria-modal="true" aria-label="Crop Image">
+                    <div class="bitstream-cropper-header">
+                        <h3>Crop Image</h3>
+                        <button type="button" class="bitstream-cropper-close" data-cropper-close="true">Close</button>
+                    </div>
+                    <div class="bitstream-cropper-body">
+                        <div class="bitstream-cropper-stage">
+                            <img class="bitstream-cropper-image" src="" alt="">
+                            <div class="bitstream-cropper-selection" aria-hidden="true">
+                                <span class="bitstream-cropper-handle handle-nw" data-handle="nw"></span>
+                                <span class="bitstream-cropper-handle handle-ne" data-handle="ne"></span>
+                                <span class="bitstream-cropper-handle handle-n" data-handle="n"></span>
+                                <span class="bitstream-cropper-handle handle-e" data-handle="e"></span>
+                                <span class="bitstream-cropper-handle handle-s" data-handle="s"></span>
+                                <span class="bitstream-cropper-handle handle-w" data-handle="w"></span>
+                                <span class="bitstream-cropper-handle handle-sw" data-handle="sw"></span>
+                                <span class="bitstream-cropper-handle handle-se" data-handle="se"></span>
+                            </div>
+                        </div>
+                        <p class="bitstream-cropper-help">Drag to select.</p>
+                        <p class="bitstream-cropper-size" aria-live="polite">Size: --</p>
+                    </div>
+                    <div class="bitstream-cropper-footer">
+                        <button type="button" class="bitstream-cropper-cancel" data-cropper-close="true">Cancel</button>
+                        <button type="button" class="bitstream-cropper-apply">Crop &amp; Use</button>
+                    </div>
+                </div>
             </div>
         </section>
         <?php

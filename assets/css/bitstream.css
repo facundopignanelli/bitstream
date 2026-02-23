@@ -533,6 +533,13 @@ iframe, embed, object, video {
     margin-bottom: 0.6rem;
 }
 
+.bitstream-media-controls button,
+.bitstream-media-controls a {
+    font-size: 0.8rem;
+    padding: 0.35rem 0.6rem;
+    border-radius: 8px;
+}
+
 .bitstream-media-dropzone {
     border: 2px dashed #cbd5d1;
     border-radius: 12px;
@@ -543,6 +550,14 @@ iframe, embed, object, video {
     cursor: pointer;
     transition: border-color 0.2s ease, background 0.2s ease;
     margin-bottom: 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.bitstream-media-dropzone.has-media > span {
+    display: none;
 }
 
 .bitstream-media-dropzone.is-dragover {
@@ -555,13 +570,192 @@ iframe, embed, object, video {
 }
 
 .bitstream-media-preview {
-    margin-top: 0.4rem;
+    margin-top: 0.2rem;
+    width: 100%;
+    display: flex;
+    justify-content: center;
 }
 
 .bitstream-media-preview img {
-    max-width: 220px;
+    max-width: 100%;
+    max-height: 240px;
     border-radius: 8px;
     border: 1px solid #ddd;
+    object-fit: contain;
+}
+
+.bitstream-cropper-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bitstream-cropper-modal[hidden] {
+    display: none;
+}
+
+.bitstream-cropper-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 20, 0.6);
+}
+
+.bitstream-cropper-dialog {
+    position: relative;
+    width: min(620px, 92vw);
+    max-height: 90vh;
+    background: #fff;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+    z-index: 1;
+}
+
+.bitstream-cropper-header,
+.bitstream-cropper-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid #e6e6e6;
+}
+
+.bitstream-cropper-footer {
+    border-bottom: none;
+    border-top: 1px solid #e6e6e6;
+}
+
+.bitstream-cropper-header h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.bitstream-cropper-close,
+.bitstream-cropper-cancel {
+    background: #111;
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.85rem;
+}
+
+.bitstream-cropper-body {
+    padding: 1rem;
+    overflow: auto;
+}
+
+.bitstream-cropper-stage {
+    position: relative;
+    background: #c7c7c7;
+    border-radius: 10px;
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bitstream-cropper-image {
+    max-width: 100%;
+    max-height: 60vh;
+    display: block;
+}
+
+.bitstream-cropper-selection {
+    position: absolute;
+    border: 2px solid #4c9ffe;
+    box-shadow: 0 0 0 200vmax rgba(0, 0, 0, 0.35);
+    cursor: move;
+}
+
+.bitstream-cropper-handle {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: #4c9ffe;
+    border-radius: 50%;
+}
+
+.bitstream-cropper-handle.handle-nw {
+    top: -6px;
+    left: -6px;
+    cursor: nwse-resize;
+}
+
+.bitstream-cropper-handle.handle-ne {
+    top: -6px;
+    right: -6px;
+    cursor: nesw-resize;
+}
+
+.bitstream-cropper-handle.handle-sw {
+    bottom: -6px;
+    left: -6px;
+    cursor: nesw-resize;
+}
+
+.bitstream-cropper-handle.handle-se {
+    bottom: -6px;
+    right: -6px;
+    cursor: nwse-resize;
+}
+
+.bitstream-cropper-handle.handle-n {
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    cursor: ns-resize;
+}
+
+.bitstream-cropper-handle.handle-s {
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    cursor: ns-resize;
+}
+
+.bitstream-cropper-handle.handle-e {
+    right: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: ew-resize;
+}
+
+.bitstream-cropper-handle.handle-w {
+    left: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: ew-resize;
+}
+
+.bitstream-cropper-size {
+    margin: 0.35rem 0 0;
+    font-size: 0.85rem;
+    color: #2f3c36;
+}
+
+.bitstream-cropper-help {
+    margin: 0.75rem 0 0;
+    color: #5a6a63;
+    font-size: 0.85rem;
+}
+
+.bitstream-cropper-apply {
+    background: var(--wp--preset--color--accent-1, #2c6e49);
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 0.45rem 1rem;
+    font-size: 0.85rem;
+}
+
+body.bitstream-cropper-open {
+    overflow: hidden;
 }
 
 .bitstream-rebit-preview-card {

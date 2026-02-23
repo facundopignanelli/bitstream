@@ -19,6 +19,7 @@ class BitStream_Ajax_Handlers {
         add_action('wp_ajax_bitstream_get_quoted_bit', [$this, 'handle_get_quoted_bit']);
         add_action('wp_ajax_bitstream_submit_poster', [$this, 'handle_submit_poster']);
         add_action('wp_ajax_bitstream_upload_media', [$this, 'handle_upload_media']);
+        add_action('wp_ajax_bitstream_crop_media', [$this, 'handle_crop_media']);
     }
 
     /**
@@ -162,6 +163,63 @@ class BitStream_Ajax_Handlers {
             ]);
         } catch (Exception $e) {
             wp_send_json_error($e->getMessage() ?: 'Upload failed.');
+        }
+    }
+
+    /**
+     * Handle cropping an existing attachment image and replacing the file
+     */
+    public function handle_crop_media() {
+        try {
+            check_ajax_referer('bitstream_media_crop_nonce', 'nonce');
+
+            if (!current_user_can('upload_files') || !current_user_can('edit_posts')) {
+                wp_send_json_error('Insufficient permissions.');
+            }
+
+            $attachment_id = $this->get_valid_attachment_id($_POST['attachment_id'] ?? 0);
+            if ($attachment_id <= 0 || !wp_attachment_is_image($attachment_id)) {
+                wp_send_json_error('Invalid image attachment.');
+            }
+
+            $crop_x = isset($_POST['crop_x']) ? intval($_POST['crop_x']) : 0;
+            $crop_y = isset($_POST['crop_y']) ? intval($_POST['crop_y']) : 0;
+            $crop_w = isset($_POST['crop_w']) ? intval($_POST['crop_w']) : 0;
+            $crop_h = isset($_POST['crop_h']) ? intval($_POST['crop_h']) : 0;
+
+            if ($crop_w <= 1 || $crop_h <= 1) {
+                wp_send_json_error('Crop area is too small.');
+            }
+
+            require_once ABSPATH . 'wp-admin/includes/image.php';
+
+            $file_path = get_attached_file($attachment_id);
+            if (!$file_path || !file_exists($file_path)) {
+                wp_send_json_error('Image file not found.');
+            }
+
+            $editor = wp_get_image_editor($file_path);
+            if (is_wp_error($editor)) {
+                wp_send_json_error('Unable to load image editor.');
+            }
+
+            $editor->crop($crop_x, $crop_y, $crop_w, $crop_h);
+            $saved = $editor->save($file_path);
+            if (is_wp_error($saved)) {
+                wp_send_json_error('Could not save cropped image.');
+            }
+
+            $metadata = wp_generate_attachment_metadata($attachment_id, $file_path);
+            wp_update_attachment_metadata($attachment_id, $metadata);
+
+            wp_send_json_success([
+                'id' => $attachment_id,
+                'url' => wp_get_attachment_url($attachment_id),
+                'mime' => get_post_mime_type($attachment_id),
+                'cache_buster' => time(),
+            ]);
+        } catch (Exception $e) {
+            wp_send_json_error($e->getMessage() ?: 'Crop failed.');
         }
     }
 

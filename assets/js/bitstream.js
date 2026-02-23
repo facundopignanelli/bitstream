@@ -162,6 +162,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
+            const dropzone = previewEl.closest('.bitstream-media-dropzone');
+            if (dropzone) {
+                dropzone.classList.toggle('has-media', !!attachment);
+            }
+
             if (!attachment) {
                 previewEl.innerHTML = '';
                 return;
@@ -179,10 +184,17 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         function bindMediaButtons() {
-            const selectButtons = posterRoot.querySelectorAll('.bitstream-media-select');
             const removeButtons = posterRoot.querySelectorAll('.bitstream-media-remove');
             const cropLinks = posterRoot.querySelectorAll('.bitstream-media-crop');
             const dropzones = posterRoot.querySelectorAll('.bitstream-media-dropzone');
+            const cropperModal = posterRoot.querySelector('.bitstream-cropper-modal');
+            const cropperImage = cropperModal ? cropperModal.querySelector('.bitstream-cropper-image') : null;
+            const cropperSelection = cropperModal ? cropperModal.querySelector('.bitstream-cropper-selection') : null;
+            const cropperStage = cropperModal ? cropperModal.querySelector('.bitstream-cropper-stage') : null;
+            const cropperApply = cropperModal ? cropperModal.querySelector('.bitstream-cropper-apply') : null;
+            const cropperSizeLabel = cropperModal ? cropperModal.querySelector('.bitstream-cropper-size') : null;
+            const cropperCloseButtons = cropperModal ? cropperModal.querySelectorAll('[data-cropper-close="true"]') : [];
+            let cropperState = null;
 
             function setRemoveVisibility(targetInputId) {
                 const input = document.getElementById(targetInputId);
@@ -203,15 +215,219 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 const isImage = mimeType && mimeType.startsWith('image/');
                 cropLink.classList.toggle('is-hidden', !isImage);
+            }
 
-                if (isImage) {
-                    const attachmentId = document.getElementById(targetInputId)?.value || '';
-                    if (attachmentId) {
-                        cropLink.href = (bitstream_ajax.admin_url || '/wp-admin/') + 'post.php?post=' + attachmentId + '&action=edit';
-                    }
-                } else {
-                    cropLink.href = '#';
+            function closeCropper() {
+                if (!cropperModal) {
+                    return;
                 }
+                cropperModal.hidden = true;
+                document.body.classList.remove('bitstream-cropper-open');
+                if (cropperImage) {
+                    cropperImage.src = '';
+                }
+                if (cropperSelection) {
+                    cropperSelection.style.display = 'none';
+                }
+                if (cropperSizeLabel) {
+                    cropperSizeLabel.textContent = 'Size: --';
+                }
+                cropperState = null;
+            }
+
+            function updateSelectionBox(selection) {
+                if (!cropperSelection || !selection) {
+                    return;
+                }
+                cropperSelection.style.display = 'block';
+                cropperSelection.style.left = selection.x + 'px';
+                cropperSelection.style.top = selection.y + 'px';
+                cropperSelection.style.width = selection.width + 'px';
+                cropperSelection.style.height = selection.height + 'px';
+
+                if (cropperSizeLabel && cropperImage) {
+                    const rect = cropperImage.getBoundingClientRect();
+                    const scaleX = rect.width ? (cropperImage.naturalWidth / rect.width) : 1;
+                    const scaleY = rect.height ? (cropperImage.naturalHeight / rect.height) : 1;
+                    const pxW = Math.max(1, Math.round(selection.width * scaleX));
+                    const pxH = Math.max(1, Math.round(selection.height * scaleY));
+                    cropperSizeLabel.textContent = 'Size: ' + pxW + ' x ' + pxH + ' px';
+                }
+            }
+
+            function clamp(value, min, max) {
+                return Math.max(min, Math.min(max, value));
+            }
+
+            function openCropper(targetInputId, targetPreviewId) {
+                if (!cropperModal || !cropperImage || !cropperStage) {
+                    setStatus('Cropper is unavailable on this page.', true);
+                    return;
+                }
+
+                const input = document.getElementById(targetInputId);
+                const attachmentId = input ? parseInt(input.value || '0', 10) : 0;
+                if (!attachmentId || !window.wp || !wp.media) {
+                    setStatus('No image selected to crop.', true);
+                    return;
+                }
+
+                const attachment = wp.media.attachment(attachmentId);
+                attachment.fetch().then(() => {
+                    const url = attachment.get('url');
+                    if (!url) {
+                        setStatus('Unable to load image for cropping.', true);
+                        return;
+                    }
+
+                    cropperState = {
+                        targetInputId,
+                        targetPreviewId,
+                        attachmentId,
+                        selection: null,
+                        mode: null,
+                        handle: null,
+                        startX: 0,
+                        startY: 0
+                    };
+
+                    cropperImage.onload = () => {
+                        const rect = cropperImage.getBoundingClientRect();
+                        const insetX = rect.width * 0.1;
+                        const insetY = rect.height * 0.1;
+                        cropperState.selection = {
+                            x: insetX,
+                            y: insetY,
+                            width: Math.max(20, rect.width - insetX * 2),
+                            height: Math.max(20, rect.height - insetY * 2)
+                        };
+                        updateSelectionBox(cropperState.selection);
+                    };
+
+                    cropperImage.src = url;
+                    cropperModal.hidden = false;
+                    document.body.classList.add('bitstream-cropper-open');
+                });
+            }
+
+            function getPointerPosition(event) {
+                const rect = cropperImage.getBoundingClientRect();
+                return {
+                    x: event.clientX - rect.left,
+                    y: event.clientY - rect.top,
+                    rect
+                };
+            }
+
+            function beginSelection(event) {
+                if (!cropperState || !cropperImage || !cropperSelection) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+
+                const target = event.target;
+                const handle = target && target.dataset ? target.dataset.handle : null;
+                const isHandle = !!handle;
+
+                const pos = getPointerPosition(event);
+                if (!pos.rect.width || !pos.rect.height) {
+                    return;
+                }
+
+                cropperState.startX = pos.x;
+                cropperState.startY = pos.y;
+                cropperState.handle = handle;
+
+                if (isHandle) {
+                    cropperState.mode = 'resize';
+                } else if (target === cropperSelection) {
+                    cropperState.mode = 'move';
+                } else {
+                    cropperState.mode = 'create';
+                    cropperState.selection = {
+                        x: pos.x,
+                        y: pos.y,
+                        width: 0,
+                        height: 0
+                    };
+                }
+
+                updateSelectionBox(cropperState.selection);
+            }
+
+            function updateSelection(event) {
+                if (!cropperState || !cropperState.mode) {
+                    return;
+                }
+
+                const pos = getPointerPosition(event);
+                const rect = pos.rect;
+                const maxX = rect.width;
+                const maxY = rect.height;
+
+                if (!cropperState.selection) {
+                    cropperState.selection = { x: 0, y: 0, width: 0, height: 0 };
+                }
+
+                const selection = cropperState.selection;
+
+                if (cropperState.mode === 'create') {
+                    const x1 = clamp(cropperState.startX, 0, maxX);
+                    const y1 = clamp(cropperState.startY, 0, maxY);
+                    const x2 = clamp(pos.x, 0, maxX);
+                    const y2 = clamp(pos.y, 0, maxY);
+                    selection.x = Math.min(x1, x2);
+                    selection.y = Math.min(y1, y2);
+                    selection.width = Math.abs(x2 - x1);
+                    selection.height = Math.abs(y2 - y1);
+                } else if (cropperState.mode === 'move') {
+                    const deltaX = pos.x - cropperState.startX;
+                    const deltaY = pos.y - cropperState.startY;
+                    selection.x = clamp(selection.x + deltaX, 0, maxX - selection.width);
+                    selection.y = clamp(selection.y + deltaY, 0, maxY - selection.height);
+                    cropperState.startX = pos.x;
+                    cropperState.startY = pos.y;
+                } else if (cropperState.mode === 'resize') {
+                    const handle = cropperState.handle;
+                    let x = selection.x;
+                    let y = selection.y;
+                    let w = selection.width;
+                    let h = selection.height;
+
+                    if (handle.indexOf('n') === 0) {
+                        const newY = clamp(pos.y, 0, selection.y + selection.height - 10);
+                        h = h + (y - newY);
+                        y = newY;
+                    }
+                    if (handle.indexOf('s') === 0) {
+                        h = clamp(pos.y - y, 10, maxY - y);
+                    }
+                    if (handle.indexOf('w') !== -1) {
+                        const newX = clamp(pos.x, 0, selection.x + selection.width - 10);
+                        w = w + (x - newX);
+                        x = newX;
+                    }
+                    if (handle.indexOf('e') !== -1) {
+                        w = clamp(pos.x - x, 10, maxX - x);
+                    }
+
+                    selection.x = clamp(x, 0, maxX - w);
+                    selection.y = clamp(y, 0, maxY - h);
+                    selection.width = w;
+                    selection.height = h;
+                }
+
+                updateSelectionBox(selection);
+            }
+
+            function endSelection() {
+                if (!cropperState) {
+                    return;
+                }
+                cropperState.mode = null;
+                cropperState.handle = null;
             }
 
             function handleMediaSelection(targetInputId, targetPreviewId, attachment) {
@@ -277,42 +493,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
             }
 
-            selectButtons.forEach(button => {
-                button.addEventListener('click', () => {
-                    if (!window.wp || !wp.media) {
-                        setStatus('WordPress Media Library is unavailable on this page.', true);
-                        return;
-                    }
-
-                    const targetInputId = button.dataset.targetInput;
-                    const targetPreviewId = button.dataset.targetPreview;
-                    const targetInput = document.getElementById(targetInputId);
-                    const targetPreview = document.getElementById(targetPreviewId);
-
-                    if (!targetInput) {
-                        return;
-                    }
-
-                    const frame = wp.media({
-                        title: 'Select media',
-                        button: { text: 'Use this media' },
-                        multiple: false
-                    });
-
-                    frame.on('select', () => {
-                        const selection = frame.state().get('selection').first();
-                        if (!selection) {
-                            return;
-                        }
-
-                        const attachment = selection.toJSON();
-                        handleMediaSelection(targetInputId, targetPreviewId, attachment);
-                    });
-
-                    frame.open();
-                });
-            });
-
             removeButtons.forEach(button => {
                 button.addEventListener('click', () => {
                     const targetInput = document.getElementById(button.dataset.targetInput || '');
@@ -321,9 +501,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (targetInput) {
                         targetInput.value = '';
                     }
-                    if (targetPreview) {
-                        targetPreview.innerHTML = '';
-                    }
+                    renderMediaPreview(targetPreview, null);
 
                     if (button.dataset.targetInput) {
                         setRemoveVisibility(button.dataset.targetInput);
@@ -334,11 +512,104 @@ document.addEventListener('DOMContentLoaded', function() {
 
             cropLinks.forEach(link => {
                 link.addEventListener('click', (event) => {
+                    event.preventDefault();
                     if (link.classList.contains('is-hidden')) {
-                        event.preventDefault();
+                        return;
                     }
+
+                    const targetInputId = link.dataset.targetInput;
+                    const targetPreviewId = link.dataset.targetInput === 'bitstream-bit-attachment-id'
+                        ? 'bitstream-bit-media-preview'
+                        : 'bitstream-rebit-media-preview';
+                    openCropper(targetInputId, targetPreviewId);
                 });
             });
+
+            if (cropperStage && cropperSelection) {
+                cropperStage.addEventListener('mousedown', beginSelection);
+                cropperSelection.addEventListener('mousedown', beginSelection);
+                document.addEventListener('mousemove', updateSelection);
+                document.addEventListener('mouseup', endSelection);
+            }
+
+            if (cropperCloseButtons) {
+                cropperCloseButtons.forEach(button => {
+                    button.addEventListener('click', closeCropper);
+                });
+            }
+
+            if (cropperApply) {
+                cropperApply.addEventListener('click', () => {
+                    if (!cropperState || !cropperState.selection || !cropperImage) {
+                        return;
+                    }
+
+                    if (!bitstream_ajax || !bitstream_ajax.ajax_url || !bitstream_ajax.media_crop_nonce) {
+                        setStatus('Cropper is unavailable.', true);
+                        return;
+                    }
+
+                    const rect = cropperImage.getBoundingClientRect();
+                    if (!rect.width || !rect.height) {
+                        setStatus('Crop area is invalid.', true);
+                        return;
+                    }
+
+                    if (cropperState.selection.width < 10 || cropperState.selection.height < 10) {
+                        setStatus('Select a larger crop area.', true);
+                        return;
+                    }
+
+                    const scaleX = cropperImage.naturalWidth / rect.width;
+                    const scaleY = cropperImage.naturalHeight / rect.height;
+                    const selection = cropperState.selection;
+
+                    const cropX = Math.round(selection.x * scaleX);
+                    const cropY = Math.round(selection.y * scaleY);
+                    const cropW = Math.round(selection.width * scaleX);
+                    const cropH = Math.round(selection.height * scaleY);
+
+                    const payload = new FormData();
+                    payload.append('action', 'bitstream_crop_media');
+                    payload.append('nonce', bitstream_ajax.media_crop_nonce);
+                    payload.append('attachment_id', cropperState.attachmentId);
+                    payload.append('crop_x', cropX);
+                    payload.append('crop_y', cropY);
+                    payload.append('crop_w', cropW);
+                    payload.append('crop_h', cropH);
+
+                    setStatus('Cropping image...');
+
+                    fetch(bitstream_ajax.ajax_url, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        body: payload
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (!data.success) {
+                                throw new Error(data.data || 'Crop failed.');
+                            }
+
+                            const media = data.data || {};
+                            const cacheKey = media.cache_buster ? (media.cache_buster + '') : '';
+                            const url = media.url ? (media.url + (media.url.indexOf('?') === -1 ? '?' : '&') + 't=' + cacheKey) : '';
+
+                            handleMediaSelection(cropperState.targetInputId, cropperState.targetPreviewId, {
+                                id: media.id,
+                                url: url,
+                                mime: media.mime,
+                                sizes: { medium: { url: url } }
+                            });
+
+                            setStatus('Image cropped.');
+                            closeCropper();
+                        })
+                        .catch(error => {
+                            setStatus(error.message || 'Crop failed.', true);
+                        });
+                });
+            }
 
             dropzones.forEach(zone => {
                 const input = zone.querySelector('.bitstream-media-file');
