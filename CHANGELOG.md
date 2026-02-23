@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Open/Preview post
 - Scheduling controls in Post options for both Bit and Rebit
 - Scheduled posts tab filter controls (All / Bits / Rebits)
+- Drag-and-drop media upload areas for Bit and Rebit poster forms
+- Media crop action link (opens WordPress media editor crop UI)
 
 ### Changed
 - Unified posting workflow around the custom poster interface instead of Gutenberg new-post flow

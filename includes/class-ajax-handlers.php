@@ -18,6 +18,7 @@ class BitStream_Ajax_Handlers {
         add_action('wp_ajax_bitstream_fetch_og_data', [$this, 'handle_fetch_og_data']);
         add_action('wp_ajax_bitstream_get_quoted_bit', [$this, 'handle_get_quoted_bit']);
         add_action('wp_ajax_bitstream_submit_poster', [$this, 'handle_submit_poster']);
+        add_action('wp_ajax_bitstream_upload_media', [$this, 'handle_upload_media']);
     }
 
     /**
@@ -104,6 +105,64 @@ class BitStream_Ajax_Handlers {
             'post_date_gmt' => $dt_gmt->format('Y-m-d H:i:s'),
             'is_scheduled' => true,
         ];
+    }
+
+    /**
+     * Handle media upload for poster drag-and-drop
+     */
+    public function handle_upload_media() {
+        try {
+            check_ajax_referer('bitstream_media_upload_nonce', 'nonce');
+
+            if (!current_user_can('upload_files') || !current_user_can('edit_posts')) {
+                wp_send_json_error('Insufficient permissions.');
+            }
+
+            if (empty($_FILES['media'])) {
+                wp_send_json_error('No file uploaded.');
+            }
+
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            require_once ABSPATH . 'wp-admin/includes/media.php';
+            require_once ABSPATH . 'wp-admin/includes/image.php';
+
+            $upload_overrides = [
+                'test_form' => false,
+            ];
+
+            $uploaded_file = wp_handle_upload($_FILES['media'], $upload_overrides);
+            if (isset($uploaded_file['error'])) {
+                wp_send_json_error($uploaded_file['error']);
+            }
+
+            $file_path = $uploaded_file['file'];
+            $file_url = $uploaded_file['url'];
+            $file_type = wp_check_filetype(basename($file_path), null);
+
+            $attachment = [
+                'post_mime_type' => $file_type['type'],
+                'post_title' => sanitize_text_field(pathinfo($file_path, PATHINFO_FILENAME)),
+                'post_content' => '',
+                'post_status' => 'inherit',
+            ];
+
+            $attachment_id = wp_insert_attachment($attachment, $file_path);
+            if (is_wp_error($attachment_id)) {
+                wp_send_json_error('Could not create attachment.');
+            }
+
+            $attachment_data = wp_generate_attachment_metadata($attachment_id, $file_path);
+            wp_update_attachment_metadata($attachment_id, $attachment_data);
+
+            wp_send_json_success([
+                'id' => $attachment_id,
+                'url' => $file_url,
+                'mime' => $file_type['type'],
+                'edit_url' => get_edit_post_link($attachment_id, ''),
+            ]);
+        } catch (Exception $e) {
+            wp_send_json_error($e->getMessage() ?: 'Upload failed.');
+        }
     }
 
     /**

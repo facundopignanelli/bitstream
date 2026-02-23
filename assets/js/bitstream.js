@@ -181,6 +181,101 @@ document.addEventListener('DOMContentLoaded', function() {
         function bindMediaButtons() {
             const selectButtons = posterRoot.querySelectorAll('.bitstream-media-select');
             const removeButtons = posterRoot.querySelectorAll('.bitstream-media-remove');
+            const cropLinks = posterRoot.querySelectorAll('.bitstream-media-crop');
+            const dropzones = posterRoot.querySelectorAll('.bitstream-media-dropzone');
+
+            function setRemoveVisibility(targetInputId) {
+                const input = document.getElementById(targetInputId);
+                const removeButton = posterRoot.querySelector('.bitstream-media-remove[data-target-input="' + targetInputId + '"]');
+                if (!removeButton) {
+                    return;
+                }
+
+                const hasValue = input && input.value && input.value.trim() !== '';
+                removeButton.classList.toggle('is-hidden', !hasValue);
+            }
+
+            function setCropVisibility(targetInputId, mimeType) {
+                const cropLink = posterRoot.querySelector('.bitstream-media-crop[data-target-input="' + targetInputId + '"]');
+                if (!cropLink) {
+                    return;
+                }
+
+                const isImage = mimeType && mimeType.startsWith('image/');
+                cropLink.classList.toggle('is-hidden', !isImage);
+
+                if (isImage) {
+                    const attachmentId = document.getElementById(targetInputId)?.value || '';
+                    if (attachmentId) {
+                        cropLink.href = (bitstream_ajax.admin_url || '/wp-admin/') + 'post.php?post=' + attachmentId + '&action=edit';
+                    }
+                } else {
+                    cropLink.href = '#';
+                }
+            }
+
+            function handleMediaSelection(targetInputId, targetPreviewId, attachment) {
+                const targetInput = document.getElementById(targetInputId);
+                const targetPreview = document.getElementById(targetPreviewId);
+                if (!targetInput) {
+                    return;
+                }
+
+                targetInput.value = attachment.id || '';
+
+                const fallbackImageInput = targetInputId === 'bitstream-rebit-attachment-id'
+                    ? document.getElementById('bitstream-rebit-og-image')
+                    : null;
+
+                if (fallbackImageInput && attachment.url) {
+                    fallbackImageInput.value = attachment.url;
+                }
+
+                renderMediaPreview(targetPreview, attachment);
+                setRemoveVisibility(targetInputId);
+                setCropVisibility(targetInputId, attachment.mime || '');
+            }
+
+            function uploadMediaFile(file, targetInputId, targetPreviewId) {
+                if (!bitstream_ajax || !bitstream_ajax.ajax_url || !bitstream_ajax.media_upload_nonce) {
+                    setStatus('Media upload is unavailable.', true);
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('action', 'bitstream_upload_media');
+                formData.append('nonce', bitstream_ajax.media_upload_nonce);
+                formData.append('media', file);
+
+                setStatus('Uploading media...');
+
+                fetch(bitstream_ajax.ajax_url, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    body: formData
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (!data.success) {
+                            throw new Error(data.data || 'Upload failed.');
+                        }
+
+                        const media = data.data || {};
+                        handleMediaSelection(targetInputId, targetPreviewId, {
+                            id: media.id,
+                            url: media.url,
+                            mime: media.mime,
+                            sizes: {
+                                medium: { url: media.url }
+                            }
+                        });
+
+                        setStatus('Media uploaded.');
+                    })
+                    .catch(error => {
+                        setStatus(error.message || 'Upload failed.', true);
+                    });
+            }
 
             selectButtons.forEach(button => {
                 button.addEventListener('click', () => {
@@ -211,17 +306,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
 
                         const attachment = selection.toJSON();
-                        targetInput.value = attachment.id || '';
-
-                        const fallbackImageInput = targetInputId === 'bitstream-rebit-attachment-id'
-                            ? document.getElementById('bitstream-rebit-og-image')
-                            : null;
-
-                        if (fallbackImageInput && attachment.url) {
-                            fallbackImageInput.value = attachment.url;
-                        }
-
-                        renderMediaPreview(targetPreview, attachment);
+                        handleMediaSelection(targetInputId, targetPreviewId, attachment);
                     });
 
                     frame.open();
@@ -239,6 +324,64 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (targetPreview) {
                         targetPreview.innerHTML = '';
                     }
+
+                    if (button.dataset.targetInput) {
+                        setRemoveVisibility(button.dataset.targetInput);
+                        setCropVisibility(button.dataset.targetInput, '');
+                    }
+                });
+            });
+
+            cropLinks.forEach(link => {
+                link.addEventListener('click', (event) => {
+                    if (link.classList.contains('is-hidden')) {
+                        event.preventDefault();
+                    }
+                });
+            });
+
+            dropzones.forEach(zone => {
+                const input = zone.querySelector('.bitstream-media-file');
+                const targetInputId = zone.dataset.targetInput;
+                const targetPreviewId = zone.dataset.targetPreview;
+
+                if (!input) {
+                    return;
+                }
+
+                zone.addEventListener('click', () => {
+                    input.click();
+                });
+
+                zone.addEventListener('dragover', (event) => {
+                    event.preventDefault();
+                    zone.classList.add('is-dragover');
+                });
+
+                zone.addEventListener('dragleave', () => {
+                    zone.classList.remove('is-dragover');
+                });
+
+                zone.addEventListener('drop', (event) => {
+                    event.preventDefault();
+                    zone.classList.remove('is-dragover');
+
+                    const file = event.dataTransfer.files && event.dataTransfer.files[0];
+                    if (!file) {
+                        return;
+                    }
+
+                    uploadMediaFile(file, targetInputId, targetPreviewId);
+                });
+
+                input.addEventListener('change', () => {
+                    const file = input.files && input.files[0];
+                    if (!file) {
+                        return;
+                    }
+
+                    uploadMediaFile(file, targetInputId, targetPreviewId);
+                    input.value = '';
                 });
             });
 
@@ -246,6 +389,7 @@ document.addEventListener('DOMContentLoaded', function() {
             existingMediaInputs.forEach(input => {
                 const value = parseInt(input.value || '0', 10);
                 if (!value || !window.wp || !wp.media) {
+                    setRemoveVisibility(input.id);
                     return;
                 }
 
@@ -256,6 +400,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 const attachment = wp.media.attachment(value);
                 attachment.fetch().then(() => {
                     renderMediaPreview(previewEl, attachment.toJSON());
+                    setRemoveVisibility(input.id);
+                    setCropVisibility(input.id, attachment.get('mime'));
                 }).catch(() => {});
             });
         }

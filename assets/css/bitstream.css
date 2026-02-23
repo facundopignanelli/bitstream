@@ -506,10 +506,56 @@ iframe, embed, object, video {
     color: #333;
 }
 
+.bitstream-media-remove.is-hidden {
+    display: none;
+}
+
+.bitstream-media-crop {
+    border: none;
+    border-radius: 10px;
+    padding: 0.6rem 0.9rem;
+    background: #eee;
+    color: #333;
+    text-decoration: none;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+}
+
+.bitstream-media-crop.is-hidden {
+    display: none;
+}
+
 .bitstream-media-controls {
     display: flex;
     gap: 0.6rem;
     flex-wrap: wrap;
+    margin-bottom: 0.6rem;
+}
+
+.bitstream-media-dropzone {
+    border: 2px dashed #cbd5d1;
+    border-radius: 12px;
+    padding: 1rem;
+    text-align: center;
+    color: #51615a;
+    background: #f8faf9;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease;
+    margin-bottom: 0.6rem;
+}
+
+.bitstream-media-dropzone.is-dragover {
+    border-color: var(--wp--preset--color--accent-1, #2c6e49);
+    background: #eef6f1;
+}
+
+.bitstream-media-file {
+    display: none;
+}
+
+.bitstream-media-preview {
+    margin-top: 0.4rem;
 }
 
 .bitstream-media-preview img {

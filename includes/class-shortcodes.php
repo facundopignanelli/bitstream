@@ -248,9 +248,14 @@ class BitStream_Shortcodes {
 
                     <div class="bitstream-media-field">
                         <input type="hidden" id="bitstream-bit-attachment-id" name="bit_attachment_id" value="<?php echo esc_attr($media_id); ?>">
+                        <div class="bitstream-media-dropzone" data-target-input="bitstream-bit-attachment-id" data-target-preview="bitstream-bit-media-preview" data-accept="image/*,video/*">
+                            <span>Drag and drop media here, or click to upload</span>
+                            <input type="file" class="bitstream-media-file" accept="image/*,video/*">
+                        </div>
                         <div class="bitstream-media-controls">
                             <button type="button" class="bitstream-media-select" data-target-input="bitstream-bit-attachment-id" data-target-preview="bitstream-bit-media-preview">Choose media</button>
-                            <button type="button" class="bitstream-media-remove" data-target-input="bitstream-bit-attachment-id" data-target-preview="bitstream-bit-media-preview">Remove media</button>
+                            <button type="button" class="bitstream-media-remove is-hidden" data-target-input="bitstream-bit-attachment-id" data-target-preview="bitstream-bit-media-preview">Remove media</button>
+                            <a class="bitstream-media-crop is-hidden" data-target-input="bitstream-bit-attachment-id" href="#" target="_blank" rel="noopener">Crop image</a>
                         </div>
                         <div class="bitstream-media-preview" id="bitstream-bit-media-preview"></div>
                     </div>
@@ -294,10 +299,15 @@ class BitStream_Shortcodes {
 
                     <div class="bitstream-media-field">
                         <input type="hidden" id="bitstream-rebit-attachment-id" name="rebit_attachment_id" value="">
+                        <div class="bitstream-media-dropzone" data-target-input="bitstream-rebit-attachment-id" data-target-preview="bitstream-rebit-media-preview" data-accept="image/*">
+                            <span>Drag and drop an image here, or click to upload</span>
+                            <input type="file" class="bitstream-media-file" accept="image/*">
+                        </div>
                         <input type="url" id="bitstream-rebit-og-image" name="rebit_og_image" placeholder="Image URL fallback (optional)">
                         <div class="bitstream-media-controls">
                             <button type="button" class="bitstream-media-select" data-target-input="bitstream-rebit-attachment-id" data-target-preview="bitstream-rebit-media-preview">Choose image from Media Library</button>
-                            <button type="button" class="bitstream-media-remove" data-target-input="bitstream-rebit-attachment-id" data-target-preview="bitstream-rebit-media-preview">Remove selected image</button>
+                            <button type="button" class="bitstream-media-remove is-hidden" data-target-input="bitstream-rebit-attachment-id" data-target-preview="bitstream-rebit-media-preview">Remove selected image</button>
+                            <a class="bitstream-media-crop is-hidden" data-target-input="bitstream-rebit-attachment-id" href="#" target="_blank" rel="noopener">Crop image</a>
                         </div>
                         <div class="bitstream-media-preview" id="bitstream-rebit-media-preview"></div>
                     </div>
