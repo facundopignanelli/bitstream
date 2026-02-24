@@ -342,21 +342,31 @@ class BitStream_Content_Display {
         static $already_rendered = [];
         
         if (!isset($post) || !is_object($post) || $post->post_type !== 'bit') return $content;
+        if (!empty($GLOBALS['bitstream_is_rendering_card'])) return $content;
         
         if (!empty($already_rendered[$post->ID])) return $content;
         if (!empty($GLOBALS['bitstream_is_rendering_quote'])) return $content;
         
         $quoted_id = get_post_meta($post->ID, '_bitstream_quoted_bit', true);
         if ($quoted_id) {
-            $quoted_post = get_post($quoted_id);
-            if ($quoted_post) {
-                $header = '<div style="color:var(--wp--preset--color--accent-1,#2c6e49);font-weight:600;margin-bottom:8px;">'
-                        . $this->format_quoted_date($quoted_id) . '</div>';
-                $quoted_content = wpautop($quoted_post->post_content);
-                $quoted_content = preg_replace('/<!--\s*wp:.*?\/-->/s', '', $quoted_content);
-                $rich_preview = $this->render_og_card($quoted_id);
-                $quoted_box = '<div class="bitstream-quoted-preview">'
-                    . $header . $quoted_content . $rich_preview . '</div>';
+            $nested_card = function_exists('bitstream_render_nested_quoted_card')
+                ? bitstream_render_nested_quoted_card($quoted_id)
+                : '';
+
+            if (empty($nested_card)) {
+                $quoted_post = get_post($quoted_id);
+                if ($quoted_post) {
+                    $header = '<div style="color:var(--wp--preset--color--accent-1,#2c6e49);font-weight:600;margin-bottom:8px;">'
+                            . $this->format_quoted_date($quoted_id) . '</div>';
+                    $quoted_content = wpautop($quoted_post->post_content);
+                    $quoted_content = preg_replace('/<!--\s*wp:.*?\/-->/s', '', $quoted_content);
+                    $rich_preview = $this->render_og_card($quoted_id);
+                    $nested_card = $header . $quoted_content . $rich_preview;
+                }
+            }
+
+            if (!empty($nested_card)) {
+                $quoted_box = '<div class="bitstream-quoted-preview">' . $nested_card . '</div>';
                 $GLOBALS['bitstream_is_rendering_quote'] = true;
                 $content = $content . $quoted_box; // Put quoted content after new content (social media style)
                 unset($GLOBALS['bitstream_is_rendering_quote']);

@@ -118,6 +118,126 @@ class BitStream_Plugin {
 }
 
 /**
+ * Render ReBit media/preview section for a card
+ *
+ * @param int $post_id
+ * @return string
+ */
+function bitstream_render_rebit_section($post_id) {
+    $rebit_url = get_post_meta($post_id, 'bitstream_rebit_url', true);
+    if (empty($rebit_url)) {
+        return '';
+    }
+
+    $parsed = parse_url($rebit_url);
+    $host = $parsed['host'] ?? '';
+
+    ob_start();
+
+    $map = BitStream_ReBit_Mappings::get_mapping_for_domain($host);
+    if ($map) {
+        echo '<div class="bit-rebit-label" style="margin-bottom:0.5rem;font-size:0.95rem;color:#333;">'
+            . '<i class="' . esc_attr($map['icon']) . '" aria-hidden="true" style="margin-right:0.5rem;"></i>'
+            . esc_html($map['label'])
+            . '</div>';
+    } else {
+        echo '<div class="bit-rebit-label" style="margin-bottom:0.5rem;font-size:0.95rem;color:#333;">'
+            . '<i class="fas fa-link" aria-hidden="true" style="margin-right:0.5rem;"></i> shared a link</div>';
+    }
+
+    $is_yt = stripos($host, 'youtube.com') !== false || stripos($host, 'youtu.be') !== false;
+    if ($is_yt) {
+        $video_id = '';
+        if (stripos($host, 'youtu.be') !== false) {
+            $video_id = ltrim($parsed['path'] ?? '', '/');
+        } elseif (isset($parsed['query'])) {
+            parse_str($parsed['query'], $args);
+            $video_id = $args['v'] ?? '';
+        }
+
+        if ($video_id) {
+            echo '<div class="bit-rebit-embed" style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;margin:1rem 0;">'
+                . '<iframe src="https://www.youtube.com/embed/' . esc_attr($video_id) . '" '
+                . 'frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" '
+                . 'allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;"></iframe></div>';
+        } else {
+            echo '<a href="' . esc_url($rebit_url) . '" target="_blank" rel="noopener">' . esc_html($rebit_url) . '</a>';
+        }
+    } else {
+        echo '<div class="bit-rebit-preview" style="border:1px solid #ddd;border-radius:8px;overflow:hidden;margin-bottom:1rem;">';
+        $og_img = get_post_meta($post_id, '_bitstream_og_image', true);
+        if ($og_img) {
+            echo '<img src="' . esc_url($og_img) . '" style="width:100%;display:block;" alt="">';
+        }
+
+        echo '<div style="padding:0.75rem;">';
+        $og_title = get_post_meta($post_id, '_bitstream_og_title', true);
+        $og_desc = get_post_meta($post_id, '_bitstream_og_desc', true);
+        if ($og_title) {
+            echo '<h4 style="margin:0 0 0.5rem;font-size:1.1rem;">'
+                . '<a href="' . esc_url($rebit_url) . '" target="_blank" rel="noopener">' . esc_html($og_title) . '</a></h4>';
+        }
+        if ($og_desc) {
+            echo '<p style="margin:0;font-size:0.95rem;color:#555;">' . esc_html($og_desc) . '</p>';
+        }
+        if (!$og_desc) {
+            echo '<a href="' . esc_url($rebit_url) . '" target="_blank" rel="noopener">' . esc_html($rebit_url) . '</a>';
+        }
+        echo '</div></div>';
+    }
+
+    return ob_get_clean();
+}
+
+/**
+ * Render a nested quoted Bit card without action buttons/comments
+ *
+ * @param int $post_id
+ * @return string
+ */
+function bitstream_render_nested_quoted_card($post_id) {
+    $quoted_post = get_post($post_id);
+    if (!($quoted_post instanceof WP_Post) || $quoted_post->post_type !== 'bit' || $quoted_post->post_status !== 'publish') {
+        ob_start();
+        ?>
+        <article id="bit-quoted-missing-<?php echo esc_attr($post_id); ?>" class="bit-card bit-card-quoted-nested bit-card-quoted-unavailable" style="margin:0;padding:1rem;max-width:720px;border:1px solid #e5e7eb;border-radius:15px;background:#fff;">
+            <div class="bit-card-content" style="font-size:0.95rem;line-height:1.5;margin:0;">
+                <p style="margin:0;color:var(--wp--preset--color--secondary,#666);">Original Bit unavailable.</p>
+            </div>
+        </article>
+        <?php
+        return ob_get_clean();
+    }
+
+    $content = wpautop(get_post_field('post_content', $post_id));
+    $timestamp = human_time_diff(get_post_modified_time('U', false, $post_id), current_time('timestamp')) . ' ago';
+    $avatar = get_avatar(get_post_field('post_author', $post_id), 48, '', '', ['class' => 'bit-avatar-img']);
+    $rebit_markup = bitstream_render_rebit_section($post_id);
+
+    ob_start();
+    ?>
+    <article id="bit-quoted-<?php echo esc_attr($post_id); ?>" class="bit-card bit-card-quoted-nested" style="margin:0;padding:1.5rem;max-width:720px;border:1px solid #eee;border-radius:15px;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+        <header class="bit-card-header" style="display:flex;align-items:center;margin-bottom:1rem;">
+            <div class="bit-avatar" style="width:48px;height:48px;margin-right:0.75rem;border-radius:15px;overflow:hidden;">
+                <?php echo $avatar; ?>
+            </div>
+            <div class="bit-meta" style="font-size:0.875rem;color:var(--wp--preset--color--secondary,#666);">
+                <span class="bit-timestamp"><?php echo esc_html($timestamp); ?></span>
+            </div>
+        </header>
+
+        <div class="bit-card-content" style="font-size:1rem;line-height:1.6;margin-bottom:1rem;">
+            <?php echo $content; ?>
+        </div>
+
+        <?php echo $rebit_markup; ?>
+    </article>
+    <?php
+
+    return ob_get_clean();
+}
+
+/**
  * Render a bit card
  * 
  * @param int $post_id The post ID to render
@@ -130,14 +250,21 @@ function bitstream_render_card($post_id, $skip_content_filter = false) {
         $content = get_post_field('post_content', $post_id);
         $content = wpautop($content); // Basic paragraph formatting
     } else {
+        $GLOBALS['bitstream_is_rendering_card'] = true;
         $content = apply_filters('the_content', get_post_field('post_content',$post_id));
+        unset($GLOBALS['bitstream_is_rendering_card']);
     }
     
     $timestamp = human_time_diff(get_post_modified_time('U',false,$post_id),current_time('timestamp')).' ago';
     $avatar    = get_avatar(get_post_field('post_author',$post_id),48,'','',['class'=>'bit-avatar-img']);
     $likes     = (int)get_post_meta($post_id,'_bitstream_likes',true);
     $comments  = get_comments_number($post_id);
-    $rebit_url = get_post_meta($post_id,'bitstream_rebit_url',true);
+    $quoted_id = (int) get_post_meta($post_id, '_bitstream_quoted_bit', true);
+    $rebit_markup = bitstream_render_rebit_section($post_id);
+    $quoted_markup = '';
+    if ($quoted_id > 0) {
+        $quoted_markup = bitstream_render_nested_quoted_card($quoted_id);
+    }
 
     ob_start(); ?>
     <article id="bit-<?php echo esc_attr($post_id); ?>" class="bit-card" style="margin:2rem auto;padding:1.5rem;max-width:720px;border:1px solid #eee;border-radius:15px;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,0.05);">
@@ -154,51 +281,13 @@ function bitstream_render_card($post_id, $skip_content_filter = false) {
             <?php echo $content; ?>
         </div>
 
-        <?php if ($rebit_url):
-            $parsed = parse_url($rebit_url);
-            $host   = $parsed['host'] ?? '';
-            $map = BitStream_ReBit_Mappings::get_mapping_for_domain($host);
-            if ($map) {
-                echo '<div class="bit-rebit-label" style="margin-bottom:0.5rem;font-size:0.95rem;color:#333;">'
-                   . '<i class="'.esc_attr($map['icon']).'" aria-hidden="true" style="margin-right:0.5rem;"></i>'
-                   . esc_html($map['label'])
-                   . '</div>';
-            } else {
-                echo '<div class="bit-rebit-label" style="margin-bottom:0.5rem;font-size:0.95rem;color:#333;">
-                <i class="fas fa-link" aria-hidden="true" style="margin-right:0.5rem;"></i> shared a link</div>';
-            }
+        <?php echo $rebit_markup; ?>
 
-            $is_yt = stripos($host,'youtube.com')!==false||stripos($host,'youtu.be')!==false;
-            if ($is_yt) {
-                $video_id='';
-                if (stripos($host,'youtu.be')!==false) {
-                    $video_id = ltrim($parsed['path'],'/');
-                } elseif (isset($parsed['query'])){
-                    parse_str($parsed['query'],$args);
-                    $video_id = $args['v']??'';
-                }
-                if ($video_id) {
-                    echo '<div class="bit-rebit-embed" style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;margin:1rem 0;">'
-                       . '<iframe src="https://www.youtube.com/embed/'.esc_attr($video_id).'" '
-                       . 'frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" '
-                       . 'allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;"></iframe></div>';
-                } else {
-                    echo '<a href="'.esc_url($rebit_url). '" target="_blank" rel="noopener">'.esc_html($rebit_url).'</a>';
-                }
-            } else {
-                echo '<div class="bit-rebit-preview" style="border:1px solid #ddd;border-radius:8px;overflow:hidden;margin-bottom:1rem;">';
-                $og_img = get_post_meta($post_id,'_bitstream_og_image',true);
-                if ($og_img) echo '<img src="'.esc_url($og_img).'" style="width:100%;display:block;" alt="">';
-                echo '<div style="padding:0.75rem;">';
-                $og_title = get_post_meta($post_id,'_bitstream_og_title',true);
-                $og_desc  = get_post_meta($post_id,'_bitstream_og_desc',true);
-                if ($og_title) echo '<h4 style="margin:0 0 0.5rem;font-size:1.1rem;">
-                   <a href="'.esc_url($rebit_url).'" target="_blank" rel="noopener">'.esc_html($og_title).'</a></h4>';
-                if ($og_desc) echo '<p style="margin:0;font-size:0.95rem;color:#555;">'.esc_html($og_desc).'</p>';
-                if (!$og_desc) echo '<a href="'.esc_url($rebit_url).'" target="_blank" rel="noopener">'.esc_html($rebit_url).'</a>';
-                echo '</div></div>';
-            }
-        endif; ?>
+        <?php if (!empty($quoted_markup)): ?>
+            <div class="bitstream-quoted-preview">
+                <?php echo $quoted_markup; ?>
+            </div>
+        <?php endif; ?>
 
         <hr style="margin:1rem 0;border:none;border-top:1px solid #eee;">
 

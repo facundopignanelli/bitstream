@@ -1268,74 +1268,12 @@ body.bitstream-cropper-open {
     margin: 0 0 0.7rem;
 }
 
-.bitstream-quote-card {
-    margin: 0;
-    border: 1px solid #e5e7eb;
-    border-radius: 15px;
-    background: #fff;
-    padding: 0.9rem;
-    box-sizing: border-box;
-    overflow: hidden;
-}
-
-.bitstream-quote-card-header {
-    display: flex;
-    align-items: center;
-    gap: 0.65rem;
-    margin-bottom: 0.6rem;
-}
-
-.bitstream-quote-card-avatar {
-    flex: 0 0 40px;
-    width: 40px;
-    height: 40px;
-    border-radius: 15px;
-    overflow: hidden;
-}
-
-.bitstream-quote-card-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.bitstream-quote-card-meta {
-    display: flex;
-    flex-direction: column;
-    line-height: 1.25;
-    min-width: 0;
-}
-
-.bitstream-quote-card-meta span {
-    font-size: 0.82rem;
-    color: var(--wp--preset--color--secondary, #666);
-}
-
-.bitstream-quote-card-content {
-    font-size: 0.95rem;
-    line-height: 1.5;
-}
-
-.bitstream-quote-card-content > :first-child {
-    margin-top: 0;
-}
-
-.bitstream-quote-card-content > :last-child {
-    margin-bottom: 0;
-}
-
-.bitstream-quote-card-content * {
-    max-width: 100%;
-    box-sizing: border-box;
-}
-
-.bitstream-quote-card-content img,
-.bitstream-quote-card-content video,
-.bitstream-quote-card-content iframe {
-    border-radius: 15px;
-    display: block;
-    max-width: 100%;
-    height: auto;
+.bitstream-poster-quote-preview .bit-card-quoted-nested {
+    position: static !important;
+    width: 100% !important;
+    left: auto !important;
+    top: auto !important;
+    margin: 0 !important;
 }
 
 .bitstream-poster-result {
@@ -1575,39 +1513,43 @@ iframe[src*="youtu.be"] {
 
 /* Adjust quoted preview for masonry cells */
 .bitstream-quoted-preview {
-    margin-top: 15px !important;
-    padding: 12px !important;
-    overflow: hidden !important;
-    word-wrap: break-word !important;
-}
-.bitstream-quoted-preview {
+    margin-top: 0.9rem;
+    padding: 0.7rem;
     border-radius: 15px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.10);
-    padding: 16px;
     background: #fafafa;
-    margin-top: 20px; /* Changed from margin-bottom to margin-top since quotes now appear after content */
-    overflow: hidden; /* Prevent content overflow */
-    word-wrap: break-word; /* Break long words */
-    box-sizing: border-box; /* Include padding in width calculation */
-    border-left: 3px solid var(--wp--preset--color--accent-1, #2c6e49); /* Add visual indicator for quoted content */
+    border-left: 3px solid var(--wp--preset--color--accent-1, #2c6e49);
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
-/* Ensure all content within quoted preview stays contained */
+.bitstream-quoted-preview .bit-card-quoted-nested {
+    position: static !important;
+    width: 100% !important;
+    left: auto !important;
+    top: auto !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+}
+
+.bitstream-quoted-preview .bit-card-quoted-nested .bit-card-footer,
+.bitstream-quoted-preview .bit-card-quoted-nested .bit-comments,
+.bitstream-quoted-preview .bit-card-quoted-nested hr {
+    display: none !important;
+}
+
 .bitstream-quoted-preview * {
-    max-width: 100% !important;
+    max-width: 100%;
     box-sizing: border-box;
 }
 
-/* Handle images in quoted previews */
 .bitstream-quoted-preview img {
-    max-width: 100% !important;
-    height: auto !important;
+    max-width: 100%;
+    height: auto;
     display: block;
-    margin: 0.5em auto;
+    margin: 0.5em 0;
     border-radius: 15px;
 }
 
-/* Handle links and text in quoted previews */
 .bitstream-quoted-preview a,
 .bitstream-quoted-preview p,
 .bitstream-quoted-preview div {
