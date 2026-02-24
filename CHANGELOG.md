@@ -40,8 +40,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Schedule validation added (requires valid future datetime when scheduling is enabled)
 - Schedule-aware preview links returned for future posts
 - Unified UI corner radius to 15px across cards, controls, and avatars
-- Replaced Masonry feed layout with a fixed single-column feed across breakpoints for a clearer social-app style timeline
-- Removed legacy Masonry positioning/reflow logic from frontend JavaScript and CSS
+- Replaced Masonry feed layout with a new layout for a  clearer social-app style timeline
+- Refined feed shell layout to keep intro and filters as separate boxes while stacking naturally in the same sidebar column
+- Reworked filter controls on mobile/tablet into two side-by-side collapsible panels (`Search` and `Filters`)
+- Updated filter panel labeling from `Filters & Archive` to `Filters`
+- Set filter panel open-state behavior to be responsive and user-toggle aware across breakpoints
+- Removed redundant `Clear filters` link from the Content filter box (active filter chips already provide clear actions)
+- Redesigned Archive filters to group entries by year with nested month links for better long-term scalability
+- Added collapsible year groups in Archive with visual chevrons and responsive default-collapse behavior on mobile/tablet
+- Added desktop right-rail `Quick Actions` panel using the same visual styling primitives as left-side filter links
+- Unified quick action options into a shared renderer so floating menu and desktop right rail stay in sync
+- Changed quick actions visibility by breakpoint: floating button is now mobile/tablet only, right rail is desktop only
+- Improved mobile feed/card width containment to prevent horizontal clipping/overflow on small screens
 
 ## [2.0.1] - 2025-10-22
 

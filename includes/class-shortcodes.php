@@ -358,7 +358,7 @@ class BitStream_Shortcodes {
 
             foreach ($archive_by_year as $year => $year_data) {
                 $is_open = ($selected_year === strval($year)) || (empty($selected_year) && $year_index === 0);
-                echo '<details class="bitstream-archive-year"'.($is_open ? ' open' : '').'>';
+                echo '<details class="bitstream-archive-year"'.($is_open ? ' data-default-open="1"' : '').'>';
                 echo '<summary class="bitstream-archive-year-summary">';
                 echo '<span class="bitstream-archive-year-label">'.esc_html(strval($year)).'</span>';
                 echo '<span class="bitstream-archive-year-count">('.intval($year_data['total']).')</span>';
@@ -387,7 +387,6 @@ class BitStream_Shortcodes {
         echo '<a class="bitstream-filter-link '.($selected_type === 'all' ? 'is-active' : '').'" href="'.esc_url($build_filter_url($base_filter_url, 'all', $selected_month, $selected_search)).'">All</a>';
         echo '<a class="bitstream-filter-link '.($selected_type === 'bits' ? 'is-active' : '').'" href="'.esc_url($build_filter_url($base_filter_url, 'bits', $selected_month, $selected_search)).'">Bits</a>';
         echo '<a class="bitstream-filter-link '.($selected_type === 'rebits' ? 'is-active' : '').'" href="'.esc_url($build_filter_url($base_filter_url, 'rebits', $selected_month, $selected_search)).'">Rebits</a>';
-        echo '<a class="bitstream-filter-link bitstream-filter-clear" href="'.esc_url($base_filter_url).'">Clear filters</a>';
         echo '</div>';
         echo '</details>';
 

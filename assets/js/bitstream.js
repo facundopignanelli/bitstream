@@ -2039,6 +2039,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const isInfiniteScroll = feed.dataset.infiniteScroll === 'true';
 
     const sidebarPanels = document.querySelectorAll('.bitstream-feed-sidebar-panel');
+    const archiveYears = document.querySelectorAll('.bitstream-archive-year');
+
     function syncSidebarPanelState() {
         if (!sidebarPanels.length) {
             return;
@@ -2058,14 +2060,42 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    function syncArchiveYearState() {
+        if (!archiveYears.length) {
+            return;
+        }
+
+        const isDesktop = window.innerWidth >= 1024;
+
+        archiveYears.forEach(year => {
+            if (year.dataset.userToggled === 'true') {
+                return;
+            }
+
+            if (isDesktop) {
+                year.open = year.dataset.defaultOpen === '1';
+            } else {
+                year.open = false;
+            }
+        });
+    }
+
     sidebarPanels.forEach(panel => {
         panel.addEventListener('toggle', () => {
             panel.dataset.userToggled = 'true';
         });
     });
 
+    archiveYears.forEach(year => {
+        year.addEventListener('toggle', () => {
+            year.dataset.userToggled = 'true';
+        });
+    });
+
     syncSidebarPanelState();
+    syncArchiveYearState();
     window.addEventListener('resize', syncSidebarPanelState);
+    window.addEventListener('resize', syncArchiveYearState);
 
     function loadNextPage() {
         const nextPage = parseInt(feed.dataset.page) + 1;

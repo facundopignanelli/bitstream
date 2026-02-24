@@ -63,7 +63,6 @@
     margin: 0 auto;
     box-sizing: border-box;
     min-width: 0;
-    overflow-x: clip;
 }
 
 .bitstream-feed-main {
@@ -95,6 +94,7 @@
 
 .bitstream-feed-sidebar-right {
     grid-area: right;
+    display: none;
 }
 
 .bitstream-right-rail-reserved {
@@ -416,10 +416,6 @@
 
     .bitstream-feed-sidebar {
         position: static;
-    }
-
-    .bitstream-feed-sidebar-right {
-        display: none;
     }
 
     .bitstream-feed-sidebar-panel {
@@ -838,14 +834,11 @@ img.avatar {
     .bitstream-feed-layout,
     .bitstream-feed-main,
     .bitstream-feed {
-        width: 100% !important;
-        max-width: 100% !important;
+        width: min(100%, calc(100vw - 1rem)) !important;
+        max-width: min(100%, calc(100vw - 1rem)) !important;
         min-width: 0 !important;
-    }
-
-    .bitstream-feed-main,
-    .bitstream-feed {
-        overflow-x: hidden;
+        margin-left: auto !important;
+        margin-right: auto !important;
     }
 
     .bit-card {
