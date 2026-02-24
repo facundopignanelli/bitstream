@@ -1610,9 +1610,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             card.classList.add('bit-card-delete-fade');
                             setTimeout(() => {
                                 card.remove();
-                                if (typeof window.initMasonry === 'function') {
-                                    setTimeout(window.initMasonry, 30);
-                                }
                             }, 350);
                         }, 3000);
                     }
@@ -2010,15 +2007,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (!section.classList.contains('open')) {
                             // About to open - immediately boost z-index BEFORE animation starts
                             bitCard.classList.add('comments-open');
-                            console.log('Comments opening for card:', bitCard, '- z-index boosted');
-                            
-                            // Trigger immediate masonry reflow to reorganize layout BEFORE content becomes visible
-                            triggerMasonryReflow();
-                            
-                            // Additional reflow slightly later to ensure proper positioning
-                            setTimeout(() => {
-                                triggerMasonryReflow();
-                            }, 100);
                         }
                     }
                     
@@ -2028,42 +2016,20 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (bitCard) {
                         if (!section.classList.contains('open')) {
                             // Comments were closed - remove z-index boost after animation
-                            console.log('Comments closed for card:', bitCard);
                             setTimeout(() => {
                                 bitCard.classList.remove('comments-open');
                             }, 450); // Slightly longer than CSS transition duration
                         }
-                        
-                        // Trigger masonry layout recalculation after animation
-                        setTimeout(() => {
-                            triggerMasonryReflow();
-                        }, 400); // Match the CSS transition duration
                     }
                 }
             });
         });
     }
     
-    // Function to trigger masonry layout recalculation
-    function triggerMasonryReflow() {
-        // Use the existing initMasonry function to recalculate layout
-        setTimeout(() => {
-            if (typeof window.initMasonry === 'function') {
-                console.log('Triggering masonry reflow with initMasonry');
-                window.initMasonry();
-            }
-        }, 50); // Small delay to ensure DOM has updated
-    }
-    
     // Initialize comment toggles
     initCommentToggles();
 
-    // Add masonry reflow listener if using a masonry library
-    document.addEventListener('masonryReflow', () => {
-        console.log('Masonry reflow event received');
-        // This event can be caught by masonry initialization code
-    });
-    // Infinite Scroll & Load More with Masonry Layout
+    // Infinite Scroll & Load More
     const feed = document.querySelector('.bitstream-feed');
     if (!feed) return;
 
@@ -2071,175 +2037,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const loadMoreButton = document.getElementById('bitstream-load-more');
     const scrollTrigger = document.querySelector('.bitstream-scroll-trigger');
     const isInfiniteScroll = feed.dataset.infiniteScroll === 'true';
-
-    // Masonry layout implementation with improved height detection
-    window.initMasonry = function initMasonry() {
-        if (window.innerWidth < 768) {
-            // Single column on mobile - no masonry needed
-            feed.style.height = 'auto';
-            const cards = feed.querySelectorAll('.bit-card');
-            cards.forEach((card, index) => {
-                card.style.position = 'relative';
-                card.style.left = '0';
-                card.style.top = '0';
-                card.style.width = '100%';
-                card.style.marginBottom = '1rem';
-                card.style.zIndex = 'auto';
-            });
-            return;
-        }
-
-        const cards = Array.from(feed.querySelectorAll('.bit-card'));
-        if (cards.length === 0) return;
-
-        const columns = window.innerWidth >= 1024 ? 3 : 2;
-        const gap = window.innerWidth >= 1024 ? 20 : 16;
-        
-        // Calculate column width based on feed width and columns
-        const feedWidth = feed.offsetWidth;
-        const totalGapWidth = gap * (columns - 1);
-        const columnWidth = Math.floor((feedWidth - totalGapWidth) / columns);
-        
-        const columnHeights = new Array(columns).fill(0);
-
-        cards.forEach((card, index) => {
-            // Force a reflow to ensure accurate height measurement
-            card.style.width = columnWidth + 'px';
-            card.style.position = 'absolute';
-            
-            // Wait for next frame to get accurate height after width is set
-            void card.offsetHeight;
-            
-            // Get accurate card height including all content
-            const cardRect = card.getBoundingClientRect();
-            let cardHeight = Math.ceil(cardRect.height);
-            
-            // If height seems wrong, recalculate with a different method
-            if (cardHeight < 50) {
-                cardHeight = card.scrollHeight || card.offsetHeight || 200;
-            }
-            
-            // Add extra padding for safety to prevent overlaps
-            cardHeight += 2;
-            
-            // Find the shortest column
-            const shortestColumn = columnHeights.indexOf(Math.min(...columnHeights));
-            
-            // Position the card
-            const x = shortestColumn * (columnWidth + gap);
-            const y = columnHeights[shortestColumn];
-            
-            card.style.left = x + 'px';
-            card.style.top = y + 'px';
-            card.style.zIndex = '2';
-            
-            // Update column height
-            columnHeights[shortestColumn] += cardHeight + gap;
-        });
-
-        // Set container height with extra padding to prevent overlap
-        const maxHeight = Math.max(...columnHeights);
-        feed.style.height = (maxHeight + gap * 2) + 'px';
-        feed.style.position = 'relative';
-        feed.style.overflow = 'visible';
-        
-        console.log('Masonry layout calculated:', {
-            cards: cards.length,
-            columns: columns,
-            columnWidth: columnWidth,
-            maxHeight: maxHeight
-        });
-    };
-
-    // Initialize masonry on load
-    setTimeout(window.initMasonry, 100);
-
-    // Recalculate layout when images load
-    function setupImageLoadHandlers() {
-        const images = feed.querySelectorAll('.bit-card img');
-        let loadedImages = 0;
-        const totalImages = images.length;
-        
-        if (totalImages === 0) {
-            // No images, layout is stable
-            return;
-        }
-        
-        images.forEach(img => {
-            if (img.complete) {
-                // Image already loaded
-                loadedImages++;
-                if (loadedImages === totalImages) {
-                    setTimeout(window.initMasonry, 50);
-                }
-            } else {
-                // Wait for image to load
-                img.addEventListener('load', () => {
-                    loadedImages++;
-                    if (loadedImages === totalImages) {
-                        setTimeout(window.initMasonry, 50);
-                    }
-                });
-                img.addEventListener('error', () => {
-                    loadedImages++;
-                    if (loadedImages === totalImages) {
-                        setTimeout(window.initMasonry, 50);
-                    }
-                });
-            }
-        });
-    }
-    
-    setupImageLoadHandlers();
-    
-    // Also recalculate after fonts load
-    if (document.fonts && document.fonts.ready) {
-        document.fonts.ready.then(() => {
-            setTimeout(window.initMasonry, 100);
-        });
-    }
-
-    // Watch for content changes within cards (like expanding comments)
-    const contentObserver = new MutationObserver((mutations) => {
-        let shouldRecalculate = false;
-        
-        mutations.forEach(mutation => {
-            // Check if any cards had significant changes
-            if (mutation.type === 'childList' || mutation.type === 'attributes') {
-                const card = mutation.target.closest('.bit-card');
-                if (card) {
-                    shouldRecalculate = true;
-                }
-            }
-        });
-        
-        if (shouldRecalculate) {
-            // Debounce the recalculation
-            clearTimeout(window.masonryRecalcTimeout);
-            window.masonryRecalcTimeout = setTimeout(() => {
-                window.initMasonry();
-            }, 150);
-        }
-    });
-    
-    // Observe the feed container for changes
-    contentObserver.observe(feed, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ['class', 'style']
-    });
-
-    // Reinitialize on window resize with debouncing
-    let resizeTimeout;
-    window.addEventListener('resize', () => {
-        clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(() => {
-            window.initMasonry();
-            // Recalculate again after a short delay to catch any async changes
-            setTimeout(window.initMasonry, 100);
-        }, 250);
-    });
 
     function loadNextPage() {
         const nextPage = parseInt(feed.dataset.page) + 1;
@@ -2275,39 +2072,8 @@ document.addEventListener('DOMContentLoaded', function() {
             
             feed.dataset.page = nextPage;
             loading = false;
-            
-            // Wait for new cards to be rendered in DOM
-            requestAnimationFrame(() => {
-                // Handle images in new cards
-                const newImages = Array.from(newCards).flatMap(card => 
-                    Array.from(card.querySelectorAll('img'))
-                );
-                
-                if (newImages.length > 0) {
-                    let loadedCount = 0;
-                    const checkAllLoaded = () => {
-                        loadedCount++;
-                        if (loadedCount === newImages.length) {
-                            window.initMasonry();
-                        }
-                    };
-                    
-                    newImages.forEach(img => {
-                        if (img.complete) {
-                            checkAllLoaded();
-                        } else {
-                            img.addEventListener('load', checkAllLoaded);
-                            img.addEventListener('error', checkAllLoaded);
-                        }
-                    });
-                } else {
-                    // No images, layout immediately
-                    window.initMasonry();
-                }
-                
-                // Also recalculate after a delay as a safety net
-                setTimeout(window.initMasonry, 200);
-            });
+
+            initCommentToggles();
             
             // Update button state
             if (loadMoreButton) {

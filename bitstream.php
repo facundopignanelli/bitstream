@@ -211,16 +211,12 @@ function bitstream_render_nested_quoted_card($post_id) {
 
     $content = wpautop(get_post_field('post_content', $post_id));
     $timestamp = human_time_diff(get_post_modified_time('U', false, $post_id), current_time('timestamp')) . ' ago';
-    $avatar = get_avatar(get_post_field('post_author', $post_id), 48, '', '', ['class' => 'bit-avatar-img']);
     $rebit_markup = bitstream_render_rebit_section($post_id);
 
     ob_start();
     ?>
     <article id="bit-quoted-<?php echo esc_attr($post_id); ?>" class="bit-card bit-card-quoted-nested" style="margin:0;padding:1.5rem;max-width:720px;border:1px solid #eee;border-radius:15px;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,0.05);">
         <header class="bit-card-header" style="display:flex;align-items:center;margin-bottom:1rem;">
-            <div class="bit-avatar" style="width:48px;height:48px;margin-right:0.75rem;border-radius:15px;overflow:hidden;">
-                <?php echo $avatar; ?>
-            </div>
             <div class="bit-meta" style="font-size:0.875rem;color:var(--wp--preset--color--secondary,#666);">
                 <span class="bit-timestamp"><?php echo esc_html($timestamp); ?></span>
             </div>

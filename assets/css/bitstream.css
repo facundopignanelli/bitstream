@@ -47,17 +47,18 @@
     min-height: auto;
 }
 
-/* JavaScript-based Masonry Layout for BitStream Feed */
+/* Feed grid layout */
 .bitstream-feed {
-    position: relative;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
     max-width: 1200px;
     margin: 0 auto;
     width: 100%;
     padding: 1rem;
     box-sizing: border-box;
-    z-index: 1; /* Establish stacking context */
-    overflow: hidden; /* Prevent content from spilling outside container */
-    isolation: isolate; /* Create new stacking context to prevent z-index issues */
+    z-index: 1;
+    overflow: visible;
 }
 
 /* Ensure the feed doesn't interfere with other page elements */
@@ -68,41 +69,27 @@
     height: 2rem; /* Add some spacing after the feed */
 }
 
-/* Grid sizer elements for consistent column widths */
-.bitstream-grid-sizer {
-    width: 100%;
-}
-
 @media (min-width: 768px) {
-    .bitstream-grid-sizer {
-        width: calc(50% - 1rem);
-    }
-    
     .bitstream-feed {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         padding: 1.5rem;
     }
 }
 
 @media (min-width: 1024px) {
-    .bitstream-grid-sizer {
-        width: calc(33.333% - 1.34rem);
-    }
-    
     .bitstream-feed {
         padding: 2rem;
     }
 }
 
-/* Card styling adjustments for JavaScript masonry layout */
+/* Card styling for grid layout */
 .bit-card {
-    position: absolute;
+    position: relative;
     width: 100%;
-    margin: 0 !important;
+    margin: 0;
     max-width: none !important;
     box-sizing: border-box;
-    transition: left 0.3s ease, top 0.3s ease;
-    z-index: 2; /* Ensure cards stay within their container context */
-    will-change: transform; /* Optimize positioning performance */
+    z-index: 2;
 }
 
 .bit-card.bit-card-delete-pending {
@@ -142,13 +129,7 @@
 
 @media (min-width: 768px) {
     .bit-card {
-        width: calc(50% - 1rem);
-    }
-}
-
-@media (min-width: 1024px) {
-    .bit-card {
-        width: calc(33.333% - 1.34rem);
+        width: 100%;
     }
 }
 
@@ -415,7 +396,7 @@ img.avatar {
     width: 100%;
     max-width: 300px;
     position: relative;
-    z-index: 10; /* Ensure button appears above masonry content */
+    z-index: 10;
     clear: both;
 }
 
@@ -429,7 +410,7 @@ img.avatar {
     width: 100%;
     clear: both;
     position: relative;
-    z-index: 10; /* Ensure trigger is above masonry content */
+    z-index: 10;
 }
 
 /* Enhanced comment animation */
@@ -456,7 +437,7 @@ img.avatar {
     visibility: visible; /* Make visible when open */
 }
 
-/* Responsive adjustments for JavaScript masonry layout */
+/* Responsive feed adjustments */
 @media (max-width: 767px) {
     .bit-card {
         margin: 0 0 1rem 0 !important;
@@ -479,7 +460,7 @@ img.avatar {
     }
 }
 
-/* Ensure embedded content works properly in masonry layout */
+/* Ensure embedded content works properly in feed cards */
 .bit-rebit-embed {
     width: 100% !important;
     max-width: 100% !important;
@@ -1516,7 +1497,7 @@ iframe[src*="youtu.be"] {
     }
 }
 
-/* Adjust quoted preview for masonry cells */
+/* Quoted preview styles */
 .bitstream-quoted-preview {
     margin-top: 0.9rem;
     padding: 0.75rem;
@@ -1542,6 +1523,11 @@ iframe[src*="youtu.be"] {
 
 .bitstream-quoted-preview .bit-card-quoted-nested .bit-card-content {
     margin-bottom: 0 !important;
+}
+
+.bitstream-quoted-preview .bit-card-quoted-nested .bit-card-header,
+.bitstream-poster-quote-preview .bit-card-quoted-nested .bit-card-header {
+    margin-bottom: 0.45rem !important;
 }
 
 .bitstream-quoted-preview .bit-card-quoted-nested .bit-card-footer,

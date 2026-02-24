@@ -40,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Schedule validation added (requires valid future datetime when scheduling is enabled)
 - Schedule-aware preview links returned for future posts
 - Unified UI corner radius to 15px across cards, controls, and avatars
+- Replaced Masonry feed layout with a fixed responsive grid (1 column on mobile, 2 columns on tablet/desktop) for more predictable scanning
+- Removed legacy Masonry positioning/reflow logic from frontend JavaScript and CSS
 
 ## [2.0.1] - 2025-10-22
 
