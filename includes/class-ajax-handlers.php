@@ -9,6 +9,71 @@
 if (!defined('ABSPATH')) exit;
 
 class BitStream_Ajax_Handlers {
+
+    /**
+     * Resize embedded artwork binary to a compact square size and return a data URI.
+     */
+    private function optimize_embedded_artwork_data_uri($binary_data, $mime_type, $max_dimension = 192) {
+        if (empty($binary_data) || empty($mime_type)) {
+            return '';
+        }
+
+        if (!function_exists('wp_get_image_editor')) {
+            return 'data:' . sanitize_mime_type($mime_type) . ';base64,' . base64_encode($binary_data);
+        }
+
+        $mime = sanitize_mime_type($mime_type);
+        $extension_map = [
+            'image/jpeg' => 'jpg',
+            'image/jpg' => 'jpg',
+            'image/png' => 'png',
+            'image/gif' => 'gif',
+            'image/webp' => 'webp',
+        ];
+        $extension = $extension_map[$mime] ?? 'jpg';
+
+        $tmp_input = wp_tempnam('bitstream-audio-artwork.' . $extension);
+        if (!$tmp_input) {
+            return 'data:' . $mime . ';base64,' . base64_encode($binary_data);
+        }
+
+        file_put_contents($tmp_input, $binary_data);
+
+        $editor = wp_get_image_editor($tmp_input);
+        if (is_wp_error($editor)) {
+            @unlink($tmp_input);
+            return 'data:' . $mime . ';base64,' . base64_encode($binary_data);
+        }
+
+        $size = $editor->get_size();
+        if (is_array($size) && isset($size['width'], $size['height'])) {
+            $width = intval($size['width']);
+            $height = intval($size['height']);
+            if ($width > $max_dimension || $height > $max_dimension) {
+                $editor->resize($max_dimension, $max_dimension, false);
+            }
+        }
+
+        $saved = $editor->save($tmp_input);
+        if (is_wp_error($saved) || empty($saved['path']) || !file_exists($saved['path'])) {
+            @unlink($tmp_input);
+            return 'data:' . $mime . ';base64,' . base64_encode($binary_data);
+        }
+
+        $optimized_binary = file_get_contents($saved['path']);
+        $optimized_mime = !empty($saved['mime-type']) ? sanitize_mime_type($saved['mime-type']) : $mime;
+
+        @unlink($saved['path']);
+        if ($saved['path'] !== $tmp_input) {
+            @unlink($tmp_input);
+        }
+
+        if ($optimized_binary === false) {
+            return 'data:' . $mime . ';base64,' . base64_encode($binary_data);
+        }
+
+        return 'data:' . $optimized_mime . ';base64,' . base64_encode($optimized_binary);
+    }
     
     public function __construct() {
         add_action('wp_ajax_bitstream_like', [$this, 'handle_like']);
@@ -71,6 +136,7 @@ class BitStream_Ajax_Handlers {
                 $artist = $audio_meta['artist'] ?? '';
                 $album = $audio_meta['album'] ?? '';
                 $artwork = $audio_meta['artwork'] ?? '';
+                $artwork_id = isset($audio_meta['artwork_id']) ? intval($audio_meta['artwork_id']) : 0;
 
                 $meta_markup = '';
                 if ($title || $artist || $album) {
@@ -87,12 +153,27 @@ class BitStream_Ajax_Handlers {
                     $meta_markup .= '</div>';
                 }
 
-                $has_artwork = !empty($artwork);
-                $artwork_markup = $has_artwork
-                    ? '<div class="bitstream-audio-artwork-wrap"><img class="bitstream-audio-artwork" src="' . esc_attr($artwork) . '" alt=""></div>'
-                    : '';
+                $has_artwork = !empty($artwork) || $artwork_id > 0;
+                $artwork_markup = '';
+                if ($has_artwork) {
+                    if ($artwork_id > 0) {
+                        $img = wp_get_attachment_image($artwork_id, 'thumbnail', false, [
+                            'class' => 'bitstream-audio-artwork',
+                            'loading' => 'lazy',
+                            'decoding' => 'async',
+                            'alt' => '',
+                        ]);
+                        if ($img) {
+                            $artwork_markup = '<div class="bitstream-audio-artwork-wrap">' . $img . '</div>';
+                        }
+                    }
 
-                return '<div class="bitstream-audio-embed' . ($has_artwork ? '' : ' no-artwork') . '">'
+                    if (!$artwork_markup && !empty($artwork)) {
+                        $artwork_markup = '<div class="bitstream-audio-artwork-wrap"><img class="bitstream-audio-artwork" src="' . esc_attr($artwork) . '" alt=""></div>';
+                    }
+                }
+
+                return '<div class="bitstream-audio-embed' . ($artwork_markup ? '' : ' no-artwork') . '">'
                     . $artwork_markup
                     . $meta_markup
                     . '<div class="bitstream-audio-player">' . $audio_markup . '</div>'
@@ -138,15 +219,27 @@ class BitStream_Ajax_Handlers {
         ];
 
         if (!empty($meta['artwork_id']) && empty($meta['artwork'])) {
-            $meta['artwork'] = wp_get_attachment_url($meta['artwork_id']);
+            $thumb_url = wp_get_attachment_image_url($meta['artwork_id'], 'thumbnail');
+            $meta['artwork'] = $thumb_url ? $thumb_url : wp_get_attachment_url($meta['artwork_id']);
         }
 
         if (empty($meta['artwork']) && !empty($raw['image']['data']) && !empty($raw['image']['mime'])) {
-            $mime = sanitize_mime_type($raw['image']['mime']);
-            $meta['artwork'] = 'data:' . $mime . ';base64,' . base64_encode($raw['image']['data']);
+            $meta['artwork'] = $this->optimize_embedded_artwork_data_uri(
+                $raw['image']['data'],
+                $raw['image']['mime'],
+                192
+            );
         }
 
         $meta = array_merge($meta, array_intersect_key($stored, $meta));
+
+        if (!empty($meta['artwork_id'])) {
+            $thumb_url = wp_get_attachment_image_url(intval($meta['artwork_id']), 'thumbnail');
+            if ($thumb_url) {
+                $meta['artwork'] = $thumb_url;
+            }
+        }
+
         $meta = array_filter($meta, static function($value) {
             return $value !== '' && $value !== null && $value !== false;
         });
@@ -212,7 +305,8 @@ class BitStream_Ajax_Handlers {
                 $artwork_url = '';
             } else {
                 if ($artwork_id > 0 && wp_attachment_is('image', $artwork_id)) {
-                    $artwork_url = wp_get_attachment_url($artwork_id);
+                    $thumb_url = wp_get_attachment_image_url($artwork_id, 'thumbnail');
+                    $artwork_url = $thumb_url ? $thumb_url : wp_get_attachment_url($artwork_id);
                 } else {
                     $artwork_id = 0;
 

@@ -885,8 +885,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             return;
                         }
                         const data = selection.toJSON();
+                        const thumbUrl = data && data.sizes && data.sizes.thumbnail && data.sizes.thumbnail.url
+                            ? data.sizes.thumbnail.url
+                            : (data.url || '');
                         audioTagsArtworkId = data.id || 0;
-                        audioTagsArtworkUrl = data.url || '';
+                        audioTagsArtworkUrl = thumbUrl;
                         audioTagsArtworkCleared = false;
                         updateAudioArtworkPreview(audioTagsArtworkUrl);
                     });
