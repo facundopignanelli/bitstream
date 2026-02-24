@@ -348,6 +348,44 @@ class BitStream_PWA_Manager {
     /**
      * Handle media sharing from PWA (photos/videos)
      */
+    private function extract_share_url($shared_url, $shared_text, $shared_title) {
+        $normalized_url = sanitize_url((string) $shared_url);
+        $normalized_text = sanitize_text_field((string) $shared_text);
+        $normalized_title = sanitize_text_field((string) $shared_title);
+
+        if (!empty($normalized_url) && filter_var($normalized_url, FILTER_VALIDATE_URL)) {
+            return $normalized_url;
+        }
+
+        if (!empty($normalized_text) && filter_var($normalized_text, FILTER_VALIDATE_URL)) {
+            return $normalized_text;
+        }
+
+        $all_content = trim($normalized_url . ' ' . $normalized_text . ' ' . $normalized_title);
+        if (preg_match('/https?:\/\/[^\s]+/', $all_content, $matches) && !empty($matches[0])) {
+            $candidate = sanitize_url($matches[0]);
+            if (!empty($candidate) && filter_var($candidate, FILTER_VALIDATE_URL)) {
+                return $candidate;
+            }
+        }
+
+        return '';
+    }
+
+    private function clean_share_text($shared_text, $final_url) {
+        $normalized_text = sanitize_textarea_field((string) $shared_text);
+
+        if (empty($normalized_text)) {
+            return '';
+        }
+
+        if (!empty($final_url)) {
+            $normalized_text = trim(str_replace($final_url, '', $normalized_text));
+        }
+
+        return sanitize_textarea_field(preg_replace('/\s+/', ' ', $normalized_text));
+    }
+
     private function handle_media_share() {
         error_log('BitStream: handle_media_share called');
         error_log('BitStream: REQUEST_METHOD: ' . $_SERVER['REQUEST_METHOD']);
@@ -390,10 +428,13 @@ class BitStream_PWA_Manager {
         $shared_text = isset($_POST['text']) ? sanitize_textarea_field($_POST['text']) : '';
         $shared_title = isset($_POST['title']) ? sanitize_text_field($_POST['title']) : '';
         $shared_url = isset($_POST['url']) ? esc_url_raw($_POST['url']) : '';
+        $final_url = $this->extract_share_url($shared_url, $shared_text, $shared_title);
+        $clean_text = $this->clean_share_text($shared_text, $final_url);
         
         error_log('BitStream: Shared text: ' . $shared_text);
         error_log('BitStream: Shared title: ' . $shared_title);
         error_log('BitStream: Shared URL: ' . $shared_url);
+        error_log('BitStream: Final extracted URL: ' . $final_url);
         
         // Process uploaded files
         if (!empty($_FILES['media'])) {
@@ -451,25 +492,25 @@ class BitStream_PWA_Manager {
         error_log('BitStream: Uploaded attachment IDs: ' . print_r($attachment_ids, true));
         
         // If no files were uploaded successfully but we have shared text/url, just redirect
-        if (empty($attachment_ids) && (empty($shared_text) && empty($shared_url))) {
+        if (empty($attachment_ids) && empty($clean_text) && empty($final_url)) {
             error_log('BitStream: No media uploaded and no shared content, redirecting to plain new bit page');
             wp_redirect($this->get_poster_url(['poster_tab' => 'bit']));
             exit;
         }
         
         // Build redirect URL to frontend poster page
-        $redirect_url = $this->get_poster_url(['poster_tab' => empty($shared_url) ? 'bit' : 'rebit']);
+        $redirect_url = $this->get_poster_url(['poster_tab' => empty($final_url) ? 'bit' : 'rebit']);
         
         if (!empty($attachment_ids)) {
             $redirect_url = add_query_arg('media_ids', implode(',', $attachment_ids), $redirect_url);
         }
         
-        if (!empty($shared_text)) {
-            $redirect_url = add_query_arg('shared_text', urlencode($shared_text), $redirect_url);
+        if (!empty($clean_text)) {
+            $redirect_url = add_query_arg('shared_text', urlencode($clean_text), $redirect_url);
         }
         
-        if (!empty($shared_url)) {
-            $redirect_url = add_query_arg('shared_url', urlencode($shared_url), $redirect_url);
+        if (!empty($final_url)) {
+            $redirect_url = add_query_arg('shared_url', urlencode($final_url), $redirect_url);
             $redirect_url = add_query_arg('poster_tab', 'rebit', $redirect_url);
         }
         
@@ -702,23 +743,8 @@ class BitStream_PWA_Manager {
                     
                     error_log('BitStream Share Debug: Extracted parameters - URL: ' . $shared_url . ', Title: ' . $shared_title . ', Text: ' . $shared_text);
                     
-                    // Smart URL extraction - YouTube puts URL in 'text' parameter
-                    $final_url = '';
-                    if (!empty($shared_url) && filter_var($shared_url, FILTER_VALIDATE_URL)) {
-                        $final_url = $shared_url;
-                        error_log('BitStream Share Debug: Using URL from url parameter');
-                    } elseif (!empty($shared_text) && filter_var($shared_text, FILTER_VALIDATE_URL)) {
-                        $final_url = $shared_text;
-                        error_log('BitStream Share Debug: Using URL from text parameter (YouTube format)');
-                    } else {
-                        // Fallback: extract URL from any parameter content
-                        $all_content = $shared_url . ' ' . $shared_text . ' ' . $shared_title;
-                        preg_match('/https?:\/\/[^\s]+/', $all_content, $matches);
-                        if (!empty($matches[0])) {
-                            $final_url = $matches[0];
-                            error_log('BitStream Share Debug: Extracted URL from content: ' . $final_url);
-                        }
-                    }
+                    $final_url = $this->extract_share_url($shared_url, $shared_text, $shared_title);
+                    $clean_text = $this->clean_share_text($shared_text, $final_url);
                     
                     error_log('BitStream Share Debug: Final extracted URL: ' . $final_url);
                     
@@ -735,7 +761,7 @@ class BitStream_PWA_Manager {
                             $shared_data = array(
                                 'url' => $final_url, // Use the extracted URL
                                 'title' => $shared_title,
-                                'text' => $shared_text,
+                                'text' => $clean_text,
                                 'timestamp' => time()
                             );
                             // Use a transient that expires in 10 minutes
@@ -766,8 +792,8 @@ class BitStream_PWA_Manager {
                         error_log('BitStream Share Debug: Added shared_title to redirect');
                     }
                     // Note: We use final_url instead of shared_text since shared_text might be the URL
-                    if ($shared_text && $shared_text !== $final_url) {
-                        $redirect_url = add_query_arg('shared_text', urlencode($shared_text), $redirect_url);
+                    if (!empty($clean_text)) {
+                        $redirect_url = add_query_arg('shared_text', urlencode($clean_text), $redirect_url);
                         error_log('BitStream Share Debug: Added shared_text to redirect');
                     }
                     

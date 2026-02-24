@@ -1815,6 +1815,38 @@ document.addEventListener('DOMContentLoaded', function() {
         return sizes.map(size => ({ src, sizes: size, type: 'image/png' }));
     }
 
+    function sanitizeVideoTitleFromBitContent(rawTitle, mediaEl) {
+        if (!rawTitle) {
+            return '';
+        }
+
+        let cleaned = rawTitle;
+        const sourceValues = new Set();
+
+        if (mediaEl.currentSrc) {
+            sourceValues.add(mediaEl.currentSrc);
+        }
+
+        const directSrc = mediaEl.getAttribute('src');
+        if (directSrc) {
+            sourceValues.add(directSrc);
+        }
+
+        mediaEl.querySelectorAll('source[src]').forEach(sourceEl => {
+            const sourceSrc = sourceEl.getAttribute('src');
+            if (sourceSrc) {
+                sourceValues.add(sourceSrc);
+            }
+        });
+
+        sourceValues.forEach(src => {
+            cleaned = cleaned.split(src).join(' ');
+        });
+
+        cleaned = cleaned.replace(/https?:\/\/\S+/gi, ' ').replace(/\s+/g, ' ').trim();
+        return cleaned;
+    }
+
     function resolveMediaSessionMeta(mediaEl) {
         const tagName = (mediaEl.tagName || '').toLowerCase();
         const siteName = getSiteName();
@@ -1847,8 +1879,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const fallbackImage = mediaEl.closest('.bit-card, .bitstream-media-preview, .bitstream-poster')
                 ?.querySelector('img')
                 ?.getAttribute('src') || '';
+            const bitContentTitle = sanitizeVideoTitleFromBitContent(getCardTextTitle(mediaEl), mediaEl);
 
-            const title = mediaEl.getAttribute('title') || getCardTextTitle(mediaEl) || 'Video';
+            const title = mediaEl.getAttribute('title') || bitContentTitle || 'Video';
 
             return {
                 title,
