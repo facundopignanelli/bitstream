@@ -200,7 +200,7 @@ function bitstream_render_nested_quoted_card($post_id) {
     if (!($quoted_post instanceof WP_Post) || $quoted_post->post_type !== 'bit' || $quoted_post->post_status !== 'publish') {
         ob_start();
         ?>
-        <article id="bit-quoted-missing-<?php echo esc_attr($post_id); ?>" class="bit-card bit-card-quoted-nested bit-card-quoted-unavailable" style="margin:0;padding:1rem;max-width:720px;border:1px solid #e5e7eb;border-radius:15px;background:#fff;">
+        <article id="bit-quoted-missing-<?php echo esc_attr($post_id); ?>" class="bit-card bit-card-quoted-nested bit-card-quoted-unavailable" style="margin:0;padding:1rem;max-width:720px;border:1px solid #ddd;border-radius:15px;background:#fff;">
             <div class="bit-card-content" style="font-size:0.95rem;line-height:1.5;margin:0;">
                 <p style="margin:0;color:var(--wp--preset--color--secondary,#666);">Original Bit unavailable.</p>
             </div>
@@ -215,7 +215,7 @@ function bitstream_render_nested_quoted_card($post_id) {
 
     ob_start();
     ?>
-    <article id="bit-quoted-<?php echo esc_attr($post_id); ?>" class="bit-card bit-card-quoted-nested" style="margin:0;padding:1.5rem;max-width:720px;border:1px solid #eee;border-radius:15px;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+    <article id="bit-quoted-<?php echo esc_attr($post_id); ?>" class="bit-card bit-card-quoted-nested" style="margin:0;padding:1.5rem;max-width:720px;border:1px solid #ddd;border-radius:15px;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,0.05);">
         <header class="bit-card-header" style="display:flex;align-items:center;margin-bottom:1rem;">
             <div class="bit-meta" style="font-size:0.875rem;color:var(--wp--preset--color--secondary,#666);">
                 <span class="bit-timestamp"><?php echo esc_html($timestamp); ?></span>

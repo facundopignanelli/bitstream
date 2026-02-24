@@ -54,9 +54,8 @@
     display: grid;
     grid-template-columns: 1fr;
     grid-template-areas:
-        "intro"
-        "main"
         "left"
+        "main"
         "right";
     gap: 1rem;
     max-width: 1320px;
@@ -72,10 +71,6 @@
 
 .bitstream-feed-sidebar-left {
     grid-area: left;
-}
-
-.bitstream-feed-sidebar-intro {
-    grid-area: intro;
 }
 
 .bitstream-feed-sidebar-right {
@@ -315,9 +310,8 @@
     .bitstream-feed-layout {
         grid-template-columns: 1fr;
         grid-template-areas:
-            "intro"
-            "main"
             "left"
+            "main"
             "right";
         gap: 1rem;
         align-items: start;
@@ -343,9 +337,7 @@
 @media (min-width: 1024px) {
     .bitstream-feed-layout {
         grid-template-columns: minmax(190px, 240px) minmax(0, 1fr) minmax(170px, 210px);
-        grid-template-areas:
-            "intro main right"
-            "left main right";
+        grid-template-areas: "left main right";
         gap: 1rem;
         align-items: start;
     }
@@ -379,6 +371,7 @@
     margin: 0;
     height: auto;
     align-self: start;
+    border: 1px solid #ddd !important;
     max-width: none !important;
     box-sizing: border-box;
     z-index: 2;

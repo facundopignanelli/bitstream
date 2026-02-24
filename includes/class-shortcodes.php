@@ -229,7 +229,7 @@ class BitStream_Shortcodes {
 
         echo '<div class="bitstream-feed-layout">';
 
-        echo '<aside class="bitstream-feed-sidebar bitstream-feed-sidebar-intro">';
+        echo '<aside class="bitstream-feed-sidebar bitstream-feed-sidebar-left">';
         echo '<div class="bitstream-filter-box bitstream-intro-box">';
         echo '<h3 class="bitstream-feed-sidebar-title">'.esc_html($intro_title).'</h3>';
         echo '<p class="bitstream-intro-text">'.nl2br(esc_html($intro_text)).'</p>';
@@ -250,9 +250,7 @@ class BitStream_Shortcodes {
             echo '</details>';
         }
         echo '</div>';
-        echo '</aside>';
 
-        echo '<aside class="bitstream-feed-sidebar bitstream-feed-sidebar-left">';
         echo '<details class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-left" open>';
         echo '<summary class="bitstream-feed-sidebar-summary"><i class="fa-solid fa-sliders" aria-hidden="true"></i> Filters</summary>';
         echo '<div class="bitstream-filter-box">';
