@@ -54,9 +54,10 @@
     display: grid;
     grid-template-columns: 1fr;
     grid-template-areas:
+        "intro"
+        "main"
         "left"
-        "right"
-        "main";
+        "right";
     gap: 1rem;
     max-width: 1320px;
     width: 100%;
@@ -71,6 +72,10 @@
 
 .bitstream-feed-sidebar-left {
     grid-area: left;
+}
+
+.bitstream-feed-sidebar-intro {
+    grid-area: intro;
 }
 
 .bitstream-feed-sidebar-right {
@@ -119,6 +124,63 @@
     background: #fff;
     padding: 0.75rem;
     height: fit-content;
+}
+
+.bitstream-intro-text {
+    margin: 0;
+    color: #3d4a43;
+    line-height: 1.45;
+    font-size: 0.9rem;
+}
+
+.bitstream-intro-saved {
+    margin: 0.45rem 0 0;
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.bitstream-intro-edit {
+    margin-top: 0.65rem;
+}
+
+.bitstream-intro-edit summary {
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+}
+
+.bitstream-intro-form {
+    display: grid;
+    gap: 0.45rem;
+    margin-top: 0.5rem;
+}
+
+.bitstream-intro-form label {
+    font-size: 0.8rem;
+    color: #2f3b34;
+}
+
+.bitstream-intro-form input,
+.bitstream-intro-form textarea {
+    width: 100%;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    padding: 0.45rem 0.6rem;
+    box-sizing: border-box;
+    font-family: inherit;
+    font-size: 0.86rem;
+}
+
+.bitstream-intro-form button {
+    border: none;
+    border-radius: 10px;
+    padding: 0.45rem 0.65rem;
+    background: var(--wp--preset--color--accent-1, #2c6e49);
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
 }
 
 .bitstream-filter-box {
@@ -251,16 +313,22 @@
 
 @media (min-width: 768px) {
     .bitstream-feed-layout {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: 1fr;
         grid-template-areas:
-            "left right"
-            "main main";
+            "intro"
+            "main"
+            "left"
+            "right";
         gap: 1rem;
         align-items: start;
     }
 
     .bitstream-feed-sidebar {
         position: static;
+    }
+
+    .bitstream-feed-sidebar-right {
+        display: none;
     }
 
     .bitstream-feed-sidebar-panel {
@@ -275,7 +343,9 @@
 @media (min-width: 1024px) {
     .bitstream-feed-layout {
         grid-template-columns: minmax(190px, 240px) minmax(0, 1fr) minmax(170px, 210px);
-        grid-template-areas: "left main right";
+        grid-template-areas:
+            "intro main right"
+            "left main right";
         gap: 1rem;
         align-items: start;
     }
@@ -287,6 +357,10 @@
 
     .bitstream-feed-sidebar-summary {
         display: none;
+    }
+
+    .bitstream-feed-sidebar-right {
+        display: block;
     }
 
     .bitstream-feed-sidebar-panel > :not(summary) {

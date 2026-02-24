@@ -115,6 +115,24 @@ class BitStream_Shortcodes {
         $requested_search = isset($_GET['bitstream_search']) ? sanitize_text_field(wp_unslash($_GET['bitstream_search'])) : '';
         $selected_search = trim($requested_search);
 
+        $intro_title = get_option('bitstream_feed_intro_title', 'About BitStream');
+        $intro_text = get_option('bitstream_feed_intro_text', 'BitStream is a lightweight microblog where you can post Bits, share Rebits, and follow updates in one place.');
+        $intro_updated = false;
+
+        if (!empty($_POST['bitstream_intro_submit']) && is_user_logged_in() && current_user_can('edit_posts')) {
+            if (wp_verify_nonce($_POST['bitstream_intro_nonce'] ?? '', 'bitstream_intro_update')) {
+                $new_intro_title = sanitize_text_field(wp_unslash($_POST['bitstream_intro_title'] ?? ''));
+                $new_intro_text = sanitize_textarea_field(wp_unslash($_POST['bitstream_intro_text'] ?? ''));
+
+                $intro_title = !empty($new_intro_title) ? $new_intro_title : 'About BitStream';
+                $intro_text = !empty($new_intro_text) ? $new_intro_text : 'BitStream is a lightweight microblog where you can post Bits, share Rebits, and follow updates in one place.';
+
+                update_option('bitstream_feed_intro_title', $intro_title, false);
+                update_option('bitstream_feed_intro_text', $intro_text, false);
+                $intro_updated = true;
+            }
+        }
+
         // If limit is set, override posts_per_page and disable pagination
         $posts_per_page = !empty($atts['limit']) ? intval($atts['limit']) : intval($atts['posts_per_page']);
         $paged = !empty($atts['limit']) ? 1 : intval($atts['paged']);
@@ -210,6 +228,30 @@ class BitStream_Shortcodes {
         }
 
         echo '<div class="bitstream-feed-layout">';
+
+        echo '<aside class="bitstream-feed-sidebar bitstream-feed-sidebar-intro">';
+        echo '<div class="bitstream-filter-box bitstream-intro-box">';
+        echo '<h3 class="bitstream-feed-sidebar-title">'.esc_html($intro_title).'</h3>';
+        echo '<p class="bitstream-intro-text">'.nl2br(esc_html($intro_text)).'</p>';
+        if ($intro_updated) {
+            echo '<p class="bitstream-intro-saved">Updated successfully.</p>';
+        }
+        if (is_user_logged_in() && current_user_can('edit_posts')) {
+            echo '<details class="bitstream-intro-edit">';
+            echo '<summary>Edit text</summary>';
+            echo '<form method="post" class="bitstream-intro-form">';
+            wp_nonce_field('bitstream_intro_update', 'bitstream_intro_nonce');
+            echo '<label for="bitstream-intro-title">Title</label>';
+            echo '<input id="bitstream-intro-title" type="text" name="bitstream_intro_title" value="'.esc_attr($intro_title).'">';
+            echo '<label for="bitstream-intro-text">Description</label>';
+            echo '<textarea id="bitstream-intro-text" name="bitstream_intro_text" rows="4">'.esc_textarea($intro_text).'</textarea>';
+            echo '<button type="submit" name="bitstream_intro_submit" value="1">Save</button>';
+            echo '</form>';
+            echo '</details>';
+        }
+        echo '</div>';
+        echo '</aside>';
+
         echo '<aside class="bitstream-feed-sidebar bitstream-feed-sidebar-left">';
         echo '<details class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-left" open>';
         echo '<summary class="bitstream-feed-sidebar-summary"><i class="fa-solid fa-sliders" aria-hidden="true"></i> Filters</summary>';
