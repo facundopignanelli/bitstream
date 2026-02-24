@@ -11,6 +11,87 @@ if (!defined('ABSPATH')) exit;
 class BitStream_Ajax_Handlers {
 
     /**
+     * Build a small attachment from embedded audio artwork and return id/url pair.
+     */
+    private function create_embedded_artwork_attachment($audio_attachment_id, $binary_data, $mime_type) {
+        $data_uri = $this->optimize_embedded_artwork_data_uri($binary_data, $mime_type, 192);
+        if (!preg_match('#^data:([^;]+);base64,(.+)$#', $data_uri, $matches)) {
+            return [];
+        }
+
+        $optimized_mime = sanitize_mime_type($matches[1]);
+        $optimized_binary = base64_decode($matches[2], true);
+        if ($optimized_binary === false || $optimized_binary === '') {
+            return [];
+        }
+
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+        require_once ABSPATH . 'wp-admin/includes/media.php';
+        require_once ABSPATH . 'wp-admin/includes/image.php';
+
+        $upload_dir = wp_upload_dir();
+        if (!empty($upload_dir['error'])) {
+            return [];
+        }
+
+        $ext_map = [
+            'image/jpeg' => 'jpg',
+            'image/jpg' => 'jpg',
+            'image/png' => 'png',
+            'image/gif' => 'gif',
+            'image/webp' => 'webp',
+        ];
+        $extension = $ext_map[$optimized_mime] ?? 'jpg';
+
+        $relative_dir = 'bitstream-artwork';
+        $target_dir = trailingslashit($upload_dir['basedir']) . $relative_dir;
+        if (!wp_mkdir_p($target_dir)) {
+            return [];
+        }
+
+        $hash = substr(md5($optimized_binary), 0, 10);
+        $filename = 'bitstream-audio-artwork-' . intval($audio_attachment_id) . '-' . $hash . '.' . $extension;
+        $filepath = trailingslashit($target_dir) . $filename;
+
+        if (file_put_contents($filepath, $optimized_binary) === false) {
+            return [];
+        }
+
+        $filetype = wp_check_filetype($filename, null);
+        $attachment_post = [
+            'post_mime_type' => $filetype['type'] ?: $optimized_mime,
+            'post_title' => sanitize_text_field(pathinfo($filename, PATHINFO_FILENAME)),
+            'post_content' => '',
+            'post_status' => 'inherit',
+            'post_parent' => intval($audio_attachment_id),
+        ];
+
+        $artwork_attachment_id = wp_insert_attachment($attachment_post, $filepath, 0);
+        if (is_wp_error($artwork_attachment_id) || !$artwork_attachment_id) {
+            @unlink($filepath);
+            return [];
+        }
+
+        $metadata = wp_generate_attachment_metadata($artwork_attachment_id, $filepath);
+        if (!is_wp_error($metadata) && !empty($metadata)) {
+            wp_update_attachment_metadata($artwork_attachment_id, $metadata);
+        }
+
+        $thumb_url = wp_get_attachment_image_url($artwork_attachment_id, 'thumbnail');
+        $url = $thumb_url ? $thumb_url : wp_get_attachment_url($artwork_attachment_id);
+
+        if (!$url) {
+            wp_delete_attachment($artwork_attachment_id, true);
+            return [];
+        }
+
+        return [
+            'artwork_id' => intval($artwork_attachment_id),
+            'artwork' => $url,
+        ];
+    }
+
+    /**
      * Resize embedded artwork binary to a compact square size and return a data URI.
      */
     private function optimize_embedded_artwork_data_uri($binary_data, $mime_type, $max_dimension = 192) {
@@ -40,39 +121,77 @@ class BitStream_Ajax_Handlers {
         file_put_contents($tmp_input, $binary_data);
 
         $editor = wp_get_image_editor($tmp_input);
-        if (is_wp_error($editor)) {
-            @unlink($tmp_input);
-            return 'data:' . $mime . ';base64,' . base64_encode($binary_data);
-        }
+        if (!is_wp_error($editor)) {
+            $size = $editor->get_size();
+            if (is_array($size) && isset($size['width'], $size['height'])) {
+                $width = intval($size['width']);
+                $height = intval($size['height']);
+                if ($width > $max_dimension || $height > $max_dimension) {
+                    $editor->resize($max_dimension, $max_dimension, false);
+                }
+            }
 
-        $size = $editor->get_size();
-        if (is_array($size) && isset($size['width'], $size['height'])) {
-            $width = intval($size['width']);
-            $height = intval($size['height']);
-            if ($width > $max_dimension || $height > $max_dimension) {
-                $editor->resize($max_dimension, $max_dimension, false);
+            $saved = $editor->save($tmp_input);
+            if (!is_wp_error($saved) && !empty($saved['path']) && file_exists($saved['path'])) {
+                $optimized_binary = file_get_contents($saved['path']);
+                $optimized_mime = !empty($saved['mime-type']) ? sanitize_mime_type($saved['mime-type']) : $mime;
+
+                @unlink($saved['path']);
+                if ($saved['path'] !== $tmp_input) {
+                    @unlink($tmp_input);
+                }
+
+                if ($optimized_binary !== false) {
+                    return 'data:' . $optimized_mime . ';base64,' . base64_encode($optimized_binary);
+                }
             }
         }
 
-        $saved = $editor->save($tmp_input);
-        if (is_wp_error($saved) || empty($saved['path']) || !file_exists($saved['path'])) {
-            @unlink($tmp_input);
-            return 'data:' . $mime . ';base64,' . base64_encode($binary_data);
+        if (function_exists('imagecreatefromstring') && function_exists('imagesx') && function_exists('imagesy')) {
+            $source = @imagecreatefromstring($binary_data);
+            if ($source !== false) {
+                $src_w = imagesx($source);
+                $src_h = imagesy($source);
+                $scale = ($src_w > 0 && $src_h > 0) ? min(1, $max_dimension / max($src_w, $src_h)) : 1;
+
+                if ($scale < 1) {
+                    $dst_w = max(1, (int) round($src_w * $scale));
+                    $dst_h = max(1, (int) round($src_h * $scale));
+                    $resized = imagecreatetruecolor($dst_w, $dst_h);
+                    if ($resized !== false) {
+                        imagealphablending($resized, false);
+                        imagesavealpha($resized, true);
+                        imagecopyresampled($resized, $source, 0, 0, 0, 0, $dst_w, $dst_h, $src_w, $src_h);
+
+                        ob_start();
+                        if ($mime === 'image/png') {
+                            imagepng($resized, null, 6);
+                            $out_mime = 'image/png';
+                        } else if ($mime === 'image/gif') {
+                            imagegif($resized);
+                            $out_mime = 'image/gif';
+                        } else {
+                            imagejpeg($resized, null, 82);
+                            $out_mime = 'image/jpeg';
+                        }
+                        $optimized_binary = ob_get_clean();
+
+                        imagedestroy($resized);
+                        imagedestroy($source);
+                        @unlink($tmp_input);
+
+                        if (!empty($optimized_binary)) {
+                            return 'data:' . $out_mime . ';base64,' . base64_encode($optimized_binary);
+                        }
+                    }
+                }
+
+                imagedestroy($source);
+            }
         }
 
-        $optimized_binary = file_get_contents($saved['path']);
-        $optimized_mime = !empty($saved['mime-type']) ? sanitize_mime_type($saved['mime-type']) : $mime;
-
-        @unlink($saved['path']);
-        if ($saved['path'] !== $tmp_input) {
-            @unlink($tmp_input);
-        }
-
-        if ($optimized_binary === false) {
-            return 'data:' . $mime . ';base64,' . base64_encode($binary_data);
-        }
-
-        return 'data:' . $optimized_mime . ';base64,' . base64_encode($optimized_binary);
+        @unlink($tmp_input);
+        return 'data:' . $mime . ';base64,' . base64_encode($binary_data);
     }
     
     public function __construct() {
@@ -88,6 +207,182 @@ class BitStream_Ajax_Handlers {
         add_action('wp_ajax_bitstream_get_audio_meta', [$this, 'handle_get_audio_meta']);
         add_action('wp_ajax_bitstream_update_audio_meta', [$this, 'handle_update_audio_meta']);
         add_action('wp_ajax_bitstream_delete_post', [$this, 'handle_delete_post']);
+        add_action('before_delete_post', [$this, 'handle_before_delete_post']);
+    }
+
+    /**
+     * Attach media to a Bit post for ownership tracking and cleanup.
+     */
+    private function assign_attachment_to_bit($post_id, $attachment_id) {
+        $attachment_id = $this->get_valid_attachment_id($attachment_id);
+        if ($post_id <= 0 || $attachment_id <= 0) {
+            return;
+        }
+
+        wp_update_post([
+            'ID' => $attachment_id,
+            'post_parent' => $post_id,
+        ]);
+
+        update_post_meta($post_id, '_bitstream_attachment_id', $attachment_id);
+    }
+
+    /**
+     * Collect possible attachment IDs referenced by a Bit (supports old and new formats).
+     */
+    private function collect_bit_attachment_ids($post_id) {
+        $ids = [];
+
+        $tracked_id = intval(get_post_meta($post_id, '_bitstream_attachment_id', true));
+        if ($tracked_id > 0) {
+            $ids[] = $tracked_id;
+        }
+
+        $thumb_id = intval(get_post_thumbnail_id($post_id));
+        if ($thumb_id > 0) {
+            $ids[] = $thumb_id;
+        }
+
+        $children = get_children([
+            'post_parent' => $post_id,
+            'post_type' => 'attachment',
+            'post_status' => 'inherit',
+            'fields' => 'ids',
+            'numberposts' => -1,
+        ]);
+        if (!empty($children)) {
+            $ids = array_merge($ids, array_map('intval', $children));
+        }
+
+        $content = (string) get_post_field('post_content', $post_id);
+        if (!empty($content)) {
+            if (preg_match_all('/wp-image-([0-9]+)/', $content, $m)) {
+                foreach ($m[1] as $id) {
+                    $ids[] = intval($id);
+                }
+            }
+
+            if (preg_match_all('/(?:src|href)=["\']([^"\']+)["\']/i', $content, $matches)) {
+                foreach ($matches[1] as $url) {
+                    $attachment_id = attachment_url_to_postid($url);
+                    if ($attachment_id > 0) {
+                        $ids[] = intval($attachment_id);
+                    }
+                }
+            }
+        }
+
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+
+        foreach ($ids as $id) {
+            $generated_artwork_id = intval(get_post_meta($id, '_bitstream_generated_artwork_id', true));
+            if ($generated_artwork_id > 0) {
+                $ids[] = $generated_artwork_id;
+            }
+        }
+
+        return array_values(array_unique(array_filter(array_map('intval', $ids))));
+    }
+
+    /**
+     * Check if an attachment is still referenced by any other post.
+     */
+    private function is_attachment_used_elsewhere($attachment_id, $exclude_post_id) {
+        global $wpdb;
+
+        $attachment = get_post($attachment_id);
+        if (!$attachment || $attachment->post_type !== 'attachment') {
+            return true;
+        }
+
+        $parent_id = intval($attachment->post_parent);
+        if ($parent_id > 0 && $parent_id !== intval($exclude_post_id)) {
+            return true;
+        }
+
+        $meta_ref = $wpdb->get_var($wpdb->prepare(
+            "SELECT pm.post_id
+             FROM {$wpdb->postmeta} pm
+             INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+             WHERE pm.meta_value = %d
+               AND pm.post_id <> %d
+               AND p.post_status NOT IN ('trash','auto-draft')
+             LIMIT 1",
+            $attachment_id,
+            $exclude_post_id
+        ));
+        if (!empty($meta_ref)) {
+            return true;
+        }
+
+        $attachment_url = wp_get_attachment_url($attachment_id);
+        if ($attachment_url) {
+            $url_like = '%' . $wpdb->esc_like($attachment_url) . '%';
+            $url_ref = $wpdb->get_var($wpdb->prepare(
+                "SELECT ID FROM {$wpdb->posts}
+                 WHERE ID <> %d
+                   AND post_status NOT IN ('trash','auto-draft','inherit')
+                   AND post_content LIKE %s
+                 LIMIT 1",
+                $exclude_post_id,
+                $url_like
+            ));
+            if (!empty($url_ref)) {
+                return true;
+            }
+        }
+
+        $class_like = '%wp-image-' . intval($attachment_id) . '%';
+        $class_ref = $wpdb->get_var($wpdb->prepare(
+            "SELECT ID FROM {$wpdb->posts}
+             WHERE ID <> %d
+               AND post_status NOT IN ('trash','auto-draft','inherit')
+               AND post_content LIKE %s
+             LIMIT 1",
+            $exclude_post_id,
+            $class_like
+        ));
+
+        return !empty($class_ref);
+    }
+
+    /**
+     * Delete orphaned attachments associated with a Bit post.
+     */
+    private function cleanup_bit_attachments($post_id) {
+        $post = get_post($post_id);
+        if (!$post || $post->post_type !== 'bit') {
+            return;
+        }
+
+        $attachment_ids = $this->collect_bit_attachment_ids($post_id);
+        if (empty($attachment_ids)) {
+            return;
+        }
+
+        foreach ($attachment_ids as $attachment_id) {
+            if ($attachment_id <= 0 || get_post_type($attachment_id) !== 'attachment') {
+                continue;
+            }
+
+            if ($this->is_attachment_used_elsewhere($attachment_id, $post_id)) {
+                continue;
+            }
+
+            wp_delete_attachment($attachment_id, true);
+        }
+    }
+
+    /**
+     * Cleanup media when deleting bits from wp-admin flows.
+     */
+    public function handle_before_delete_post($post_id) {
+        $post = get_post($post_id);
+        if (!$post || $post->post_type !== 'bit') {
+            return;
+        }
+
+        $this->cleanup_bit_attachments($post_id);
     }
 
     /**
@@ -157,14 +452,12 @@ class BitStream_Ajax_Handlers {
                 $artwork_markup = '';
                 if ($has_artwork) {
                     if ($artwork_id > 0) {
-                        $img = wp_get_attachment_image($artwork_id, 'thumbnail', false, [
-                            'class' => 'bitstream-audio-artwork',
-                            'loading' => 'lazy',
-                            'decoding' => 'async',
-                            'alt' => '',
-                        ]);
-                        if ($img) {
-                            $artwork_markup = '<div class="bitstream-audio-artwork-wrap">' . $img . '</div>';
+                        $thumb_url = wp_get_attachment_image_url($artwork_id, 'thumbnail');
+                        if (!$thumb_url) {
+                            $thumb_url = wp_get_attachment_url($artwork_id);
+                        }
+                        if ($thumb_url) {
+                            $artwork_markup = '<div class="bitstream-audio-artwork-wrap"><img class="bitstream-audio-artwork" src="' . esc_url($thumb_url) . '" loading="lazy" decoding="async" alt=""></div>';
                         }
                     }
 
@@ -224,11 +517,23 @@ class BitStream_Ajax_Handlers {
         }
 
         if (empty($meta['artwork']) && !empty($raw['image']['data']) && !empty($raw['image']['mime'])) {
-            $meta['artwork'] = $this->optimize_embedded_artwork_data_uri(
+            $generated = $this->create_embedded_artwork_attachment(
+                $attachment_id,
                 $raw['image']['data'],
-                $raw['image']['mime'],
-                192
+                $raw['image']['mime']
             );
+
+            if (!empty($generated['artwork'])) {
+                $meta['artwork'] = $generated['artwork'];
+                $meta['artwork_id'] = intval($generated['artwork_id']);
+                update_post_meta($attachment_id, '_bitstream_generated_artwork_id', intval($generated['artwork_id']));
+            } else {
+                $meta['artwork'] = $this->optimize_embedded_artwork_data_uri(
+                    $raw['image']['data'],
+                    $raw['image']['mime'],
+                    192
+                );
+            }
         }
 
         $meta = array_merge($meta, array_intersect_key($stored, $meta));
@@ -299,14 +604,23 @@ class BitStream_Ajax_Handlers {
             $raw_artwork_url = trim(wp_unslash($_POST['artwork_url'] ?? ''));
             $existing_meta = get_post_meta($attachment_id, '_bitstream_audio_meta', true);
             $existing_meta = is_array($existing_meta) ? $existing_meta : [];
+            $generated_artwork_id = intval(get_post_meta($attachment_id, '_bitstream_generated_artwork_id', true));
 
             if ($artwork_clear) {
                 $artwork_id = 0;
                 $artwork_url = '';
+                if ($generated_artwork_id > 0) {
+                    wp_delete_attachment($generated_artwork_id, true);
+                    delete_post_meta($attachment_id, '_bitstream_generated_artwork_id');
+                }
             } else {
                 if ($artwork_id > 0 && wp_attachment_is('image', $artwork_id)) {
                     $thumb_url = wp_get_attachment_image_url($artwork_id, 'thumbnail');
                     $artwork_url = $thumb_url ? $thumb_url : wp_get_attachment_url($artwork_id);
+                    if ($generated_artwork_id > 0 && $generated_artwork_id !== $artwork_id) {
+                        wp_delete_attachment($generated_artwork_id, true);
+                        delete_post_meta($attachment_id, '_bitstream_generated_artwork_id');
+                    }
                 } else {
                     $artwork_id = 0;
 
@@ -315,6 +629,11 @@ class BitStream_Ajax_Handlers {
                             $artwork_url = $raw_artwork_url;
                         } else {
                             $artwork_url = esc_url_raw($raw_artwork_url);
+                        }
+
+                        if ($generated_artwork_id > 0) {
+                            wp_delete_attachment($generated_artwork_id, true);
+                            delete_post_meta($attachment_id, '_bitstream_generated_artwork_id');
                         }
                     } else {
                         $artwork_url = isset($existing_meta['artwork']) ? (string) $existing_meta['artwork'] : '';
@@ -566,6 +885,10 @@ class BitStream_Ajax_Handlers {
                     }
                 }
 
+                if ($attachment_id > 0) {
+                    $this->assign_attachment_to_bit($post_id, $attachment_id);
+                }
+
                 wp_send_json_success([
                     'message' => $schedule['is_scheduled'] ? 'Bit scheduled successfully.' : 'Bit published successfully.',
                     'post_id' => $post_id,
@@ -628,6 +951,10 @@ class BitStream_Ajax_Handlers {
             update_post_meta($post_id, '_bitstream_og_desc', sanitize_text_field($og_desc));
             update_post_meta($post_id, '_bitstream_og_image', esc_url_raw($og_image));
             update_post_meta($post_id, '_bitstream_og_fetched', time());
+
+            if ($attachment_id > 0) {
+                $this->assign_attachment_to_bit($post_id, $attachment_id);
+            }
 
             wp_send_json_success([
                 'message' => $schedule['is_scheduled'] ? 'Rebit scheduled successfully.' : 'Rebit published successfully.',
