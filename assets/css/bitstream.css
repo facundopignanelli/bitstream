@@ -71,9 +71,15 @@
 
 .bitstream-feed-sidebar-column {
     grid-area: left;
-    display: grid;
+    display: flex;
+    flex-direction: column;
     gap: 1rem;
     align-content: start;
+}
+
+.bitstream-feed-sidebar-column .bitstream-feed-sidebar-intro,
+.bitstream-feed-sidebar-column .bitstream-feed-sidebar-left {
+    grid-area: auto;
 }
 
 .bitstream-feed-sidebar-left {
