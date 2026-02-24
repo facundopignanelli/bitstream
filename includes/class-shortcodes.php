@@ -213,6 +213,7 @@ class BitStream_Shortcodes {
         echo '<aside class="bitstream-feed-sidebar bitstream-feed-sidebar-left">';
         echo '<details class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-left" open>';
         echo '<summary class="bitstream-feed-sidebar-summary"><i class="fa-solid fa-sliders" aria-hidden="true"></i> Filters</summary>';
+        echo '<div class="bitstream-filter-box">';
         echo '<h3 class="bitstream-feed-sidebar-title">Search</h3>';
         echo '<form class="bitstream-filter-search" method="get" action="'.esc_url($base_filter_url).'">';
         if ($selected_type !== 'all') {
@@ -224,7 +225,9 @@ class BitStream_Shortcodes {
         echo '<input type="search" name="bitstream_search" value="'.esc_attr($selected_search).'" placeholder="Search posts...">';
         echo '<button type="submit">Search</button>';
         echo '</form>';
+        echo '</div>';
 
+        echo '<div class="bitstream-filter-box">';
         echo '<h3 class="bitstream-feed-sidebar-title">Archive</h3>';
         echo '<a class="bitstream-filter-link '.(empty($selected_month) ? 'is-active' : '').'" href="'.esc_url($build_filter_url($base_filter_url, $selected_type, '', $selected_search)).'">All dates</a>';
         if (!empty($archive_rows)) {
@@ -232,9 +235,20 @@ class BitStream_Shortcodes {
                 $month_value = sprintf('%04d-%02d', intval($row->y), intval($row->m));
                 $is_active = ($selected_month === $month_value) ? ' is-active' : '';
                 $label = date_i18n('F Y', mktime(0, 0, 0, intval($row->m), 1, intval($row->y)));
-                echo '<a class="bitstream-filter-link'.$is_active.'" href="'.esc_url($build_filter_url($base_filter_url, $selected_type, $month_value, $selected_search)).'">'.esc_html($label).' <span>'.intval($row->c).'</span></a>';
+                echo '<a class="bitstream-filter-link'.$is_active.'" href="'.esc_url($build_filter_url($base_filter_url, $selected_type, $month_value, $selected_search)).'">';
+                echo '<strong class="bitstream-archive-label">'.esc_html($label).'</strong> <span class="bitstream-archive-count">('.intval($row->c).')</span>';
+                echo '</a>';
             }
         }
+        echo '</div>';
+
+        echo '<div class="bitstream-filter-box">';
+        echo '<h3 class="bitstream-feed-sidebar-title">Content</h3>';
+        echo '<a class="bitstream-filter-link '.($selected_type === 'all' ? 'is-active' : '').'" href="'.esc_url($build_filter_url($base_filter_url, 'all', $selected_month, $selected_search)).'">All</a>';
+        echo '<a class="bitstream-filter-link '.($selected_type === 'bits' ? 'is-active' : '').'" href="'.esc_url($build_filter_url($base_filter_url, 'bits', $selected_month, $selected_search)).'">Bits</a>';
+        echo '<a class="bitstream-filter-link '.($selected_type === 'rebits' ? 'is-active' : '').'" href="'.esc_url($build_filter_url($base_filter_url, 'rebits', $selected_month, $selected_search)).'">Rebits</a>';
+        echo '<a class="bitstream-filter-link bitstream-filter-clear" href="'.esc_url($base_filter_url).'">Clear filters</a>';
+        echo '</div>';
         echo '</details>';
         echo '</aside>';
 
@@ -275,15 +289,8 @@ class BitStream_Shortcodes {
         }
         echo '</main>';
 
-        echo '<aside class="bitstream-feed-sidebar bitstream-feed-sidebar-right">';
-        echo '<details class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-right" open>';
-        echo '<summary class="bitstream-feed-sidebar-summary"><i class="fa-solid fa-layer-group" aria-hidden="true"></i> Content</summary>';
-        echo '<h3 class="bitstream-feed-sidebar-title">Content</h3>';
-        echo '<a class="bitstream-filter-link '.($selected_type === 'all' ? 'is-active' : '').'" href="'.esc_url($build_filter_url($base_filter_url, 'all', $selected_month, $selected_search)).'">All</a>';
-        echo '<a class="bitstream-filter-link '.($selected_type === 'bits' ? 'is-active' : '').'" href="'.esc_url($build_filter_url($base_filter_url, 'bits', $selected_month, $selected_search)).'">Bits</a>';
-        echo '<a class="bitstream-filter-link '.($selected_type === 'rebits' ? 'is-active' : '').'" href="'.esc_url($build_filter_url($base_filter_url, 'rebits', $selected_month, $selected_search)).'">Rebits</a>';
-        echo '<a class="bitstream-filter-link bitstream-filter-clear" href="'.esc_url($base_filter_url).'">Clear filters</a>';
-        echo '</details>';
+        echo '<aside class="bitstream-feed-sidebar-right">';
+        echo '<div class="bitstream-right-rail-reserved" aria-hidden="true"></div>';
         echo '</aside>';
         echo '</div>';
         

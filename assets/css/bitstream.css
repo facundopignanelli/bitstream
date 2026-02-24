@@ -53,13 +53,20 @@
 .bitstream-feed-layout {
     display: grid;
     grid-template-columns: 1fr;
+    grid-template-areas:
+        "left"
+        "right"
+        "main";
     gap: 1rem;
     max-width: 1320px;
+    width: 100%;
     margin: 0 auto;
+    box-sizing: border-box;
 }
 
 .bitstream-feed-main {
     min-width: 0;
+    width: 100%;
 }
 
 .bitstream-feed-sidebar-left {
@@ -68,6 +75,10 @@
 
 .bitstream-feed-sidebar-right {
     grid-area: right;
+}
+
+.bitstream-right-rail-reserved {
+    min-height: 1px;
 }
 
 .bitstream-feed-main {
@@ -110,6 +121,17 @@
     height: fit-content;
 }
 
+.bitstream-filter-box {
+    border: 1px solid #e2e6e3;
+    border-radius: 12px;
+    background: #fff;
+    padding: 0.6rem;
+}
+
+.bitstream-filter-box + .bitstream-filter-box {
+    margin-top: 0.75rem;
+}
+
 .bitstream-feed-sidebar-title {
     margin: 0 0 0.55rem;
     font-size: 0.95rem;
@@ -138,8 +160,8 @@
 .bitstream-filter-search {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 0.45rem;
-    margin-bottom: 0.85rem;
+    gap: 0.6rem;
+    margin-bottom: 0;
 }
 
 .bitstream-filter-search input[type="search"] {
@@ -156,6 +178,7 @@
     border: none;
     border-radius: 12px;
     padding: 0.45rem 0.7rem;
+    margin-top: 0.1rem;
     background: var(--wp--preset--color--accent-1, #2c6e49);
     color: #fff;
     font-weight: 600;
@@ -190,15 +213,25 @@
     color: #4f5d55;
 }
 
+.bitstream-archive-label {
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    font-weight: 700;
+}
+
+.bitstream-archive-count {
+    color: #8a938e;
+    font-weight: 500;
+}
+
 .bitstream-feed {
     display: grid;
     grid-template-columns: 1fr;
     gap: 0.65rem;
     align-items: start;
-    max-width: 1200px;
+    max-width: 100%;
     margin: 0 auto;
     width: 100%;
-    padding: 1rem;
+    padding: 0 1rem 1rem;
     box-sizing: border-box;
     z-index: 1;
     overflow: visible;
@@ -235,7 +268,7 @@
     }
 
     .bitstream-feed {
-        padding: 1.25rem;
+        padding: 0 1.25rem 1.25rem;
     }
 }
 
@@ -261,7 +294,7 @@
     }
 
     .bitstream-feed {
-        padding: 2rem;
+        padding: 0 2rem 2rem;
     }
 }
 
