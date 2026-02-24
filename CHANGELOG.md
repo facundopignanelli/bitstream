@@ -41,10 +41,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Schedule-aware preview links returned for future posts
 - Unified UI corner radius to 15px across cards, controls, and avatars
 
-### Fixed
-- Preserved existing Rebit OG fetcher behavior while moving to the custom poster workflow
-- Ensured shared-content/login restoration paths continue to work with poster-based posting
-
 ## [2.0.1] - 2025-10-22
 
 ### Added

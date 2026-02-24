@@ -11,6 +11,40 @@ if (!defined('ABSPATH')) exit;
 class BitStream_Shortcodes {
 
     /**
+     * Render a compact quote preview card without interactive controls/forms
+     */
+    private function render_quote_preview_card($post_id) {
+        $post = get_post($post_id);
+        if (!($post instanceof WP_Post) || $post->post_type !== 'bit' || $post->post_status !== 'publish') {
+            return '';
+        }
+
+        $author_id = (int) $post->post_author;
+        $avatar = get_avatar($author_id, 40, '', '', ['class' => 'bit-avatar-img']);
+        $author_name = get_the_author_meta('display_name', $author_id);
+        $timestamp = human_time_diff(get_post_modified_time('U', false, $post_id), current_time('timestamp')) . ' ago';
+        $content = apply_filters('the_content', get_post_field('post_content', $post_id));
+
+        ob_start();
+        ?>
+        <article class="bitstream-quote-card" aria-label="Quoted Bit preview">
+            <header class="bitstream-quote-card-header">
+                <div class="bitstream-quote-card-avatar"><?php echo $avatar; ?></div>
+                <div class="bitstream-quote-card-meta">
+                    <strong><?php echo esc_html($author_name); ?></strong>
+                    <span><?php echo esc_html($timestamp); ?></span>
+                </div>
+            </header>
+            <div class="bitstream-quote-card-content">
+                <?php echo $content; ?>
+            </div>
+        </article>
+        <?php
+
+        return ob_get_clean();
+    }
+
+    /**
      * Resolve the frontend poster page URL
      */
     public static function get_poster_page_url($query_args = []) {
@@ -218,7 +252,7 @@ class BitStream_Shortcodes {
         if ($quote_post_id > 0) {
             $quoted_post = get_post($quote_post_id);
             if ($quoted_post && $quoted_post->post_type === 'bit' && $quoted_post->post_status === 'publish') {
-                $quote_preview = bitstream_render_card($quote_post_id, true);
+                $quote_preview = $this->render_quote_preview_card($quote_post_id);
             } else {
                 $quote_post_id = 0;
             }
