@@ -444,6 +444,67 @@ class BitStream_Ajax_Handlers {
     }
 
     /**
+     * Extract a YouTube video ID from a URL.
+     */
+    private function get_youtube_video_id_from_url($url) {
+        $url = trim((string) $url);
+        if ($url === '') {
+            return '';
+        }
+
+        $parts = wp_parse_url($url);
+        if (empty($parts['host'])) {
+            return '';
+        }
+
+        $host = strtolower((string) $parts['host']);
+        $path = isset($parts['path']) ? trim((string) $parts['path'], '/') : '';
+        $query = [];
+        if (!empty($parts['query'])) {
+            parse_str((string) $parts['query'], $query);
+        }
+
+        $video_id = '';
+
+        if (strpos($host, 'youtu.be') !== false) {
+            $video_id = $path;
+        } elseif (strpos($host, 'youtube.com') !== false || strpos($host, 'youtube-nocookie.com') !== false) {
+            if (!empty($query['v'])) {
+                $video_id = (string) $query['v'];
+            } elseif (preg_match('#^(?:embed|shorts|live)/([A-Za-z0-9_-]{11})#', $path, $m)) {
+                $video_id = $m[1];
+            }
+        }
+
+        $video_id = preg_replace('/[^A-Za-z0-9_-]/', '', (string) $video_id);
+        if (strlen($video_id) > 11) {
+            $video_id = substr($video_id, 0, 11);
+        }
+
+        return (strlen($video_id) === 11) ? $video_id : '';
+    }
+
+    /**
+     * Resolve embeddable preview metadata for a ReBit URL.
+     */
+    private function get_rebit_embed_preview_data($url) {
+        $video_id = $this->get_youtube_video_id_from_url($url);
+        if ($video_id !== '') {
+            return [
+                'is_embeddable' => true,
+                'embed_type' => 'youtube',
+                'embed_url' => 'https://www.youtube.com/embed/' . rawurlencode($video_id),
+            ];
+        }
+
+        return [
+            'is_embeddable' => false,
+            'embed_type' => '',
+            'embed_url' => '',
+        ];
+    }
+
+    /**
      * Build media markup for Bit post content
      */
     private function build_media_markup($attachment_id) {
@@ -1160,6 +1221,8 @@ class BitStream_Ajax_Handlers {
                 wp_send_json_error('Invalid URL.');
             }
 
+            $embed_data = $this->get_rebit_embed_preview_data($url);
+
             // Check if we already have this data cached
             if ($post_id > 0) {
                 $cached_url = get_post_meta($post_id, 'bitstream_rebit_url', true);
@@ -1173,7 +1236,10 @@ class BitStream_Ajax_Handlers {
                         'description' => $cached_desc,
                         'image' => $cached_image,
                         'url' => $url,
-                        'cached' => true
+                        'cached' => true,
+                        'is_embeddable' => $embed_data['is_embeddable'],
+                        'embed_type' => $embed_data['embed_type'],
+                        'embed_url' => $embed_data['embed_url'],
                     ]);
                     return;
                 }
@@ -1263,7 +1329,10 @@ class BitStream_Ajax_Handlers {
                 'description' => $og_desc,
                 'image' => $og_img,
                 'url' => $url,
-                'stored' => $post_id > 0
+                'stored' => $post_id > 0,
+                'is_embeddable' => $embed_data['is_embeddable'],
+                'embed_type' => $embed_data['embed_type'],
+                'embed_url' => $embed_data['embed_url'],
             ]);
 
         } catch (Exception $e) {

@@ -1277,6 +1277,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const titleEl = previewCard.querySelector('.bitstream-rebit-preview-title');
             const descEl = previewCard.querySelector('.bitstream-rebit-preview-description');
             const imageEl = previewCard.querySelector('.bitstream-rebit-preview-image');
+            const existingEmbed = previewCard.querySelector('.bitstream-rebit-preview-embed');
+
+            if (existingEmbed) {
+                existingEmbed.remove();
+            }
 
             if (titleEl) {
                 titleEl.textContent = data.title || '';
@@ -1284,12 +1289,26 @@ document.addEventListener('DOMContentLoaded', function() {
             if (descEl) {
                 descEl.textContent = data.description || '';
             }
-            if (imageEl) {
-                imageEl.src = data.image || '';
-                imageEl.style.display = data.image ? 'block' : 'none';
+
+            const hasEmbed = !!(data && data.is_embeddable && data.embed_type === 'youtube' && data.embed_url);
+
+            if (hasEmbed) {
+                const embedWrap = document.createElement('div');
+                embedWrap.className = 'bitstream-rebit-preview-embed';
+                embedWrap.innerHTML = '<iframe src="' + data.embed_url + '" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>';
+                if (previewCard.firstChild) {
+                    previewCard.insertBefore(embedWrap, previewCard.firstChild);
+                } else {
+                    previewCard.appendChild(embedWrap);
+                }
             }
 
-            const hasPreview = !!(data.title || data.description || data.image);
+            if (imageEl) {
+                imageEl.src = hasEmbed ? '' : (data.image || '');
+                imageEl.style.display = (!hasEmbed && data.image) ? 'block' : 'none';
+            }
+
+            const hasPreview = !!(hasEmbed || data.title || data.description || data.image);
             previewCard.hidden = !hasPreview;
         }
 

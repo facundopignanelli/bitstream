@@ -408,7 +408,6 @@ class BitStream_Shortcodes {
                 <div class="bitstream-audio-tags-dialog" role="dialog" aria-modal="true" aria-labelledby="bitstream-audio-tags-title">
                     <header class="bitstream-audio-tags-header">
                         <h3 id="bitstream-audio-tags-title">Edit audio tags</h3>
-                        <button type="button" class="bitstream-audio-tags-close" data-audio-tags-close="true">Close</button>
                     </header>
                     <div class="bitstream-audio-tags-body">
                         <div class="bitstream-audio-tags-artwork">
@@ -432,6 +431,7 @@ class BitStream_Shortcodes {
                         </label>
                     </div>
                     <footer class="bitstream-audio-tags-footer">
+                        <button type="button" class="bitstream-audio-tags-close" data-audio-tags-close="true">Close</button>
                         <button type="button" class="bitstream-audio-tags-save">Save tags</button>
                     </footer>
                 </div>
