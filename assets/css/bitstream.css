@@ -1,4 +1,43 @@
 /* Consolidated responsive image rules for all BitStream content */
+.bitstream-feed-layout,
+.bitstream-feed-layout button,
+.bitstream-feed-layout input,
+.bitstream-feed-layout textarea,
+.bitstream-feed-layout select,
+.bitstream-feed-layout summary,
+.bitstream-feed-layout label,
+.bitstream-feed-layout a,
+.bitstream-feed-layout p,
+.bitstream-feed-layout span,
+.bitstream-feed-layout h1,
+.bitstream-feed-layout h2,
+.bitstream-feed-layout h3,
+.bitstream-feed-layout h4,
+.bitstream-feed-layout h5,
+.bitstream-feed-layout h6,
+.bitstream-feed-layout small,
+.bitstream-feed-layout strong,
+.bitstream-poster,
+.bitstream-poster button,
+.bitstream-poster input,
+.bitstream-poster textarea,
+.bitstream-poster select,
+.bitstream-poster summary,
+.bitstream-poster label,
+.bitstream-poster a,
+.bitstream-poster p,
+.bitstream-poster span,
+.bitstream-poster h1,
+.bitstream-poster h2,
+.bitstream-poster h3,
+.bitstream-poster h4,
+.bitstream-poster h5,
+.bitstream-poster h6,
+.bitstream-poster small,
+.bitstream-poster strong {
+    font-family: inherit;
+}
+
 .bit-card-content img,
 .bit-rebit-preview img,
 .bitstream-quoted-preview img,
@@ -1068,7 +1107,17 @@ iframe, embed, object, video {
     align-items: center;
 }
 
+.bitstream-media-dropzone-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+}
+
 .bitstream-media-dropzone.has-media > span {
+    display: none;
+}
+
+.bitstream-media-dropzone.has-media > .bitstream-media-dropzone-icon {
     display: none;
 }
 

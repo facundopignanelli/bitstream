@@ -463,7 +463,11 @@ class BitStream_Shortcodes {
 
         $submit_nonce = wp_create_nonce('bitstream_poster_submit_nonce');
         $requested_tab = isset($_GET['poster_tab']) ? sanitize_key(wp_unslash($_GET['poster_tab'])) : 'bit';
-        $initial_tab = in_array($requested_tab, ['bit', 'rebit', 'scheduled'], true) ? $requested_tab : 'bit';
+        if ($requested_tab === 'scheduled') {
+            $requested_tab = 'advanced';
+        }
+
+        $initial_tab = in_array($requested_tab, ['bit', 'rebit', 'advanced'], true) ? $requested_tab : 'bit';
 
         $shared_url = isset($_GET['shared_url']) ? esc_url_raw(wp_unslash($_GET['shared_url'])) : '';
         $shared_title = isset($_GET['shared_title']) ? sanitize_text_field(wp_unslash($_GET['shared_title'])) : '';
@@ -508,7 +512,7 @@ class BitStream_Shortcodes {
 
         $is_bit_active = ($initial_tab === 'bit');
         $is_rebit_active = ($initial_tab === 'rebit');
-        $is_scheduled_active = ($initial_tab === 'scheduled');
+        $is_advanced_active = ($initial_tab === 'advanced');
 
         $scheduled_query = new WP_Query([
             'post_type' => 'bit',
@@ -540,8 +544,8 @@ class BitStream_Shortcodes {
                 <button type="button" class="bitstream-poster-tab <?php echo $is_rebit_active ? 'is-active' : ''; ?>" data-tab="rebit" role="tab" aria-selected="<?php echo $is_rebit_active ? 'true' : 'false'; ?>" aria-controls="bitstream-poster-panel-rebit" id="bitstream-poster-tab-rebit">
                     Post a Rebit
                 </button>
-                <button type="button" class="bitstream-poster-tab <?php echo $is_scheduled_active ? 'is-active' : ''; ?>" data-tab="scheduled" role="tab" aria-selected="<?php echo $is_scheduled_active ? 'true' : 'false'; ?>" aria-controls="bitstream-poster-panel-scheduled" id="bitstream-poster-tab-scheduled">
-                    Scheduled
+                <button type="button" class="bitstream-poster-tab <?php echo $is_advanced_active ? 'is-active' : ''; ?>" data-tab="advanced" role="tab" aria-selected="<?php echo $is_advanced_active ? 'true' : 'false'; ?>" aria-controls="bitstream-poster-panel-advanced" id="bitstream-poster-tab-advanced">
+                    Advanced
                 </button>
             </div>
 
@@ -555,6 +559,7 @@ class BitStream_Shortcodes {
                     <div class="bitstream-media-field">
                         <input type="hidden" id="bitstream-bit-attachment-id" name="bit_attachment_id" value="<?php echo esc_attr($media_id); ?>">
                         <div class="bitstream-media-dropzone" data-target-input="bitstream-bit-attachment-id" data-target-preview="bitstream-bit-media-preview" data-accept="image/*,video/*,audio/*">
+                            <i class="fa-solid fa-photo-film bitstream-media-dropzone-icon" aria-hidden="true"></i>
                             <span>Drag and drop media here, or click to upload</span>
                             <div class="bitstream-media-preview" id="bitstream-bit-media-preview"></div>
                             <input type="file" class="bitstream-media-file" accept="image/*,video/*,audio/*">
@@ -619,6 +624,7 @@ class BitStream_Shortcodes {
                     <div class="bitstream-media-field">
                         <input type="hidden" id="bitstream-rebit-attachment-id" name="rebit_attachment_id" value="">
                         <div class="bitstream-media-dropzone" data-target-input="bitstream-rebit-attachment-id" data-target-preview="bitstream-rebit-media-preview" data-accept="image/*">
+                            <i class="fa-solid fa-photo-film bitstream-media-dropzone-icon" aria-hidden="true"></i>
                             <span>Drag and drop image here, or click to upload</span>
                             <div class="bitstream-media-preview" id="bitstream-rebit-media-preview"></div>
                             <input type="file" class="bitstream-media-file" accept="image/*">
@@ -664,37 +670,40 @@ class BitStream_Shortcodes {
                 </form>
             </div>
 
-            <div class="bitstream-poster-panel <?php echo $is_scheduled_active ? 'is-active' : ''; ?>" id="bitstream-poster-panel-scheduled" role="tabpanel" aria-labelledby="bitstream-poster-tab-scheduled" <?php echo $is_scheduled_active ? '' : 'hidden'; ?>>
-                <div class="bitstream-scheduled-filter">
-                    <button type="button" class="bitstream-scheduled-filter-btn is-active" data-filter="all">All</button>
-                    <button type="button" class="bitstream-scheduled-filter-btn" data-filter="bit">Bits</button>
-                    <button type="button" class="bitstream-scheduled-filter-btn" data-filter="rebit">Rebits</button>
-                </div>
-                <div class="bitstream-scheduled-list">
-                    <?php if ($scheduled_query->have_posts()): ?>
-                        <?php while ($scheduled_query->have_posts()): $scheduled_query->the_post(); ?>
-                            <?php
-                            $scheduled_id = get_the_ID();
-                            $is_rebit = !empty(get_post_meta($scheduled_id, 'bitstream_rebit_url', true));
-                            $row_type = $is_rebit ? 'rebit' : 'bit';
-                            ?>
-                            <article class="bitstream-scheduled-item" data-type="<?php echo esc_attr($row_type); ?>">
-                                <div>
-                                    <strong><?php echo $is_rebit ? 'Rebit' : 'Bit'; ?></strong>
-                                    <p><?php echo esc_html(wp_trim_words(get_post_field('post_content', $scheduled_id), 16)); ?></p>
-                                    <small>Scheduled for <?php echo esc_html(get_the_date('Y-m-d H:i', $scheduled_id)); ?></small>
-                                </div>
-                                <div class="bitstream-scheduled-actions">
-                                    <a href="<?php echo esc_url(get_edit_post_link($scheduled_id, '')); ?>" target="_blank" rel="noopener">Edit</a>
-                                    <a href="<?php echo esc_url(get_preview_post_link($scheduled_id)); ?>" target="_blank" rel="noopener">Preview</a>
-                                </div>
-                            </article>
-                        <?php endwhile; ?>
-                        <?php wp_reset_postdata(); ?>
-                    <?php else: ?>
-                        <p>No scheduled Bits or Rebits yet.</p>
-                    <?php endif; ?>
-                </div>
+            <div class="bitstream-poster-panel <?php echo $is_advanced_active ? 'is-active' : ''; ?>" id="bitstream-poster-panel-advanced" role="tabpanel" aria-labelledby="bitstream-poster-tab-advanced" <?php echo $is_advanced_active ? '' : 'hidden'; ?>>
+                <section class="bitstream-advanced-section bitstream-advanced-section-schedule">
+                    <h3>Schedule</h3>
+                    <div class="bitstream-scheduled-filter">
+                        <button type="button" class="bitstream-scheduled-filter-btn is-active" data-filter="all">All</button>
+                        <button type="button" class="bitstream-scheduled-filter-btn" data-filter="bit">Bits</button>
+                        <button type="button" class="bitstream-scheduled-filter-btn" data-filter="rebit">Rebits</button>
+                    </div>
+                    <div class="bitstream-scheduled-list">
+                        <?php if ($scheduled_query->have_posts()): ?>
+                            <?php while ($scheduled_query->have_posts()): $scheduled_query->the_post(); ?>
+                                <?php
+                                $scheduled_id = get_the_ID();
+                                $is_rebit = !empty(get_post_meta($scheduled_id, 'bitstream_rebit_url', true));
+                                $row_type = $is_rebit ? 'rebit' : 'bit';
+                                ?>
+                                <article class="bitstream-scheduled-item" data-type="<?php echo esc_attr($row_type); ?>">
+                                    <div>
+                                        <strong><?php echo $is_rebit ? 'Rebit' : 'Bit'; ?></strong>
+                                        <p><?php echo esc_html(wp_trim_words(get_post_field('post_content', $scheduled_id), 16)); ?></p>
+                                        <small>Scheduled for <?php echo esc_html(get_the_date('Y-m-d H:i', $scheduled_id)); ?></small>
+                                    </div>
+                                    <div class="bitstream-scheduled-actions">
+                                        <a href="<?php echo esc_url(get_edit_post_link($scheduled_id, '')); ?>" target="_blank" rel="noopener">Edit</a>
+                                        <a href="<?php echo esc_url(get_preview_post_link($scheduled_id)); ?>" target="_blank" rel="noopener">Preview</a>
+                                    </div>
+                                </article>
+                            <?php endwhile; ?>
+                            <?php wp_reset_postdata(); ?>
+                        <?php else: ?>
+                            <p>No scheduled Bits or Rebits yet.</p>
+                        <?php endif; ?>
+                    </div>
+                </section>
             </div>
 
             <div class="bitstream-poster-status" aria-live="polite"></div>
