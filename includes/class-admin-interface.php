@@ -313,7 +313,8 @@ class BitStream_Admin_Interface {
 
         if (isset($_POST['bitstream_confirm_reset']) && check_admin_referer('bitstream_reset', 'bitstream_reset_nonce')) {
             $this->perform_bitstream_reset();
-            echo '<div class="notice notice-success"><p><strong>BitStream Reset Complete.</strong> All posts, media, and settings have been removed. The plugin is now in a virgin state.</p></div>';
+            echo '<div class="notice notice-success"><p><strong>BitStream Reset Complete.</strong> All posts, media, and settings have been removed. The plugin is now in a virgin state. Redirecting...</p></div>';
+            echo '<script>setTimeout(function() { window.location.href = "' . admin_url('edit.php?post_type=bit&page=bitstream-rebit-mappings') . '"; }, 2000);</script>';
             return;
         }
 

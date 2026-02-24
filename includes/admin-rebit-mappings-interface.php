@@ -349,7 +349,7 @@ if (!defined('ABSPATH')) exit;
                         <label><strong>Website:</strong></label><br>
                         <select name="preset_selection" style="width: 100%; box-sizing: border-box;">
                             <option value="">Select a website...</option>
-                            <?php foreach ($this->get_rebit_presets() as $key => $preset): ?>
+                            <?php foreach (BitStream_ReBit_Mappings::get_rebit_presets() as $key => $preset): ?>
                                 <option value="<?php echo esc_attr($key); ?>">
                                     <?php echo esc_html($preset['label']); ?> (<?php echo esc_html($preset['domain']); ?>)
                                 </option>
