@@ -1255,9 +1255,9 @@ body.bitstream-cropper-open {
 }
 
 .bitstream-poster-quote-preview {
-    border: 1px solid #ddd;
+    border: 1px solid #e0e0e0;
     border-radius: 15px;
-    padding: 0.9rem;
+    padding: 0.75rem;
     background: #fafafa;
     margin-top: 0.75rem;
     overflow: hidden;
@@ -1274,6 +1274,11 @@ body.bitstream-cropper-open {
     left: auto !important;
     top: auto !important;
     margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
 }
 
 .bitstream-poster-result {
@@ -1514,10 +1519,10 @@ iframe[src*="youtu.be"] {
 /* Adjust quoted preview for masonry cells */
 .bitstream-quoted-preview {
     margin-top: 0.9rem;
-    padding: 0.7rem;
+    padding: 0.75rem;
     border-radius: 15px;
     background: #fafafa;
-    border-left: 3px solid var(--wp--preset--color--accent-1, #2c6e49);
+    border: 1px solid #e0e0e0;
     box-sizing: border-box;
     overflow: hidden;
 }
@@ -1528,7 +1533,15 @@ iframe[src*="youtu.be"] {
     left: auto !important;
     top: auto !important;
     margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
     box-shadow: none !important;
+}
+
+.bitstream-quoted-preview .bit-card-quoted-nested .bit-card-content {
+    margin-bottom: 0 !important;
 }
 
 .bitstream-quoted-preview .bit-card-quoted-nested .bit-card-footer,
