@@ -1776,13 +1776,179 @@ document.addEventListener('DOMContentLoaded', function() {
             container.style.overflowX = 'hidden';
         });
     }
+
+    // Media Session metadata for PWA lock-screen/live notifications
+    let activeMediaElement = null;
+    let mediaSessionHandlersBound = false;
+
+    function getSiteName() {
+        const ogSiteName = document.querySelector('meta[property="og:site_name"]');
+        return (ogSiteName && ogSiteName.content) ? ogSiteName.content : 'BitStream';
+    }
+
+    function getCardTextTitle(mediaEl) {
+        const card = mediaEl.closest('.bit-card, .bitstream-poster-result-card, .bitstream-media-preview, .bitstream-poster');
+        if (!card) {
+            return '';
+        }
+
+        const explicitTitle = card.querySelector('.bitstream-audio-title, .bitstream-rebit-preview-title');
+        if (explicitTitle && explicitTitle.textContent) {
+            return explicitTitle.textContent.trim();
+        }
+
+        const content = card.querySelector('.bit-card-content, textarea, p');
+        if (!content || !content.textContent) {
+            return '';
+        }
+
+        const text = content.textContent.trim().replace(/\s+/g, ' ');
+        return text.length > 80 ? (text.slice(0, 77) + '...') : text;
+    }
+
+    function buildArtworkList(src) {
+        if (!src) {
+            return [];
+        }
+
+        const sizes = ['96x96', '128x128', '192x192', '256x256', '384x384', '512x512'];
+        return sizes.map(size => ({ src, sizes: size, type: 'image/png' }));
+    }
+
+    function resolveMediaSessionMeta(mediaEl) {
+        const tagName = (mediaEl.tagName || '').toLowerCase();
+        const siteName = getSiteName();
+
+        if (tagName === 'audio') {
+            const audioEmbed = mediaEl.closest('.bitstream-audio-embed');
+            const titleEl = audioEmbed ? audioEmbed.querySelector('.bitstream-audio-title') : null;
+            const artistEl = audioEmbed ? audioEmbed.querySelector('.bitstream-audio-artist') : null;
+            const albumEl = audioEmbed ? audioEmbed.querySelector('.bitstream-audio-album') : null;
+            const artworkEl = audioEmbed ? audioEmbed.querySelector('.bitstream-audio-artwork') : null;
+
+            const title = (titleEl && titleEl.textContent && titleEl.textContent.trim())
+                || mediaEl.getAttribute('title')
+                || getCardTextTitle(mediaEl)
+                || 'Audio';
+            const artist = (artistEl && artistEl.textContent && artistEl.textContent.trim()) || siteName;
+            const album = (albumEl && albumEl.textContent && albumEl.textContent.trim()) || 'BitStream';
+            const artworkSrc = (artworkEl && artworkEl.src) || '';
+
+            return {
+                title,
+                artist,
+                album,
+                artwork: buildArtworkList(artworkSrc),
+            };
+        }
+
+        if (tagName === 'video') {
+            const posterSrc = mediaEl.getAttribute('poster') || '';
+            const fallbackImage = mediaEl.closest('.bit-card, .bitstream-media-preview, .bitstream-poster')
+                ?.querySelector('img')
+                ?.getAttribute('src') || '';
+
+            const title = mediaEl.getAttribute('title') || getCardTextTitle(mediaEl) || 'Video';
+
+            return {
+                title,
+                artist: siteName,
+                album: 'BitStream',
+                artwork: buildArtworkList(posterSrc || fallbackImage),
+            };
+        }
+
+        return null;
+    }
+
+    function setMediaSessionMetadataFor(mediaEl) {
+        if (!('mediaSession' in navigator) || typeof window.MediaMetadata !== 'function' || !mediaEl) {
+            return;
+        }
+
+        const meta = resolveMediaSessionMeta(mediaEl);
+        if (!meta) {
+            return;
+        }
+
+        try {
+            navigator.mediaSession.metadata = new window.MediaMetadata(meta);
+            navigator.mediaSession.playbackState = mediaEl.paused ? 'paused' : 'playing';
+        } catch (error) {
+            console.warn('BitStream: MediaSession metadata update failed', error);
+        }
+    }
+
+    function bindMediaSessionForElement(mediaEl) {
+        if (!mediaEl || mediaEl.dataset.bitstreamMediaSessionBound === 'true') {
+            return;
+        }
+
+        mediaEl.dataset.bitstreamMediaSessionBound = 'true';
+
+        mediaEl.addEventListener('play', () => {
+            activeMediaElement = mediaEl;
+            setMediaSessionMetadataFor(mediaEl);
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.playbackState = 'playing';
+            }
+        });
+
+        mediaEl.addEventListener('pause', () => {
+            if (activeMediaElement === mediaEl && 'mediaSession' in navigator) {
+                navigator.mediaSession.playbackState = 'paused';
+            }
+        });
+
+        mediaEl.addEventListener('ended', () => {
+            if (activeMediaElement === mediaEl && 'mediaSession' in navigator) {
+                navigator.mediaSession.playbackState = 'none';
+            }
+        });
+
+        mediaEl.addEventListener('loadedmetadata', () => {
+            if (activeMediaElement === mediaEl) {
+                setMediaSessionMetadataFor(mediaEl);
+            }
+        });
+    }
+
+    function initMediaSession(scope = document) {
+        if (!scope || !scope.querySelectorAll) {
+            return;
+        }
+
+        if ('mediaSession' in navigator && !mediaSessionHandlersBound) {
+            mediaSessionHandlersBound = true;
+            try {
+                navigator.mediaSession.setActionHandler('play', () => {
+                    if (activeMediaElement && typeof activeMediaElement.play === 'function') {
+                        activeMediaElement.play().catch(() => {});
+                    }
+                });
+                navigator.mediaSession.setActionHandler('pause', () => {
+                    if (activeMediaElement && typeof activeMediaElement.pause === 'function') {
+                        activeMediaElement.pause();
+                    }
+                });
+                navigator.mediaSession.setActionHandler('seekbackward', null);
+                navigator.mediaSession.setActionHandler('seekforward', null);
+            } catch (error) {
+                console.warn('BitStream: MediaSession action handlers not fully supported', error);
+            }
+        }
+
+        scope.querySelectorAll('audio, video').forEach(bindMediaSessionForElement);
+    }
     
     // Run on page load
     makeEmbedsResponsive();
+    initMediaSession(document);
     
     // Run when new content is loaded (for infinite scroll)
     const observer = new MutationObserver(() => {
         makeEmbedsResponsive();
+        initMediaSession(document);
         initFloatingMenu(); // Re-init floating menu if new content added
         initCommentToggles(); // Re-init comment toggles for new content
     });
