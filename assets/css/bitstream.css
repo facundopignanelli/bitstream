@@ -4,8 +4,10 @@
 .bitstream-quoted-preview img,
 .bitstream-og-card img {
     max-width: 100% !important;
+    max-height: 560px;
     height: auto !important;
     width: auto !important;
+    object-fit: contain;
     display: block;
     margin: 0.5em auto;
     border-radius: 15px;
@@ -72,7 +74,6 @@
 
 @media (min-width: 768px) {
     .bitstream-feed {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
         padding: 1.5rem;
     }
 }
