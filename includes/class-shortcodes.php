@@ -189,14 +189,18 @@ class BitStream_Shortcodes {
         $has_limit = !empty($atts['limit']);
 
         global $wpdb;
-        $archive_rows = $wpdb->get_results(
-            "SELECT YEAR(post_date) AS y, MONTH(post_date) AS m, COUNT(ID) AS c
-             FROM {$wpdb->posts}
-             WHERE post_type = 'bit' AND post_status = 'publish'
-             GROUP BY YEAR(post_date), MONTH(post_date)
-             ORDER BY post_date DESC
-             LIMIT 18"
-        );
+        $archive_rows = [];
+        if (is_object($wpdb) && isset($wpdb->posts) && method_exists($wpdb, 'get_results')) {
+            $posts_table = (string) $wpdb->posts;
+            $archive_rows = $wpdb->get_results(
+                "SELECT YEAR(post_date) AS y, MONTH(post_date) AS m, COUNT(ID) AS c
+                 FROM {$posts_table}
+                 WHERE post_type = 'bit' AND post_status = 'publish'
+                 GROUP BY YEAR(post_date), MONTH(post_date)
+                 ORDER BY post_date DESC
+                 LIMIT 18"
+            );
+        }
 
         $base_filter_url = remove_query_arg(['bitstream_type', 'bitstream_month', 'bitstream_search', 'paged']);
         $build_filter_url = static function($base_url, $type, $month, $search) {
@@ -257,7 +261,7 @@ class BitStream_Shortcodes {
         echo '<aside class="bitstream-feed-sidebar bitstream-feed-sidebar-left">';
         echo '<div class="bitstream-feed-sidebar-tabs">';
 
-        echo '<details class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-search">';
+        echo '<details class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-search" open>';
         echo '<summary class="bitstream-feed-sidebar-summary"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Search</summary>';
         echo '<div class="bitstream-filter-box">';
         echo '<h3 class="bitstream-feed-sidebar-title">Search</h3>';
@@ -274,8 +278,8 @@ class BitStream_Shortcodes {
         echo '</div>';
         echo '</details>';
 
-        echo '<details class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-filters">';
-        echo '<summary class="bitstream-feed-sidebar-summary"><i class="fa-solid fa-sliders" aria-hidden="true"></i> Filters &amp; Archive</summary>';
+        echo '<details class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-filters" open>';
+        echo '<summary class="bitstream-feed-sidebar-summary"><i class="fa-solid fa-sliders" aria-hidden="true"></i> Filters</summary>';
         echo '<div class="bitstream-filter-box">';
         echo '<h3 class="bitstream-feed-sidebar-title">Archive</h3>';
         echo '<a class="bitstream-filter-link '.(empty($selected_month) ? 'is-active' : '').'" href="'.esc_url($build_filter_url($base_filter_url, $selected_type, '', $selected_search)).'">All dates</a>';

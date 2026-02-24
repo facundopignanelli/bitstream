@@ -357,14 +357,6 @@
         margin: 0;
     }
 
-    .bitstream-feed-sidebar-tabs {
-        display: block;
-    }
-
-    .bitstream-feed-sidebar-tabs .bitstream-feed-sidebar-panel + .bitstream-feed-sidebar-panel {
-        margin-top: 0.75rem;
-    }
-
     .bitstream-feed {
         padding: 0 0 1.25rem;
     }
@@ -399,6 +391,14 @@
 
     .bitstream-feed-sidebar-panel > :not(summary) {
         display: block;
+    }
+
+    .bitstream-feed-sidebar-tabs {
+        display: block;
+    }
+
+    .bitstream-feed-sidebar-tabs .bitstream-feed-sidebar-panel + .bitstream-feed-sidebar-panel {
+        margin-top: 0.75rem;
     }
 
     .bitstream-feed {
