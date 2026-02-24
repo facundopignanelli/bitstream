@@ -708,12 +708,9 @@ iframe, embed, object, video {
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 100%;
-    width: 100%;
-    min-height: 72px;
-    max-height: 120px;
-    min-width: 72px;
-    max-width: 120px;
+    aspect-ratio: 1 / 1;
+    width: 120px;
+    height: 120px;
     border-radius: 15px;
     overflow: hidden;
     border: 1px solid #ddd;
@@ -723,13 +720,11 @@ iframe, embed, object, video {
 
 .bitstream-audio-embed > .bitstream-audio-artwork {
     grid-area: art;
-    width: auto;
-    height: auto;
-    max-width: 120px;
-    max-height: 120px;
-    min-height: 72px;
+    width: 120px;
+    height: 120px;
+    aspect-ratio: 1 / 1;
     border-radius: 15px;
-    object-fit: contain;
+    object-fit: cover;
     object-position: center;
     border: 1px solid #ddd;
     background: #e9eceb;
