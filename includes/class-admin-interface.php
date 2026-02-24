@@ -20,6 +20,32 @@ class BitStream_Admin_Interface {
         add_action('edit_form_after_title', [$this, 'show_quoted_preview']);
         add_action('save_post_bit', [$this, 'save_quoted_meta']);
         add_action('admin_init', [$this, 'redirect_new_bit_creation']);
+        add_filter('cron_schedules', [$this, 'register_cron_schedules']);
+        add_action('init', [$this, 'ensure_weekly_media_cleanup_scheduled']);
+        add_action('bitstream_weekly_media_cleanup_event', [$this, 'run_weekly_media_cleanup']);
+    }
+
+    /**
+     * Register BitStream cron schedules.
+     */
+    public function register_cron_schedules($schedules) {
+        if (!isset($schedules['bitstream_weekly'])) {
+            $schedules['bitstream_weekly'] = [
+                'interval' => WEEK_IN_SECONDS,
+                'display' => __('Once Weekly (BitStream)', 'bitstream'),
+            ];
+        }
+
+        return $schedules;
+    }
+
+    /**
+     * Ensure weekly cleanup event is scheduled.
+     */
+    public function ensure_weekly_media_cleanup_scheduled() {
+        if (!wp_next_scheduled('bitstream_weekly_media_cleanup_event')) {
+            wp_schedule_event(time() + HOUR_IN_SECONDS, 'bitstream_weekly', 'bitstream_weekly_media_cleanup_event');
+        }
     }
 
     /**
@@ -92,6 +118,253 @@ class BitStream_Admin_Interface {
         
         // 5. RSS Feeds
         add_submenu_page('edit.php?post_type=bit', 'RSS Feeds', 'RSS Feeds', 'read', 'bitstream-rss-feeds', [$this, 'rss_feeds_page']);
+
+        // 6. Media Cleanup
+        add_submenu_page('edit.php?post_type=bit', 'Media Cleanup', 'Media Cleanup', 'manage_options', 'bitstream-media-cleanup', [$this, 'media_cleanup_page']);
+    }
+
+    /**
+     * Determine whether an attachment is likely managed by BitStream.
+     */
+    private function is_bitstream_attachment($attachment_id) {
+        if ($attachment_id <= 0 || get_post_type($attachment_id) !== 'attachment') {
+            return false;
+        }
+
+        if (intval(get_post_meta($attachment_id, '_bitstream_uploaded_via_poster', true)) === 1) {
+            return true;
+        }
+
+        $attachment = get_post($attachment_id);
+        if ($attachment && intval($attachment->post_parent) > 0) {
+            $parent = get_post(intval($attachment->post_parent));
+            if ($parent && $parent->post_type === 'bit') {
+                return true;
+            }
+        }
+
+        $file = get_attached_file($attachment_id);
+        if (!empty($file) && strpos(str_replace('\\', '/', $file), '/bitstream-artwork/') !== false) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if an attachment is referenced by non-trash content/meta across the site.
+     */
+    private function attachment_is_used_sitewide($attachment_id) {
+        global $wpdb;
+
+        if ($attachment_id <= 0 || get_post_type($attachment_id) !== 'attachment') {
+            return true;
+        }
+
+        $attachment = get_post($attachment_id);
+        if (!$attachment) {
+            return true;
+        }
+
+        $parent_id = intval($attachment->post_parent);
+        if ($parent_id > 0) {
+            $parent = get_post($parent_id);
+            if ($parent && !in_array($parent->post_status, ['trash', 'auto-draft'], true)) {
+                return true;
+            }
+        }
+
+        $meta_ref = $wpdb->get_var($wpdb->prepare(
+            "SELECT pm.post_id
+             FROM {$wpdb->postmeta} pm
+             INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+             WHERE pm.meta_value = %d
+               AND p.post_status NOT IN ('trash','auto-draft')
+             LIMIT 1",
+            $attachment_id
+        ));
+        if (!empty($meta_ref)) {
+            return true;
+        }
+
+        $attachment_url = wp_get_attachment_url($attachment_id);
+        if ($attachment_url) {
+            $url_like = '%' . $wpdb->esc_like($attachment_url) . '%';
+            $url_ref = $wpdb->get_var($wpdb->prepare(
+                "SELECT ID FROM {$wpdb->posts}
+                 WHERE post_status NOT IN ('trash','auto-draft','inherit')
+                   AND post_content LIKE %s
+                 LIMIT 1",
+                $url_like
+            ));
+            if (!empty($url_ref)) {
+                return true;
+            }
+        }
+
+        $class_like = '%wp-image-' . intval($attachment_id) . '%';
+        $class_ref = $wpdb->get_var($wpdb->prepare(
+            "SELECT ID FROM {$wpdb->posts}
+             WHERE post_status NOT IN ('trash','auto-draft','inherit')
+               AND post_content LIKE %s
+             LIMIT 1",
+            $class_like
+        ));
+        if (!empty($class_ref)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Scan and optionally delete orphaned BitStream-managed media.
+     */
+    private function run_bitstream_media_cleanup($perform_delete = false) {
+        $results = [
+            'scanned' => 0,
+            'candidates' => 0,
+            'deleted' => 0,
+            'protected' => 0,
+            'errors' => 0,
+            'deleted_items' => [],
+        ];
+
+        $query = new WP_Query([
+            'post_type' => 'attachment',
+            'post_status' => 'inherit',
+            'posts_per_page' => -1,
+            'fields' => 'ids',
+            'orderby' => 'ID',
+            'order' => 'ASC',
+        ]);
+
+        $now = time();
+        $grace_seconds = 30 * MINUTE_IN_SECONDS;
+
+        foreach ($query->posts as $attachment_id) {
+            $attachment_id = intval($attachment_id);
+            if ($attachment_id <= 0) {
+                continue;
+            }
+
+            if (!$this->is_bitstream_attachment($attachment_id)) {
+                continue;
+            }
+
+            $results['scanned']++;
+
+            $created_at = intval(get_post_meta($attachment_id, '_bitstream_upload_created_at', true));
+            if ($created_at > 0 && ($now - $created_at) < $grace_seconds) {
+                $results['protected']++;
+                continue;
+            }
+
+            if ($this->attachment_is_used_sitewide($attachment_id)) {
+                $results['protected']++;
+                continue;
+            }
+
+            $results['candidates']++;
+
+            if ($perform_delete) {
+                $deleted = wp_delete_attachment($attachment_id, true);
+                if ($deleted) {
+                    $results['deleted']++;
+                    if (count($results['deleted_items']) < 20) {
+                        $results['deleted_items'][] = $attachment_id;
+                    }
+                } else {
+                    $results['errors']++;
+                }
+            }
+        }
+
+        wp_reset_postdata();
+
+        return $results;
+    }
+
+    /**
+     * Weekly automated cleanup job.
+     */
+    public function run_weekly_media_cleanup() {
+        $results = $this->run_bitstream_media_cleanup(true);
+        update_option('bitstream_last_weekly_media_cleanup', [
+            'timestamp' => time(),
+            'scanned' => intval($results['scanned'] ?? 0),
+            'candidates' => intval($results['candidates'] ?? 0),
+            'deleted' => intval($results['deleted'] ?? 0),
+            'protected' => intval($results['protected'] ?? 0),
+            'errors' => intval($results['errors'] ?? 0),
+        ], false);
+    }
+
+    /**
+     * Media cleanup admin page.
+     */
+    public function media_cleanup_page() {
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have sufficient permissions to access this page.'));
+        }
+
+        $results = null;
+        $did_delete = false;
+        $last_weekly = get_option('bitstream_last_weekly_media_cleanup', []);
+
+        if (isset($_POST['bitstream_media_scan']) && check_admin_referer('bitstream_media_cleanup', 'bitstream_media_cleanup_nonce')) {
+            $results = $this->run_bitstream_media_cleanup(false);
+        }
+
+        if (isset($_POST['bitstream_media_delete']) && check_admin_referer('bitstream_media_cleanup', 'bitstream_media_cleanup_nonce')) {
+            $results = $this->run_bitstream_media_cleanup(true);
+            $did_delete = true;
+        }
+
+        echo '<div class="wrap">';
+        echo '<h1>BitStream Media Cleanup</h1>';
+        echo '<p>Scan BitStream-managed uploads and generated artwork files, and remove media that is no longer referenced anywhere on your site.</p>';
+        echo '<p><strong>Safety checks:</strong> media is only deleted when it is not referenced by active content/meta, and recent uploads (&lt; 30 minutes) are skipped.</p>';
+
+        if (!empty($last_weekly) && !empty($last_weekly['timestamp'])) {
+            $run_time = wp_date(get_option('date_format') . ' ' . get_option('time_format'), intval($last_weekly['timestamp']));
+            echo '<p><strong>Last weekly cleanup run:</strong> ' . esc_html($run_time) . ' | '; 
+            echo 'Scanned: <strong>' . intval($last_weekly['scanned'] ?? 0) . '</strong> | '; 
+            echo 'Candidates: <strong>' . intval($last_weekly['candidates'] ?? 0) . '</strong> | '; 
+            echo 'Deleted: <strong>' . intval($last_weekly['deleted'] ?? 0) . '</strong> | '; 
+            echo 'Protected/Skipped: <strong>' . intval($last_weekly['protected'] ?? 0) . '</strong> | '; 
+            echo 'Errors: <strong>' . intval($last_weekly['errors'] ?? 0) . '</strong></p>';
+        } else {
+            echo '<p><strong>Last weekly cleanup run:</strong> Not run yet.</p>';
+        }
+
+        if ($results) {
+            $notice_class = $did_delete ? 'notice-success' : 'notice-info';
+            echo '<div class="notice ' . esc_attr($notice_class) . '"><p>';
+            if ($did_delete) {
+                echo 'Cleanup complete. ';
+            } else {
+                echo 'Scan complete. ';
+            }
+            echo 'Scanned: <strong>' . intval($results['scanned']) . '</strong> | '; 
+            echo 'Candidates: <strong>' . intval($results['candidates']) . '</strong> | '; 
+            echo 'Deleted: <strong>' . intval($results['deleted']) . '</strong> | '; 
+            echo 'Protected/Skipped: <strong>' . intval($results['protected']) . '</strong> | '; 
+            echo 'Errors: <strong>' . intval($results['errors']) . '</strong>';
+            echo '</p></div>';
+
+            if (!empty($results['deleted_items'])) {
+                echo '<p><strong>Recently deleted attachment IDs:</strong> ' . esc_html(implode(', ', $results['deleted_items'])) . '</p>';
+            }
+        }
+
+        echo '<form method="post" style="margin-top: 16px;">';
+        wp_nonce_field('bitstream_media_cleanup', 'bitstream_media_cleanup_nonce');
+        echo '<button type="submit" name="bitstream_media_scan" class="button button-secondary">Scan Only</button> ';
+        echo '<button type="submit" name="bitstream_media_delete" class="button button-primary" onclick="return confirm(\'Delete all currently detected orphaned BitStream media? This cannot be undone.\');">Scan and Delete Orphans</button>';
+        echo '</form>';
+
+        echo '</div>';
     }
     
     /**

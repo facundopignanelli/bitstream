@@ -225,6 +225,8 @@ class BitStream_Ajax_Handlers {
         ]);
 
         update_post_meta($post_id, '_bitstream_attachment_id', $attachment_id);
+        delete_post_meta($attachment_id, '_bitstream_uploaded_via_poster');
+        delete_post_meta($attachment_id, '_bitstream_upload_created_at');
     }
 
     /**
@@ -754,6 +756,9 @@ class BitStream_Ajax_Handlers {
 
             $attachment_data = wp_generate_attachment_metadata($attachment_id, $file_path);
             wp_update_attachment_metadata($attachment_id, $attachment_data);
+
+            update_post_meta($attachment_id, '_bitstream_uploaded_via_poster', 1);
+            update_post_meta($attachment_id, '_bitstream_upload_created_at', time());
 
             $audio_meta = [];
             if (strpos($file_type['type'], 'audio/') === 0) {

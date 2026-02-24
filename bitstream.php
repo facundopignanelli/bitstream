@@ -266,6 +266,9 @@ function bitstream_plugin_activate() {
     
     // Import default ReBit mappings if none exist
     bitstream_import_default_mappings();
+
+    // Ensure weekly BitStream media cleanup is scheduled
+    bitstream_schedule_weekly_media_cleanup();
     
     // Flush rewrite rules to ensure permalinks work (including PWA shortcuts)
     flush_rewrite_rules();
@@ -296,9 +299,20 @@ function bitstream_import_default_mappings() {
 }
 
 /**
+ * Schedule weekly media cleanup cron event.
+ */
+function bitstream_schedule_weekly_media_cleanup() {
+    if (!wp_next_scheduled('bitstream_weekly_media_cleanup_event')) {
+        wp_schedule_event(time() + HOUR_IN_SECONDS, 'bitstream_weekly', 'bitstream_weekly_media_cleanup_event');
+    }
+}
+
+/**
  * Plugin deactivation callback  
  */
 function bitstream_plugin_deactivate() {
+    wp_clear_scheduled_hook('bitstream_weekly_media_cleanup_event');
+
     // Flush rewrite rules on deactivation
     flush_rewrite_rules();
 }
