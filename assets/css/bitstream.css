@@ -215,6 +215,17 @@
     display: block;
 }
 
+.bitstream-feed-sidebar-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+    align-items: start;
+}
+
+.bitstream-feed-sidebar-tabs .bitstream-feed-sidebar-panel {
+    min-width: 0;
+}
+
 .bitstream-feed-sidebar-summary {
     cursor: pointer;
     font-weight: 700;
@@ -344,6 +355,14 @@
 
     .bitstream-feed-sidebar-panel {
         margin: 0;
+    }
+
+    .bitstream-feed-sidebar-tabs {
+        display: block;
+    }
+
+    .bitstream-feed-sidebar-tabs .bitstream-feed-sidebar-panel + .bitstream-feed-sidebar-panel {
+        margin-top: 0.75rem;
     }
 
     .bitstream-feed {

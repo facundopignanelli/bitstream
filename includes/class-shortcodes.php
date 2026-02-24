@@ -255,8 +255,10 @@ class BitStream_Shortcodes {
         echo '</aside>';
 
         echo '<aside class="bitstream-feed-sidebar bitstream-feed-sidebar-left">';
-        echo '<details class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-left" open>';
-        echo '<summary class="bitstream-feed-sidebar-summary"><i class="fa-solid fa-sliders" aria-hidden="true"></i> Filters</summary>';
+        echo '<div class="bitstream-feed-sidebar-tabs">';
+
+        echo '<details class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-search">';
+        echo '<summary class="bitstream-feed-sidebar-summary"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Search</summary>';
         echo '<div class="bitstream-filter-box">';
         echo '<h3 class="bitstream-feed-sidebar-title">Search</h3>';
         echo '<form class="bitstream-filter-search" method="get" action="'.esc_url($base_filter_url).'">';
@@ -270,7 +272,10 @@ class BitStream_Shortcodes {
         echo '<button type="submit">Search</button>';
         echo '</form>';
         echo '</div>';
+        echo '</details>';
 
+        echo '<details class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-filters">';
+        echo '<summary class="bitstream-feed-sidebar-summary"><i class="fa-solid fa-sliders" aria-hidden="true"></i> Filters &amp; Archive</summary>';
         echo '<div class="bitstream-filter-box">';
         echo '<h3 class="bitstream-feed-sidebar-title">Archive</h3>';
         echo '<a class="bitstream-filter-link '.(empty($selected_month) ? 'is-active' : '').'" href="'.esc_url($build_filter_url($base_filter_url, $selected_type, '', $selected_search)).'">All dates</a>';
@@ -294,6 +299,8 @@ class BitStream_Shortcodes {
         echo '<a class="bitstream-filter-link bitstream-filter-clear" href="'.esc_url($base_filter_url).'">Clear filters</a>';
         echo '</div>';
         echo '</details>';
+
+        echo '</div>';
         echo '</aside>';
 
         echo '</div>';
