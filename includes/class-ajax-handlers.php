@@ -1171,14 +1171,61 @@ class BitStream_Ajax_Handlers {
         }
         
         $page = isset($_POST['page']) ? intval($_POST['page']) : 1;
-        $q = new WP_Query([
+
+        $requested_type = isset($_POST['filter_type']) ? sanitize_key(wp_unslash($_POST['filter_type'])) : 'all';
+        $selected_type = in_array($requested_type, ['all', 'bits', 'rebits'], true) ? $requested_type : 'all';
+
+        $requested_month = isset($_POST['filter_month']) ? sanitize_text_field(wp_unslash($_POST['filter_month'])) : '';
+        $selected_month = preg_match('/^\d{4}-\d{2}$/', $requested_month) ? $requested_month : '';
+
+        $requested_search = isset($_POST['filter_search']) ? sanitize_text_field(wp_unslash($_POST['filter_search'])) : '';
+        $selected_search = trim($requested_search);
+
+        $query_args = [
             'post_type'      => 'bit',
             'post_status'    => 'publish',
             'posts_per_page' => 10,
             'paged'          => $page,
             'orderby'        => 'date',
             'order'          => 'DESC'
-        ]);
+        ];
+
+        if ($selected_type === 'bits') {
+            $query_args['meta_query'] = [
+                'relation' => 'OR',
+                [
+                    'key' => 'bitstream_rebit_url',
+                    'compare' => 'NOT EXISTS',
+                ],
+                [
+                    'key' => 'bitstream_rebit_url',
+                    'value' => '',
+                    'compare' => '=',
+                ],
+            ];
+        } elseif ($selected_type === 'rebits') {
+            $query_args['meta_query'] = [
+                [
+                    'key' => 'bitstream_rebit_url',
+                    'value' => '',
+                    'compare' => '!=',
+                ],
+            ];
+        }
+
+        if (!empty($selected_month)) {
+            [$year, $month] = explode('-', $selected_month);
+            $query_args['date_query'] = [[
+                'year' => intval($year),
+                'monthnum' => intval($month),
+            ]];
+        }
+
+        if (!empty($selected_search)) {
+            $query_args['s'] = $selected_search;
+        }
+
+        $q = new WP_Query($query_args);
         
         if ($q->have_posts()) {
             while ($q->have_posts()) {

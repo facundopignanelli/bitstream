@@ -105,55 +105,181 @@ class BitStream_Shortcodes {
             'infinite_scroll' => 'false', // Enable infinite scroll instead of load more button
             'show_load_more' => 'true' // Control whether to show load more button
         ], $atts);
-        
+
+        $requested_type = isset($_GET['bitstream_type']) ? sanitize_key(wp_unslash($_GET['bitstream_type'])) : 'all';
+        $selected_type = in_array($requested_type, ['all', 'bits', 'rebits'], true) ? $requested_type : 'all';
+
+        $requested_month = isset($_GET['bitstream_month']) ? sanitize_text_field(wp_unslash($_GET['bitstream_month'])) : '';
+        $selected_month = preg_match('/^\d{4}-\d{2}$/', $requested_month) ? $requested_month : '';
+
+        $requested_search = isset($_GET['bitstream_search']) ? sanitize_text_field(wp_unslash($_GET['bitstream_search'])) : '';
+        $selected_search = trim($requested_search);
+
         // If limit is set, override posts_per_page and disable pagination
         $posts_per_page = !empty($atts['limit']) ? intval($atts['limit']) : intval($atts['posts_per_page']);
         $paged = !empty($atts['limit']) ? 1 : intval($atts['paged']);
-        
-        $q = new WP_Query([
+
+        $query_args = [
             'post_type' => 'bit',
+            'post_status' => 'publish',
             'posts_per_page' => $posts_per_page,
             'paged' => $paged,
             'orderby' => 'date',
             'order' => 'DESC'
-        ]);
+        ];
+
+        if ($selected_type === 'bits') {
+            $query_args['meta_query'] = [
+                'relation' => 'OR',
+                [
+                    'key' => 'bitstream_rebit_url',
+                    'compare' => 'NOT EXISTS',
+                ],
+                [
+                    'key' => 'bitstream_rebit_url',
+                    'value' => '',
+                    'compare' => '=',
+                ],
+            ];
+        } elseif ($selected_type === 'rebits') {
+            $query_args['meta_query'] = [
+                [
+                    'key' => 'bitstream_rebit_url',
+                    'value' => '',
+                    'compare' => '!=',
+                ],
+            ];
+        }
+
+        if (!empty($selected_month)) {
+            [$year, $month] = explode('-', $selected_month);
+            $query_args['date_query'] = [[
+                'year' => intval($year),
+                'monthnum' => intval($month),
+            ]];
+        }
+
+        if (!empty($selected_search)) {
+            $query_args['s'] = $selected_search;
+        }
+
+        $q = new WP_Query($query_args);
         
         $max = $q->max_num_pages;
         $infinite_scroll = ($atts['infinite_scroll'] === 'true' || $atts['infinite_scroll'] === '1');
         $show_load_more = ($atts['show_load_more'] === 'true' || $atts['show_load_more'] === '1');
         $has_limit = !empty($atts['limit']);
+
+        global $wpdb;
+        $archive_rows = $wpdb->get_results(
+            "SELECT YEAR(post_date) AS y, MONTH(post_date) AS m, COUNT(ID) AS c
+             FROM {$wpdb->posts}
+             WHERE post_type = 'bit' AND post_status = 'publish'
+             GROUP BY YEAR(post_date), MONTH(post_date)
+             ORDER BY post_date DESC
+             LIMIT 18"
+        );
+
+        $base_filter_url = remove_query_arg(['bitstream_type', 'bitstream_month', 'bitstream_search', 'paged']);
+        $build_filter_url = static function($base_url, $type, $month, $search) {
+            $params = [];
+            if (!empty($type) && $type !== 'all') {
+                $params['bitstream_type'] = $type;
+            }
+            if (!empty($month)) {
+                $params['bitstream_month'] = $month;
+            }
+            if (!empty($search)) {
+                $params['bitstream_search'] = $search;
+            }
+            return empty($params) ? $base_url : add_query_arg($params, $base_url);
+        };
         
         ob_start();
-        if ($q->have_posts()) {
-            $current_page = intval($paged);
-            $feed_classes = 'bitstream-feed';
-            if ($infinite_scroll) {
-                $feed_classes .= ' bitstream-infinite-scroll';
+        $current_page = intval($paged);
+        $feed_classes = 'bitstream-feed';
+        if ($infinite_scroll) {
+            $feed_classes .= ' bitstream-infinite-scroll';
+        }
+
+        $has_active_filters = ($selected_type !== 'all') || !empty($selected_month) || !empty($selected_search);
+        $selected_month_label = '';
+        if (!empty($selected_month)) {
+            [$selected_year, $selected_month_num] = explode('-', $selected_month);
+            $selected_month_label = date_i18n('F Y', mktime(0, 0, 0, intval($selected_month_num), 1, intval($selected_year)));
+        }
+
+        echo '<div class="bitstream-feed-layout">';
+        echo '<aside class="bitstream-feed-sidebar bitstream-feed-sidebar-left">';
+        echo '<h3 class="bitstream-feed-sidebar-title">Search</h3>';
+        echo '<form class="bitstream-filter-search" method="get" action="'.esc_url($base_filter_url).'">';
+        if ($selected_type !== 'all') {
+            echo '<input type="hidden" name="bitstream_type" value="'.esc_attr($selected_type).'">';
+        }
+        if (!empty($selected_month)) {
+            echo '<input type="hidden" name="bitstream_month" value="'.esc_attr($selected_month).'">';
+        }
+        echo '<input type="search" name="bitstream_search" value="'.esc_attr($selected_search).'" placeholder="Search posts...">';
+        echo '<button type="submit">Search</button>';
+        echo '</form>';
+
+        echo '<h3 class="bitstream-feed-sidebar-title">Archive</h3>';
+        echo '<a class="bitstream-filter-link '.(empty($selected_month) ? 'is-active' : '').'" href="'.esc_url($build_filter_url($base_filter_url, $selected_type, '', $selected_search)).'">All dates</a>';
+        if (!empty($archive_rows)) {
+            foreach ($archive_rows as $row) {
+                $month_value = sprintf('%04d-%02d', intval($row->y), intval($row->m));
+                $is_active = ($selected_month === $month_value) ? ' is-active' : '';
+                $label = date_i18n('F Y', mktime(0, 0, 0, intval($row->m), 1, intval($row->y)));
+                echo '<a class="bitstream-filter-link'.$is_active.'" href="'.esc_url($build_filter_url($base_filter_url, $selected_type, $month_value, $selected_search)).'">'.esc_html($label).' <span>'.intval($row->c).'</span></a>';
             }
-            
-            echo '<div class="'.$feed_classes.'" data-page="'.$current_page.'" data-max-page="'.$max.'" data-infinite-scroll="'.($infinite_scroll ? 'true' : 'false').'">';
+        }
+        echo '</aside>';
+
+        echo '<main class="bitstream-feed-main">';
+        if ($has_active_filters) {
+            echo '<div class="bitstream-active-filters" aria-label="Active filters">';
+            if ($selected_type !== 'all') {
+                $type_label = ($selected_type === 'rebits') ? 'Rebits' : 'Bits';
+                echo '<span class="bitstream-filter-chip">'.esc_html($type_label).'</span>';
+            }
+            if (!empty($selected_month_label)) {
+                echo '<span class="bitstream-filter-chip">'.esc_html($selected_month_label).'</span>';
+            }
+            if (!empty($selected_search)) {
+                echo '<span class="bitstream-filter-chip">Search: '.esc_html($selected_search).'</span>';
+            }
+            echo '<a class="bitstream-filter-chip bitstream-filter-chip-clear" href="'.esc_url($base_filter_url).'">Clear all</a>';
+            echo '</div>';
+        }
+
+        if ($q->have_posts()) {
+            echo '<div class="'.$feed_classes.'" data-page="'.$current_page.'" data-max-page="'.$max.'" data-infinite-scroll="'.($infinite_scroll ? 'true' : 'false').'" data-filter-type="'.esc_attr($selected_type).'" data-filter-month="'.esc_attr($selected_month).'" data-filter-search="'.esc_attr($selected_search).'">';
             while ($q->have_posts()) {
                 $q->the_post();
                 echo bitstream_render_card(get_the_ID());
             }
             echo '</div>';
-            
-            // Only show load more button if:
-            // - There are more pages
-            // - Not using limit parameter (which shows fixed number)
-            // - show_load_more is true
-            // - Not using infinite scroll (unless explicitly enabled)
+
             if ($max > 1 && !$has_limit && $show_load_more && !$infinite_scroll) {
                 echo '<button id="bitstream-load-more" class="bitstream-load-more">Load More</button>';
             }
-            
-            // Add infinite scroll trigger if enabled
+
             if ($infinite_scroll && $max > 1 && !$has_limit) {
                 echo '<div class="bitstream-scroll-trigger" style="height: 1px; margin-top: 20px;"></div>';
             }
         } else {
-            echo '<p>No Bits found.</p>';
+            echo '<p>No Bits found for this filter.</p>';
         }
+        echo '</main>';
+
+        echo '<aside class="bitstream-feed-sidebar bitstream-feed-sidebar-right">';
+        echo '<h3 class="bitstream-feed-sidebar-title">Content</h3>';
+    echo '<a class="bitstream-filter-link '.($selected_type === 'all' ? 'is-active' : '').'" href="'.esc_url($build_filter_url($base_filter_url, 'all', $selected_month, $selected_search)).'">All</a>';
+    echo '<a class="bitstream-filter-link '.($selected_type === 'bits' ? 'is-active' : '').'" href="'.esc_url($build_filter_url($base_filter_url, 'bits', $selected_month, $selected_search)).'">Bits</a>';
+    echo '<a class="bitstream-filter-link '.($selected_type === 'rebits' ? 'is-active' : '').'" href="'.esc_url($build_filter_url($base_filter_url, 'rebits', $selected_month, $selected_search)).'">Rebits</a>';
+    echo '<a class="bitstream-filter-link bitstream-filter-clear" href="'.esc_url($base_filter_url).'">Clear filters</a>';
+        echo '</aside>';
+        echo '</div>';
         
         wp_reset_postdata();
         return ob_get_clean();

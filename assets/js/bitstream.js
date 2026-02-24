@@ -2053,6 +2053,9 @@ document.addEventListener('DOMContentLoaded', function() {
         formData.append('action', 'bitstream_load_more');
         formData.append('page', nextPage);
         formData.append('nonce', bitstream_ajax.load_more_nonce);
+        formData.append('filter_type', feed.dataset.filterType || 'all');
+        formData.append('filter_month', feed.dataset.filterMonth || '');
+        formData.append('filter_search', feed.dataset.filterSearch || '');
 
         fetch(bitstream_ajax.ajax_url, {
             method: 'POST',

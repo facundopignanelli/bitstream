@@ -50,10 +50,114 @@
 }
 
 /* Feed grid layout */
-.bitstream-feed {
+.bitstream-feed-layout {
     display: grid;
     grid-template-columns: 1fr;
     gap: 1rem;
+    max-width: 1320px;
+    margin: 0 auto;
+}
+
+.bitstream-feed-main {
+    min-width: 0;
+}
+
+.bitstream-active-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin: 0 0 0.65rem;
+}
+
+.bitstream-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid #d5e1da;
+    border-radius: 999px;
+    padding: 0.26rem 0.6rem;
+    font-size: 0.8rem;
+    color: #2f3b34;
+    background: #f7faf8;
+    text-decoration: none;
+}
+
+.bitstream-filter-chip-clear {
+    border-style: dashed;
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+}
+
+.bitstream-feed-sidebar {
+    border: 1px solid #ddd;
+    border-radius: 15px;
+    background: #fff;
+    padding: 0.75rem;
+    height: fit-content;
+}
+
+.bitstream-feed-sidebar-title {
+    margin: 0 0 0.55rem;
+    font-size: 0.95rem;
+}
+
+.bitstream-filter-search {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.45rem;
+    margin-bottom: 0.85rem;
+}
+
+.bitstream-filter-search input[type="search"] {
+    width: 100%;
+    border: 1px solid #ccc;
+    border-radius: 12px;
+    padding: 0.5rem 0.65rem;
+    box-sizing: border-box;
+    font-family: inherit;
+    font-size: 0.88rem;
+}
+
+.bitstream-filter-search button {
+    border: none;
+    border-radius: 12px;
+    padding: 0.45rem 0.7rem;
+    background: var(--wp--preset--color--accent-1, #2c6e49);
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.bitstream-filter-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.55rem;
+    text-decoration: none;
+    color: #2f3b34;
+    font-size: 0.88rem;
+    padding: 0.4rem 0.5rem;
+    border-radius: 10px;
+}
+
+.bitstream-filter-link:hover {
+    background: #f4f7f5;
+}
+
+.bitstream-filter-link.is-active {
+    background: #eef6f1;
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    font-weight: 600;
+}
+
+.bitstream-filter-link.bitstream-filter-clear {
+    margin-top: 0.55rem;
+    border: 1px dashed #c6d1cb;
+    color: #4f5d55;
+}
+
+.bitstream-feed {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
     align-items: start;
     max-width: 1200px;
     margin: 0 auto;
@@ -62,6 +166,10 @@
     box-sizing: border-box;
     z-index: 1;
     overflow: visible;
+}
+
+.bitstream-feed .bit-card {
+    margin: 0 !important;
 }
 
 /* Ensure the feed doesn't interfere with other page elements */
@@ -73,12 +181,41 @@
 }
 
 @media (min-width: 768px) {
+    .bitstream-feed-layout {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+        align-items: start;
+    }
+
+    .bitstream-feed-main {
+        grid-column: 1 / -1;
+    }
+
+    .bitstream-feed-sidebar {
+        position: static;
+    }
+
     .bitstream-feed {
-        padding: 1.5rem;
+        padding: 1.25rem;
     }
 }
 
 @media (min-width: 1024px) {
+    .bitstream-feed-layout {
+        grid-template-columns: minmax(190px, 240px) minmax(0, 1fr) minmax(170px, 210px);
+        gap: 1rem;
+        align-items: start;
+    }
+
+    .bitstream-feed-main {
+        grid-column: auto;
+    }
+
+    .bitstream-feed-sidebar {
+        position: sticky;
+        top: 1rem;
+    }
+
     .bitstream-feed {
         padding: 2rem;
     }
