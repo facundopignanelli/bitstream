@@ -831,12 +831,26 @@ img.avatar {
 
 /* Responsive feed adjustments */
 @media (max-width: 767px) {
+    .bitstream-feed-layout {
+        grid-template-columns: minmax(0, 1fr) !important;
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+    }
+
     .bitstream-feed-layout,
     .bitstream-feed-main,
     .bitstream-feed {
         width: 100% !important;
         max-width: 100% !important;
         min-width: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    .bitstream-feed-layout > *,
+    .bitstream-feed-main > *,
+    .bitstream-feed > * {
+        min-width: 0 !important;
+        max-width: 100% !important;
         box-sizing: border-box !important;
     }
 
@@ -865,6 +879,23 @@ img.avatar {
         margin: 0 !important;
         height: auto !important;
         overflow: visible !important;
+    }
+
+    .bit-card,
+    .bit-card-content,
+    .bit-card-header,
+    .bit-author-info,
+    .bit-rebit-preview,
+    .bitstream-quoted-preview,
+    .bitstream-og-card {
+        min-width: 0 !important;
+        max-width: 100% !important;
+    }
+
+    .bit-card-content,
+    .bit-card-content * {
+        overflow-wrap: anywhere;
+        word-break: break-word;
     }
     
     .bitstream-feed::after {
