@@ -62,11 +62,27 @@
     min-width: 0;
 }
 
+.bitstream-feed-sidebar-left {
+    grid-area: left;
+}
+
+.bitstream-feed-sidebar-right {
+    grid-area: right;
+}
+
+.bitstream-feed-main {
+    grid-area: main;
+}
+
 .bitstream-active-filters {
     display: flex;
     flex-wrap: wrap;
     gap: 0.45rem;
     margin: 0 0 0.65rem;
+    border: 1px solid #ddd;
+    border-radius: 15px;
+    background: #fff;
+    padding: 0.55rem;
 }
 
 .bitstream-filter-chip {
@@ -97,6 +113,26 @@
 .bitstream-feed-sidebar-title {
     margin: 0 0 0.55rem;
     font-size: 0.95rem;
+}
+
+.bitstream-feed-sidebar-panel {
+    display: block;
+}
+
+.bitstream-feed-sidebar-summary {
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    margin-bottom: 0.55rem;
+}
+
+.bitstream-feed-sidebar-summary i {
+    margin-right: 0.4rem;
+}
+
+.bitstream-feed-sidebar-summary::-webkit-details-marker {
+    display: none;
 }
 
 .bitstream-filter-search {
@@ -183,16 +219,19 @@
 @media (min-width: 768px) {
     .bitstream-feed-layout {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-areas:
+            "left right"
+            "main main";
         gap: 1rem;
         align-items: start;
     }
 
-    .bitstream-feed-main {
-        grid-column: 1 / -1;
-    }
-
     .bitstream-feed-sidebar {
         position: static;
+    }
+
+    .bitstream-feed-sidebar-panel {
+        margin: 0;
     }
 
     .bitstream-feed {
@@ -203,17 +242,22 @@
 @media (min-width: 1024px) {
     .bitstream-feed-layout {
         grid-template-columns: minmax(190px, 240px) minmax(0, 1fr) minmax(170px, 210px);
+        grid-template-areas: "left main right";
         gap: 1rem;
         align-items: start;
-    }
-
-    .bitstream-feed-main {
-        grid-column: auto;
     }
 
     .bitstream-feed-sidebar {
         position: sticky;
         top: 1rem;
+    }
+
+    .bitstream-feed-sidebar-summary {
+        display: none;
+    }
+
+    .bitstream-feed-sidebar-panel > :not(summary) {
+        display: block;
     }
 
     .bitstream-feed {

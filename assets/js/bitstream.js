@@ -2038,6 +2038,35 @@ document.addEventListener('DOMContentLoaded', function() {
     const scrollTrigger = document.querySelector('.bitstream-scroll-trigger');
     const isInfiniteScroll = feed.dataset.infiniteScroll === 'true';
 
+    const sidebarPanels = document.querySelectorAll('.bitstream-feed-sidebar-panel');
+    function syncSidebarPanelState() {
+        if (!sidebarPanels.length) {
+            return;
+        }
+
+        const isDesktop = window.innerWidth >= 1024;
+
+        sidebarPanels.forEach(panel => {
+            if (isDesktop) {
+                panel.open = true;
+                return;
+            }
+
+            if (panel.dataset.userToggled !== 'true') {
+                panel.open = false;
+            }
+        });
+    }
+
+    sidebarPanels.forEach(panel => {
+        panel.addEventListener('toggle', () => {
+            panel.dataset.userToggled = 'true';
+        });
+    });
+
+    syncSidebarPanelState();
+    window.addEventListener('resize', syncSidebarPanelState);
+
     function loadNextPage() {
         const nextPage = parseInt(feed.dataset.page) + 1;
         const maxPage = parseInt(feed.dataset.maxPage);
