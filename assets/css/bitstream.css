@@ -231,7 +231,7 @@
     max-width: 100%;
     margin: 0 auto;
     width: 100%;
-    padding: 0 1rem 1rem;
+    padding: 0 0 1rem;
     box-sizing: border-box;
     z-index: 1;
     overflow: visible;
@@ -268,7 +268,7 @@
     }
 
     .bitstream-feed {
-        padding: 0 1.25rem 1.25rem;
+        padding: 0 0 1.25rem;
     }
 }
 
@@ -294,7 +294,7 @@
     }
 
     .bitstream-feed {
-        padding: 0 2rem 2rem;
+        padding: 0 0 2rem;
     }
 }
 
