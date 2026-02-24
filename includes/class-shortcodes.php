@@ -3,6 +3,8 @@
  * BitStream Shortcodes
  * 
  * @package BitStream
+
+    echo '<div class="bitstream-sidebar-divider" aria-hidden="true"></div>';
  */
 
 // Exit if accessed directly
