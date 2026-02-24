@@ -125,16 +125,6 @@
     padding: 0.75rem;
     height: fit-content;
 }
-.bitstream-feed-sidebar-left {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-}
-.bitstream-sidebar-divider {
-    height: 1px;
-    background: #e6e6e6;
-    margin: 0.75rem 0;
-}
 
 .bitstream-intro-text {
     margin: 0;
@@ -253,9 +243,9 @@
     margin-top: 0.1rem;
     background: var(--wp--preset--color--accent-1, #2c6e49);
     color: #fff;
-        margin: 0;
-        padding: 0;
-        border: 0;
+    font-weight: 600;
+    cursor: pointer;
+}
 
 .bitstream-filter-link {
     display: flex;
