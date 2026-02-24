@@ -557,10 +557,13 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             function getPointerPosition(event) {
+                const point = (event.touches && event.touches[0])
+                    || (event.changedTouches && event.changedTouches[0])
+                    || event;
                 const rect = cropperImage.getBoundingClientRect();
                 return {
-                    x: event.clientX - rect.left,
-                    y: event.clientY - rect.top,
+                    x: point.clientX - rect.left,
+                    y: point.clientY - rect.top,
                     rect
                 };
             }
@@ -570,7 +573,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
 
-                event.preventDefault();
+                if (event.cancelable) {
+                    event.preventDefault();
+                }
                 event.stopPropagation();
 
                 const target = event.target;
@@ -606,6 +611,10 @@ document.addEventListener('DOMContentLoaded', function() {
             function updateSelection(event) {
                 if (!cropperState || !cropperState.mode) {
                     return;
+                }
+
+                if (event.cancelable) {
+                    event.preventDefault();
                 }
 
                 const pos = getPointerPosition(event);
@@ -961,10 +970,24 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             if (cropperStage && cropperSelection) {
-                cropperStage.addEventListener('mousedown', beginSelection);
-                cropperSelection.addEventListener('mousedown', beginSelection);
-                document.addEventListener('mousemove', updateSelection);
-                document.addEventListener('mouseup', endSelection);
+                if (window.PointerEvent) {
+                    cropperStage.addEventListener('pointerdown', beginSelection);
+                    cropperSelection.addEventListener('pointerdown', beginSelection);
+                    document.addEventListener('pointermove', updateSelection);
+                    document.addEventListener('pointerup', endSelection);
+                    document.addEventListener('pointercancel', endSelection);
+                } else {
+                    cropperStage.addEventListener('mousedown', beginSelection);
+                    cropperSelection.addEventListener('mousedown', beginSelection);
+                    document.addEventListener('mousemove', updateSelection);
+                    document.addEventListener('mouseup', endSelection);
+
+                    cropperStage.addEventListener('touchstart', beginSelection, { passive: false });
+                    cropperSelection.addEventListener('touchstart', beginSelection, { passive: false });
+                    document.addEventListener('touchmove', updateSelection, { passive: false });
+                    document.addEventListener('touchend', endSelection);
+                    document.addEventListener('touchcancel', endSelection);
+                }
             }
 
             if (cropperCloseButtons) {

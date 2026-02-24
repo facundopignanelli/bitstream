@@ -1099,6 +1099,7 @@ iframe, embed, object, video {
     display: flex;
     align-items: center;
     justify-content: center;
+    touch-action: none;
 }
 
 .bitstream-cropper-image {
@@ -1112,6 +1113,7 @@ iframe, embed, object, video {
     border: 2px solid #4c9ffe;
     box-shadow: 0 0 0 200vmax rgba(0, 0, 0, 0.35);
     cursor: move;
+    touch-action: none;
 }
 
 .bitstream-cropper-handle {
