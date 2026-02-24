@@ -169,21 +169,6 @@ class BitStream_Shortcodes {
 
         $intro_title = get_option('bitstream_feed_intro_title', 'About BitStream');
         $intro_text = get_option('bitstream_feed_intro_text', 'BitStream is a lightweight microblog where you can post Bits, share Rebits, and follow updates in one place.');
-        $intro_updated = false;
-
-        if (!empty($_POST['bitstream_intro_submit']) && is_user_logged_in() && current_user_can('edit_posts')) {
-            if (wp_verify_nonce($_POST['bitstream_intro_nonce'] ?? '', 'bitstream_intro_update')) {
-                $new_intro_title = sanitize_text_field(wp_unslash($_POST['bitstream_intro_title'] ?? ''));
-                $new_intro_text = sanitize_textarea_field(wp_unslash($_POST['bitstream_intro_text'] ?? ''));
-
-                $intro_title = !empty($new_intro_title) ? $new_intro_title : 'About BitStream';
-                $intro_text = !empty($new_intro_text) ? $new_intro_text : 'BitStream is a lightweight microblog where you can post Bits, share Rebits, and follow updates in one place.';
-
-                update_option('bitstream_feed_intro_title', $intro_title, false);
-                update_option('bitstream_feed_intro_text', $intro_text, false);
-                $intro_updated = true;
-            }
-        }
 
         // If limit is set, override posts_per_page and disable pagination
         $posts_per_page = !empty($atts['limit']) ? intval($atts['limit']) : intval($atts['posts_per_page']);
@@ -291,22 +276,6 @@ class BitStream_Shortcodes {
         echo '<div class="bitstream-filter-box bitstream-intro-box">';
         echo '<h3 class="bitstream-feed-sidebar-title">'.esc_html($intro_title).'</h3>';
         echo '<p class="bitstream-intro-text">'.nl2br(esc_html($intro_text)).'</p>';
-        if ($intro_updated) {
-            echo '<p class="bitstream-intro-saved">Updated successfully.</p>';
-        }
-        if (is_user_logged_in() && current_user_can('edit_posts')) {
-            echo '<details class="bitstream-intro-edit">';
-            echo '<summary>Edit text</summary>';
-            echo '<form method="post" class="bitstream-intro-form">';
-            wp_nonce_field('bitstream_intro_update', 'bitstream_intro_nonce');
-            echo '<label for="bitstream-intro-title">Title</label>';
-            echo '<input id="bitstream-intro-title" type="text" name="bitstream_intro_title" value="'.esc_attr($intro_title).'">';
-            echo '<label for="bitstream-intro-text">Description</label>';
-            echo '<textarea id="bitstream-intro-text" name="bitstream_intro_text" rows="4">'.esc_textarea($intro_text).'</textarea>';
-            echo '<button type="submit" name="bitstream_intro_submit" value="1">Save</button>';
-            echo '</form>';
-            echo '</details>';
-        }
         echo '</div>';
         echo '</aside>';
 
@@ -463,11 +432,11 @@ class BitStream_Shortcodes {
 
         $submit_nonce = wp_create_nonce('bitstream_poster_submit_nonce');
         $requested_tab = isset($_GET['poster_tab']) ? sanitize_key(wp_unslash($_GET['poster_tab'])) : 'bit';
-        if ($requested_tab === 'scheduled') {
-            $requested_tab = 'advanced';
+        if ($requested_tab === 'advanced') {
+            $requested_tab = 'scheduled';
         }
 
-        $initial_tab = in_array($requested_tab, ['bit', 'rebit', 'advanced'], true) ? $requested_tab : 'bit';
+        $initial_tab = in_array($requested_tab, ['bit', 'rebit', 'scheduled'], true) ? $requested_tab : 'bit';
 
         $shared_url = isset($_GET['shared_url']) ? esc_url_raw(wp_unslash($_GET['shared_url'])) : '';
         $shared_title = isset($_GET['shared_title']) ? sanitize_text_field(wp_unslash($_GET['shared_title'])) : '';
@@ -512,7 +481,7 @@ class BitStream_Shortcodes {
 
         $is_bit_active = ($initial_tab === 'bit');
         $is_rebit_active = ($initial_tab === 'rebit');
-        $is_advanced_active = ($initial_tab === 'advanced');
+        $is_scheduled_active = ($initial_tab === 'scheduled');
 
         $scheduled_query = new WP_Query([
             'post_type' => 'bit',
@@ -544,8 +513,8 @@ class BitStream_Shortcodes {
                 <button type="button" class="bitstream-poster-tab <?php echo $is_rebit_active ? 'is-active' : ''; ?>" data-tab="rebit" role="tab" aria-selected="<?php echo $is_rebit_active ? 'true' : 'false'; ?>" aria-controls="bitstream-poster-panel-rebit" id="bitstream-poster-tab-rebit">
                     Post a Rebit
                 </button>
-                <button type="button" class="bitstream-poster-tab <?php echo $is_advanced_active ? 'is-active' : ''; ?>" data-tab="advanced" role="tab" aria-selected="<?php echo $is_advanced_active ? 'true' : 'false'; ?>" aria-controls="bitstream-poster-panel-advanced" id="bitstream-poster-tab-advanced">
-                    Advanced
+                <button type="button" class="bitstream-poster-tab <?php echo $is_scheduled_active ? 'is-active' : ''; ?>" data-tab="scheduled" role="tab" aria-selected="<?php echo $is_scheduled_active ? 'true' : 'false'; ?>" aria-controls="bitstream-poster-panel-scheduled" id="bitstream-poster-tab-scheduled">
+                    Scheduled
                 </button>
             </div>
 
@@ -585,7 +554,9 @@ class BitStream_Shortcodes {
                     <?php endif; ?>
 
                     <details class="bitstream-post-options">
-                        <summary>Schedule</summary>
+                        <summary>Advanced</summary>
+                        <div class="bitstream-post-options-section">
+                            <h4 class="bitstream-post-options-section-title">Schedule</h4>
                         <div class="bitstream-schedule-options">
                             <label class="bitstream-schedule-radio">
                                 <input type="radio" name="bit_schedule_mode" value="now" data-schedule-toggle="bit" checked>
@@ -598,6 +569,7 @@ class BitStream_Shortcodes {
                         </div>
                         <input type="datetime-local" name="bit_schedule_datetime" class="bitstream-schedule-datetime" data-schedule-input="bit" disabled>
                         <input type="hidden" name="bit_schedule_enabled" value="0" data-schedule-hidden="bit">
+                        </div>
                     </details>
 
                     <button type="submit" class="bitstream-poster-submit">Publish Bit</button>
@@ -651,7 +623,9 @@ class BitStream_Shortcodes {
                     </div>
 
                     <details class="bitstream-post-options">
-                        <summary>Schedule</summary>
+                        <summary>Advanced</summary>
+                        <div class="bitstream-post-options-section">
+                            <h4 class="bitstream-post-options-section-title">Schedule</h4>
                         <div class="bitstream-schedule-options">
                             <label class="bitstream-schedule-radio">
                                 <input type="radio" name="rebit_schedule_mode" value="now" data-schedule-toggle="rebit" checked>
@@ -664,13 +638,14 @@ class BitStream_Shortcodes {
                         </div>
                         <input type="datetime-local" name="rebit_schedule_datetime" class="bitstream-schedule-datetime" data-schedule-input="rebit" disabled>
                         <input type="hidden" name="rebit_schedule_enabled" value="0" data-schedule-hidden="rebit">
+                        </div>
                     </details>
 
                     <button type="submit" class="bitstream-poster-submit">Publish Rebit</button>
                 </form>
             </div>
 
-            <div class="bitstream-poster-panel <?php echo $is_advanced_active ? 'is-active' : ''; ?>" id="bitstream-poster-panel-advanced" role="tabpanel" aria-labelledby="bitstream-poster-tab-advanced" <?php echo $is_advanced_active ? '' : 'hidden'; ?>>
+            <div class="bitstream-poster-panel <?php echo $is_scheduled_active ? 'is-active' : ''; ?>" id="bitstream-poster-panel-scheduled" role="tabpanel" aria-labelledby="bitstream-poster-tab-scheduled" <?php echo $is_scheduled_active ? '' : 'hidden'; ?>>
                 <section class="bitstream-advanced-section bitstream-advanced-section-schedule">
                     <h3>Schedule</h3>
                     <div class="bitstream-scheduled-filter">

@@ -110,6 +110,9 @@ class BitStream_Admin_Interface {
         // 1. Add New Bit - WordPress handles this automatically as "Add New Bit"
         // 2. Add New ReBit 
         add_submenu_page('edit.php?post_type=bit', 'Add New ReBit', 'Add New ReBit', 'edit_posts', 'bitstream-post-rebit', [$this, 'handle_post_rebit_redirect']);
+
+        // Feed Intro Text
+        add_submenu_page('edit.php?post_type=bit', 'Feed Intro', 'Feed Intro', 'edit_posts', 'bitstream-feed-intro', [$this, 'feed_intro_page']);
         
         // 3. All Bits is automatically handled by WordPress (All Bits menu item)
         
@@ -592,6 +595,62 @@ class BitStream_Admin_Interface {
     public function handle_post_rebit_redirect() {
         wp_redirect($this->get_poster_url(['poster_tab' => 'rebit']));
         exit;
+    }
+
+    /**
+     * Feed intro admin page.
+     */
+    public function feed_intro_page() {
+        if (!current_user_can('edit_posts')) {
+            wp_die(__('You do not have sufficient permissions to access this page.'));
+        }
+
+        $default_intro_title = 'About BitStream';
+        $default_intro_text = 'BitStream is a lightweight microblog where you can post Bits, share Rebits, and follow updates in one place.';
+
+        $intro_title = get_option('bitstream_feed_intro_title', $default_intro_title);
+        $intro_text = get_option('bitstream_feed_intro_text', $default_intro_text);
+        $updated = false;
+
+        if (isset($_POST['bitstream_save_feed_intro']) && check_admin_referer('bitstream_feed_intro_save', 'bitstream_feed_intro_nonce')) {
+            $new_intro_title = sanitize_text_field(wp_unslash($_POST['bitstream_feed_intro_title'] ?? ''));
+            $new_intro_text = sanitize_textarea_field(wp_unslash($_POST['bitstream_feed_intro_text'] ?? ''));
+
+            $intro_title = !empty($new_intro_title) ? $new_intro_title : $default_intro_title;
+            $intro_text = !empty($new_intro_text) ? $new_intro_text : $default_intro_text;
+
+            update_option('bitstream_feed_intro_title', $intro_title, false);
+            update_option('bitstream_feed_intro_text', $intro_text, false);
+            $updated = true;
+        }
+
+        echo '<div class="wrap">';
+        echo '<h1>Feed Intro</h1>';
+        echo '<p>Edit the intro text shown in the BitStream feed sidebar.</p>';
+
+        if ($updated) {
+            echo '<div class="notice notice-success is-dismissible"><p>Intro text updated.</p></div>';
+        }
+
+        echo '<form method="post" style="max-width: 760px;">';
+        wp_nonce_field('bitstream_feed_intro_save', 'bitstream_feed_intro_nonce');
+
+        echo '<table class="form-table" role="presentation">';
+        echo '<tr>';
+        echo '<th scope="row"><label for="bitstream-feed-intro-title">Title</label></th>';
+        echo '<td><input id="bitstream-feed-intro-title" name="bitstream_feed_intro_title" type="text" class="regular-text" value="' . esc_attr($intro_title) . '"></td>';
+        echo '</tr>';
+        echo '<tr>';
+        echo '<th scope="row"><label for="bitstream-feed-intro-text">Description</label></th>';
+        echo '<td><textarea id="bitstream-feed-intro-text" name="bitstream_feed_intro_text" rows="6" class="large-text">' . esc_textarea($intro_text) . '</textarea></td>';
+        echo '</tr>';
+        echo '</table>';
+
+        echo '<p class="submit">';
+        echo '<button type="submit" name="bitstream_save_feed_intro" class="button button-primary">Save Intro</button>';
+        echo '</p>';
+        echo '</form>';
+        echo '</div>';
     }
     
     /**

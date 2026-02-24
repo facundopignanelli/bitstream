@@ -161,7 +161,7 @@ function bitstream_render_rebit_section($post_id) {
                 . 'frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" '
                 . 'allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;"></iframe></div>';
         } else {
-            echo '<a href="' . esc_url($rebit_url) . '" target="_blank" rel="noopener">' . esc_html($rebit_url) . '</a>';
+            echo '<a href="' . esc_url($rebit_url) . '" target="_blank" rel="noopener" style="white-space:normal;overflow-wrap:anywhere;word-break:break-word;">' . esc_html($rebit_url) . '</a>';
         }
     } else {
         echo '<div class="bit-rebit-preview" style="border:1px solid #ddd;border-radius:8px;overflow:hidden;margin-bottom:1rem;">';
@@ -175,13 +175,13 @@ function bitstream_render_rebit_section($post_id) {
         $og_desc = get_post_meta($post_id, '_bitstream_og_desc', true);
         if ($og_title) {
             echo '<h4 style="margin:0 0 0.5rem;font-size:1.1rem;">'
-                . '<a href="' . esc_url($rebit_url) . '" target="_blank" rel="noopener">' . esc_html($og_title) . '</a></h4>';
+                . '<a href="' . esc_url($rebit_url) . '" target="_blank" rel="noopener" style="white-space:normal;overflow-wrap:anywhere;word-break:break-word;">' . esc_html($og_title) . '</a></h4>';
         }
         if ($og_desc) {
             echo '<p style="margin:0;font-size:0.95rem;color:#555;">' . esc_html($og_desc) . '</p>';
         }
         if (!$og_desc) {
-            echo '<a href="' . esc_url($rebit_url) . '" target="_blank" rel="noopener">' . esc_html($rebit_url) . '</a>';
+            echo '<a href="' . esc_url($rebit_url) . '" target="_blank" rel="noopener" style="white-space:normal;overflow-wrap:anywhere;word-break:break-word;">' . esc_html($rebit_url) . '</a>';
         }
         echo '</div></div>';
     }
