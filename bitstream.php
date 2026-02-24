@@ -157,11 +157,7 @@ function bitstream_render_card($post_id, $skip_content_filter = false) {
         <?php if ($rebit_url):
             $parsed = parse_url($rebit_url);
             $host   = $parsed['host'] ?? '';
-            $map = null;
-            $mappings = get_option('bitstream_rebit_mappings',[]);
-            foreach($mappings as $m) {
-                if (stripos($host,$m['domain'])!==false) { $map = $m; break; }
-            }
+            $map = BitStream_ReBit_Mappings::get_mapping_for_domain($host);
             if ($map) {
                 echo '<div class="bit-rebit-label" style="margin-bottom:0.5rem;font-size:0.95rem;color:#333;">'
                    . '<i class="'.esc_attr($map['icon']).'" aria-hidden="true" style="margin-right:0.5rem;"></i>'
@@ -264,38 +260,14 @@ function bitstream_plugin_activate() {
     $plugin = new BitStream_Plugin();
     $plugin->init();
     
-    // Import default ReBit mappings if none exist
-    bitstream_import_default_mappings();
+    // Import default ReBit mappings if none exist (via centralized class)
+    BitStream_ReBit_Mappings::import_default_mappings();
 
     // Ensure weekly BitStream media cleanup is scheduled
     bitstream_schedule_weekly_media_cleanup();
     
     // Flush rewrite rules to ensure permalinks work (including PWA shortcuts)
     flush_rewrite_rules();
-}
-
-/**
- * Import default ReBit mappings if none exist
- */
-function bitstream_import_default_mappings() {
-    $existing_mappings = get_option('bitstream_rebit_mappings', []);
-    
-    // Only import if no mappings exist
-    if (empty($existing_mappings)) {
-        $default_mappings = [
-            ['domain' => 'twitter.com', 'label' => 'shared a Tweet', 'icon' => 'fab fa-twitter'],
-            ['domain' => 'x.com', 'label' => 'shared a post', 'icon' => 'fab fa-x-twitter'],
-            ['domain' => 'youtube.com', 'label' => 'shared a video', 'icon' => 'fab fa-youtube'],
-            ['domain' => 'github.com', 'label' => 'shared a repository', 'icon' => 'fab fa-github'],
-            ['domain' => 'linkedin.com', 'label' => 'shared a post', 'icon' => 'fab fa-linkedin'],
-            ['domain' => 'facebook.com', 'label' => 'shared a post', 'icon' => 'fab fa-facebook'],
-            ['domain' => 'instagram.com', 'label' => 'shared a photo', 'icon' => 'fab fa-instagram'],
-            ['domain' => 'reddit.com', 'label' => 'shared a post', 'icon' => 'fab fa-reddit'],
-            ['domain' => 'medium.com', 'label' => 'shared an article', 'icon' => 'fab fa-medium'],
-        ];
-        
-        update_option('bitstream_rebit_mappings', $default_mappings);
-    }
 }
 
 /**

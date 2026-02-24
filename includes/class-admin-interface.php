@@ -121,6 +121,9 @@ class BitStream_Admin_Interface {
 
         // 6. Media Cleanup
         add_submenu_page('edit.php?post_type=bit', 'Media Cleanup', 'Media Cleanup', 'manage_options', 'bitstream-media-cleanup', [$this, 'media_cleanup_page']);
+
+        // 7. Reset BitStream (dev only)
+        add_submenu_page('edit.php?post_type=bit', 'Reset BitStream', 'Reset BitStream', 'manage_options', 'bitstream-reset', [$this, 'reset_bitstream_page']);
     }
 
     /**
@@ -298,6 +301,134 @@ class BitStream_Admin_Interface {
             'protected' => intval($results['protected'] ?? 0),
             'errors' => intval($results['errors'] ?? 0),
         ], false);
+    }
+
+    /**
+     * Reset BitStream page handler.
+     */
+    public function reset_bitstream_page() {
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have sufficient permissions to access this page.'));
+        }
+
+        if (isset($_POST['bitstream_confirm_reset']) && check_admin_referer('bitstream_reset', 'bitstream_reset_nonce')) {
+            $this->perform_bitstream_reset();
+            echo '<div class="notice notice-success"><p><strong>BitStream Reset Complete.</strong> All posts, media, and settings have been removed. The plugin is now in a virgin state.</p></div>';
+            return;
+        }
+
+        echo '<div class="wrap">';
+        echo '<h1>Reset BitStream</h1>';
+        echo '<div class="notice notice-error"><p><strong>WARNING:</strong> This will permanently delete all Bits, ReBits, associated media files, and plugin settings. This cannot be undone!</p></div>';
+
+        echo '<form method="post" style="margin-top: 20px;">';
+        wp_nonce_field('bitstream_reset', 'bitstream_reset_nonce');
+        echo '<button type="submit" name="bitstream_confirm_reset" class="button button-primary button-large" onclick="return confirm(\'Permanently delete ALL BitStream data and reset to virgin state? This cannot be undone.\');">Reset Everything</button>';
+        echo '</form>';
+        echo '</div>';
+    }
+
+    /**
+     * Perform the complete BitStream reset.
+     */
+    private function perform_bitstream_reset() {
+        global $wpdb;
+
+        // 1. Delete all BitStream posts and their attachments
+        $posts = new WP_Query([
+            'post_type' => 'bit',
+            'posts_per_page' => -1,
+            'fields' => 'ids',
+            'post_status' => 'any',
+        ]);
+
+        foreach ($posts->posts as $post_id) {
+            $post_id = intval($post_id);
+            
+            // Get all attachments for this post
+            $attachments = get_posts([
+                'post_parent' => $post_id,
+                'post_type' => 'attachment',
+                'posts_per_page' => -1,
+                'fields' => 'ids',
+                'post_status' => 'any',
+            ]);
+            
+            foreach ($attachments as $attachment_id) {
+                wp_delete_attachment(intval($attachment_id), true);
+            }
+            
+            // Delete post (force delete, skip trash)
+            wp_delete_post($post_id, true);
+        }
+
+        wp_reset_postdata();
+
+        // 2. Delete orphaned BitStream-related attachments
+        $orphaned = new WP_Query([
+            'post_type' => 'attachment',
+            'posts_per_page' => -1,
+            'fields' => 'ids',
+            'post_status' => 'any',
+            'meta_query' => [
+                [
+                    'key' => '_bitstream_uploaded_via_poster',
+                    'compare' => 'EXISTS',
+                ],
+            ],
+        ]);
+
+        foreach ($orphaned->posts as $attachment_id) {
+            wp_delete_attachment(intval($attachment_id), true);
+        }
+
+        wp_reset_postdata();
+
+        // 3. Delete BitStream postmeta entries
+        $meta_keys = [
+            '_bitstream_uploaded_via_poster',
+            '_bitstream_upload_created_at',
+            '_bitstream_attachment_id',
+            '_bitstream_generated_artwork_id',
+        ];
+
+        foreach ($meta_keys as $meta_key) {
+            $wpdb->delete($wpdb->postmeta, ['meta_key' => $meta_key], ['%s']);
+        }
+
+        // 4. Delete BitStream options
+        $bitstream_options = [
+            'bitstream_permalinks_flushed',
+            'bitstream_rebit_mappings',
+            'bitstream_last_weekly_media_cleanup',
+        ];
+
+        foreach ($bitstream_options as $option) {
+            delete_option($option);
+        }
+
+        // 5. Delete BitStream artwork directory
+        $upload_dir = wp_upload_dir();
+        $artwork_dir = $upload_dir['basedir'] . '/bitstream-artwork';
+
+        if (is_dir($artwork_dir)) {
+            $files = glob($artwork_dir . '/*');
+            foreach ($files as $file) {
+                if (is_file($file)) {
+                    @unlink($file);
+                }
+            }
+            @rmdir($artwork_dir);
+        }
+
+        // 6. Clear scheduled cron events
+        wp_clear_scheduled_hook('bitstream_weekly_media_cleanup_event');
+
+        // 7. Re-import default ReBit mappings (virgin install state)
+        BitStream_ReBit_Mappings::import_default_mappings();
+
+        // 8. Flush rewrite rules
+        flush_rewrite_rules();
     }
 
     /**
@@ -583,21 +714,30 @@ class BitStream_Admin_Interface {
             wp_die(__('You do not have sufficient permissions to access this page.'));
         }
         
-        // Handle form submission
+        // Handle form submission for saving/editing mappings
         if (isset($_POST['bitstream_rebit_mappings']) && check_admin_referer('bitstream_rebit_mappings_save','bitstream_rebit_mappings_nonce')) {
             $posted = $_POST['bitstream_rebit_mappings'];
-            $current_mappings = get_option('bitstream_rebit_mappings', []);
-            $new = [];
+            $mappings_to_save = [];
             
-            // Handle existing mappings
+            // Handle existing mappings (edits and keeps)
             if (isset($posted['existing'])) {
                 foreach ($posted['existing'] as $map) {
-                    if (isset($map['remove']) && $map['remove']) continue;
+                    // Skip if marked for removal
+                    if (!empty($map['remove'])) {
+                        continue;
+                    }
+                    
                     $domain = sanitize_text_field($map['domain'] ?? '');
                     $label  = sanitize_text_field($map['label'] ?? '');
                     $icon   = sanitize_text_field($map['icon'] ?? '');
-                    if (!$domain || !$label || !$icon) continue;
-                    $new[] = compact('domain','label','icon');
+                    
+                    if (!empty($domain) && !empty($label) && !empty($icon)) {
+                        $mappings_to_save[] = [
+                            'domain' => $domain,
+                            'label' => $label,
+                            'icon' => $icon,
+                        ];
+                    }
                 }
             }
             
@@ -606,49 +746,53 @@ class BitStream_Admin_Interface {
                 $domain = sanitize_text_field($posted['new']['domain'] ?? '');
                 $label  = sanitize_text_field($posted['new']['label'] ?? '');
                 $icon   = sanitize_text_field($posted['new']['icon'] ?? '');
-                if ($domain && $label && $icon) {
-                    // Check if domain already exists
+                
+                if (!empty($domain) && !empty($label) && !empty($icon)) {
+                    // Check if domain already exists in what we're saving
                     $exists = false;
-                    foreach ($new as $mapping) {
+                    foreach ($mappings_to_save as $mapping) {
                         if ($mapping['domain'] === $domain) {
                             $exists = true;
                             break;
                         }
                     }
+                    
                     if (!$exists) {
-                        $new[] = compact('domain','label','icon');
-                        echo '<div class="updated notice is-dismissible"><p><strong>New mapping added successfully!</strong></p></div>';
-                    } else {
-                        echo '<div class="error notice is-dismissible"><p><strong>Error:</strong> A mapping for this domain already exists.</p></div>';
+                        $mappings_to_save[] = [
+                            'domain' => $domain,
+                            'label' => $label,
+                            'icon' => $icon,
+                        ];
                     }
                 }
             }
             
-            update_option('bitstream_rebit_mappings', $new);
-            if (!isset($posted['new']) || empty($posted['new']['domain'])) {
-                echo '<div class="updated notice is-dismissible"><p><strong>ReBit mappings saved successfully!</strong></p></div>';
-            }
+            // Save all mappings via the centralized class
+            BitStream_ReBit_Mappings::save_mappings($mappings_to_save);
+            echo '<div class="updated notice is-dismissible"><p><strong>ReBit mappings saved successfully!</strong></p></div>';
         }
         
         // Handle preset addition
         if (isset($_POST['add_preset']) && check_admin_referer('bitstream_rebit_mappings_save','bitstream_rebit_mappings_nonce')) {
-            $preset = sanitize_text_field($_POST['preset_selection']);
-            $mappings = get_option('bitstream_rebit_mappings', []);
+            $preset_key = sanitize_text_field($_POST['preset_selection'] ?? '');
+            $presets = BitStream_ReBit_Mappings::get_rebit_presets();
             
-            $presets = $this->get_rebit_presets();
-            if (isset($presets[$preset])) {
-                $new_mapping = $presets[$preset];
+            if (!empty($preset_key) && isset($presets[$preset_key])) {
+                $new_mapping = $presets[$preset_key];
+                
                 // Check if domain already exists
+                $existing_mappings = BitStream_ReBit_Mappings::get_all_mappings();
                 $exists = false;
-                foreach ($mappings as $mapping) {
+                foreach ($existing_mappings as $mapping) {
                     if ($mapping['domain'] === $new_mapping['domain']) {
                         $exists = true;
                         break;
                     }
                 }
+                
                 if (!$exists) {
-                    $mappings[] = $new_mapping;
-                    update_option('bitstream_rebit_mappings', $mappings);
+                    $existing_mappings[] = $new_mapping;
+                    BitStream_ReBit_Mappings::save_mappings($existing_mappings);
                     echo '<div class="updated notice is-dismissible"><p><strong>Preset added successfully!</strong></p></div>';
                 } else {
                     echo '<div class="error notice is-dismissible"><p><strong>Error:</strong> A mapping for this domain already exists.</p></div>';
@@ -656,72 +800,17 @@ class BitStream_Admin_Interface {
             }
         }
         
-        // Handle import default mappings
+        // Handle import all presets
         if (isset($_POST['import_defaults']) && check_admin_referer('bitstream_rebit_mappings_save','bitstream_rebit_mappings_nonce')) {
-            $this->import_default_mappings();
+            BitStream_ReBit_Mappings::import_all_presets();
             echo '<div class="updated notice is-dismissible"><p><strong>Default mappings imported successfully!</strong></p></div>';
         }
         
-        $mappings = get_option('bitstream_rebit_mappings', []);
+        // Get current mappings and render the form
+        $mappings = BitStream_ReBit_Mappings::get_all_mappings();
         
         // Include the ReBit Mappings interface
         include_once BITSTREAM_PLUGIN_PATH . 'includes/admin-rebit-mappings-interface.php';
-    }
-    
-    /**
-     * Import default mappings based on the updated style
-     */
-    private function import_default_mappings() {
-        $default_mappings = [
-            ['domain' => 'twitter.com', 'label' => 'shared a Tweet', 'icon' => 'fab fa-twitter'],
-            ['domain' => 'x.com', 'label' => 'shared a post', 'icon' => 'fab fa-x-twitter'],
-            ['domain' => 'youtube.com', 'label' => 'shared a video', 'icon' => 'fab fa-youtube'],
-            ['domain' => 'github.com', 'label' => 'shared a repository', 'icon' => 'fab fa-github'],
-            ['domain' => 'linkedin.com', 'label' => 'shared a post', 'icon' => 'fab fa-linkedin'],
-            ['domain' => 'facebook.com', 'label' => 'shared a post', 'icon' => 'fab fa-facebook'],
-            ['domain' => 'instagram.com', 'label' => 'shared a photo', 'icon' => 'fab fa-instagram'],
-            ['domain' => 'reddit.com', 'label' => 'shared a post', 'icon' => 'fab fa-reddit'],
-            ['domain' => 'medium.com', 'label' => 'shared an article', 'icon' => 'fab fa-medium'],
-        ];
-        
-        $existing_mappings = get_option('bitstream_rebit_mappings', []);
-        $existing_domains = array_column($existing_mappings, 'domain');
-        
-        foreach ($default_mappings as $mapping) {
-            if (!in_array($mapping['domain'], $existing_domains)) {
-                $existing_mappings[] = $mapping;
-            }
-        }
-        
-        update_option('bitstream_rebit_mappings', $existing_mappings);
-    }
-    
-    /**
-     * Get preset ReBit mappings for popular sites
-     */
-    private function get_rebit_presets() {
-        return [
-            'twitter' => ['domain' => 'twitter.com', 'label' => 'shared a Tweet', 'icon' => 'fab fa-twitter'],
-            'x' => ['domain' => 'x.com', 'label' => 'shared a post', 'icon' => 'fab fa-x-twitter'],
-            'youtube' => ['domain' => 'youtube.com', 'label' => 'shared a video', 'icon' => 'fab fa-youtube'],
-            'github' => ['domain' => 'github.com', 'label' => 'shared a repository', 'icon' => 'fab fa-github'],
-            'linkedin' => ['domain' => 'linkedin.com', 'label' => 'shared a post', 'icon' => 'fab fa-linkedin'],
-            'facebook' => ['domain' => 'facebook.com', 'label' => 'shared a post', 'icon' => 'fab fa-facebook'],
-            'instagram' => ['domain' => 'instagram.com', 'label' => 'shared a photo', 'icon' => 'fab fa-instagram'],
-            'tiktok' => ['domain' => 'tiktok.com', 'label' => 'shared a video', 'icon' => 'fab fa-tiktok'],
-            'reddit' => ['domain' => 'reddit.com', 'label' => 'shared a post', 'icon' => 'fab fa-reddit'],
-            'medium' => ['domain' => 'medium.com', 'label' => 'shared an article', 'icon' => 'fab fa-medium'],
-            'dev' => ['domain' => 'dev.to', 'label' => 'shared an article', 'icon' => 'fab fa-dev'],
-            'hackernews' => ['domain' => 'news.ycombinator.com', 'label' => 'shared a story', 'icon' => 'fab fa-hacker-news'],
-            'stackoverflow' => ['domain' => 'stackoverflow.com', 'label' => 'shared a question', 'icon' => 'fab fa-stack-overflow'],
-            'wikipedia' => ['domain' => 'wikipedia.org', 'label' => 'shared an article', 'icon' => 'fab fa-wikipedia-w'],
-            'bbc' => ['domain' => 'bbc.com', 'label' => 'shared a news article', 'icon' => 'fas fa-newspaper'],
-            'cnn' => ['domain' => 'cnn.com', 'label' => 'shared a news article', 'icon' => 'fas fa-newspaper'],
-            'nytimes' => ['domain' => 'nytimes.com', 'label' => 'shared a news article', 'icon' => 'fas fa-newspaper'],
-            'spotify' => ['domain' => 'spotify.com', 'label' => 'shared a song', 'icon' => 'fab fa-spotify'],
-            'twitch' => ['domain' => 'twitch.tv', 'label' => 'shared a stream', 'icon' => 'fab fa-twitch'],
-            'discord' => ['domain' => 'discord.com', 'label' => 'shared a message', 'icon' => 'fab fa-discord'],
-        ];
     }
     
     /**
