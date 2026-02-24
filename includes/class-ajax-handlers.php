@@ -281,6 +281,21 @@ class BitStream_Ajax_Handlers {
             if ($generated_artwork_id > 0) {
                 $ids[] = $generated_artwork_id;
             }
+
+            if (wp_attachment_is('audio', $id)) {
+                $audio_meta = get_post_meta($id, '_bitstream_audio_meta', true);
+                if (is_array($audio_meta)) {
+                    $audio_artwork_id = intval($audio_meta['artwork_id'] ?? 0);
+                    if ($audio_artwork_id > 0) {
+                        $ids[] = $audio_artwork_id;
+                    } elseif (!empty($audio_meta['artwork'])) {
+                        $audio_artwork_url_id = attachment_url_to_postid((string) $audio_meta['artwork']);
+                        if ($audio_artwork_url_id > 0) {
+                            $ids[] = intval($audio_artwork_url_id);
+                        }
+                    }
+                }
+            }
         }
 
         return array_values(array_unique(array_filter(array_map('intval', $ids))));
@@ -289,8 +304,15 @@ class BitStream_Ajax_Handlers {
     /**
      * Check if an attachment is still referenced by any other post.
      */
-    private function is_attachment_used_elsewhere($attachment_id, $exclude_post_id) {
+    private function is_attachment_used_elsewhere($attachment_id, $exclude_post_id, $excluded_post_ids = []) {
         global $wpdb;
+
+        $excluded_post_ids = is_array($excluded_post_ids) ? $excluded_post_ids : [];
+        $excluded_post_ids[] = intval($exclude_post_id);
+        $excluded_post_ids = array_values(array_unique(array_filter(array_map('intval', $excluded_post_ids))));
+        if (empty($excluded_post_ids)) {
+            $excluded_post_ids = [0];
+        }
 
         $attachment = get_post($attachment_id);
         if (!$attachment || $attachment->post_type !== 'attachment') {
@@ -298,24 +320,38 @@ class BitStream_Ajax_Handlers {
         }
 
         $parent_id = intval($attachment->post_parent);
-        if ($parent_id > 0 && $parent_id !== intval($exclude_post_id)) {
+                if ($parent_id > 0 && !in_array($parent_id, $excluded_post_ids, true)) {
             return true;
         }
 
-        $meta_ref = $wpdb->get_var($wpdb->prepare(
-            "SELECT pm.post_id
-             FROM {$wpdb->postmeta} pm
-             INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
-             WHERE pm.meta_value = %d
-               AND pm.post_id <> %d
-               AND p.post_status NOT IN ('trash','auto-draft')
-             LIMIT 1",
-            $attachment_id,
-            $exclude_post_id
-        ));
+                $excluded_placeholders = implode(',', array_fill(0, count($excluded_post_ids), '%d'));
+                $meta_query = "SELECT pm.post_id
+                         FROM {$wpdb->postmeta} pm
+                         INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+                         WHERE pm.meta_value = %d
+                             AND pm.post_id NOT IN ({$excluded_placeholders})
+                             AND p.post_status NOT IN ('trash','auto-draft')
+                         LIMIT 1";
+                $meta_query_args = array_merge([$attachment_id], $excluded_post_ids);
+                $meta_ref = $wpdb->get_var($wpdb->prepare($meta_query, $meta_query_args));
         if (!empty($meta_ref)) {
             return true;
         }
+
+                $audio_meta_like = '%"artwork_id";i:' . intval($attachment_id) . ';%';
+                $audio_meta_query = "SELECT pm.post_id
+                         FROM {$wpdb->postmeta} pm
+                         INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+                         WHERE pm.meta_key = '_bitstream_audio_meta'
+                             AND pm.meta_value LIKE %s
+                             AND pm.post_id NOT IN ({$excluded_placeholders})
+                             AND p.post_status NOT IN ('trash','auto-draft')
+                         LIMIT 1";
+                $audio_meta_query_args = array_merge([$audio_meta_like], $excluded_post_ids);
+                $audio_meta_ref = $wpdb->get_var($wpdb->prepare($audio_meta_query, $audio_meta_query_args));
+                if (!empty($audio_meta_ref)) {
+                        return true;
+                }
 
         $attachment_url = wp_get_attachment_url($attachment_id);
         if ($attachment_url) {
@@ -362,12 +398,14 @@ class BitStream_Ajax_Handlers {
             return;
         }
 
+        $excluded_reference_posts = array_values(array_unique(array_filter(array_map('intval', array_merge([$post_id], $attachment_ids)))));
+
         foreach ($attachment_ids as $attachment_id) {
             if ($attachment_id <= 0 || get_post_type($attachment_id) !== 'attachment') {
                 continue;
             }
 
-            if ($this->is_attachment_used_elsewhere($attachment_id, $post_id)) {
+            if ($this->is_attachment_used_elsewhere($attachment_id, $post_id, $excluded_reference_posts)) {
                 continue;
             }
 

@@ -1171,6 +1171,13 @@ iframe, embed, object, video {
     cursor: ew-resize;
 }
 
+.bitstream-cropper-modal.is-square-mode .bitstream-cropper-handle.handle-n,
+.bitstream-cropper-modal.is-square-mode .bitstream-cropper-handle.handle-e,
+.bitstream-cropper-modal.is-square-mode .bitstream-cropper-handle.handle-s,
+.bitstream-cropper-modal.is-square-mode .bitstream-cropper-handle.handle-w {
+    display: none;
+}
+
 .bitstream-cropper-size {
     margin: 0.35rem 0 0;
     font-size: 0.85rem;

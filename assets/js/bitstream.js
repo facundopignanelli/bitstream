@@ -468,6 +468,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
                 cropperModal.hidden = true;
+                cropperModal.classList.remove('is-square-mode');
                 document.body.classList.remove('bitstream-cropper-open');
                 if (cropperImage) {
                     cropperImage.src = '';
@@ -505,14 +506,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 return Math.max(min, Math.min(max, value));
             }
 
-            function openCropper(targetInputId, targetPreviewId) {
+            function openCropper(targetInputId, targetPreviewId, options = {}) {
                 if (!cropperModal || !cropperImage || !cropperStage) {
                     setStatus('Cropper is unavailable on this page.', true);
                     return;
                 }
 
-                const input = document.getElementById(targetInputId);
-                const attachmentId = input ? parseInt(input.value || '0', 10) : 0;
+                const explicitAttachmentId = options && options.attachmentId ? parseInt(options.attachmentId, 10) : 0;
+                const input = explicitAttachmentId ? null : document.getElementById(targetInputId);
+                const attachmentId = explicitAttachmentId || (input ? parseInt(input.value || '0', 10) : 0);
                 if (!attachmentId || !window.wp || !wp.media) {
                     setStatus('No image selected to crop.', true);
                     return;
@@ -530,6 +532,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         targetInputId,
                         targetPreviewId,
                         attachmentId,
+                        enforceSquare: !!options.enforceSquare,
+                        onComplete: typeof options.onComplete === 'function' ? options.onComplete : null,
                         selection: null,
                         mode: null,
                         handle: null,
@@ -541,16 +545,31 @@ document.addEventListener('DOMContentLoaded', function() {
                         const rect = cropperImage.getBoundingClientRect();
                         const insetX = rect.width * 0.1;
                         const insetY = rect.height * 0.1;
-                        cropperState.selection = {
-                            x: insetX,
-                            y: insetY,
-                            width: Math.max(20, rect.width - insetX * 2),
-                            height: Math.max(20, rect.height - insetY * 2)
-                        };
+
+                        if (cropperState.enforceSquare) {
+                            const availableW = Math.max(20, rect.width - insetX * 2);
+                            const availableH = Math.max(20, rect.height - insetY * 2);
+                            const size = Math.max(20, Math.min(availableW, availableH));
+                            cropperState.selection = {
+                                x: (rect.width - size) / 2,
+                                y: (rect.height - size) / 2,
+                                width: size,
+                                height: size
+                            };
+                        } else {
+                            cropperState.selection = {
+                                x: insetX,
+                                y: insetY,
+                                width: Math.max(20, rect.width - insetX * 2),
+                                height: Math.max(20, rect.height - insetY * 2)
+                            };
+                        }
+
                         updateSelectionBox(cropperState.selection);
                     };
 
                     cropperImage.src = url;
+                    cropperModal.classList.toggle('is-square-mode', !!cropperState.enforceSquare);
                     cropperModal.hidden = false;
                     document.body.classList.add('bitstream-cropper-open');
                 });
@@ -628,15 +647,86 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 const selection = cropperState.selection;
 
+                const applySquareResize = (handleName) => {
+                    const centerX = selection.x + (selection.width / 2);
+                    const centerY = selection.y + (selection.height / 2);
+                    let squareHandle = handleName || 'se';
+
+                    if (squareHandle === 'n') {
+                        squareHandle = pos.x < centerX ? 'nw' : 'ne';
+                    } else if (squareHandle === 's') {
+                        squareHandle = pos.x < centerX ? 'sw' : 'se';
+                    } else if (squareHandle === 'w') {
+                        squareHandle = pos.y < centerY ? 'nw' : 'sw';
+                    } else if (squareHandle === 'e') {
+                        squareHandle = pos.y < centerY ? 'ne' : 'se';
+                    }
+
+                    let anchorX = selection.x;
+                    let anchorY = selection.y;
+                    let dirX = 1;
+                    let dirY = 1;
+
+                    if (squareHandle === 'nw') {
+                        anchorX = selection.x + selection.width;
+                        anchorY = selection.y + selection.height;
+                        dirX = -1;
+                        dirY = -1;
+                    } else if (squareHandle === 'ne') {
+                        anchorX = selection.x;
+                        anchorY = selection.y + selection.height;
+                        dirX = 1;
+                        dirY = -1;
+                    } else if (squareHandle === 'sw') {
+                        anchorX = selection.x + selection.width;
+                        anchorY = selection.y;
+                        dirX = -1;
+                        dirY = 1;
+                    } else {
+                        anchorX = selection.x;
+                        anchorY = selection.y;
+                        dirX = 1;
+                        dirY = 1;
+                    }
+
+                    const deltaX = Math.abs(pos.x - anchorX);
+                    const deltaY = Math.abs(pos.y - anchorY);
+                    let side = Math.max(10, Math.max(deltaX, deltaY));
+
+                    const maxSideX = dirX > 0 ? (maxX - anchorX) : anchorX;
+                    const maxSideY = dirY > 0 ? (maxY - anchorY) : anchorY;
+                    side = Math.min(side, maxSideX, maxSideY);
+
+                    selection.width = side;
+                    selection.height = side;
+                    selection.x = dirX > 0 ? anchorX : (anchorX - side);
+                    selection.y = dirY > 0 ? anchorY : (anchorY - side);
+                };
+
                 if (cropperState.mode === 'create') {
                     const x1 = clamp(cropperState.startX, 0, maxX);
                     const y1 = clamp(cropperState.startY, 0, maxY);
                     const x2 = clamp(pos.x, 0, maxX);
                     const y2 = clamp(pos.y, 0, maxY);
-                    selection.x = Math.min(x1, x2);
-                    selection.y = Math.min(y1, y2);
-                    selection.width = Math.abs(x2 - x1);
-                    selection.height = Math.abs(y2 - y1);
+
+                    if (cropperState.enforceSquare) {
+                        const signX = x2 >= x1 ? 1 : -1;
+                        const signY = y2 >= y1 ? 1 : -1;
+                        const maxSideX = signX > 0 ? (maxX - x1) : x1;
+                        const maxSideY = signY > 0 ? (maxY - y1) : y1;
+                        let side = Math.max(Math.abs(x2 - x1), Math.abs(y2 - y1));
+                        side = Math.min(side, maxSideX, maxSideY);
+
+                        selection.width = side;
+                        selection.height = side;
+                        selection.x = signX > 0 ? x1 : (x1 - side);
+                        selection.y = signY > 0 ? y1 : (y1 - side);
+                    } else {
+                        selection.x = Math.min(x1, x2);
+                        selection.y = Math.min(y1, y2);
+                        selection.width = Math.abs(x2 - x1);
+                        selection.height = Math.abs(y2 - y1);
+                    }
                 } else if (cropperState.mode === 'move') {
                     const deltaX = pos.x - cropperState.startX;
                     const deltaY = pos.y - cropperState.startY;
@@ -646,6 +736,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     cropperState.startY = pos.y;
                 } else if (cropperState.mode === 'resize') {
                     const handle = cropperState.handle;
+
+                    if (cropperState.enforceSquare) {
+                        applySquareResize(handle);
+                        updateSelectionBox(selection);
+                        return;
+                    }
+
                     let x = selection.x;
                     let y = selection.y;
                     let w = selection.width;
@@ -885,13 +982,21 @@ document.addEventListener('DOMContentLoaded', function() {
                             return;
                         }
                         const data = selection.toJSON();
-                        const thumbUrl = data && data.sizes && data.sizes.thumbnail && data.sizes.thumbnail.url
-                            ? data.sizes.thumbnail.url
-                            : (data.url || '');
-                        audioTagsArtworkId = data.id || 0;
-                        audioTagsArtworkUrl = thumbUrl;
-                        audioTagsArtworkCleared = false;
-                        updateAudioArtworkPreview(audioTagsArtworkUrl);
+                        const selectedArtworkId = data.id || 0;
+                        if (!selectedArtworkId) {
+                            return;
+                        }
+
+                        openCropper('', '', {
+                            attachmentId: selectedArtworkId,
+                            enforceSquare: true,
+                            onComplete: (croppedMedia, croppedUrl) => {
+                                audioTagsArtworkId = croppedMedia && croppedMedia.id ? croppedMedia.id : selectedArtworkId;
+                                audioTagsArtworkUrl = croppedUrl || (data.url || '');
+                                audioTagsArtworkCleared = false;
+                                updateAudioArtworkPreview(audioTagsArtworkUrl);
+                            }
+                        });
                     });
 
                     frame.open();
@@ -1023,7 +1128,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     const scaleX = cropperImage.naturalWidth / rect.width;
                     const scaleY = cropperImage.naturalHeight / rect.height;
-                    const selection = cropperState.selection;
+                    let selection = cropperState.selection;
+
+                    if (cropperState.enforceSquare) {
+                        const side = Math.max(10, Math.min(selection.width, selection.height));
+                        const offsetX = (selection.width - side) / 2;
+                        const offsetY = (selection.height - side) / 2;
+                        selection = {
+                            x: selection.x + offsetX,
+                            y: selection.y + offsetY,
+                            width: side,
+                            height: side
+                        };
+                    }
 
                     const cropX = Math.round(selection.x * scaleX);
                     const cropY = Math.round(selection.y * scaleY);
@@ -1056,12 +1173,18 @@ document.addEventListener('DOMContentLoaded', function() {
                             const cacheKey = media.cache_buster ? (media.cache_buster + '') : '';
                             const url = media.url ? (media.url + (media.url.indexOf('?') === -1 ? '?' : '&') + 't=' + cacheKey) : '';
 
-                            handleMediaSelection(cropperState.targetInputId, cropperState.targetPreviewId, {
+                            const croppedMedia = {
                                 id: media.id,
                                 url: url,
                                 mime: media.mime,
                                 sizes: { medium: { url: url } }
-                            });
+                            };
+
+                            if (typeof cropperState.onComplete === 'function') {
+                                cropperState.onComplete(croppedMedia, url);
+                            } else {
+                                handleMediaSelection(cropperState.targetInputId, cropperState.targetPreviewId, croppedMedia);
+                            }
 
                             setStatus('Image cropped.');
                             closeCropper();

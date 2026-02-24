@@ -190,6 +190,21 @@ class BitStream_Admin_Interface {
             return true;
         }
 
+                $audio_meta_like = '%"artwork_id";i:' . intval($attachment_id) . ';%';
+                $audio_meta_ref = $wpdb->get_var($wpdb->prepare(
+                        "SELECT pm.post_id
+                         FROM {$wpdb->postmeta} pm
+                         INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+                         WHERE pm.meta_key = '_bitstream_audio_meta'
+                             AND pm.meta_value LIKE %s
+                             AND p.post_status NOT IN ('trash','auto-draft')
+                         LIMIT 1",
+                        $audio_meta_like
+                ));
+                if (!empty($audio_meta_ref)) {
+                        return true;
+                }
+
         $attachment_url = wp_get_attachment_url($attachment_id);
         if ($attachment_url) {
             $url_like = '%' . $wpdb->esc_like($attachment_url) . '%';
