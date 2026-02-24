@@ -128,13 +128,23 @@ class BitStream_PWA_Manager {
             return;
         }
 
-        $new_bit_url = $this->get_poster_url(['poster_tab' => 'bit']);
-        $rebit_url = $this->get_poster_url(['poster_tab' => 'rebit']);
-        $rss_feeds_url = admin_url('edit.php?post_type=bit&page=bitstream-rss-feeds');
-        $rebit_mappings_url = admin_url('edit.php?post_type=bit&page=bitstream-rebit-mappings');
+        $quick_actions_html = '';
+        if (class_exists('BitStream_Shortcodes')) {
+            $quick_actions_html = BitStream_Shortcodes::render_quick_action_links('bitstream-dropdown-link');
+        }
+
+        if (empty($quick_actions_html)) {
+            return;
+        }
         ?>
         <style>
         /* Mobile-specific fixes for floating BitStream menu */
+        @media (min-width: 1024px) {
+            #bitstream-floating-menu {
+                display: none !important;
+            }
+        }
+
         @media (max-width: 768px) {
             #bitstream-floating-menu {
                 bottom: 20px !important;
@@ -159,6 +169,25 @@ class BitStream_PWA_Manager {
                 -webkit-touch-callout: none !important;
             }
         }
+
+        .bitstream-dropdown-link {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            text-decoration: none;
+            color: #333;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .bitstream-dropdown-link + .bitstream-dropdown-link {
+            border-top: 1px solid #eee;
+        }
+
+        .bitstream-dropdown-link i {
+            margin-right: 8px;
+            color: #2c6e49;
+            pointer-events: none;
+        }
         
         /* Force proper touch behavior */
         .bitstream-toggle {
@@ -179,30 +208,7 @@ class BitStream_PWA_Manager {
                     <i class="fa-solid fa-plus" style="margin: 0; pointer-events: none;"></i>
                 </button>
                 <div class="bitstream-dropdown" style="position: absolute; bottom: 70px; right: 0; background: white; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.15); min-width: 180px; opacity: 0; visibility: hidden; transform: translateY(10px); transition: all 0.3s ease; pointer-events: none;">
-                    <a href="<?php echo esc_url($new_bit_url); ?>" 
-                       style="display: flex; align-items: center; padding: 12px 16px; text-decoration: none; color: #333; border-bottom: 1px solid #eee; -webkit-tap-highlight-color: transparent;"
-                       class="bitstream-dropdown-link">
-                        <i class="fa-solid fa-comment" style="margin-right: 8px; color: #2c6e49; pointer-events: none;"></i>
-                        Add New Bit
-                    </a>
-                    <a href="<?php echo esc_url($rebit_url); ?>" 
-                       style="display: flex; align-items: center; padding: 12px 16px; text-decoration: none; color: #333; border-bottom: 1px solid #eee; -webkit-tap-highlight-color: transparent;"
-                       class="bitstream-dropdown-link">
-                        <i class="fa-solid fa-link" style="margin-right: 8px; color: #2c6e49; pointer-events: none;"></i>
-                        Add New ReBit
-                    </a>
-                    <a href="<?php echo esc_url($rss_feeds_url); ?>" 
-                       style="display: flex; align-items: center; padding: 12px 16px; text-decoration: none; color: #333; border-bottom: 1px solid #eee; -webkit-tap-highlight-color: transparent;"
-                       class="bitstream-dropdown-link">
-                        <i class="fa-solid fa-rss" style="margin-right: 8px; color: #2c6e49; pointer-events: none;"></i>
-                        RSS Feeds
-                    </a>
-                    <a href="<?php echo esc_url($rebit_mappings_url); ?>" 
-                       style="display: flex; align-items: center; padding: 12px 16px; text-decoration: none; color: #333; -webkit-tap-highlight-color: transparent;"
-                       class="bitstream-dropdown-link">
-                        <i class="fa-solid fa-sitemap" style="margin-right: 8px; color: #2c6e49; pointer-events: none;"></i>
-                        ReBit Mappings
-                    </a>
+                    <?php echo wp_kses_post($quick_actions_html); ?>
                 </div>
             </div>
         </div>

@@ -62,6 +62,58 @@ class BitStream_Shortcodes {
 
         return $cached_url;
     }
+
+    /**
+     * Shared quick actions used by both right rail and floating menu
+     */
+    public static function get_quick_actions() {
+        if (!is_user_logged_in() || !current_user_can('edit_posts')) {
+            return [];
+        }
+
+        return [
+            [
+                'url' => self::get_poster_page_url(['poster_tab' => 'bit']),
+                'icon' => 'fa-solid fa-comment',
+                'label' => 'Add New Bit',
+            ],
+            [
+                'url' => self::get_poster_page_url(['poster_tab' => 'rebit']),
+                'icon' => 'fa-solid fa-link',
+                'label' => 'Add New ReBit',
+            ],
+            [
+                'url' => admin_url('edit.php?post_type=bit&page=bitstream-rss-feeds'),
+                'icon' => 'fa-solid fa-rss',
+                'label' => 'RSS Feeds',
+            ],
+            [
+                'url' => admin_url('edit.php?post_type=bit&page=bitstream-rebit-mappings'),
+                'icon' => 'fa-solid fa-sitemap',
+                'label' => 'ReBit Mappings',
+            ],
+        ];
+    }
+
+    /**
+     * Render quick action links with a shared source of options
+     */
+    public static function render_quick_action_links($link_class = 'bitstream-filter-link') {
+        $actions = self::get_quick_actions();
+        if (empty($actions)) {
+            return '';
+        }
+
+        $html = '';
+        foreach ($actions as $action) {
+            $html .= '<a class="'.esc_attr(trim($link_class.' bitstream-quick-action-link')).'" href="'.esc_url($action['url']).'">';
+            $html .= '<i class="'.esc_attr($action['icon']).'" aria-hidden="true"></i>';
+            $html .= '<span>'.esc_html($action['label']).'</span>';
+            $html .= '</a>';
+        }
+
+        return $html;
+    }
     
     public function __construct() {
         add_action('init', [$this, 'register_shortcodes']);
@@ -284,14 +336,49 @@ class BitStream_Shortcodes {
         echo '<h3 class="bitstream-feed-sidebar-title">Archive</h3>';
         echo '<a class="bitstream-filter-link '.(empty($selected_month) ? 'is-active' : '').'" href="'.esc_url($build_filter_url($base_filter_url, $selected_type, '', $selected_search)).'">All dates</a>';
         if (!empty($archive_rows)) {
+            $archive_by_year = [];
             foreach ($archive_rows as $row) {
-                $month_value = sprintf('%04d-%02d', intval($row->y), intval($row->m));
-                $is_active = ($selected_month === $month_value) ? ' is-active' : '';
-                $label = date_i18n('F Y', mktime(0, 0, 0, intval($row->m), 1, intval($row->y)));
-                echo '<a class="bitstream-filter-link'.$is_active.'" href="'.esc_url($build_filter_url($base_filter_url, $selected_type, $month_value, $selected_search)).'">';
-                echo '<strong class="bitstream-archive-label">'.esc_html($label).'</strong> <span class="bitstream-archive-count">('.intval($row->c).')</span>';
-                echo '</a>';
+                $year = intval($row->y);
+                if (!isset($archive_by_year[$year])) {
+                    $archive_by_year[$year] = [
+                        'total' => 0,
+                        'months' => [],
+                    ];
+                }
+
+                $archive_by_year[$year]['total'] += intval($row->c);
+                $archive_by_year[$year]['months'][] = [
+                    'm' => intval($row->m),
+                    'c' => intval($row->c),
+                ];
             }
+
+            $selected_year = !empty($selected_month) ? substr($selected_month, 0, 4) : '';
+            $year_index = 0;
+
+            foreach ($archive_by_year as $year => $year_data) {
+                $is_open = ($selected_year === strval($year)) || (empty($selected_year) && $year_index === 0);
+                echo '<details class="bitstream-archive-year"'.($is_open ? ' open' : '').'>';
+                echo '<summary class="bitstream-archive-year-summary">';
+                echo '<span class="bitstream-archive-year-label">'.esc_html(strval($year)).'</span>';
+                echo '<span class="bitstream-archive-year-count">('.intval($year_data['total']).')</span>';
+                echo '</summary>';
+                echo '<div class="bitstream-archive-months">';
+
+                foreach ($year_data['months'] as $month_data) {
+                    $month_value = sprintf('%04d-%02d', intval($year), intval($month_data['m']));
+                    $is_active = ($selected_month === $month_value) ? ' is-active' : '';
+                    $label = date_i18n('F', mktime(0, 0, 0, intval($month_data['m']), 1, intval($year)));
+                    echo '<a class="bitstream-filter-link'.$is_active.'" href="'.esc_url($build_filter_url($base_filter_url, $selected_type, $month_value, $selected_search)).'">';
+                    echo '<strong class="bitstream-archive-label">'.esc_html($label).'</strong> <span class="bitstream-archive-count">('.intval($month_data['c']).')</span>';
+                    echo '</a>';
+                }
+
+                echo '</div>';
+                echo '</details>';
+                $year_index++;
+            }
+
         }
         echo '</div>';
 
@@ -346,8 +433,16 @@ class BitStream_Shortcodes {
         }
         echo '</main>';
 
-        echo '<aside class="bitstream-feed-sidebar-right">';
-        echo '<div class="bitstream-right-rail-reserved" aria-hidden="true"></div>';
+        echo '<aside class="bitstream-feed-sidebar bitstream-feed-sidebar-right">';
+        $desktop_quick_actions = self::render_quick_action_links();
+        if (!empty($desktop_quick_actions)) {
+            echo '<div class="bitstream-filter-box">';
+            echo '<h3 class="bitstream-feed-sidebar-title">Quick Actions</h3>';
+            echo $desktop_quick_actions;
+            echo '</div>';
+        } else {
+            echo '<div class="bitstream-right-rail-reserved" aria-hidden="true"></div>';
+        }
         echo '</aside>';
         echo '</div>';
         

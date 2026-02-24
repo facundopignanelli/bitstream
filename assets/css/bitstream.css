@@ -62,11 +62,14 @@
     width: 100%;
     margin: 0 auto;
     box-sizing: border-box;
+    min-width: 0;
+    overflow-x: clip;
 }
 
 .bitstream-feed-main {
     min-width: 0;
     width: 100%;
+    max-width: 100%;
 }
 
 .bitstream-feed-sidebar-column {
@@ -298,6 +301,17 @@
     color: #4f5d55;
 }
 
+.bitstream-quick-action-link {
+    justify-content: flex-start;
+    gap: 0.5rem;
+}
+
+.bitstream-quick-action-link i {
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    width: 1rem;
+    text-align: center;
+}
+
 .bitstream-archive-label {
     color: var(--wp--preset--color--accent-1, #2c6e49);
     font-weight: 700;
@@ -306,6 +320,61 @@
 .bitstream-archive-count {
     color: #8a938e;
     font-weight: 500;
+}
+
+.bitstream-archive-year {
+    margin-top: 0.45rem;
+    border: 1px solid #e2e8e4;
+    border-radius: 10px;
+    background: #fbfdfc;
+    overflow: hidden;
+}
+
+.bitstream-archive-year-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.38rem 0.5rem;
+    cursor: pointer;
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    font-size: 0.87rem;
+    font-weight: 700;
+}
+
+.bitstream-archive-year-summary::after {
+    content: "▾";
+    color: #7b8780;
+    font-size: 0.78rem;
+    line-height: 1;
+    transition: transform 0.2s ease;
+}
+
+.bitstream-archive-year[open] .bitstream-archive-year-summary::after {
+    transform: rotate(180deg);
+}
+
+.bitstream-archive-year-summary::-webkit-details-marker {
+    display: none;
+}
+
+.bitstream-archive-year-label {
+    color: inherit;
+}
+
+.bitstream-archive-year-count {
+    color: #8a938e;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.bitstream-archive-months {
+    padding: 0.15rem 0.35rem 0.35rem;
+}
+
+.bitstream-archive-months .bitstream-filter-link {
+    font-size: 0.84rem;
+    padding: 0.34rem 0.45rem;
 }
 
 .bitstream-feed {
@@ -766,10 +835,25 @@ img.avatar {
 
 /* Responsive feed adjustments */
 @media (max-width: 767px) {
+    .bitstream-feed-layout,
+    .bitstream-feed-main,
+    .bitstream-feed {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    .bitstream-feed-main,
+    .bitstream-feed {
+        overflow-x: hidden;
+    }
+
     .bit-card {
         margin: 0 0 1rem 0 !important;
         padding: 1rem !important;
         width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
         position: relative !important;
         left: 0 !important;
         top: 0 !important;
