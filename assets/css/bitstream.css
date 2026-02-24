@@ -834,11 +834,16 @@ img.avatar {
     .bitstream-feed-layout,
     .bitstream-feed-main,
     .bitstream-feed {
-        width: min(100%, calc(100vw - 1rem)) !important;
-        max-width: min(100%, calc(100vw - 1rem)) !important;
+        width: 100% !important;
+        max-width: 100% !important;
         min-width: 0 !important;
-        margin-left: auto !important;
-        margin-right: auto !important;
+        box-sizing: border-box !important;
+    }
+
+    .bitstream-feed-layout,
+    .bitstream-feed-main {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
     }
 
     .bit-card {
@@ -849,12 +854,15 @@ img.avatar {
         box-sizing: border-box !important;
         position: relative !important;
         left: 0 !important;
+        right: auto !important;
         top: 0 !important;
+        transform: none !important;
         z-index: auto !important;
     }
     
     .bitstream-feed {
-        padding: 0.5rem;
+        padding: 0 !important;
+        margin: 0 !important;
         height: auto !important;
         overflow: visible !important;
     }
