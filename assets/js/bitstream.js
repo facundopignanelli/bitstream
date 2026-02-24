@@ -483,19 +483,24 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             function updateSelectionBox(selection) {
-                if (!cropperSelection || !selection) {
+                if (!cropperSelection || !selection || !cropperImage || !cropperStage) {
                     return;
                 }
+
+                const stageRect = cropperStage.getBoundingClientRect();
+                const imageRect = cropperImage.getBoundingClientRect();
+                const offsetX = imageRect.left - stageRect.left;
+                const offsetY = imageRect.top - stageRect.top;
+
                 cropperSelection.style.display = 'block';
-                cropperSelection.style.left = selection.x + 'px';
-                cropperSelection.style.top = selection.y + 'px';
+                cropperSelection.style.left = (offsetX + selection.x) + 'px';
+                cropperSelection.style.top = (offsetY + selection.y) + 'px';
                 cropperSelection.style.width = selection.width + 'px';
                 cropperSelection.style.height = selection.height + 'px';
 
-                if (cropperSizeLabel && cropperImage) {
-                    const rect = cropperImage.getBoundingClientRect();
-                    const scaleX = rect.width ? (cropperImage.naturalWidth / rect.width) : 1;
-                    const scaleY = rect.height ? (cropperImage.naturalHeight / rect.height) : 1;
+                if (cropperSizeLabel) {
+                    const scaleX = imageRect.width ? (cropperImage.naturalWidth / imageRect.width) : 1;
+                    const scaleY = imageRect.height ? (cropperImage.naturalHeight / imageRect.height) : 1;
                     const pxW = Math.max(1, Math.round(selection.width * scaleX));
                     const pxH = Math.max(1, Math.round(selection.height * scaleY));
                     cropperSizeLabel.textContent = 'Size: ' + pxW + ' x ' + pxH + ' px';

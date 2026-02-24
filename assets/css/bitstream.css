@@ -643,6 +643,11 @@ iframe, embed, object, video {
     display: none;
 }
 
+.bitstream-media-dropzone:not(.has-media) .bitstream-media-preview {
+    display: none;
+    margin-top: 0;
+}
+
 .bitstream-media-dropzone.is-dragover {
     border-color: var(--wp--preset--color--accent-1, #2c6e49);
     background: #eef6f1;
@@ -1090,11 +1095,12 @@ iframe, embed, object, video {
     position: relative;
     background: #c7c7c7;
     border-radius: 15px;
-    padding: 0.5rem;
+    padding: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     touch-action: none;
+    overflow: hidden;
 }
 
 .bitstream-cropper-image {
