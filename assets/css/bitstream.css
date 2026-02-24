@@ -54,9 +54,8 @@
     display: grid;
     grid-template-columns: 1fr;
     grid-template-areas:
-        "intro"
-        "main"
         "left"
+        "main"
         "right";
     gap: 1rem;
     max-width: 1320px;
@@ -68,6 +67,13 @@
 .bitstream-feed-main {
     min-width: 0;
     width: 100%;
+}
+
+.bitstream-feed-sidebar-column {
+    grid-area: left;
+    display: grid;
+    gap: 1rem;
+    align-content: start;
 }
 
 .bitstream-feed-sidebar-left {
@@ -315,9 +321,8 @@
     .bitstream-feed-layout {
         grid-template-columns: 1fr;
         grid-template-areas:
-            "intro"
-            "main"
             "left"
+            "main"
             "right";
         gap: 1rem;
         align-items: start;
@@ -344,13 +349,17 @@
     .bitstream-feed-layout {
         grid-template-columns: minmax(190px, 240px) minmax(0, 1fr) minmax(170px, 210px);
         grid-template-areas:
-            "intro main right"
             "left main right";
         gap: 1rem;
         align-items: start;
     }
 
     .bitstream-feed-sidebar {
+        position: static;
+    }
+
+    .bitstream-feed-sidebar-column,
+    .bitstream-feed-sidebar-right {
         position: sticky;
         top: 1rem;
     }

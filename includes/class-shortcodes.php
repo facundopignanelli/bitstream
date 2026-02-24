@@ -229,6 +229,8 @@ class BitStream_Shortcodes {
 
         echo '<div class="bitstream-feed-layout">';
 
+        echo '<div class="bitstream-feed-sidebar-column">';
+
         echo '<aside class="bitstream-feed-sidebar bitstream-feed-sidebar-intro">';
         echo '<div class="bitstream-filter-box bitstream-intro-box">';
         echo '<h3 class="bitstream-feed-sidebar-title">'.esc_html($intro_title).'</h3>';
@@ -293,6 +295,8 @@ class BitStream_Shortcodes {
         echo '</div>';
         echo '</details>';
         echo '</aside>';
+
+        echo '</div>';
 
         echo '<main class="bitstream-feed-main">';
         if ($has_active_filters) {
