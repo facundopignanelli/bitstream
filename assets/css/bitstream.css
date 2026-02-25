@@ -1123,7 +1123,7 @@ iframe, embed, object, video {
     border: none;
     border-radius: 15px;
     padding: 0.35rem 0.6rem;
-    background: #5b5b5b;
+    background: var(--wp--preset--color--accent-1, #2c6e49);
     color: #fff;
     font-size: 0.8rem;
     font-weight: 600;
