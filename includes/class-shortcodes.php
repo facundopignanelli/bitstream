@@ -225,7 +225,7 @@ class BitStream_Shortcodes
         ob_start();
 ?>
         <div class="bitstream-filter-box bitstream-sidebar-quick-post" style="box-sizing: border-box;">
-            <h3 class="bitstream-feed-sidebar-title">Quick Post</h3>
+            <h3 class="bitstream-feed-sidebar-title">Quick Bit</h3>
             <form class="bitstream-sidebar-quick-post-form" data-submit-nonce="<?php echo esc_attr($submit_nonce); ?>" style="display: flex; flex-direction: column;">
                 <textarea name="bit_content" rows="3" placeholder="What's on your mind?" required class="bitstream-poster-field" style="width: 100%; box-sizing: border-box; resize: vertical; min-height: 80px;"></textarea>
                 <div style="text-align: right; margin-top: 10px;">
@@ -398,6 +398,10 @@ class BitStream_Shortcodes
 
         echo '<div class="bitstream-feed-layout">';
 
+        $desktop_quick_actions = self::render_quick_action_links();
+        $desktop_rss_links = self::render_public_rss_links();
+        $desktop_quick_post = self::render_quick_post_form();
+
         echo '<div class="bitstream-feed-sidebar-column">';
 
         echo '<aside class="bitstream-feed-sidebar bitstream-feed-sidebar-intro">';
@@ -426,6 +430,18 @@ class BitStream_Shortcodes
         echo '</form>';
         echo '</div>';
         echo '</details>';
+
+        echo '</details>';
+
+        if (!empty($desktop_rss_links)) {
+            echo '<details class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-rss mobile-rss-panel" open>';
+            echo '<summary class="bitstream-feed-sidebar-summary"><i class="fa-solid fa-rss" aria-hidden="true"></i> RSS Feeds</summary>';
+            echo '<div class="bitstream-filter-box">';
+            echo '<h3 class="bitstream-feed-sidebar-title">RSS Feeds</h3>';
+            echo $desktop_rss_links;
+            echo '</div>';
+            echo '</details>';
+        }
 
         echo '<details class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-filters" open>';
         echo '<summary class="bitstream-feed-sidebar-summary"><i class="fa-solid fa-sliders" aria-hidden="true"></i> Filters</summary>';
@@ -493,6 +509,15 @@ class BitStream_Shortcodes
         echo '</div>';
 
         echo '<main class="bitstream-feed-main">';
+
+        if (!empty($desktop_quick_post)) {
+            echo '<div class="bitstream-mobile-quick-post-container" style="margin-bottom: 1rem;">';
+            echo '<aside class="bitstream-feed-sidebar">';
+            echo $desktop_quick_post;
+            echo '</aside>';
+            echo '</div>';
+        }
+
         if ($has_active_filters) {
             echo '<div class="bitstream-active-filters" aria-label="Active filters">';
             if ($selected_type !== 'all') {
@@ -530,10 +555,6 @@ class BitStream_Shortcodes
         }
         echo '</main>';
 
-        $desktop_quick_actions = self::render_quick_action_links();
-        $desktop_rss_links = self::render_public_rss_links();
-        $desktop_quick_post = self::render_quick_post_form();
-
         echo '<div class="bitstream-feed-sidebar-right">';
 
         $has_content = false;
@@ -545,22 +566,20 @@ class BitStream_Shortcodes
             $has_content = true;
         }
 
-        if (!empty($desktop_quick_actions)) {
+        if (!empty($desktop_quick_actions) || !empty($desktop_rss_links)) {
             echo '<aside class="bitstream-feed-sidebar">';
-            echo '<div class="bitstream-filter-box">';
-            echo '<h3 class="bitstream-feed-sidebar-title">Quick Actions</h3>';
-            echo $desktop_quick_actions;
-            echo '</div>';
-            echo '</aside>';
-            $has_content = true;
-        }
-
-        if (!empty($desktop_rss_links)) {
-            echo '<aside class="bitstream-feed-sidebar">';
-            echo '<div class="bitstream-filter-box">';
-            echo '<h3 class="bitstream-feed-sidebar-title">RSS Feeds</h3>';
-            echo $desktop_rss_links;
-            echo '</div>';
+            if (!empty($desktop_quick_actions)) {
+                echo '<div class="bitstream-filter-box">';
+                echo '<h3 class="bitstream-feed-sidebar-title">Quick Actions</h3>';
+                echo $desktop_quick_actions;
+                echo '</div>';
+            }
+            if (!empty($desktop_rss_links)) {
+                echo '<div class="bitstream-filter-box">';
+                echo '<h3 class="bitstream-feed-sidebar-title">RSS Feeds</h3>';
+                echo $desktop_rss_links;
+                echo '</div>';
+            }
             echo '</aside>';
             $has_content = true;
         }

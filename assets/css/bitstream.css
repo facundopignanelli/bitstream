@@ -248,6 +248,14 @@
     align-items: start;
 }
 
+.mobile-rss-panel {
+    display: block;
+}
+
+.bitstream-mobile-quick-post-container {
+    display: block;
+}
+
 .bitstream-feed-sidebar-tabs .bitstream-feed-sidebar-panel {
     min-width: 0;
 }
@@ -475,7 +483,18 @@
     }
 
     .bitstream-feed-sidebar-right {
-        display: block;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        align-content: start;
+    }
+
+    .mobile-rss-panel {
+        display: none !important;
+    }
+
+    .bitstream-mobile-quick-post-container {
+        display: none !important;
     }
 
     .bitstream-feed-sidebar-panel> :not(summary) {

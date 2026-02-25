@@ -38,6 +38,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved PWA share parsing: automatically separates text and URL when they arrive combined from Android share targets
 - Weekly media cleanup cron event (`bitstream_weekly_media_cleanup_event`) to automatically prune unattached orphaned files from poster uploads
 - Support for visually rich nested quoted cards rendering to display quoted content with better context
+- **Enhanced Open Graph Fetcher:**
+  - Added 24-hour transient caching to reduce external requests
+  - Prioritized WordPress oEmbed registry for enhanced support of standard providers
+  - Implemented strict SSRF protection via `wp_safe_remote_get`
+  - Added network timeout retries, User-Agent rotation, and charset decoding
+  - Added JSON-LD parsing and meta description fallbacks
+  - Implemented relative-to-absolute URL resolution for OG images
+  - Optimized HTML parser to stop reading after the closing `</head>` tag
+- In-feed right sidebar improvements:
+  - Added a "Quick Bit" inline posting box for logged-in users
+  - Added dedicated RSS Feeds section visible to all users
 
 ### Changed
 - Unified posting workflow around the custom poster interface instead of Gutenberg new-post flow
@@ -64,6 +75,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Unified quick action options into a shared renderer so floating menu and desktop right rail stay in sync
 - Changed quick actions visibility by breakpoint: floating button is now mobile/tablet only, right rail is desktop only
 - Improved mobile feed/card width containment to prevent horizontal clipping/overflow on small screens
+- Refactored right sidebar structural CSS to visually mirror the modular layout gaps of the left sidebar filters
+- Removed empty right sidebar artifacts appearing for logged-out users
+- Improved Open Graph card layout, capping profile picture dimensions and enforcing inline sizing for emojis in usernames
+- Updated the Rebit modal to populate real input values (rather than placeholders) and persist them after live previews
 
 ## [2.0.1] - 2025-10-22
 
