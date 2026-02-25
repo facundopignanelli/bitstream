@@ -11,6 +11,24 @@ if (!defined('ABSPATH')) exit;
 class BitStream_Ajax_Handlers {
 
     /**
+     * Keep live poster previews visually accurate while removing interactive markup
+     * that can break nested form structures (comments/actions).
+     */
+    private function sanitize_live_preview_markup($markup) {
+        $markup = (string) $markup;
+        if ($markup === '') {
+            return '';
+        }
+
+        $markup = preg_replace('#<hr[^>]*>\s*<footer class="bit-card-footer"[\s\S]*?<div id="comments-[^"]+" class="bit-comments">[\s\S]*?</div>#', '', $markup);
+        $markup = preg_replace('#<footer class="bit-card-footer"[\s\S]*?</footer>#', '', $markup);
+        $markup = preg_replace('#<div id="comments-[^"]+" class="bit-comments">[\s\S]*?</div>#', '', $markup);
+        $markup = preg_replace('#<form\b[\s\S]*?</form>#i', '', $markup);
+
+        return $markup;
+    }
+
+    /**
      * Build a small attachment from embedded audio artwork and return id/url pair.
      */
     private function create_embedded_artwork_attachment($audio_attachment_id, $binary_data, $mime_type) {
@@ -1512,7 +1530,7 @@ class BitStream_Ajax_Handlers {
             update_post_meta($preview_post_id, '_bitstream_og_desc', sanitize_text_field($og_desc));
             update_post_meta($preview_post_id, '_bitstream_og_image', esc_url_raw($og_image));
 
-            $rendered_html = bitstream_render_card($preview_post_id);
+            $rendered_html = $this->sanitize_live_preview_markup(bitstream_render_card($preview_post_id));
             wp_delete_post($preview_post_id, true);
 
             wp_send_json_success([
