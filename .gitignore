@@ -1,5 +1,6 @@
 # Local editor settings
 .vscode/
+.agents/
 
 # Composer + local dev dependencies
 vendor/
