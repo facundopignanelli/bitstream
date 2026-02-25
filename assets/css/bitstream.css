@@ -2262,6 +2262,13 @@ body.bitstream-cropper-open {
     color: #7a8580;
 }
 
+/* Filter empty-state message */
+.bitstream-filter-empty {
+    color: #7a8580;
+    font-size: 0.9rem;
+    margin: 0.5rem 0 0;
+}
+
 @media (max-width: 640px) {
     .bitstream-rebit-url-row {
         grid-template-columns: 1fr;

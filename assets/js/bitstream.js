@@ -215,10 +215,27 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
 
+        // Helper: update "no results" placeholder for a list container + its rows
+        function updateFilterEmpty(listEl, rows, filterLabel) {
+            const visibleCount = Array.from(rows).filter(r => !r.classList.contains('is-filtered-out')).length;
+            let emptyEl = listEl.querySelector('.bitstream-filter-empty');
+            if (visibleCount === 0) {
+                if (!emptyEl) {
+                    emptyEl = document.createElement('p');
+                    emptyEl.className = 'bitstream-filter-empty';
+                    listEl.appendChild(emptyEl);
+                }
+                emptyEl.textContent = 'No ' + filterLabel + ' found.';
+            } else if (emptyEl) {
+                emptyEl.remove();
+            }
+        }
+
         // Scheduled filter — scoped to the scheduled panel only
         const scheduledPanel = posterRoot.querySelector('#bitstream-poster-panel-scheduled');
         if (scheduledPanel) {
             const scheduledFilterButtons = scheduledPanel.querySelectorAll('.bitstream-scheduled-filter-btn');
+            const scheduledList = scheduledPanel.querySelector('.bitstream-scheduled-list');
             const scheduledRows = scheduledPanel.querySelectorAll('.bitstream-scheduled-item');
             scheduledFilterButtons.forEach(button => {
                 button.addEventListener('click', () => {
@@ -232,6 +249,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         const type = row.dataset.type || 'bit';
                         row.classList.toggle('is-filtered-out', !(filter === 'all' || filter === type));
                     });
+
+                    if (scheduledList) {
+                        const label = filter === 'all' ? 'scheduled posts' : 'scheduled ' + filter + 's';
+                        updateFilterEmpty(scheduledList, scheduledRows, label);
+                    }
                 });
             });
         }
@@ -240,6 +262,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const draftsPanel = posterRoot.querySelector('#bitstream-poster-panel-drafts');
         if (draftsPanel) {
             const draftsFilterButtons = draftsPanel.querySelectorAll('.bitstream-drafts-filter-btn');
+            const draftsList = draftsPanel.querySelector('.bitstream-drafts-list');
             const draftsRows = draftsPanel.querySelectorAll('.bitstream-draft-item');
             draftsFilterButtons.forEach(button => {
                 button.addEventListener('click', () => {
@@ -253,6 +276,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         const type = row.dataset.type || 'bit';
                         row.classList.toggle('is-filtered-out', !(filter === 'all' || filter === type));
                     });
+
+                    if (draftsList) {
+                        const label = filter === 'all' ? 'drafts' : 'draft ' + filter + 's';
+                        updateFilterEmpty(draftsList, draftsRows, label);
+                    }
                 });
             });
         }
