@@ -20,12 +20,54 @@ class BitStream_Ajax_Handlers {
             return '';
         }
 
-        $markup = preg_replace('#<hr[^>]*>\s*<footer class="bit-card-footer"[\s\S]*?<div id="comments-[^"]+" class="bit-comments">[\s\S]*?</div>#', '', $markup);
-        $markup = preg_replace('#<footer class="bit-card-footer"[\s\S]*?</footer>#', '', $markup);
-        $markup = preg_replace('#<div id="comments-[^"]+" class="bit-comments">[\s\S]*?</div>#', '', $markup);
-        $markup = preg_replace('#<form\b[\s\S]*?</form>#i', '', $markup);
+        if (!class_exists('DOMDocument')) {
+            $markup = preg_replace('#<footer class="bit-card-footer"[\s\S]*?</footer>#', '', $markup);
+            $markup = preg_replace('#<div[^>]*class="[^"]*bit-comments[^"]*"[^>]*>[\s\S]*</div>#', '', $markup);
+            $markup = preg_replace('#<form\b[\s\S]*?</form>#i', '', $markup);
+            return $markup;
+        }
 
-        return $markup;
+        $previous_state = libxml_use_internal_errors(true);
+
+        $document = new DOMDocument();
+        $wrapped_markup = '<div id="bitstream-live-preview-root">' . $markup . '</div>';
+        $document->loadHTML('<?xml encoding="utf-8" ?>' . $wrapped_markup, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+
+        $xpath = new DOMXPath($document);
+
+        $selectors = [
+            '//*[@id="bitstream-live-preview-root"]//*[contains(concat(" ", normalize-space(@class), " "), " bit-card-footer ")]'
+                . ' | //*[@id="bitstream-live-preview-root"]//*[contains(concat(" ", normalize-space(@class), " "), " bit-comments ")]'
+                . ' | //*[@id="bitstream-live-preview-root"]//form'
+                . ' | //*[@id="bitstream-live-preview-root"]//hr',
+        ];
+
+        foreach ($selectors as $query) {
+            $nodes = $xpath->query($query);
+            if (!$nodes) {
+                continue;
+            }
+
+            for ($index = $nodes->length - 1; $index >= 0; $index--) {
+                $node = $nodes->item($index);
+                if ($node && $node->parentNode) {
+                    $node->parentNode->removeChild($node);
+                }
+            }
+        }
+
+        $root = $document->getElementById('bitstream-live-preview-root');
+        $clean_markup = '';
+        if ($root) {
+            foreach ($root->childNodes as $child_node) {
+                $clean_markup .= $document->saveHTML($child_node);
+            }
+        }
+
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous_state);
+
+        return $clean_markup !== '' ? $clean_markup : $markup;
     }
 
     /**
