@@ -543,6 +543,7 @@ class BitStream_Shortcodes {
                             <button type="button" class="bitstream-media-remove is-hidden" data-target-input="bitstream-bit-attachment-id" data-target-preview="bitstream-bit-media-preview">Remove media</button>
                             <a class="bitstream-media-crop is-hidden" data-target-input="bitstream-bit-attachment-id" href="#" target="_blank" rel="noopener">Crop image</a>
                             <a class="bitstream-media-audio-tags is-hidden" data-target-input="bitstream-bit-attachment-id" data-target-preview="bitstream-bit-media-preview" href="#">Edit audio tags</a>
+                            <button type="button" class="bitstream-media-paste" data-target-input="bitstream-bit-attachment-id" data-target-preview="bitstream-bit-media-preview">Paste from clipboard</button>
                         </div>
                     </div>
 
@@ -720,6 +721,7 @@ class BitStream_Shortcodes {
                                 <button type="button" class="bitstream-rebit-editor-image-select">Choose image</button>
                                 <button type="button" class="bitstream-rebit-editor-image-crop">Crop image</button>
                                 <button type="button" class="bitstream-rebit-editor-image-clear">Remove image</button>
+                                <button type="button" class="bitstream-media-paste" data-target-input="bitstream-rebit-attachment-id" data-target-preview="bitstream-rebit-media-preview">Paste from clipboard</button>
                             </div>
                             <div class="bitstream-media-preview" id="bitstream-rebit-media-preview" hidden></div>
                         </div>

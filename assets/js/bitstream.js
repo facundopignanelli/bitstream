@@ -323,6 +323,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const removeButtons = posterRoot.querySelectorAll('.bitstream-media-remove');
             const cropLinks = posterRoot.querySelectorAll('.bitstream-media-crop');
             const audioTagLinks = posterRoot.querySelectorAll('.bitstream-media-audio-tags');
+            const pasteButtons = posterRoot.querySelectorAll('.bitstream-media-paste');
             const dropzones = posterRoot.querySelectorAll('.bitstream-media-dropzone');
             const cropperModal = posterRoot.querySelector('.bitstream-cropper-modal');
             const cropperImage = cropperModal ? cropperModal.querySelector('.bitstream-cropper-image') : null;
@@ -931,6 +932,37 @@ document.addEventListener('DOMContentLoaded', function() {
                 xhr.send(formData);
             }
 
+            function uploadClipboardImage(targetInputId, targetPreviewId) {
+                if (!navigator.clipboard || typeof navigator.clipboard.read !== 'function') {
+                    setStatus('Clipboard button is unavailable in this browser. Use Ctrl+V inside the poster area.', true);
+                    return;
+                }
+
+                navigator.clipboard.read()
+                    .then(items => {
+                        if (!items || !items.length) {
+                            throw new Error('Clipboard is empty.');
+                        }
+
+                        const imageItem = items.find(item => item.types && item.types.some(type => type.indexOf('image/') === 0));
+                        if (!imageItem) {
+                            throw new Error('Clipboard does not contain an image.');
+                        }
+
+                        const imageType = imageItem.types.find(type => type.indexOf('image/') === 0) || 'image/png';
+                        return imageItem.getType(imageType).then(blob => {
+                            const extension = imageType.indexOf('jpeg') !== -1 ? 'jpg' : (imageType.split('/')[1] || 'png');
+                            const filename = 'pasted-image-' + Date.now() + '.' + extension;
+                            const file = new File([blob], filename, { type: imageType });
+                            uploadMediaFile(file, targetInputId, targetPreviewId);
+                            setStatus('Uploading pasted image...');
+                        });
+                    })
+                    .catch(error => {
+                        setStatus(error.message || 'Could not read clipboard image.', true);
+                    });
+            }
+
             removeButtons.forEach(button => {
                 button.addEventListener('click', () => {
                     const targetInput = document.getElementById(button.dataset.targetInput || '');
@@ -954,6 +986,18 @@ document.addEventListener('DOMContentLoaded', function() {
                         setCropVisibility(button.dataset.targetInput, '');
                         setAudioTagVisibility(button.dataset.targetInput, '');
                     }
+                });
+            });
+
+            pasteButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetInputId = button.dataset.targetInput || '';
+                    const targetPreviewId = button.dataset.targetPreview || '';
+                    if (!targetInputId || !targetPreviewId) {
+                        setStatus('Paste target is not configured.', true);
+                        return;
+                    }
+                    uploadClipboardImage(targetInputId, targetPreviewId);
                 });
             });
 

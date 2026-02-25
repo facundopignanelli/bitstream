@@ -1119,6 +1119,17 @@ iframe, embed, object, video {
     border-radius: 15px;
 }
 
+.bitstream-media-paste {
+    border: none;
+    border-radius: 15px;
+    padding: 0.35rem 0.6rem;
+    background: #5b5b5b;
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
 .bitstream-media-dropzone {
     border: 2px dashed #cbd5d1;
     border-radius: 15px;
