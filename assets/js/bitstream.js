@@ -1925,8 +1925,16 @@ document.addEventListener('DOMContentLoaded', function () {
                         }
 
                         const responseData = data.data || {};
-                        if (responseData.og && imageHidden) {
-                            imageHidden.value = responseData.og.image || '';
+                        if (responseData.og) {
+                            if (titleHidden) {
+                                titleHidden.value = responseData.og.title || '';
+                            }
+                            if (descHidden) {
+                                descHidden.value = responseData.og.description || '';
+                            }
+                            if (imageHidden) {
+                                imageHidden.value = responseData.og.image || '';
+                            }
                         }
                         if (livePreviewCard) {
                             livePreviewCard.innerHTML = responseData.rendered_html || '';

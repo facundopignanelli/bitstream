@@ -1566,75 +1566,15 @@ class BitStream_Ajax_Handlers
                 }
             }
 
-            // Fetch the page with multiple fallback strategies
-            $resp = wp_remote_get($url, [
-                'timeout' => 15,
-                'user-agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                'headers' => [
-                    'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                    'Accept-Language' => 'en-US,en;q=0.5',
-                    'Accept-Encoding' => 'gzip, deflate',
-                    'DNT' => '1',
-                    'Connection' => 'keep-alive',
-                ]
-            ]);
-
-            // If first attempt fails, try with minimal headers
-            if (is_wp_error($resp) || wp_remote_retrieve_response_code($resp) !== 200) {
-                $resp = wp_remote_get($url, [
-                    'timeout' => 10,
-                    'sslverify' => false
-                ]);
-            }
-
-            if (is_wp_error($resp)) {
-                error_log('BitStream OG Fetch Error: ' . $resp->get_error_message() . ' for URL: ' . $url);
-                wp_send_json_error('Failed to fetch URL: ' . $resp->get_error_message());
-            }
-
-            $response_code = wp_remote_retrieve_response_code($resp);
-            if ($response_code !== 200) {
-                error_log('BitStream OG Fetch HTTP Error: ' . $response_code . ' for URL: ' . $url);
-                wp_send_json_error('URL returned error code: ' . $response_code);
-            }
-
-            $html = wp_remote_retrieve_body($resp);
+            // Fetch utilizing the robust OG Fetcher class we just upgraded
             $og_title = $og_desc = $og_img = '';
-
-            // Extract OG data
-            if (preg_match('/<meta[^>]+property=["\']og:title["\'][^>]+content=["\']([^"\']+)["\']/', $html, $m)) {
-                $og_title = $m[1];
-            }
-            if (preg_match('/<meta[^>]+property=["\']og:description["\'][^>]+content=["\']([^"\']+)["\']/', $html, $m)) {
-                $og_desc = $m[1];
-            }
-            if (preg_match('/<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']/', $html, $m)) {
-                $og_img = $m[1];
-            }
-
-            // Fallback to title tag if no OG title
-            if (empty($og_title) && preg_match('/<title>(.*?)<\/title>/', $html, $m)) {
-                $og_title = $m[1];
-            }
-
-            // Fallback to meta description if no OG description
-            if (empty($og_desc) && preg_match('/<meta[^>]+name=["\']description["\'][^>]+content=["\']([^"\']+)["\']/', $html, $m)) {
-                $og_desc = $m[1];
-            }
-
-            // Clean up the data
-            $og_title = html_entity_decode(trim($og_title), ENT_QUOTES, 'UTF-8');
-            $og_desc = html_entity_decode(trim($og_desc), ENT_QUOTES, 'UTF-8');
-            $og_img = trim($og_img);
-
-            // Make relative URLs absolute
-            if ($og_img && !filter_var($og_img, FILTER_VALIDATE_URL)) {
-                $parsed_url = parse_url($url);
-                if ($og_img[0] === '/') {
-                    $og_img = $parsed_url['scheme'] . '://' . $parsed_url['host'] . $og_img;
-                }
-                else {
-                    $og_img = $parsed_url['scheme'] . '://' . $parsed_url['host'] . '/' . $og_img;
+            if (class_exists('BitStream_OG_Fetcher')) {
+                $fetcher = new BitStream_OG_Fetcher();
+                $fetched = $fetcher->fetch_og_data($url);
+                if (is_array($fetched)) {
+                    $og_title = $fetched['title'] ?? '';
+                    $og_desc = $fetched['description'] ?? '';
+                    $og_img = $fetched['image'] ?? '';
                 }
             }
 
