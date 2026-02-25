@@ -86,12 +86,32 @@ document.addEventListener('DOMContentLoaded', function() {
             statusEl.classList.toggle('is-success', !isError && !!message);
         }
 
+        function sanitizeInlinePreviewMarkup(markup) {
+            const html = (markup || '').trim();
+            if (!html) {
+                return '';
+            }
+
+            const parser = new DOMParser();
+            const doc = parser.parseFromString('<div id="bitstream-inline-preview-root">' + html + '</div>', 'text/html');
+            const root = doc.getElementById('bitstream-inline-preview-root');
+            if (!root) {
+                return html;
+            }
+
+            root.querySelectorAll('.bit-card-footer, .bit-comments, form, hr').forEach(node => {
+                node.remove();
+            });
+
+            return root.innerHTML;
+        }
+
         function setInlinePublishedPreview(form, data) {
             if (!form) {
                 return;
             }
 
-            const renderedHtml = data.rendered_html || '';
+            const renderedHtml = sanitizeInlinePreviewMarkup(data.rendered_html || '');
             if (!renderedHtml) {
                 return;
             }
