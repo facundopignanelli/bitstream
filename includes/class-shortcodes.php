@@ -125,37 +125,32 @@ class BitStream_Shortcodes
      */
     public static function get_quick_actions()
     {
-        $actions = [];
+        if (!is_user_logged_in() || !current_user_can('edit_posts')) {
+            return [];
+        }
 
-        if (is_user_logged_in() && current_user_can('edit_posts')) {
-            $actions[] = [
+        return [
+            [
                 'url' => self::get_poster_page_url(['poster_tab' => 'bit']),
                 'icon' => 'fa-solid fa-comment',
                 'label' => 'Add New Bit',
-            ];
-            $actions[] = [
+            ],
+            [
                 'url' => self::get_poster_page_url(['poster_tab' => 'rebit']),
                 'icon' => 'fa-solid fa-link',
                 'label' => 'Add New ReBit',
-            ];
-        }
-
-        // Always show RSS Feeds link
-        $actions[] = [
-            'url' => home_url('/bitstream/feed/'),
-            'icon' => 'fa-solid fa-rss',
-            'label' => 'RSS Feeds',
-        ];
-
-        if (is_user_logged_in() && current_user_can('edit_posts')) {
-            $actions[] = [
+            ],
+            [
+                'url' => admin_url('edit.php?post_type=bit&page=bitstream-rss-feeds'),
+                'icon' => 'fa-solid fa-rss',
+                'label' => 'RSS Feeds Admin',
+            ],
+            [
                 'url' => admin_url('edit.php?post_type=bit&page=bitstream-rebit-mappings'),
                 'icon' => 'fa-solid fa-sitemap',
                 'label' => 'ReBit Mappings',
-            ];
-        }
-
-        return $actions;
+            ],
+        ];
     }
 
     /**
@@ -176,6 +171,43 @@ class BitStream_Shortcodes
             $html .= '</a>';
         }
 
+        return $html;
+    }
+
+    /**
+     * Public RSS feeds links
+     */
+    public static function get_public_rss_links()
+    {
+        return [
+            [
+                'url' => home_url('/bitstream/feed/'),
+                'icon' => 'fa-solid fa-rss',
+                'label' => 'All Feed',
+            ],
+            [
+                'url' => home_url('/bitstream/feed/bits/'),
+                'icon' => 'fa-solid fa-comment',
+                'label' => 'Bits Only',
+            ],
+            [
+                'url' => home_url('/bitstream/feed/rebits/'),
+                'icon' => 'fa-solid fa-link',
+                'label' => 'ReBits Only',
+            ],
+        ];
+    }
+
+    public static function render_public_rss_links($link_class = 'bitstream-filter-link')
+    {
+        $links = self::get_public_rss_links();
+        $html = '';
+        foreach ($links as $link) {
+            $html .= '<a class="' . esc_attr(trim($link_class . ' bitstream-quick-action-link')) . '" href="' . esc_url($link['url']) . '">';
+            $html .= '<i class="' . esc_attr($link['icon']) . '" aria-hidden="true"></i>';
+            $html .= '<span>' . esc_html($link['label']) . '</span>';
+            $html .= '</a>';
+        }
         return $html;
     }
 
@@ -472,16 +504,27 @@ class BitStream_Shortcodes
         echo '</main>';
 
         $desktop_quick_actions = self::render_quick_action_links();
-        $aside_class = !empty($desktop_quick_actions) ? 'bitstream-feed-sidebar bitstream-feed-sidebar-right' : 'bitstream-feed-sidebar-right';
+        $desktop_rss_links = self::render_public_rss_links();
+        $aside_class = (!empty($desktop_quick_actions) || !empty($desktop_rss_links)) ? 'bitstream-feed-sidebar bitstream-feed-sidebar-right' : 'bitstream-feed-sidebar-right';
 
         echo '<aside class="' . esc_attr($aside_class) . '">';
+        $has_content = false;
         if (!empty($desktop_quick_actions)) {
             echo '<div class="bitstream-filter-box">';
             echo '<h3 class="bitstream-feed-sidebar-title">Quick Actions</h3>';
             echo $desktop_quick_actions;
             echo '</div>';
+            $has_content = true;
         }
-        else {
+        if (!empty($desktop_rss_links)) {
+            echo '<div class="bitstream-filter-box">';
+            echo '<h3 class="bitstream-feed-sidebar-title">RSS Feeds</h3>';
+            echo $desktop_rss_links;
+            echo '</div>';
+            $has_content = true;
+        }
+
+        if (!$has_content) {
             echo '<div class="bitstream-right-rail-reserved" aria-hidden="true"></div>';
         }
         echo '</aside>';
