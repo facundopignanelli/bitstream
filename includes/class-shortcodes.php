@@ -466,8 +466,10 @@ class BitStream_Shortcodes
         }
         echo '</main>';
 
-        echo '<aside class="bitstream-feed-sidebar bitstream-feed-sidebar-right">';
         $desktop_quick_actions = self::render_quick_action_links();
+        $aside_class = !empty($desktop_quick_actions) ? 'bitstream-feed-sidebar bitstream-feed-sidebar-right' : 'bitstream-feed-sidebar-right';
+
+        echo '<aside class="' . esc_attr($aside_class) . '">';
         if (!empty($desktop_quick_actions)) {
             echo '<div class="bitstream-filter-box">';
             echo '<h3 class="bitstream-feed-sidebar-title">Quick Actions</h3>';
