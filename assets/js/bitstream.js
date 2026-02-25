@@ -177,19 +177,19 @@ document.addEventListener('DOMContentLoaded', function () {
             button.addEventListener('click', () => {
                 const selectedTab = button.dataset.tab;
 
-                tabButtons.forEach(tab => {
-                    const isActive = tab === button;
-                    tab.classList.toggle('is-active', isActive);
-                    tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
-                });
+                // Skip if already on this tab
+                if (button.classList.contains('is-active')) {
+                    return;
+                }
 
-                tabPanels.forEach(panel => {
-                    const isActive = panel.id === 'bitstream-poster-panel-' + selectedTab;
-                    panel.classList.toggle('is-active', isActive);
-                    panel.hidden = !isActive;
-                });
-
-                setStatus('');
+                // Navigate to the tab via URL so the page reloads with
+                // fresh server-rendered content (up-to-date drafts, scheduled, etc.)
+                const url = new URL(window.location.href);
+                url.searchParams.set('poster_tab', selectedTab);
+                // Strip any stale highlight params when switching tabs
+                url.searchParams.delete('highlight_draft');
+                url.searchParams.delete('highlight_scheduled');
+                window.location.href = url.toString();
             });
         });
 
