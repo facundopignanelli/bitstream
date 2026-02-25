@@ -1205,6 +1205,15 @@ document.addEventListener('DOMContentLoaded', function() {
                                 sizes: { medium: { url: url } }
                             };
 
+                            if (cropperState.targetInputId === 'bitstream-rebit-attachment-id') {
+                                if (rebitOgImageInput) {
+                                    rebitOgImageInput.value = url || '';
+                                }
+                                if (rebitOgImageRemovedInput) {
+                                    rebitOgImageRemovedInput.value = '0';
+                                }
+                            }
+
                             if (typeof cropperState.onComplete === 'function') {
                                 cropperState.onComplete(croppedMedia, url);
                             } else {
@@ -1492,6 +1501,8 @@ document.addEventListener('DOMContentLoaded', function() {
             let isRenderingLivePreview = false;
             let isFetchingMetadata = false;
             let hasFetchedMetadata = false;
+            let hasPendingPreviewRender = false;
+            let commentaryPreviewDebounceTimer = null;
 
             const commentaryInput = posterRoot.querySelector('#bitstream-rebit-commentary');
             const titleHidden = posterRoot.querySelector('#bitstream-rebit-og-title');
@@ -1593,6 +1604,11 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             function renderLiveRebitPreview() {
+                if (isRenderingLivePreview) {
+                    hasPendingPreviewRender = true;
+                    return;
+                }
+
                 const url = (urlInput && urlInput.value) ? urlInput.value.trim() : '';
                 if (!url) {
                     setLivePreviewLoadingState(false);
@@ -1637,6 +1653,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
 
                         const responseData = data.data || {};
+                        if (responseData.og && imageHidden) {
+                            imageHidden.value = responseData.og.image || '';
+                        }
                         if (livePreviewCard) {
                             livePreviewCard.innerHTML = responseData.rendered_html || '';
                             applyMediaDeterrents(livePreviewCard);
@@ -1655,10 +1674,31 @@ document.addEventListener('DOMContentLoaded', function() {
                     })
                     .finally(() => {
                         setLivePreviewLoadingState(false);
+                        if (hasPendingPreviewRender) {
+                            hasPendingPreviewRender = false;
+                            renderLiveRebitPreview();
+                        }
                     });
             }
 
-            refreshRebitPreview = renderLiveRebitPreview;
+            function queueLiveRebitPreviewRender(delayMs = 0) {
+                if (commentaryPreviewDebounceTimer) {
+                    clearTimeout(commentaryPreviewDebounceTimer);
+                    commentaryPreviewDebounceTimer = null;
+                }
+
+                if (delayMs > 0) {
+                    commentaryPreviewDebounceTimer = setTimeout(() => {
+                        commentaryPreviewDebounceTimer = null;
+                        renderLiveRebitPreview();
+                    }, delayMs);
+                    return;
+                }
+
+                renderLiveRebitPreview();
+            }
+
+            refreshRebitPreview = () => queueLiveRebitPreviewRender(0);
 
             if (editButton) {
                 editButton.addEventListener('click', () => {
@@ -1678,7 +1718,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         setStatus('Fetch metadata first.', true);
                         return;
                     }
-                    renderLiveRebitPreview();
+                    queueLiveRebitPreviewRender(0);
                 });
             }
 
@@ -1692,7 +1732,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 modalSaveButton.addEventListener('click', () => {
                     syncHiddenFromModal();
                     closeRebitModal();
-                    renderLiveRebitPreview();
+                    queueLiveRebitPreviewRender(0);
                     setStatus('Preview updated.');
                 });
             }
@@ -1750,7 +1790,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                             syncModalFromHidden();
                             refreshRebitEditorImagePreview();
-                            renderLiveRebitPreview();
+                            queueLiveRebitPreviewRender(0);
                             setStatus('Metadata loaded.');
                         })
                         .catch(error => {
@@ -1777,7 +1817,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (commentaryInput) {
                 commentaryInput.addEventListener('input', () => {
                     if (hasFetchedMetadata) {
-                        renderLiveRebitPreview();
+                        queueLiveRebitPreviewRender(550);
                     }
                 });
             }
