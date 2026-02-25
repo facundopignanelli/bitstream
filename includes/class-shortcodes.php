@@ -224,7 +224,7 @@ class BitStream_Shortcodes
 
         ob_start();
 ?>
-        <div class="bitstream-sidebar-quick-post" style="box-sizing: border-box;">
+        <div class="bitstream-filter-box bitstream-sidebar-quick-post" style="box-sizing: border-box;">
             <h3 class="bitstream-feed-sidebar-title">Quick Bit</h3>
             <form class="bitstream-sidebar-quick-post-form" data-submit-nonce="<?php echo esc_attr($submit_nonce); ?>" style="display: flex; flex-direction: column;">
                 <textarea name="bit_content" rows="3" placeholder="What's on your mind?" required class="bitstream-poster-field" style="width: 100%; box-sizing: border-box; resize: vertical; min-height: 80px;"></textarea>
@@ -245,7 +245,7 @@ class BitStream_Shortcodes
     {
         ob_start();
 ?>
-        <div class="bitstream-about-box" style="font-size: 0.85rem; color: var(--wp--preset--color--secondary, #666); text-align: center;">
+        <div class="bitstream-filter-box bitstream-about-box" style="font-size: 0.85rem; color: var(--wp--preset--color--secondary, #666); text-align: center;">
             <p style="margin: 0 0 0.5rem; font-weight: 600;">
                 BitStream v<?php echo esc_html(BITSTREAM_VERSION); ?>
             </p>
@@ -425,21 +425,19 @@ class BitStream_Shortcodes
 
         echo '<div class="bitstream-feed-sidebar-column">';
 
-        echo '<aside class="bitstream-feed-sidebar-intro">';
+        echo '<div class="bitstream-feed-sidebar-intro">';
         echo '<div class="bitstream-filter-box bitstream-intro-box">';
-        echo '<aside class="bitstream-feed-sidebar bitstream-feed-sidebar-intro">';
-        echo '<div class="bitstream-intro-box">';
         echo '<h3 class="bitstream-feed-sidebar-title">' . esc_html($intro_title) . '</h3>';
         echo '<p class="bitstream-intro-text">' . nl2br(esc_html($intro_text)) . '</p>';
         echo '</div>';
-        echo '</aside>';
+        echo '</div>';
 
-        echo '<aside class="bitstream-feed-sidebar bitstream-feed-sidebar-left">';
+        echo '<div class="bitstream-feed-sidebar-left">';
         echo '<div class="bitstream-feed-sidebar-tabs">';
 
         echo '<details class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-search" open>';
         echo '<summary class="bitstream-feed-sidebar-summary"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Search</summary>';
-        echo '<div>';
+        echo '<div class="bitstream-filter-box">';
         echo '<h3 class="bitstream-feed-sidebar-title">Search</h3>';
         echo '<form class="bitstream-filter-search" method="get" action="' . esc_url($base_filter_url) . '">';
         if ($selected_type !== 'all') {
@@ -457,7 +455,7 @@ class BitStream_Shortcodes
         if (!empty($desktop_rss_links)) {
             echo '<details class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-rss mobile-rss-panel" open>';
             echo '<summary class="bitstream-feed-sidebar-summary"><i class="fa-solid fa-rss" aria-hidden="true"></i> RSS Feeds</summary>';
-            echo '<div>';
+            echo '<div class="bitstream-filter-box">';
             echo '<h3 class="bitstream-feed-sidebar-title">RSS Feeds</h3>';
             echo $desktop_rss_links;
             echo '</div>';
@@ -466,7 +464,7 @@ class BitStream_Shortcodes
 
         echo '<details class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-filters" open>';
         echo '<summary class="bitstream-feed-sidebar-summary"><i class="fa-solid fa-sliders" aria-hidden="true"></i> Filters</summary>';
-        echo '<div>';
+        echo '<div class="bitstream-filter-box">';
         echo '<h3 class="bitstream-feed-sidebar-title">Archive</h3>';
         echo '<a class="bitstream-filter-link ' . (empty($selected_month) ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, $selected_type, '', $selected_search)) . '">All dates</a>';
         if (!empty($archive_rows)) {
@@ -516,7 +514,7 @@ class BitStream_Shortcodes
         }
         echo '</div>';
 
-        echo '<div>';
+        echo '<div class="bitstream-filter-box">';
         echo '<h3 class="bitstream-feed-sidebar-title">Content</h3>';
         echo '<a class="bitstream-filter-link ' . ($selected_type === 'all' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'all', $selected_month, $selected_search)) . '">All</a>';
         echo '<a class="bitstream-filter-link ' . ($selected_type === 'bits' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'bits', $selected_month, $selected_search)) . '">Bits</a>';
@@ -530,7 +528,7 @@ class BitStream_Shortcodes
         echo '</details>';
 
         echo '</div>';
-        echo '</aside>';
+        echo '</div>';
 
         echo '</div>';
 
@@ -595,13 +593,13 @@ class BitStream_Shortcodes
         if (!empty($desktop_quick_actions) || !empty($desktop_rss_links)) {
             echo '<aside class="bitstream-feed-sidebar">';
             if (!empty($desktop_quick_actions)) {
-                echo '<div>';
+                echo '<div class="bitstream-filter-box">';
                 echo '<h3 class="bitstream-feed-sidebar-title">Quick Actions</h3>';
                 echo $desktop_quick_actions;
                 echo '</div>';
             }
             if (!empty($desktop_rss_links)) {
-                echo '<div>';
+                echo '<div class="bitstream-filter-box">';
                 echo '<h3 class="bitstream-feed-sidebar-title">RSS Feeds</h3>';
                 echo $desktop_rss_links;
                 echo '</div>';
