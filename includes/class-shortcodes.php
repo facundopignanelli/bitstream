@@ -6,14 +6,17 @@
  */
 
 // Exit if accessed directly
-if (!defined('ABSPATH')) exit;
+if (!defined('ABSPATH'))
+    exit;
 
-class BitStream_Shortcodes {
+class BitStream_Shortcodes
+{
 
     /**
      * Resolve a primary attachment id used by a Bit post.
      */
-    private function get_primary_attachment_id($post_id) {
+    private function get_primary_attachment_id($post_id)
+    {
         $post_id = intval($post_id);
         if ($post_id <= 0) {
             return 0;
@@ -47,8 +50,9 @@ class BitStream_Shortcodes {
     /**
      * Strip media markup from a Bit body for textarea editing.
      */
-    private function get_editable_text_content($content) {
-        $content = (string) $content;
+    private function get_editable_text_content($content)
+    {
+        $content = (string)$content;
         if ($content === '') {
             return '';
         }
@@ -64,7 +68,8 @@ class BitStream_Shortcodes {
     /**
      * Render a compact quote preview card without interactive controls/forms
      */
-    private function render_quote_preview_card($post_id) {
+    private function render_quote_preview_card($post_id)
+    {
         $post = get_post($post_id);
         if (!($post instanceof WP_Post) || $post->post_type !== 'bit' || $post->post_status !== 'publish') {
             return '';
@@ -80,7 +85,8 @@ class BitStream_Shortcodes {
     /**
      * Resolve the frontend poster page URL
      */
-    public static function get_poster_page_url($query_args = []) {
+    public static function get_poster_page_url($query_args = [])
+    {
         static $cached_url = null;
 
         if ($cached_url === null) {
@@ -117,7 +123,8 @@ class BitStream_Shortcodes {
     /**
      * Shared quick actions used by both right rail and floating menu
      */
-    public static function get_quick_actions() {
+    public static function get_quick_actions()
+    {
         if (!is_user_logged_in() || !current_user_can('edit_posts')) {
             return [];
         }
@@ -149,7 +156,8 @@ class BitStream_Shortcodes {
     /**
      * Render quick action links with a shared source of options
      */
-    public static function render_quick_action_links($link_class = 'bitstream-filter-link') {
+    public static function render_quick_action_links($link_class = 'bitstream-filter-link')
+    {
         $actions = self::get_quick_actions();
         if (empty($actions)) {
             return '';
@@ -157,24 +165,26 @@ class BitStream_Shortcodes {
 
         $html = '';
         foreach ($actions as $action) {
-            $html .= '<a class="'.esc_attr(trim($link_class.' bitstream-quick-action-link')).'" href="'.esc_url($action['url']).'">';
-            $html .= '<i class="'.esc_attr($action['icon']).'" aria-hidden="true"></i>';
-            $html .= '<span>'.esc_html($action['label']).'</span>';
+            $html .= '<a class="' . esc_attr(trim($link_class . ' bitstream-quick-action-link')) . '" href="' . esc_url($action['url']) . '">';
+            $html .= '<i class="' . esc_attr($action['icon']) . '" aria-hidden="true"></i>';
+            $html .= '<span>' . esc_html($action['label']) . '</span>';
             $html .= '</a>';
         }
 
         return $html;
     }
-    
-    public function __construct() {
+
+    public function __construct()
+    {
         add_action('init', [$this, 'register_shortcodes']);
         add_action('wp_enqueue_scripts', [$this, 'enqueue_shortcode_assets']);
     }
-    
+
     /**
      * Register all shortcodes
      */
-    public function register_shortcodes() {
+    public function register_shortcodes()
+    {
         add_shortcode('bitstream', [$this, 'render_feed']);
         add_shortcode('bitstream_poster', [$this, 'render_poster']);
     }
@@ -182,7 +192,8 @@ class BitStream_Shortcodes {
     /**
      * Enqueue assets required by shortcodes
      */
-    public function enqueue_shortcode_assets() {
+    public function enqueue_shortcode_assets()
+    {
         if (is_admin()) {
             return;
         }
@@ -196,11 +207,12 @@ class BitStream_Shortcodes {
             wp_enqueue_media();
         }
     }
-    
+
     /**
      * Render the main BitStream feed
      */
-    public function render_feed($atts) {
+    public function render_feed($atts)
+    {
         $atts = shortcode_atts([
             'posts_per_page' => 10,
             'paged' => get_query_var('paged') ?: 1,
@@ -247,7 +259,8 @@ class BitStream_Shortcodes {
                     'compare' => '=',
                 ],
             ];
-        } elseif ($selected_type === 'rebits') {
+        }
+        elseif ($selected_type === 'rebits') {
             $query_args['meta_query'] = [
                 [
                     'key' => 'bitstream_rebit_url',
@@ -260,9 +273,9 @@ class BitStream_Shortcodes {
         if (!empty($selected_month)) {
             [$year, $month] = explode('-', $selected_month);
             $query_args['date_query'] = [[
-                'year' => intval($year),
-                'monthnum' => intval($month),
-            ]];
+                    'year' => intval($year),
+                    'monthnum' => intval($month),
+                ]];
         }
 
         if (!empty($selected_search)) {
@@ -270,7 +283,7 @@ class BitStream_Shortcodes {
         }
 
         $q = new WP_Query($query_args);
-        
+
         $max = $q->max_num_pages;
         $infinite_scroll = ($atts['infinite_scroll'] === 'true' || $atts['infinite_scroll'] === '1');
         $show_load_more = ($atts['show_load_more'] === 'true' || $atts['show_load_more'] === '1');
@@ -279,7 +292,7 @@ class BitStream_Shortcodes {
         global $wpdb;
         $archive_rows = [];
         if (is_object($wpdb) && isset($wpdb->posts) && method_exists($wpdb, 'get_results')) {
-            $posts_table = (string) $wpdb->posts;
+            $posts_table = (string)$wpdb->posts;
             $archive_rows = $wpdb->get_results(
                 "SELECT YEAR(post_date) AS y, MONTH(post_date) AS m, COUNT(ID) AS c
                  FROM {$posts_table}
@@ -291,7 +304,7 @@ class BitStream_Shortcodes {
         }
 
         $base_filter_url = remove_query_arg(['bitstream_type', 'bitstream_month', 'bitstream_search', 'paged']);
-        $build_filter_url = static function($base_url, $type, $month, $search) {
+        $build_filter_url = static function ($base_url, $type, $month, $search) {
             $params = [];
             if (!empty($type) && $type !== 'all') {
                 $params['bitstream_type'] = $type;
@@ -304,7 +317,7 @@ class BitStream_Shortcodes {
             }
             return empty($params) ? $base_url : add_query_arg($params, $base_url);
         };
-        
+
         ob_start();
         $current_page = intval($paged);
         $feed_classes = 'bitstream-feed';
@@ -325,8 +338,8 @@ class BitStream_Shortcodes {
 
         echo '<aside class="bitstream-feed-sidebar bitstream-feed-sidebar-intro">';
         echo '<div class="bitstream-filter-box bitstream-intro-box">';
-        echo '<h3 class="bitstream-feed-sidebar-title">'.esc_html($intro_title).'</h3>';
-        echo '<p class="bitstream-intro-text">'.nl2br(esc_html($intro_text)).'</p>';
+        echo '<h3 class="bitstream-feed-sidebar-title">' . esc_html($intro_title) . '</h3>';
+        echo '<p class="bitstream-intro-text">' . nl2br(esc_html($intro_text)) . '</p>';
         echo '</div>';
         echo '</aside>';
 
@@ -337,14 +350,14 @@ class BitStream_Shortcodes {
         echo '<summary class="bitstream-feed-sidebar-summary"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Search</summary>';
         echo '<div class="bitstream-filter-box">';
         echo '<h3 class="bitstream-feed-sidebar-title">Search</h3>';
-        echo '<form class="bitstream-filter-search" method="get" action="'.esc_url($base_filter_url).'">';
+        echo '<form class="bitstream-filter-search" method="get" action="' . esc_url($base_filter_url) . '">';
         if ($selected_type !== 'all') {
-            echo '<input type="hidden" name="bitstream_type" value="'.esc_attr($selected_type).'">';
+            echo '<input type="hidden" name="bitstream_type" value="' . esc_attr($selected_type) . '">';
         }
         if (!empty($selected_month)) {
-            echo '<input type="hidden" name="bitstream_month" value="'.esc_attr($selected_month).'">';
+            echo '<input type="hidden" name="bitstream_month" value="' . esc_attr($selected_month) . '">';
         }
-        echo '<input type="search" name="bitstream_search" value="'.esc_attr($selected_search).'" placeholder="Search posts...">';
+        echo '<input type="search" name="bitstream_search" value="' . esc_attr($selected_search) . '" placeholder="Search posts...">';
         echo '<button type="submit">Search</button>';
         echo '</form>';
         echo '</div>';
@@ -354,7 +367,7 @@ class BitStream_Shortcodes {
         echo '<summary class="bitstream-feed-sidebar-summary"><i class="fa-solid fa-sliders" aria-hidden="true"></i> Filters</summary>';
         echo '<div class="bitstream-filter-box">';
         echo '<h3 class="bitstream-feed-sidebar-title">Archive</h3>';
-        echo '<a class="bitstream-filter-link '.(empty($selected_month) ? 'is-active' : '').'" href="'.esc_url($build_filter_url($base_filter_url, $selected_type, '', $selected_search)).'">All dates</a>';
+        echo '<a class="bitstream-filter-link ' . (empty($selected_month) ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, $selected_type, '', $selected_search)) . '">All dates</a>';
         if (!empty($archive_rows)) {
             $archive_by_year = [];
             foreach ($archive_rows as $row) {
@@ -378,10 +391,10 @@ class BitStream_Shortcodes {
 
             foreach ($archive_by_year as $year => $year_data) {
                 $is_open = ($selected_year === strval($year)) || (empty($selected_year) && $year_index === 0);
-                echo '<details class="bitstream-archive-year"'.($is_open ? ' data-default-open="1"' : '').'>';
+                echo '<details class="bitstream-archive-year"' . ($is_open ? ' data-default-open="1"' : '') . '>';
                 echo '<summary class="bitstream-archive-year-summary">';
-                echo '<span class="bitstream-archive-year-label">'.esc_html(strval($year)).'</span>';
-                echo '<span class="bitstream-archive-year-count">('.intval($year_data['total']).')</span>';
+                echo '<span class="bitstream-archive-year-label">' . esc_html(strval($year)) . '</span>';
+                echo '<span class="bitstream-archive-year-count">(' . intval($year_data['total']) . ')</span>';
                 echo '</summary>';
                 echo '<div class="bitstream-archive-months">';
 
@@ -389,8 +402,8 @@ class BitStream_Shortcodes {
                     $month_value = sprintf('%04d-%02d', intval($year), intval($month_data['m']));
                     $is_active = ($selected_month === $month_value) ? ' is-active' : '';
                     $label = date_i18n('F', mktime(0, 0, 0, intval($month_data['m']), 1, intval($year)));
-                    echo '<a class="bitstream-filter-link'.$is_active.'" href="'.esc_url($build_filter_url($base_filter_url, $selected_type, $month_value, $selected_search)).'">';
-                    echo '<strong class="bitstream-archive-label">'.esc_html($label).'</strong> <span class="bitstream-archive-count">('.intval($month_data['c']).')</span>';
+                    echo '<a class="bitstream-filter-link' . $is_active . '" href="' . esc_url($build_filter_url($base_filter_url, $selected_type, $month_value, $selected_search)) . '">';
+                    echo '<strong class="bitstream-archive-label">' . esc_html($label) . '</strong> <span class="bitstream-archive-count">(' . intval($month_data['c']) . ')</span>';
                     echo '</a>';
                 }
 
@@ -404,9 +417,9 @@ class BitStream_Shortcodes {
 
         echo '<div class="bitstream-filter-box">';
         echo '<h3 class="bitstream-feed-sidebar-title">Content</h3>';
-        echo '<a class="bitstream-filter-link '.($selected_type === 'all' ? 'is-active' : '').'" href="'.esc_url($build_filter_url($base_filter_url, 'all', $selected_month, $selected_search)).'">All</a>';
-        echo '<a class="bitstream-filter-link '.($selected_type === 'bits' ? 'is-active' : '').'" href="'.esc_url($build_filter_url($base_filter_url, 'bits', $selected_month, $selected_search)).'">Bits</a>';
-        echo '<a class="bitstream-filter-link '.($selected_type === 'rebits' ? 'is-active' : '').'" href="'.esc_url($build_filter_url($base_filter_url, 'rebits', $selected_month, $selected_search)).'">Rebits</a>';
+        echo '<a class="bitstream-filter-link ' . ($selected_type === 'all' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'all', $selected_month, $selected_search)) . '">All</a>';
+        echo '<a class="bitstream-filter-link ' . ($selected_type === 'bits' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'bits', $selected_month, $selected_search)) . '">Bits</a>';
+        echo '<a class="bitstream-filter-link ' . ($selected_type === 'rebits' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'rebits', $selected_month, $selected_search)) . '">Rebits</a>';
         echo '</div>';
         echo '</details>';
 
@@ -420,20 +433,20 @@ class BitStream_Shortcodes {
             echo '<div class="bitstream-active-filters" aria-label="Active filters">';
             if ($selected_type !== 'all') {
                 $type_label = ($selected_type === 'rebits') ? 'Rebits' : 'Bits';
-                echo '<span class="bitstream-filter-chip">'.esc_html($type_label).'</span>';
+                echo '<span class="bitstream-filter-chip">' . esc_html($type_label) . '</span>';
             }
             if (!empty($selected_month_label)) {
-                echo '<span class="bitstream-filter-chip">'.esc_html($selected_month_label).'</span>';
+                echo '<span class="bitstream-filter-chip">' . esc_html($selected_month_label) . '</span>';
             }
             if (!empty($selected_search)) {
-                echo '<span class="bitstream-filter-chip">Search: '.esc_html($selected_search).'</span>';
+                echo '<span class="bitstream-filter-chip">Search: ' . esc_html($selected_search) . '</span>';
             }
-            echo '<a class="bitstream-filter-chip bitstream-filter-chip-clear" href="'.esc_url($base_filter_url).'">Clear all</a>';
+            echo '<a class="bitstream-filter-chip bitstream-filter-chip-clear" href="' . esc_url($base_filter_url) . '">Clear all</a>';
             echo '</div>';
         }
 
         if ($q->have_posts()) {
-            echo '<div class="'.$feed_classes.'" data-page="'.$current_page.'" data-max-page="'.$max.'" data-infinite-scroll="'.($infinite_scroll ? 'true' : 'false').'" data-filter-type="'.esc_attr($selected_type).'" data-filter-month="'.esc_attr($selected_month).'" data-filter-search="'.esc_attr($selected_search).'">';
+            echo '<div class="' . $feed_classes . '" data-page="' . $current_page . '" data-max-page="' . $max . '" data-infinite-scroll="' . ($infinite_scroll ? 'true' : 'false') . '" data-filter-type="' . esc_attr($selected_type) . '" data-filter-month="' . esc_attr($selected_month) . '" data-filter-search="' . esc_attr($selected_search) . '">';
             while ($q->have_posts()) {
                 $q->the_post();
                 echo bitstream_render_card(get_the_ID());
@@ -447,7 +460,8 @@ class BitStream_Shortcodes {
             if ($infinite_scroll && $max > 1 && !$has_limit) {
                 echo '<div class="bitstream-scroll-trigger" style="height: 1px; margin-top: 20px;"></div>';
             }
-        } else {
+        }
+        else {
             echo '<p>No Bits found for this filter.</p>';
         }
         echo '</main>';
@@ -459,12 +473,13 @@ class BitStream_Shortcodes {
             echo '<h3 class="bitstream-feed-sidebar-title">Quick Actions</h3>';
             echo $desktop_quick_actions;
             echo '</div>';
-        } else {
+        }
+        else {
             echo '<div class="bitstream-right-rail-reserved" aria-hidden="true"></div>';
         }
         echo '</aside>';
         echo '</div>';
-        
+
         wp_reset_postdata();
         return ob_get_clean();
     }
@@ -472,7 +487,8 @@ class BitStream_Shortcodes {
     /**
      * Render tabbed frontend poster (Bit/Rebit)
      */
-    public function render_poster($atts) {
+    public function render_poster($atts)
+    {
         if (!is_user_logged_in()) {
             return '<p>Please log in to post.</p>';
         }
@@ -487,7 +503,7 @@ class BitStream_Shortcodes {
             $requested_tab = 'scheduled';
         }
 
-        $initial_tab = in_array($requested_tab, ['bit', 'rebit', 'scheduled'], true) ? $requested_tab : 'bit';
+        $initial_tab = in_array($requested_tab, ['bit', 'rebit', 'scheduled', 'drafts'], true) ? $requested_tab : 'bit';
 
         $shared_url = isset($_GET['shared_url']) ? esc_url_raw(wp_unslash($_GET['shared_url'])) : '';
         $shared_title = isset($_GET['shared_title']) ? sanitize_text_field(wp_unslash($_GET['shared_title'])) : '';
@@ -540,7 +556,8 @@ class BitStream_Shortcodes {
             if (!empty($shared_text) && $shared_text !== $shared_url) {
                 $rebit_commentary_prefill = $shared_text;
             }
-        } elseif (!empty($shared_text)) {
+        }
+        elseif (!empty($shared_text)) {
             $bit_content_prefill = $shared_text;
         }
 
@@ -564,7 +581,8 @@ class BitStream_Shortcodes {
                         $rebit_schedule_enabled = '1';
                         $rebit_schedule_datetime = mysql2date('Y-m-d\\TH:i', $editing_post->post_date, false);
                     }
-                } else {
+                }
+                else {
                     $initial_tab = 'bit';
                     $bit_content_prefill = $this->get_editable_text_content($editing_post->post_content);
                     $quote_post_id = intval(get_post_meta($edit_post_id, '_bitstream_quoted_bit', true));
@@ -579,6 +597,8 @@ class BitStream_Shortcodes {
             }
         }
 
+        $editing_is_draft = ($is_edit_mode && $editing_post && $editing_post->post_status === 'draft');
+
         $bit_edit_post_id = ($is_edit_mode && !$editing_is_rebit) ? $edit_post_id : 0;
         $rebit_edit_post_id = ($is_edit_mode && $editing_is_rebit) ? $edit_post_id : 0;
         $bit_submit_label = ($bit_edit_post_id > 0) ? 'Update Bit' : 'Publish Bit';
@@ -589,7 +609,9 @@ class BitStream_Shortcodes {
         $is_bit_active = ($initial_tab === 'bit');
         $is_rebit_active = ($initial_tab === 'rebit');
         $is_scheduled_active = ($initial_tab === 'scheduled');
+        $is_drafts_active = ($initial_tab === 'drafts');
         $highlight_scheduled_id = isset($_GET['highlight_scheduled']) ? intval($_GET['highlight_scheduled']) : 0;
+        $highlight_draft_id = isset($_GET['highlight_draft']) ? intval($_GET['highlight_draft']) : 0;
 
         $scheduled_query = new WP_Query([
             'post_type' => 'bit',
@@ -601,18 +623,29 @@ class BitStream_Shortcodes {
             'no_found_rows' => true,
         ]);
 
+        $drafts_query = new WP_Query([
+            'post_type' => 'bit',
+            'post_status' => 'draft',
+            'posts_per_page' => 50,
+            'orderby' => 'modified',
+            'order' => 'DESC',
+            'author' => get_current_user_id(),
+            'no_found_rows' => true,
+        ]);
+
         $quote_preview = '';
         if ($quote_post_id > 0) {
             $quoted_post = get_post($quote_post_id);
             if ($quoted_post && $quoted_post->post_type === 'bit' && $quoted_post->post_status === 'publish') {
                 $quote_preview = $this->render_quote_preview_card($quote_post_id);
-            } else {
+            }
+            else {
                 $quote_post_id = 0;
             }
         }
 
         ob_start();
-        ?>
+?>
         <section class="bitstream-poster" data-submit-nonce="<?php echo esc_attr($submit_nonce); ?>">
             <div class="bitstream-poster-tabs" role="tablist" aria-label="Create a Bit or Rebit">
                 <button type="button" class="bitstream-poster-tab <?php echo $is_bit_active ? 'is-active' : ''; ?>" data-tab="bit" role="tab" aria-selected="<?php echo $is_bit_active ? 'true' : 'false'; ?>" aria-controls="bitstream-poster-panel-bit" id="bitstream-poster-tab-bit">
@@ -624,12 +657,16 @@ class BitStream_Shortcodes {
                 <button type="button" class="bitstream-poster-tab <?php echo $is_scheduled_active ? 'is-active' : ''; ?>" data-tab="scheduled" role="tab" aria-selected="<?php echo $is_scheduled_active ? 'true' : 'false'; ?>" aria-controls="bitstream-poster-panel-scheduled" id="bitstream-poster-tab-scheduled">
                     Scheduled
                 </button>
+                <button type="button" class="bitstream-poster-tab <?php echo $is_drafts_active ? 'is-active' : ''; ?>" data-tab="drafts" role="tab" aria-selected="<?php echo $is_drafts_active ? 'true' : 'false'; ?>" aria-controls="bitstream-poster-panel-drafts" id="bitstream-poster-tab-drafts">
+                    Drafts
+                </button>
             </div>
 
             <div class="bitstream-poster-panel <?php echo $is_bit_active ? 'is-active' : ''; ?>" id="bitstream-poster-panel-bit" role="tabpanel" aria-labelledby="bitstream-poster-tab-bit" <?php echo $is_bit_active ? '' : 'hidden'; ?>>
                 <?php if (!empty($bit_edit_banner)): ?>
                     <p class="bitstream-poster-editing-banner"><?php echo esc_html($bit_edit_banner); ?></p>
-                <?php endif; ?>
+                <?php
+        endif; ?>
                 <form class="bitstream-poster-form" data-poster-type="bit">
                     <label for="bitstream-bit-content"><strong>Bit content</strong></label>
                     <textarea id="bitstream-bit-content" name="bit_content" rows="5" placeholder="What’s happening?"><?php echo esc_textarea($bit_content_prefill); ?></textarea>
@@ -664,7 +701,8 @@ class BitStream_Shortcodes {
                             <p><strong>You are quoting this bit:</strong></p>
                             <?php echo $quote_preview; ?>
                         </div>
-                    <?php endif; ?>
+                    <?php
+        endif; ?>
 
                     <details class="bitstream-post-options">
                         <summary>Advanced</summary>
@@ -685,14 +723,18 @@ class BitStream_Shortcodes {
                         </div>
                     </details>
 
-                    <button type="submit" class="bitstream-poster-submit"><?php echo esc_html($bit_submit_label); ?></button>
+                    <div class="bitstream-poster-actions">
+                        <button type="submit" class="bitstream-poster-submit"><?php echo esc_html($bit_submit_label); ?></button>
+                        <button type="button" class="bitstream-poster-save-draft"><?php echo $editing_is_draft ? 'Update Draft' : 'Save to Drafts'; ?></button>
+                    </div>
                 </form>
             </div>
 
             <div class="bitstream-poster-panel <?php echo $is_rebit_active ? 'is-active' : ''; ?>" id="bitstream-poster-panel-rebit" role="tabpanel" aria-labelledby="bitstream-poster-tab-rebit" <?php echo $is_rebit_active ? '' : 'hidden'; ?>>
                 <?php if (!empty($rebit_edit_banner)): ?>
                     <p class="bitstream-poster-editing-banner"><?php echo esc_html($rebit_edit_banner); ?></p>
-                <?php endif; ?>
+                <?php
+        endif; ?>
                 <form class="bitstream-poster-form" data-poster-type="rebit">
                     <label for="bitstream-rebit-url"><strong>Link URL</strong></label>
                     <div class="bitstream-rebit-url-row">
@@ -739,7 +781,10 @@ class BitStream_Shortcodes {
                         </div>
                     </details>
 
-                    <button type="submit" class="bitstream-poster-submit"><?php echo esc_html($rebit_submit_label); ?></button>
+                    <div class="bitstream-poster-actions">
+                        <button type="submit" class="bitstream-poster-submit"><?php echo esc_html($rebit_submit_label); ?></button>
+                        <button type="button" class="bitstream-poster-save-draft"><?php echo $editing_is_draft ? 'Update Draft' : 'Save to Drafts'; ?></button>
+                    </div>
                 </form>
             </div>
 
@@ -753,13 +798,14 @@ class BitStream_Shortcodes {
                     </div>
                     <div class="bitstream-scheduled-list">
                         <?php if ($scheduled_query->have_posts()): ?>
-                            <?php while ($scheduled_query->have_posts()): $scheduled_query->the_post(); ?>
+                            <?php while ($scheduled_query->have_posts()):
+                $scheduled_query->the_post(); ?>
                                 <?php
-                                $scheduled_id = get_the_ID();
-                                $is_rebit = !empty(get_post_meta($scheduled_id, 'bitstream_rebit_url', true));
-                                $row_type = $is_rebit ? 'rebit' : 'bit';
-                                $is_highlighted = ($highlight_scheduled_id > 0 && $highlight_scheduled_id === $scheduled_id);
-                                ?>
+                $scheduled_id = get_the_ID();
+                $is_rebit = !empty(get_post_meta($scheduled_id, 'bitstream_rebit_url', true));
+                $row_type = $is_rebit ? 'rebit' : 'bit';
+                $is_highlighted = ($highlight_scheduled_id > 0 && $highlight_scheduled_id === $scheduled_id);
+?>
                                 <article class="bitstream-scheduled-item <?php echo $is_highlighted ? 'is-highlighted' : ''; ?>" data-type="<?php echo esc_attr($row_type); ?>" data-post-id="<?php echo esc_attr($scheduled_id); ?>">
                                     <div>
                                         <strong><?php echo $is_rebit ? 'Rebit' : 'Bit'; ?></strong>
@@ -778,11 +824,62 @@ class BitStream_Shortcodes {
                                         </button>
                                     </div>
                                 </article>
-                            <?php endwhile; ?>
+                            <?php
+            endwhile; ?>
                             <?php wp_reset_postdata(); ?>
-                        <?php else: ?>
+                        <?php
+        else: ?>
                             <p>No scheduled Bits or Rebits yet.</p>
-                        <?php endif; ?>
+                        <?php
+        endif; ?>
+                    </div>
+                </section>
+            </div>
+
+            <div class="bitstream-poster-panel <?php echo $is_drafts_active ? 'is-active' : ''; ?>" id="bitstream-poster-panel-drafts" role="tabpanel" aria-labelledby="bitstream-poster-tab-drafts" <?php echo $is_drafts_active ? '' : 'hidden'; ?>>
+                <section class="bitstream-advanced-section bitstream-advanced-section-drafts">
+                    <h3>Drafts</h3>
+                    <div class="bitstream-scheduled-filter bitstream-drafts-filter">
+                        <button type="button" class="bitstream-scheduled-filter-btn bitstream-drafts-filter-btn is-active" data-filter="all">All</button>
+                        <button type="button" class="bitstream-scheduled-filter-btn bitstream-drafts-filter-btn" data-filter="bit">Bits</button>
+                        <button type="button" class="bitstream-scheduled-filter-btn bitstream-drafts-filter-btn" data-filter="rebit">Rebits</button>
+                    </div>
+                    <div class="bitstream-scheduled-list bitstream-drafts-list">
+                        <?php if ($drafts_query->have_posts()): ?>
+                            <?php while ($drafts_query->have_posts()):
+                $drafts_query->the_post(); ?>
+                                <?php
+                $draft_id = get_the_ID();
+                $is_rebit = !empty(get_post_meta($draft_id, 'bitstream_rebit_url', true));
+                $row_type = $is_rebit ? 'rebit' : 'bit';
+                $is_highlighted = ($highlight_draft_id > 0 && $highlight_draft_id === $draft_id);
+?>
+                                <article class="bitstream-scheduled-item bitstream-draft-item <?php echo $is_highlighted ? 'is-highlighted' : ''; ?>" data-type="<?php echo esc_attr($row_type); ?>" data-post-id="<?php echo esc_attr($draft_id); ?>">
+                                    <div>
+                                        <strong><?php echo $is_rebit ? 'Rebit' : 'Bit'; ?></strong>
+                                        <p><?php echo esc_html(wp_trim_words(get_post_field('post_content', $draft_id), 16)); ?></p>
+                                        <small>Last modified <?php echo esc_html(get_the_modified_date('Y-m-d H:i', $draft_id)); ?></small>
+                                    </div>
+                                    <div class="bitstream-scheduled-actions">
+                                        <a class="bitstream-scheduled-action bitstream-scheduled-edit bit-action" href="<?php echo esc_url(BitStream_Shortcodes::get_poster_page_url(['poster_tab' => $row_type, 'edit_post_id' => $draft_id])); ?>" aria-label="Edit draft" title="Edit draft">
+                                            <i class="fa-solid fa-pencil" aria-hidden="true"></i>
+                                        </a>
+                                        <a class="bitstream-scheduled-action bitstream-scheduled-preview bit-action" href="<?php echo esc_url(get_preview_post_link($draft_id)); ?>" target="_blank" rel="noopener" aria-label="Preview draft" title="Preview draft">
+                                            <i class="fa-solid fa-up-right-from-square" aria-hidden="true"></i>
+                                        </a>
+                                        <button type="button" class="bitstream-scheduled-action bitstream-scheduled-delete bitstream-draft-delete bit-action" data-post-id="<?php echo esc_attr($draft_id); ?>" aria-label="Delete draft" title="Delete draft">
+                                            <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                                        </button>
+                                    </div>
+                                </article>
+                            <?php
+            endwhile; ?>
+                            <?php wp_reset_postdata(); ?>
+                        <?php
+        else: ?>
+                            <p>No draft Bits or Rebits yet.</p>
+                        <?php
+        endif; ?>
                     </div>
                 </section>
             </div>

@@ -1,11 +1,11 @@
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     // Check if this is a PWA share target launch
     const urlParams = new URLSearchParams(window.location.search);
     const isShareTarget = urlParams.has('url') || urlParams.has('shared_url');
-    
+
     if (isShareTarget) {
         console.log('BitStream: PWA Share target detected');
-        
+
         // Show a brief notification that content is being shared
         const notification = document.createElement('div');
         notification.style.cssText = `
@@ -25,13 +25,13 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         notification.textContent = 'Content shared to BitStream!';
         document.body.appendChild(notification);
-        
+
         // Animate in
         setTimeout(() => {
             notification.style.opacity = '1';
             notification.style.transform = 'translateY(0)';
         }, 100);
-        
+
         // Remove after 3 seconds
         setTimeout(() => {
             notification.style.opacity = '0';
@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', function() {
             setTimeout(() => notification.remove(), 300);
         }, 3000);
     }
-    
+
     function applyMediaDeterrents(scope) {
         const root = scope || document;
         root.querySelectorAll('video, audio').forEach(mediaEl => {
@@ -95,8 +95,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const statusEl = posterRoot.querySelector('.bitstream-poster-status');
         const submitNonce = posterRoot.dataset.submitNonce || '';
-        let refreshRebitPreview = () => {};
-        let refreshRebitEditorImagePreview = () => {};
+        let refreshRebitPreview = () => { };
+        let refreshRebitEditorImagePreview = () => { };
 
         function setStatus(message, isError = false) {
             if (!statusEl) {
@@ -251,12 +251,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            if (!window.confirm('Delete this scheduled Bit before publication?')) {
+            const isDraft = !!deleteButton.closest('.bitstream-drafts-list');
+            const confirmMsg = isDraft
+                ? 'Delete this draft?'
+                : 'Delete this scheduled Bit before publication?';
+
+            if (!window.confirm(confirmMsg)) {
                 return;
             }
 
             deleteButton.disabled = true;
-            setStatus('Deleting scheduled Bit...');
+            setStatus(isDraft ? 'Deleting draft...' : 'Deleting scheduled Bit...');
 
             const payload = new FormData();
             payload.append('action', 'bitstream_delete_post');
@@ -271,7 +276,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(response => response.json())
                 .then(data => {
                     if (!data.success) {
-                        throw new Error(data.data || 'Could not delete scheduled Bit.');
+                        throw new Error(data.data || 'Could not delete.');
                     }
 
                     const row = deleteButton.closest('.bitstream-scheduled-item');
@@ -279,18 +284,42 @@ document.addEventListener('DOMContentLoaded', function() {
                         row.remove();
                     }
 
-                    const scheduledList = posterRoot.querySelector('.bitstream-scheduled-list');
-                    const remainingRows = scheduledList ? scheduledList.querySelectorAll('.bitstream-scheduled-item') : [];
-                    if (scheduledList && remainingRows.length === 0) {
-                        scheduledList.innerHTML = '<p>No scheduled Bits or Rebits yet.</p>';
+                    // Check both scheduled and drafts lists for empty state
+                    const parentList = isDraft
+                        ? posterRoot.querySelector('.bitstream-drafts-list')
+                        : posterRoot.querySelector('.bitstream-scheduled-list');
+                    const remainingRows = parentList ? parentList.querySelectorAll('.bitstream-scheduled-item') : [];
+                    if (parentList && remainingRows.length === 0) {
+                        parentList.innerHTML = isDraft
+                            ? '<p>No draft Bits or Rebits yet.</p>'
+                            : '<p>No scheduled Bits or Rebits yet.</p>';
                     }
 
-                    setStatus('Scheduled Bit deleted.');
+                    setStatus(isDraft ? 'Draft deleted.' : 'Scheduled Bit deleted.');
                 })
                 .catch(error => {
-                    setStatus(error.message || 'Could not delete scheduled Bit.', true);
+                    setStatus(error.message || 'Could not delete.', true);
                     deleteButton.disabled = false;
                 });
+        });
+
+        // Drafts filter buttons
+        const draftsFilterButtons = posterRoot.querySelectorAll('.bitstream-drafts-filter-btn');
+        const draftsRows = posterRoot.querySelectorAll('.bitstream-draft-item');
+        draftsFilterButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const filter = button.dataset.filter || 'all';
+
+                draftsFilterButtons.forEach(btn => {
+                    btn.classList.toggle('is-active', btn === button);
+                });
+
+                draftsRows.forEach(row => {
+                    const type = row.dataset.type || 'bit';
+                    const show = (filter === 'all' || filter === type);
+                    row.hidden = !show;
+                });
+            });
         });
 
         function renderMediaPreview(previewEl, attachment) {
@@ -1503,7 +1532,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     setRemoveVisibility(input.id);
                     setCropVisibility(input.id, attachment.get('mime'));
                     setAudioTagVisibility(input.id, attachment.get('mime'));
-                }).catch(() => {});
+                }).catch(() => { });
             });
 
             function setRebitEditorPreviewImage(url) {
@@ -2040,10 +2069,140 @@ document.addEventListener('DOMContentLoaded', function() {
             setMetadataReadyState(false);
         }
 
+        // "Save to Drafts" button handler
+        posterRoot.querySelectorAll('.bitstream-poster-save-draft').forEach(draftButton => {
+            draftButton.addEventListener('click', () => {
+                const form = draftButton.closest('.bitstream-poster-form');
+                if (!form) {
+                    return;
+                }
+
+                if (!window.bitstream_ajax || !bitstream_ajax.ajax_url) {
+                    setStatus('Poster submit endpoint is unavailable.', true);
+                    return;
+                }
+
+                if (!submitNonce) {
+                    setStatus('Security token missing. Refresh and try again.', true);
+                    return;
+                }
+
+                const originalText = draftButton.textContent;
+                const payload = new FormData(form);
+                payload.append('action', 'bitstream_submit_poster');
+                payload.append('nonce', submitNonce);
+                payload.append('poster_type', form.dataset.posterType || 'bit');
+                payload.append('save_as_draft', '1');
+                const editPostInput = form.querySelector('input[name="edit_post_id"]');
+                payload.set('edit_post_id', editPostInput ? (editPostInput.value || '0') : '0');
+
+                draftButton.disabled = true;
+                draftButton.textContent = 'Saving...';
+                setStatus('Saving draft...');
+
+                fetch(bitstream_ajax.ajax_url, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    body: payload
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (!data.success) {
+                            throw new Error(data.data || 'Could not save draft.');
+                        }
+
+                        const responseData = data.data || {};
+                        setStatus(responseData.message || 'Saved as draft.');
+
+                        const createdPostId = parseInt(responseData.post_id || '0', 10);
+
+                        // Redirect to drafts tab to show the saved draft
+                        const posterBaseUrl = (window.bitstream_ajax && bitstream_ajax.poster_url)
+                            ? bitstream_ajax.poster_url
+                            : window.location.href;
+                        const redirectUrl = new URL(posterBaseUrl, window.location.origin);
+                        redirectUrl.searchParams.set('poster_tab', 'drafts');
+                        if (createdPostId > 0) {
+                            redirectUrl.searchParams.set('highlight_draft', String(createdPostId));
+                        }
+                        window.location.href = redirectUrl.toString();
+                    })
+                    .catch(error => {
+                        setStatus(error.message || 'Could not save draft.', true);
+                        draftButton.disabled = false;
+                        draftButton.textContent = originalText;
+                    });
+            });
+        });
+
+        // Track form dirty state for auto-save on tab close
+        let formIsDirty = false;
+        let autoSaveDraftId = 0;
+        posterRoot.querySelectorAll('.bitstream-poster-form textarea, .bitstream-poster-form input[type="text"], .bitstream-poster-form input[type="url"]').forEach(input => {
+            input.addEventListener('input', () => {
+                formIsDirty = true;
+            });
+        });
+
+        // Auto-save draft on tab/browser close
+        window.addEventListener('beforeunload', (event) => {
+            if (!formIsDirty) {
+                return;
+            }
+
+            if (!window.bitstream_ajax || !bitstream_ajax.ajax_url || !submitNonce) {
+                return;
+            }
+
+            // Determine active form
+            const activePanel = posterRoot.querySelector('.bitstream-poster-panel.is-active');
+            if (!activePanel) {
+                return;
+            }
+
+            const form = activePanel.querySelector('.bitstream-poster-form');
+            if (!form) {
+                return;
+            }
+
+            // Check if there's any content to save
+            const posterType = form.dataset.posterType || 'bit';
+            let hasContent = false;
+
+            if (posterType === 'bit') {
+                const textArea = form.querySelector('#bitstream-bit-content');
+                const attachmentInput = form.querySelector('#bitstream-bit-attachment-id');
+                hasContent = (textArea && textArea.value.trim()) || (attachmentInput && parseInt(attachmentInput.value || '0', 10) > 0);
+            } else if (posterType === 'rebit') {
+                const urlInput = form.querySelector('#bitstream-rebit-url');
+                hasContent = urlInput && urlInput.value.trim();
+            }
+
+            if (!hasContent) {
+                return;
+            }
+
+            // Use sendBeacon for reliable delivery during page unload
+            const payload = new FormData(form);
+            payload.append('action', 'bitstream_submit_poster');
+            payload.append('nonce', submitNonce);
+            payload.append('poster_type', posterType);
+            payload.append('save_as_draft', '1');
+            payload.append('is_auto_draft', '1');
+            const editPostInput = form.querySelector('input[name="edit_post_id"]');
+            payload.set('edit_post_id', editPostInput ? (editPostInput.value || '0') : '0');
+
+            navigator.sendBeacon(bitstream_ajax.ajax_url, payload);
+            formIsDirty = false;
+        });
+
         const forms = posterRoot.querySelectorAll('.bitstream-poster-form');
         forms.forEach(form => {
             form.addEventListener('submit', (event) => {
                 event.preventDefault();
+
+                // Prevent auto-save from firing when publishing
+                formIsDirty = false;
 
                 if (!window.bitstream_ajax || !bitstream_ajax.ajax_url) {
                     setStatus('Poster submit endpoint is unavailable.', true);
@@ -2150,97 +2309,97 @@ document.addEventListener('DOMContentLoaded', function() {
     initBitstreamPoster();
     highlightFromQueryParams();
     applyMediaDeterrents(document);
-    
+
     // Performance optimized like button with debouncing
     document.querySelectorAll('.bit-like').forEach(button => {
-      const postId     = button.dataset.postId;
-      const storageKey = 'bitstream-liked-' + postId;
-      let isProcessing = false;
+        const postId = button.dataset.postId;
+        const storageKey = 'bitstream-liked-' + postId;
+        let isProcessing = false;
 
-      if ( localStorage.getItem(storageKey) ) {
-        button.classList.add('liked');
-      }
+        if (localStorage.getItem(storageKey)) {
+            button.classList.add('liked');
+        }
 
-      button.addEventListener('click', () => {
-        if (isProcessing) return; // Prevent spam clicks
-        isProcessing = true;
-        
-        const likeCountSpan = button.querySelector('.bit-like-count');
-        const isLiked       = !!localStorage.getItem(storageKey);
-        const type          = isLiked ? 'unlike' : 'like';
+        button.addEventListener('click', () => {
+            if (isProcessing) return; // Prevent spam clicks
+            isProcessing = true;
 
-        const formData = new FormData();
-        formData.append('action',  'bitstream_like');
-        formData.append('post_id', postId);
-        formData.append('type',    type);
-        formData.append('nonce',   bitstream_ajax.like_nonce);
+            const likeCountSpan = button.querySelector('.bit-like-count');
+            const isLiked = !!localStorage.getItem(storageKey);
+            const type = isLiked ? 'unlike' : 'like';
 
-        fetch( bitstream_ajax.ajax_url, {
-          method:      'POST',
-          credentials: 'same-origin',
-          body:        formData
-        })
-        .then(res => res.json())
-        .then(data => {
-          if ( data.success ) {
-            if ( type === 'like' ) {
-              localStorage.setItem(storageKey, true);
-              button.classList.add('liked','pulse');
-              setTimeout(() => button.classList.remove('pulse'), 300);
-            } else {
-              localStorage.removeItem(storageKey);
-              button.classList.remove('liked');
-            }
-            if ( likeCountSpan ) {
-              likeCountSpan.textContent = data.data.likes;
-            }
-          }
-        })
-        .catch(error => console.warn('BitStream like error:', error))
-        .finally(() => {
-          isProcessing = false;
+            const formData = new FormData();
+            formData.append('action', 'bitstream_like');
+            formData.append('post_id', postId);
+            formData.append('type', type);
+            formData.append('nonce', bitstream_ajax.like_nonce);
+
+            fetch(bitstream_ajax.ajax_url, {
+                method: 'POST',
+                credentials: 'same-origin',
+                body: formData
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        if (type === 'like') {
+                            localStorage.setItem(storageKey, true);
+                            button.classList.add('liked', 'pulse');
+                            setTimeout(() => button.classList.remove('pulse'), 300);
+                        } else {
+                            localStorage.removeItem(storageKey);
+                            button.classList.remove('liked');
+                        }
+                        if (likeCountSpan) {
+                            likeCountSpan.textContent = data.data.likes;
+                        }
+                    }
+                })
+                .catch(error => console.warn('BitStream like error:', error))
+                .finally(() => {
+                    isProcessing = false;
+                });
         });
-      });
     });
 
     // Copy Link button
     document.querySelectorAll('.bit-permalink').forEach(button => {
-      button.addEventListener('click', (e) => {
-        e.preventDefault();
-        const url = button.dataset.url;
-        navigator.clipboard.writeText(url);
-        const icon = button.querySelector('i');
-        if (icon) {
-          icon.classList.remove('pulse');
-          void icon.offsetWidth;
-          icon.classList.add('pulse');
-          setTimeout(() => icon.classList.remove('pulse'), 300);
-        }
-      });
+        button.addEventListener('click', (e) => {
+            e.preventDefault();
+            const url = button.dataset.url;
+            navigator.clipboard.writeText(url);
+            const icon = button.querySelector('i');
+            if (icon) {
+                icon.classList.remove('pulse');
+                void icon.offsetWidth;
+                icon.classList.add('pulse');
+                setTimeout(() => icon.classList.remove('pulse'), 300);
+            }
+        });
     });
 
     // Quote button functionality
     document.querySelectorAll('.bit-quote').forEach(button => {
-      button.addEventListener('click', (e) => {
-        e.preventDefault();
-        const postId = button.dataset.postId;
-                const basePosterUrl = (window.bitstream_ajax && bitstream_ajax.poster_url) ? bitstream_ajax.poster_url : (window.location.origin + '/bitstream/');
-                const quoteUrl = new URL(basePosterUrl, window.location.origin);
-                quoteUrl.searchParams.set('poster_tab', 'bit');
-                quoteUrl.searchParams.set('quote_post_id', postId);
-        
-        // Open quote editor in new tab/window
-                window.open(quoteUrl.toString(), '_blank');
-        
-        // Add visual feedback
-        const icon = button.querySelector('i');
-        if (icon) {
-          icon.classList.remove('pulse');
-          void icon.offsetWidth;
-          icon.classList.add('pulse');
-          setTimeout(() => icon.classList.remove('pulse'), 300);
-        }
-      });
+        button.addEventListener('click', (e) => {
+            e.preventDefault();
+            const postId = button.dataset.postId;
+            const basePosterUrl = (window.bitstream_ajax && bitstream_ajax.poster_url) ? bitstream_ajax.poster_url : (window.location.origin + '/bitstream/');
+            const quoteUrl = new URL(basePosterUrl, window.location.origin);
+            quoteUrl.searchParams.set('poster_tab', 'bit');
+            quoteUrl.searchParams.set('quote_post_id', postId);
+
+            // Open quote editor in new tab/window
+            window.open(quoteUrl.toString(), '_blank');
+
+            // Add visual feedback
+            const icon = button.querySelector('i');
+            if (icon) {
+                icon.classList.remove('pulse');
+                void icon.offsetWidth;
+                icon.classList.add('pulse');
+                setTimeout(() => icon.classList.remove('pulse'), 300);
+            }
+        });
     });
 
     // Edit button functionality
@@ -2276,80 +2435,80 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-        // Delete button functionality (delegated for dynamically loaded cards)
-        document.addEventListener('click', (event) => {
-            const button = event.target.closest('.bit-delete');
-            if (!button) {
-                return;
-            }
+    // Delete button functionality (delegated for dynamically loaded cards)
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest('.bit-delete');
+        if (!button) {
+            return;
+        }
 
-            event.preventDefault();
+        event.preventDefault();
 
-            const postId = parseInt(button.dataset.postId || '0', 10);
-            if (!postId) {
-                return;
-            }
+        const postId = parseInt(button.dataset.postId || '0', 10);
+        if (!postId) {
+            return;
+        }
 
-            if (!window.bitstream_ajax || !bitstream_ajax.ajax_url || !bitstream_ajax.delete_post_nonce) {
-                alert('Delete endpoint is unavailable.');
-                return;
-            }
+        if (!window.bitstream_ajax || !bitstream_ajax.ajax_url || !bitstream_ajax.delete_post_nonce) {
+            alert('Delete endpoint is unavailable.');
+            return;
+        }
 
-            const confirmed = window.confirm('Are you sure you want to delete this Bit? This action cannot be undone.');
-            if (!confirmed) {
-                return;
-            }
+        const confirmed = window.confirm('Are you sure you want to delete this Bit? This action cannot be undone.');
+        if (!confirmed) {
+            return;
+        }
 
-            button.classList.add('is-active');
+        button.classList.add('is-active');
 
-            const payload = new FormData();
-            payload.append('action', 'bitstream_delete_post');
-            payload.append('post_id', postId);
-            payload.append('nonce', bitstream_ajax.delete_post_nonce);
+        const payload = new FormData();
+        payload.append('action', 'bitstream_delete_post');
+        payload.append('post_id', postId);
+        payload.append('nonce', bitstream_ajax.delete_post_nonce);
 
-            fetch(bitstream_ajax.ajax_url, {
-                method: 'POST',
-                credentials: 'same-origin',
-                body: payload
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.success) {
-                        throw new Error(data.data || 'Could not delete post.');
-                    }
+        fetch(bitstream_ajax.ajax_url, {
+            method: 'POST',
+            credentials: 'same-origin',
+            body: payload
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    throw new Error(data.data || 'Could not delete post.');
+                }
 
-                    const card = button.closest('.bit-card');
-                    if (card) {
-                        const lockedHeight = card.offsetHeight;
-                        card.style.minHeight = lockedHeight + 'px';
-                        card.classList.add('bit-card-delete-pending');
-                        card.innerHTML = '<div class="bit-delete-toast">Deleted successfully</div>';
+                const card = button.closest('.bit-card');
+                if (card) {
+                    const lockedHeight = card.offsetHeight;
+                    card.style.minHeight = lockedHeight + 'px';
+                    card.classList.add('bit-card-delete-pending');
+                    card.innerHTML = '<div class="bit-delete-toast">Deleted successfully</div>';
 
+                    setTimeout(() => {
+                        card.classList.add('bit-card-delete-fade');
                         setTimeout(() => {
-                            card.classList.add('bit-card-delete-fade');
-                            setTimeout(() => {
-                                card.remove();
-                            }, 350);
-                        }, 3000);
-                    }
-                })
-                .catch(error => {
-                    alert(error.message || 'Could not delete post.');
-                    button.classList.remove('is-active');
-                });
-        });
+                            card.remove();
+                        }, 350);
+                    }, 3000);
+                }
+            })
+            .catch(error => {
+                alert(error.message || 'Could not delete post.');
+                button.classList.remove('is-active');
+            });
+    });
 
     // Floating BitStream menu functionality
     function initFloatingMenu() {
         const bitstreamToggle = document.querySelector('.bitstream-toggle');
         const bitstreamDropdown = document.querySelector('.bitstream-dropdown');
-        
+
         if (!bitstreamToggle || !bitstreamDropdown) {
             return; // Elements not found
         }
-        
+
         let isOpen = false;
-        
+
         // Function to open dropdown
         function openDropdown() {
             console.log('Opening dropdown'); // Debug log
@@ -2361,7 +2520,7 @@ document.addEventListener('DOMContentLoaded', function() {
             bitstreamToggle.style.background = '#1f4d35';
             bitstreamToggle.style.transform = 'scale(1.1)';
         }
-        
+
         // Function to close dropdown
         function closeDropdown() {
             console.log('Closing dropdown'); // Debug log
@@ -2373,29 +2532,29 @@ document.addEventListener('DOMContentLoaded', function() {
             bitstreamToggle.style.background = '#2c6e49';
             bitstreamToggle.style.transform = 'scale(1)';
         }
-        
+
         // Unified event handler for both click and touch
         function handleToggle(e) {
             e.preventDefault();
             e.stopPropagation();
             console.log('Toggle button activated, isOpen:', isOpen); // Debug log
-            
+
             if (isOpen) {
                 closeDropdown();
             } else {
                 openDropdown();
             }
         }
-        
+
         // Add both click and touchstart for maximum compatibility
         bitstreamToggle.addEventListener('click', handleToggle);
         bitstreamToggle.addEventListener('touchstart', handleToggle);
-        
+
         // Prevent double-firing on devices that support both
         bitstreamToggle.addEventListener('touchend', (e) => {
             e.preventDefault();
         });
-        
+
         // Add hover effects for desktop only (check if touch device)
         const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
         if (!isTouch) {
@@ -2405,7 +2564,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     bitstreamToggle.style.transform = 'scale(1.05)';
                 }
             });
-            
+
             bitstreamToggle.addEventListener('mouseleave', () => {
                 if (!isOpen) {
                     bitstreamToggle.style.background = '#2c6e49';
@@ -2413,7 +2572,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         }
-        
+
         // Add hover effects for dropdown links (desktop only)
         if (!isTouch) {
             // Use event delegation since links might not exist when this runs
@@ -2428,23 +2587,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         }
-        
+
         // Close dropdown when clicking/touching outside
         function handleOutsideClick(e) {
             if (!e.target.closest('.bitstream-menu') && isOpen) {
                 closeDropdown();
             }
         }
-        
+
         document.addEventListener('click', handleOutsideClick);
         document.addEventListener('touchstart', handleOutsideClick);
-        
+
         console.log('Floating menu initialized'); // Debug log
     }
-    
+
     // Initialize floating menu (try multiple times if needed)
     initFloatingMenu();
-    
+
     // Also try after a short delay in case elements are loaded later
     setTimeout(initFloatingMenu, 500);
     setTimeout(initFloatingMenu, 1000);
@@ -2455,20 +2614,20 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('iframe').forEach(iframe => {
             // Skip if already processed
             if (iframe.dataset.responsive === 'true') return;
-            
+
             // Mark as processed
             iframe.dataset.responsive = 'true';
-            
+
             // Set responsive styles
             iframe.style.maxWidth = '100%';
             iframe.style.height = 'auto';
-            
+
             // For YouTube iframes, set aspect ratio
             if (iframe.src && (iframe.src.includes('youtube.com') || iframe.src.includes('youtu.be'))) {
                 iframe.style.aspectRatio = '16/9';
                 iframe.style.width = '100%';
             }
-            
+
             // Make parent containers responsive too
             let parent = iframe.parentElement;
             while (parent && parent !== document.body) {
@@ -2484,7 +2643,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 parent = parent.parentElement;
             }
         });
-        
+
         // Also handle WordPress embed containers directly
         document.querySelectorAll('.wp-embedded-content, .wp-block-embed, .wp-embed').forEach(container => {
             container.style.maxWidth = '100%';
@@ -2672,7 +2831,7 @@ document.addEventListener('DOMContentLoaded', function() {
             try {
                 navigator.mediaSession.setActionHandler('play', () => {
                     if (activeMediaElement && typeof activeMediaElement.play === 'function') {
-                        activeMediaElement.play().catch(() => {});
+                        activeMediaElement.play().catch(() => { });
                     }
                 });
                 navigator.mediaSession.setActionHandler('pause', () => {
@@ -2689,11 +2848,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         scope.querySelectorAll('audio, video').forEach(bindMediaSessionForElement);
     }
-    
+
     // Run on page load
     makeEmbedsResponsive();
     initMediaSession(document);
-    
+
     // Run when new content is loaded (for infinite scroll)
     const observer = new MutationObserver(() => {
         makeEmbedsResponsive();
@@ -2701,7 +2860,7 @@ document.addEventListener('DOMContentLoaded', function() {
         initFloatingMenu(); // Re-init floating menu if new content added
         initCommentToggles(); // Re-init comment toggles for new content
     });
-    
+
     observer.observe(document.body, {
         childList: true,
         subtree: true
@@ -2712,7 +2871,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.bit-comment-toggle').forEach(button => {
             // Skip if already initialized
             if (button.dataset.initialized === 'true') return;
-            
+
             button.dataset.initialized = 'true';
             button.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -2721,17 +2880,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (section) {
                     // Find the parent bit-card BEFORE toggling to get proper timing
                     const bitCard = section.closest('.bit-card');
-                    
+
                     if (bitCard) {
                         if (!section.classList.contains('open')) {
                             // About to open - immediately boost z-index BEFORE animation starts
                             bitCard.classList.add('comments-open');
                         }
                     }
-                    
+
                     // Now toggle the comments section
                     section.classList.toggle('open');
-                    
+
                     if (bitCard) {
                         if (!section.classList.contains('open')) {
                             // Comments were closed - remove z-index boost after animation
@@ -2744,7 +2903,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
-    
+
     // Initialize comment toggles
     initCommentToggles();
 
@@ -2821,12 +2980,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const maxPage = parseInt(feed.dataset.maxPage);
         if (loading || nextPage > maxPage) return;
         loading = true;
-        
+
         // Update button text if it exists
         if (loadMoreButton) {
             loadMoreButton.textContent = 'Loading…';
         }
-        
+
         const formData = new FormData();
         formData.append('action', 'bitstream_load_more');
         formData.append('page', nextPage);
@@ -2840,41 +2999,41 @@ document.addEventListener('DOMContentLoaded', function() {
             credentials: 'same-origin',
             body: formData
         })
-        .then(response => response.text())
-        .then(html => {
-            const temp = document.createElement('div');
-            temp.innerHTML = html;
-            const newCards = temp.querySelectorAll('.bit-card');
-            
-            // Append new cards to feed
-            newCards.forEach(card => {
-                feed.appendChild(card);
-            });
-            
-            feed.dataset.page = nextPage;
-            loading = false;
+            .then(response => response.text())
+            .then(html => {
+                const temp = document.createElement('div');
+                temp.innerHTML = html;
+                const newCards = temp.querySelectorAll('.bit-card');
 
-            initCommentToggles();
-            
-            // Update button state
-            if (loadMoreButton) {
-                loadMoreButton.textContent = 'Load More';
-                if (nextPage >= maxPage) {
-                    loadMoreButton.style.display = 'none';
+                // Append new cards to feed
+                newCards.forEach(card => {
+                    feed.appendChild(card);
+                });
+
+                feed.dataset.page = nextPage;
+                loading = false;
+
+                initCommentToggles();
+
+                // Update button state
+                if (loadMoreButton) {
+                    loadMoreButton.textContent = 'Load More';
+                    if (nextPage >= maxPage) {
+                        loadMoreButton.style.display = 'none';
+                    }
                 }
-            }
-            
-            // Hide scroll trigger if we've reached the end
-            if (scrollTrigger && nextPage >= maxPage) {
-                scrollTrigger.style.display = 'none';
-            }
-        })
-        .catch(() => {
-            loading = false;
-            if (loadMoreButton) {
-                loadMoreButton.textContent = 'Load More';
-            }
-        });
+
+                // Hide scroll trigger if we've reached the end
+                if (scrollTrigger && nextPage >= maxPage) {
+                    scrollTrigger.style.display = 'none';
+                }
+            })
+            .catch(() => {
+                loading = false;
+                if (loadMoreButton) {
+                    loadMoreButton.textContent = 'Load More';
+                }
+            });
     }
 
     // Infinite scroll: only trigger on scroll if infinite scroll is enabled
@@ -2888,7 +3047,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }, {
             rootMargin: '100px'
         });
-        
+
         observer.observe(scrollTrigger);
     }
 
@@ -2910,7 +3069,7 @@ function applyCommentStyles() {
     jQuery('.bit-comments-list .comment-author .fn').attr('style', styles.authorName);
 
     // Add "says:" if missing and style it
-    jQuery('.bit-comments-list .comment-author').each(function() {
+    jQuery('.bit-comments-list .comment-author').each(function () {
         var $author = jQuery(this);
         if ($author.find('.says').length === 0) {
             $author.append('<span class="says">says:</span>');
@@ -2938,6 +3097,6 @@ function applyCommentStyles() {
 }
 
 // Apply comment styles on document ready
-jQuery(document).ready(function($) {
+jQuery(document).ready(function ($) {
     applyCommentStyles();
 });

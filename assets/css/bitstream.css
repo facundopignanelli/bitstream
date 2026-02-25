@@ -2181,6 +2181,42 @@ body.bitstream-cropper-open {
     line-height: 1;
 }
 
+/* Poster action buttons row */
+.bitstream-poster-actions {
+    display: flex;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+}
+
+/* Save to Drafts button */
+.bitstream-poster-save-draft {
+    border: 1.5px solid #b0b8b4;
+    border-radius: 15px;
+    padding: 0.6rem 0.9rem;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 600;
+    background: #fff;
+    color: #444;
+    transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.bitstream-poster-save-draft:hover {
+    border-color: #7a8580;
+    background: #f5f7f6;
+    color: #222;
+}
+
+.bitstream-poster-save-draft:disabled {
+    opacity: 0.5;
+    cursor: wait;
+}
+
+/* Draft items reuse scheduled item styles */
+.bitstream-draft-item small {
+    color: #7a8580;
+}
+
 @media (max-width: 640px) {
     .bitstream-rebit-url-row {
         grid-template-columns: 1fr;
@@ -2188,6 +2224,16 @@ body.bitstream-cropper-open {
 
     .bitstream-scheduled-item {
         flex-direction: column;
+    }
+
+    .bitstream-poster-actions {
+        flex-direction: column;
+    }
+
+    .bitstream-poster-actions .bitstream-poster-submit,
+    .bitstream-poster-actions .bitstream-poster-save-draft {
+        width: 100%;
+        text-align: center;
     }
 }
 

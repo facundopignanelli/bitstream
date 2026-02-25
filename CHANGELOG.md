@@ -11,6 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Post a Bit
   - Post a Rebit
   - Scheduled (review upcoming posts)
+  - Drafts (save and manage draft posts)
+- **Draft Support** - Save posts as drafts for later editing and publishing
+  - "Save to Drafts" button in both Bit and Rebit poster forms (white with grey border styling)
+  - New "Drafts" tab in the poster interface alongside Scheduled
+  - Draft list with filter by type (All / Bits / Rebits), matching Scheduled tab UI
+  - Edit, preview, and delete actions for each draft (same UI as scheduled posts)
+  - Automatic save-to-draft when closing the browser tab (via `navigator.sendBeacon`)
+  - Draft editing support with "Update Draft" button label when editing an existing draft
+  - Highlight draft after save with `highlight_draft` query parameter
 - Native WordPress Media Library support in poster forms (`wp.media`) for Bit/Rebit attachments
 - Rebit metadata fetch action in poster UI with OG preview population and manual overrides
 - In-window publish result panel showing the exact frontend-rendered card preview
@@ -26,6 +35,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Audio file support in Bit posts (MP3, M4A, OGG, WAV, FLAC)
 - Custom image cropper with free-form selection and live size readout
 - In-feed Delete Bit action (trash icon) for logged-in users with `delete_post` capability
+- Improved PWA share parsing: automatically separates text and URL when they arrive combined from Android share targets
+- Weekly media cleanup cron event (`bitstream_weekly_media_cleanup_event`) to automatically prune unattached orphaned files from poster uploads
+- Support for visually rich nested quoted cards rendering to display quoted content with better context
 
 ### Changed
 - Unified posting workflow around the custom poster interface instead of Gutenberg new-post flow
