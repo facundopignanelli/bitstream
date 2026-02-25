@@ -583,6 +583,8 @@ class BitStream_Shortcodes {
         $rebit_edit_post_id = ($is_edit_mode && $editing_is_rebit) ? $edit_post_id : 0;
         $bit_submit_label = ($bit_edit_post_id > 0) ? 'Update Bit' : 'Publish Bit';
         $rebit_submit_label = ($rebit_edit_post_id > 0) ? 'Update Rebit' : 'Publish Rebit';
+        $bit_edit_banner = ($bit_edit_post_id > 0) ? sprintf('Editing Bit #%d', $bit_edit_post_id) : '';
+        $rebit_edit_banner = ($rebit_edit_post_id > 0) ? sprintf('Editing Rebit #%d', $rebit_edit_post_id) : '';
 
         $is_bit_active = ($initial_tab === 'bit');
         $is_rebit_active = ($initial_tab === 'rebit');
@@ -625,6 +627,9 @@ class BitStream_Shortcodes {
             </div>
 
             <div class="bitstream-poster-panel <?php echo $is_bit_active ? 'is-active' : ''; ?>" id="bitstream-poster-panel-bit" role="tabpanel" aria-labelledby="bitstream-poster-tab-bit" <?php echo $is_bit_active ? '' : 'hidden'; ?>>
+                <?php if (!empty($bit_edit_banner)): ?>
+                    <p class="bitstream-poster-editing-banner"><?php echo esc_html($bit_edit_banner); ?></p>
+                <?php endif; ?>
                 <form class="bitstream-poster-form" data-poster-type="bit">
                     <label for="bitstream-bit-content"><strong>Bit content</strong></label>
                     <textarea id="bitstream-bit-content" name="bit_content" rows="5" placeholder="What’s happening?"><?php echo esc_textarea($bit_content_prefill); ?></textarea>
@@ -685,6 +690,9 @@ class BitStream_Shortcodes {
             </div>
 
             <div class="bitstream-poster-panel <?php echo $is_rebit_active ? 'is-active' : ''; ?>" id="bitstream-poster-panel-rebit" role="tabpanel" aria-labelledby="bitstream-poster-tab-rebit" <?php echo $is_rebit_active ? '' : 'hidden'; ?>>
+                <?php if (!empty($rebit_edit_banner)): ?>
+                    <p class="bitstream-poster-editing-banner"><?php echo esc_html($rebit_edit_banner); ?></p>
+                <?php endif; ?>
                 <form class="bitstream-poster-form" data-poster-type="rebit">
                     <label for="bitstream-rebit-url"><strong>Link URL</strong></label>
                     <div class="bitstream-rebit-url-row">

@@ -1100,6 +1100,17 @@ class BitStream_Ajax_Handlers {
                 $quote_post_id = intval($_POST['quote_post_id'] ?? 0);
                 $schedule = $this->build_schedule_args('bit_schedule_enabled', 'bit_schedule_datetime');
 
+                if (
+                    $is_update
+                    && $editing_post
+                    && $editing_post->post_status === 'publish'
+                    && !$schedule['is_scheduled']
+                ) {
+                    $schedule['post_status'] = 'publish';
+                    $schedule['post_date'] = $editing_post->post_date;
+                    $schedule['post_date_gmt'] = $editing_post->post_date_gmt;
+                }
+
                 if (trim(wp_strip_all_tags($content)) === '' && $attachment_id <= 0) {
                     wp_send_json_error('Bit content or media is required.');
                 }
@@ -1176,6 +1187,17 @@ class BitStream_Ajax_Handlers {
             $manual_image_removed = !empty($_POST['rebit_og_image_removed']) && strval($_POST['rebit_og_image_removed']) === '1';
             $attachment_id = $this->get_valid_attachment_id($_POST['rebit_attachment_id'] ?? 0);
             $schedule = $this->build_schedule_args('rebit_schedule_enabled', 'rebit_schedule_datetime');
+
+            if (
+                $is_update
+                && $editing_post
+                && $editing_post->post_status === 'publish'
+                && !$schedule['is_scheduled']
+            ) {
+                $schedule['post_status'] = 'publish';
+                $schedule['post_date'] = $editing_post->post_date;
+                $schedule['post_date_gmt'] = $editing_post->post_date_gmt;
+            }
 
             $og_data = [];
             if (class_exists('BitStream_OG_Fetcher')) {

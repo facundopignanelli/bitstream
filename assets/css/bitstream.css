@@ -638,6 +638,15 @@
 .bit-edit:focus i {
     color: #044389;
 }
+
+.bit-quote i {
+    color: #044389;
+}
+
+.bit-quote:hover i,
+.bit-quote:focus i {
+    color: #044389;
+}
 /* Liked state */
 .bit-like.liked i {
     color: var(--wp--preset--color--accent-2, #044389);
@@ -984,6 +993,17 @@ iframe, embed, object, video {
 
 .bitstream-poster-panel.is-active {
     display: block;
+}
+
+.bitstream-poster-editing-banner {
+    margin: 0 0 0.75rem;
+    padding: 0.45rem 0.7rem;
+    border-radius: 10px;
+    background: rgba(4, 67, 137, 0.08);
+    border: 1px solid rgba(4, 67, 137, 0.35);
+    color: #044389;
+    font-size: 0.9rem;
+    font-weight: 600;
 }
 
 .bitstream-poster-form {

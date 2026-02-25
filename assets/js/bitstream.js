@@ -2001,6 +2001,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 payload.append('action', 'bitstream_submit_poster');
                 payload.append('nonce', submitNonce);
                 payload.append('poster_type', form.dataset.posterType || 'bit');
+                const editPostInput = form.querySelector('input[name="edit_post_id"]');
+                payload.set('edit_post_id', editPostInput ? (editPostInput.value || '0') : '0');
 
                 const posterType = form.dataset.posterType || 'bit';
                 const scheduleEnabledInput = form.querySelector('[name="' + posterType + '_schedule_enabled"]');
