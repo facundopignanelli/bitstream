@@ -351,7 +351,6 @@ document.addEventListener('DOMContentLoaded', function() {
             let audioTagsArtworkUrl = '';
             let audioTagsArtworkCleared = false;
             let cropperState = null;
-            let pendingClipboardTarget = null;
 
             function setRemoveVisibility(targetInputId) {
                 const input = document.getElementById(targetInputId);
@@ -934,60 +933,33 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             function uploadClipboardImage(targetInputId, targetPreviewId) {
-                const setPasteReadyMode = () => {
-                    pendingClipboardTarget = {
-                        targetInputId,
-                        targetPreviewId
-                    };
-                    setStatus('Press Ctrl+V now to paste your image.');
-                };
-
                 if (!navigator.clipboard || typeof navigator.clipboard.read !== 'function') {
-                    setPasteReadyMode();
+                    setStatus('Clipboard paste is unavailable in this browser.', true);
                     return;
                 }
 
-                const readDirectly = () => {
-                    navigator.clipboard.read()
-                        .then(items => {
-                            if (!items || !items.length) {
-                                throw new Error('Clipboard is empty.');
-                            }
-
-                            const imageItem = items.find(item => item.types && item.types.some(type => type.indexOf('image/') === 0));
-                            if (!imageItem) {
-                                throw new Error('Clipboard does not contain an image.');
-                            }
-
-                            const imageType = imageItem.types.find(type => type.indexOf('image/') === 0) || 'image/png';
-                            return imageItem.getType(imageType).then(blob => {
-                                const extension = imageType.indexOf('jpeg') !== -1 ? 'jpg' : (imageType.split('/')[1] || 'png');
-                                const filename = 'pasted-image-' + Date.now() + '.' + extension;
-                                const file = new File([blob], filename, { type: imageType });
-                                uploadMediaFile(file, targetInputId, targetPreviewId);
-                                setStatus('Uploading pasted image...');
-                            });
-                        })
-                        .catch(() => {
-                            setPasteReadyMode();
-                        });
-                };
-
-                if (!navigator.permissions || typeof navigator.permissions.query !== 'function') {
-                    setPasteReadyMode();
-                    return;
-                }
-
-                navigator.permissions.query({ name: 'clipboard-read' })
-                    .then(result => {
-                        if (result && result.state === 'granted') {
-                            readDirectly();
-                            return;
+                navigator.clipboard.read()
+                    .then(items => {
+                        if (!items || !items.length) {
+                            throw new Error('Clipboard is empty.');
                         }
-                        setPasteReadyMode();
+
+                        const imageItem = items.find(item => item.types && item.types.some(type => type.indexOf('image/') === 0));
+                        if (!imageItem) {
+                            throw new Error('Clipboard does not contain an image.');
+                        }
+
+                        const imageType = imageItem.types.find(type => type.indexOf('image/') === 0) || 'image/png';
+                        return imageItem.getType(imageType).then(blob => {
+                            const extension = imageType.indexOf('jpeg') !== -1 ? 'jpg' : (imageType.split('/')[1] || 'png');
+                            const filename = 'pasted-image-' + Date.now() + '.' + extension;
+                            const file = new File([blob], filename, { type: imageType });
+                            uploadMediaFile(file, targetInputId, targetPreviewId);
+                            setStatus('Uploading pasted image...');
+                        });
                     })
-                    .catch(() => {
-                        setPasteReadyMode();
+                    .catch(error => {
+                        setStatus(error.message || 'Clipboard permission denied. Allow clipboard access in browser settings and try again.', true);
                     });
             }
 
@@ -1399,7 +1371,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
 
-                const mediaTarget = pendingClipboardTarget || getActivePosterMediaTarget();
+                const mediaTarget = getActivePosterMediaTarget();
                 if (!mediaTarget) {
                     setStatus('Open Bit or Rebit tab to paste an image.', true);
                     return;
@@ -1407,7 +1379,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 event.preventDefault();
                 uploadMediaFile(imageFile, mediaTarget.targetInputId, mediaTarget.targetPreviewId);
-                pendingClipboardTarget = null;
                 setStatus('Uploading pasted image...');
             });
 
