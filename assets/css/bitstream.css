@@ -242,10 +242,9 @@
 }
 
 .bitstream-feed-sidebar-tabs {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    flex-direction: column;
     gap: 0.65rem;
-    align-items: start;
 }
 
 .mobile-rss-panel {
@@ -266,6 +265,18 @@
     font-size: 0.95rem;
     color: var(--wp--preset--color--accent-1, #2c6e49);
     margin-bottom: 0.55rem;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    background: #f7f9f8;
+    padding: 0.7rem 1rem;
+    border-radius: 8px;
+    border: 1px solid #e2e6e3;
+    transition: background 0.2s ease;
+}
+
+.bitstream-feed-sidebar-summary:hover {
+    background: #eef2ef;
 }
 
 .bitstream-feed-sidebar-summary i {

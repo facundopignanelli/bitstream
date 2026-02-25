@@ -425,14 +425,14 @@ class BitStream_Shortcodes
 
         echo '<div class="bitstream-feed-sidebar-column">';
 
-        echo '<aside class="bitstream-feed-sidebar bitstream-feed-sidebar-intro">';
+        echo '<aside class="bitstream-feed-sidebar-intro">';
         echo '<div class="bitstream-filter-box bitstream-intro-box">';
         echo '<h3 class="bitstream-feed-sidebar-title">' . esc_html($intro_title) . '</h3>';
         echo '<p class="bitstream-intro-text">' . nl2br(esc_html($intro_text)) . '</p>';
         echo '</div>';
         echo '</aside>';
 
-        echo '<aside class="bitstream-feed-sidebar bitstream-feed-sidebar-left">';
+        echo '<aside class="bitstream-feed-sidebar-left">';
         echo '<div class="bitstream-feed-sidebar-tabs">';
 
         echo '<details class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-search" open>';
@@ -606,10 +606,15 @@ class BitStream_Shortcodes
                 echo $desktop_rss_links;
                 echo '</div>';
             }
-            echo self::render_about_box();
             echo '</aside>';
             $has_content = true;
         }
+
+        // Render About Box as an independent right-sidebar widget
+        echo '<aside class="bitstream-feed-sidebar">';
+        echo self::render_about_box();
+        echo '</aside>';
+        $has_content = true;
 
         if (!$has_content) {
             echo '<aside class="bitstream-feed-sidebar" style="visibility:hidden;">';
