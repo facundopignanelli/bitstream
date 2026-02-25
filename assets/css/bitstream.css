@@ -50,7 +50,7 @@
     display: block;
     margin: 0.5em auto;
     border-radius: 15px;
-    box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.07);
     /* Prevent layout shift while images load */
     min-height: 100px;
 }
@@ -210,7 +210,7 @@
     padding: 0.6rem;
 }
 
-.bitstream-filter-box + .bitstream-filter-box {
+.bitstream-filter-box+.bitstream-filter-box {
     margin-top: 0.75rem;
 }
 
@@ -405,7 +405,8 @@
     content: "";
     display: block;
     clear: both;
-    height: 2rem; /* Add some spacing after the feed */
+    height: 2rem;
+    /* Add some spacing after the feed */
 }
 
 @media (min-width: 768px) {
@@ -459,7 +460,7 @@
         display: block;
     }
 
-    .bitstream-feed-sidebar-panel > :not(summary) {
+    .bitstream-feed-sidebar-panel> :not(summary) {
         display: block;
     }
 
@@ -467,7 +468,7 @@
         display: block;
     }
 
-    .bitstream-feed-sidebar-tabs .bitstream-feed-sidebar-panel + .bitstream-feed-sidebar-panel {
+    .bitstream-feed-sidebar-tabs .bitstream-feed-sidebar-panel+.bitstream-feed-sidebar-panel {
         margin-top: 0.75rem;
     }
 
@@ -521,7 +522,8 @@
 /* Boost z-index when comments are open to prevent visual layering issues */
 .bit-card:has(.bit-comments.open),
 .bit-card.comments-open {
-    z-index: 10; /* Significantly higher than normal cards when comments are open */
+    z-index: 10;
+    /* Significantly higher than normal cards when comments are open */
 }
 
 @media (min-width: 768px) {
@@ -532,64 +534,65 @@
 
 /* Date and Edit link: italic, secondary color, clickable, smaller */
 .bit-comment-meta a {
-  color: var(--wp--preset--color--accent-2, #044389) !important;
-  font-style: italic !important;
-  font-size: 0.8em !important;
-  text-decoration: none !important;
+    color: var(--wp--preset--color--accent-2, #044389) !important;
+    font-style: italic !important;
+    font-size: 0.8em !important;
+    text-decoration: none !important;
 }
 
 /* Nested replies separator: top border on nested comments */
 .comment .children .bit-comment {
-  border-top: 1px solid var(--wp--preset--color--accent-3, #ccc) !important;
-  padding-top: 1em !important;
-  margin-top: 0.5em !important;
+    border-top: 1px solid var(--wp--preset--color--accent-3, #ccc) !important;
+    padding-top: 1em !important;
+    margin-top: 0.5em !important;
 }
 
 /* Reduce poster name size */
 .bit-comment-header .bit-comment-author-name {
-  font-size: 0.85em !important;
+    font-size: 0.85em !important;
 }
 
 
 /* Hide duplicated 'says:' */
 .bit-comments .says {
-  display: none !important;
+    display: none !important;
 }
 
 /* Author name styling */
 .bit-comments-list .comment-author .fn {
-  font-size: 0.9em;
-  color: var(--wp--preset--color--accent-1,#2c6e49) !important;
-  font-style: normal;
+    font-size: 0.9em;
+    color: var(--wp--preset--color--accent-1, #2c6e49) !important;
+    font-style: normal;
 }
 
 /* Date/time link styling (disable link) */
 .bit-comments-list .comment-metadata a:first-child {
-  pointer-events: none !important;
-  color: var(--wp--preset--color--accent-2,#044389) !important;
-  font-style: italic !important;
-  text-decoration: none !important;
+    pointer-events: none !important;
+    color: var(--wp--preset--color--accent-2, #044389) !important;
+    font-style: italic !important;
+    text-decoration: none !important;
 }
 
 /* Preserve edit link */
 .bit-comments-list .comment-edit-link {
-  pointer-events: auto !important;
-  font-style: normal !important;
+    pointer-events: auto !important;
+    font-style: normal !important;
 }
 
 /* Indent nested replies */
 .bit-comments-list .children {
-  margin-left: 1.5em !important;
-  margin-top: 0.75em !important; /* Add top margin to separate from Reply button */
-  border-left: 1px solid var(--wp--preset--color--accent-3,#ccc) !important;
-  padding-left: 1em !important;
+    margin-left: 1.5em !important;
+    margin-top: 0.75em !important;
+    /* Add top margin to separate from Reply button */
+    border-left: 1px solid var(--wp--preset--color--accent-3, #ccc) !important;
+    padding-left: 1em !important;
 }
 
 /* Divider lines between comments */
 .bit-comments-list .comment {
-  border-bottom: 1px solid var(--wp--preset--color--accent-3,#ccc);
-  padding-bottom: 0.5em;
-  margin-bottom: 0.5em;
+    border-bottom: 1px solid var(--wp--preset--color--accent-3, #ccc);
+    padding-bottom: 0.5em;
+    margin-bottom: 0.5em;
 }
 
 
@@ -613,9 +616,11 @@
     color: var(--wp--preset--color--accent-1, #2c6e49);
     transition: color 0.2s ease;
 }
+
 .bit-action:hover i {
     color: var(--wp--preset--color--accent-2, #044389);
 }
+
 .bit-like .bit-like-count {
     color: var(--wp--preset--color--accent-1, #2c6e49);
 }
@@ -647,20 +652,31 @@
 .bit-quote:focus i {
     color: #044389;
 }
+
 /* Liked state */
 .bit-like.liked i {
     color: var(--wp--preset--color--accent-2, #044389);
 }
+
 /* Pulse animation - single definition */
 @keyframes bitstream-pulse {
-  0%   { transform: scale(1); }
-  50%  { transform: scale(1.3); }
-  100% { transform: scale(1); }
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.3);
+    }
+
+    100% {
+        transform: scale(1);
+    }
 }
+
 .bit-like.pulse,
 .bit-permalink i.pulse,
 .bit-edit i.pulse {
-  animation: bitstream-pulse 0.3s ease-in-out;
+    animation: bitstream-pulse 0.3s ease-in-out;
 }
 
 /* Comments Layout Tweaks */
@@ -669,23 +685,28 @@
     padding-bottom: 1rem;
     margin-bottom: 1rem;
 }
+
 .bit-comment .comment-author.vcard {
     display: flex;
     align-items: center;
     font-size: 0.875rem;
 }
+
 .bit-comment .comment-author.vcard img.avatar {
     width: 32px;
     height: 32px;
     margin-right: 0.5rem;
     border-radius: 15px;
 }
+
 .bit-comment .comment-author.vcard b.fn {
     margin-right: 0.25rem;
 }
+
 .bit-comment .comment-author.vcard .says {
     margin-left: 0.25rem;
 }
+
 .bit-comment .commentmetadata a,
 .bit-comment .commentmetadata a:visited {
     font-style: italic;
@@ -694,6 +715,7 @@
     pointer-events: none;
     cursor: default;
 }
+
 .bit-comment .children .bit-comment {
     margin-left: 20px;
     border-left: 2px solid #eee;
@@ -902,20 +924,29 @@ img.avatar {
     transition: max-height 0.4s ease-out, opacity 0.3s ease-out 0.15s, margin-top 0.4s ease-out;
     margin-top: 0;
     position: relative;
-    z-index: 1; /* Ensure comments appear above other content */
-    visibility: hidden; /* Initially hidden to prevent layout flash */
+    z-index: 1;
+    /* Ensure comments appear above other content */
+    visibility: hidden;
+    /* Initially hidden to prevent layout flash */
 }
 
 .bit-comments.open {
-    max-height: 2000px; /* Increased for longer comment threads */
+    max-height: 2000px;
+    /* Increased for longer comment threads */
     opacity: 1;
     margin-top: 1rem;
-    background: #f8f9fa; /* Subtle background to distinguish comments */
-    border-radius: 15px; /* Match card styling */
-    padding: 1rem; /* Add some padding for better spacing */
-    border-left: 3px solid #2c6e49; /* Green accent border */
-    z-index: 15; /* Very high z-index when open to ensure visibility above everything */
-    visibility: visible; /* Make visible when open */
+    background: #f8f9fa;
+    /* Subtle background to distinguish comments */
+    border-radius: 15px;
+    /* Match card styling */
+    padding: 1rem;
+    /* Add some padding for better spacing */
+    border-left: 3px solid #2c6e49;
+    /* Green accent border */
+    z-index: 15;
+    /* Very high z-index when open to ensure visibility above everything */
+    visibility: visible;
+    /* Make visible when open */
 }
 
 /* Responsive feed adjustments */
@@ -935,9 +966,9 @@ img.avatar {
         box-sizing: border-box !important;
     }
 
-    .bitstream-feed-layout > *,
-    .bitstream-feed-main > *,
-    .bitstream-feed > * {
+    .bitstream-feed-layout>*,
+    .bitstream-feed-main>*,
+    .bitstream-feed>* {
         min-width: 0 !important;
         max-width: 100% !important;
         box-sizing: border-box !important;
@@ -962,7 +993,7 @@ img.avatar {
         transform: none !important;
         z-index: auto !important;
     }
-    
+
     .bitstream-feed {
         padding: 0 !important;
         margin: 0 !important;
@@ -986,9 +1017,10 @@ img.avatar {
         overflow-wrap: anywhere;
         word-break: break-word;
     }
-    
+
     .bitstream-feed::after {
-        height: 1rem; /* Reduce spacing on mobile */
+        height: 1rem;
+        /* Reduce spacing on mobile */
     }
 }
 
@@ -999,7 +1031,10 @@ img.avatar {
 }
 
 /* Responsive iframe and embed handling */
-iframe, embed, object, video {
+iframe,
+embed,
+object,
+video {
     max-width: 100% !important;
     height: auto !important;
 }
@@ -1105,6 +1140,7 @@ iframe, embed, object, video {
     from {
         transform: rotate(0deg);
     }
+
     to {
         transform: rotate(360deg);
     }
@@ -1247,11 +1283,11 @@ iframe, embed, object, video {
     color: var(--wp--preset--color--accent-1, #2c6e49);
 }
 
-.bitstream-media-dropzone.has-media > span {
+.bitstream-media-dropzone.has-media>span {
     display: none;
 }
 
-.bitstream-media-dropzone.has-media > .bitstream-media-dropzone-icon {
+.bitstream-media-dropzone.has-media>.bitstream-media-dropzone-icon {
     display: none;
 }
 
@@ -1335,7 +1371,7 @@ iframe, embed, object, video {
     box-sizing: border-box;
 }
 
-.bitstream-audio-embed > .bitstream-audio-artwork {
+.bitstream-audio-embed>.bitstream-audio-artwork {
     grid-area: art;
     width: 120px;
     height: 120px;
@@ -1391,7 +1427,7 @@ iframe, embed, object, video {
     color: #111 !important;
 }
 
-.bitstream-audio-player .mejs-container .mejs-button > button {
+.bitstream-audio-player .mejs-container .mejs-button>button {
     filter: brightness(0) !important;
 }
 
@@ -1421,8 +1457,8 @@ iframe, embed, object, video {
     background: #e9eceb;
 }
 
-.bitstream-audio-artwork-wrap > .bitstream-audio-artwork,
-.bitstream-audio-embed > .bitstream-audio-artwork {
+.bitstream-audio-artwork-wrap>.bitstream-audio-artwork,
+.bitstream-audio-embed>.bitstream-audio-artwork {
     width: 100% !important;
     height: 100% !important;
     max-width: none !important;
@@ -2000,7 +2036,7 @@ body.bitstream-cropper-open {
     box-sizing: border-box;
 }
 
-.bitstream-poster-quote-preview > p {
+.bitstream-poster-quote-preview>p {
     margin: 0 0 0.7rem;
 }
 
@@ -2185,7 +2221,12 @@ body.bitstream-cropper-open {
 .bitstream-poster-actions {
     display: flex;
     gap: 0.65rem;
-    flex-wrap: wrap;
+}
+
+.bitstream-poster-actions .bitstream-poster-submit,
+.bitstream-poster-actions .bitstream-poster-save-draft {
+    flex: 1;
+    text-align: center;
 }
 
 /* Save to Drafts button */
@@ -2232,13 +2273,13 @@ body.bitstream-cropper-open {
 
     .bitstream-poster-actions .bitstream-poster-submit,
     .bitstream-poster-actions .bitstream-poster-save-draft {
-        width: 100%;
+        flex: 1 1 100%;
         text-align: center;
     }
 }
 
 /* Specific YouTube embed fixes */
-iframe[src*="youtube.com"], 
+iframe[src*="youtube.com"],
 iframe[src*="youtu.be"] {
     width: 100% !important;
     max-width: 100% !important;
@@ -2249,7 +2290,8 @@ iframe[src*="youtu.be"] {
 /* Generic responsive embed container */
 .embed-container {
     position: relative;
-    padding-bottom: 56.25%; /* 16:9 aspect ratio */
+    padding-bottom: 56.25%;
+    /* 16:9 aspect ratio */
     height: 0;
     overflow: hidden;
     max-width: 100%;
@@ -2267,18 +2309,22 @@ iframe[src*="youtu.be"] {
 
 /* Mobile-specific embed fixes */
 @media (max-width: 768px) {
-    iframe, embed, object, video {
+
+    iframe,
+    embed,
+    object,
+    video {
         max-width: calc(100vw - 40px) !important;
         width: 100% !important;
     }
-    
-    iframe[src*="youtube.com"], 
+
+    iframe[src*="youtube.com"],
     iframe[src*="youtu.be"] {
         max-width: calc(100vw - 40px) !important;
         width: 100% !important;
         height: auto !important;
     }
-    
+
     /* WordPress embed containers */
     .wp-embedded-content,
     .wp-block-embed,
@@ -2286,7 +2332,7 @@ iframe[src*="youtu.be"] {
         max-width: 100% !important;
         width: 100% !important;
     }
-    
+
     /* BitStream specific containers */
     .bit-content,
     .bit-rebit-content {
@@ -2375,12 +2421,12 @@ iframe[src*="youtu.be"] {
         align-items: flex-start !important;
         gap: 0.5rem !important;
     }
-    
+
     .bit-card-footer {
         flex-wrap: wrap !important;
         gap: 0.75rem !important;
     }
-    
+
     .bit-meta {
         font-size: 0.8rem !important;
     }
@@ -2392,7 +2438,7 @@ iframe[src*="youtu.be"] {
         padding: 0.25rem;
         height: auto !important;
     }
-    
+
     .bit-card {
         padding: 0.75rem !important;
         border-radius: 15px !important;
@@ -2491,18 +2537,18 @@ iframe[src*="youtu.be"] {
         bottom: 20px;
         right: 20px;
     }
-    
+
     .quickbit-toggle {
         width: 50px;
         height: 50px;
         font-size: 20px;
     }
-    
+
     .quickbit-dropdown {
         bottom: 60px;
         min-width: 140px;
     }
-    
+
     .quickbit-dropdown a {
         padding: 10px 12px;
         font-size: 13px;
@@ -2511,11 +2557,13 @@ iframe[src*="youtu.be"] {
 
 /* Ensure it doesn't interfere with admin bar */
 .admin-bar #bitstream-floating-quickbit {
-    bottom: 62px; /* Account for WordPress admin bar height */
+    bottom: 62px;
+    /* Account for WordPress admin bar height */
 }
 
 @media screen and (max-width: 782px) {
     .admin-bar #bitstream-floating-quickbit {
-        bottom: 76px; /* Adjust for mobile admin bar */
+        bottom: 76px;
+        /* Adjust for mobile admin bar */
     }
 }

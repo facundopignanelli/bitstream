@@ -2096,6 +2096,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 const editPostInput = form.querySelector('input[name="edit_post_id"]');
                 payload.set('edit_post_id', editPostInput ? (editPostInput.value || '0') : '0');
 
+                // Prevent beforeunload auto-save from also firing during redirect
+                formIsDirty = false;
+
                 draftButton.disabled = true;
                 draftButton.textContent = 'Saving...';
                 setStatus('Saving draft...');
