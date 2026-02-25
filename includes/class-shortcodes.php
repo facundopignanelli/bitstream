@@ -589,6 +589,7 @@ class BitStream_Shortcodes {
                     <input type="hidden" id="bitstream-rebit-og-title" name="rebit_og_title" value="<?php echo esc_attr($shared_title); ?>">
                     <input type="hidden" id="bitstream-rebit-og-desc" name="rebit_og_desc" value="">
                     <input type="hidden" id="bitstream-rebit-og-image" name="rebit_og_image" value="">
+                    <input type="hidden" id="bitstream-rebit-og-image-removed" name="rebit_og_image_removed" value="0">
                     <input type="hidden" id="bitstream-rebit-attachment-id" name="rebit_attachment_id" value="">
 
                     <div class="bitstream-rebit-preview-actions" hidden>

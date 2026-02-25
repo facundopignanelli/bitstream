@@ -340,6 +340,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const rebitEditorImageCropButton = posterRoot.querySelector('.bitstream-rebit-editor-image-crop');
             const rebitEditorImageClearButton = posterRoot.querySelector('.bitstream-rebit-editor-image-clear');
             const rebitOgImageInput = posterRoot.querySelector('#bitstream-rebit-og-image');
+            const rebitOgImageRemovedInput = posterRoot.querySelector('#bitstream-rebit-og-image-removed');
             let audioTagsTargetInputId = '';
             let audioTagsTargetPreviewId = '';
             let audioTagsArtworkId = 0;
@@ -809,6 +810,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 setAudioTagVisibility(targetInputId, attachment.mime || '');
 
                 if (targetInputId === 'bitstream-rebit-attachment-id') {
+                    if (rebitOgImageRemovedInput) {
+                        rebitOgImageRemovedInput.value = '0';
+                    }
                     refreshRebitEditorImagePreview();
                     refreshRebitPreview();
                 }
@@ -931,6 +935,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     renderMediaPreview(targetPreview, null);
 
                     if ((button.dataset.targetInput || '') === 'bitstream-rebit-attachment-id') {
+                        if (rebitOgImageRemovedInput) {
+                            rebitOgImageRemovedInput.value = '1';
+                        }
                         refreshRebitEditorImagePreview();
                         refreshRebitPreview();
                     }
@@ -1306,12 +1313,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         const previewUrl = (data.sizes && data.sizes.medium && data.sizes.medium.url) || data.url || fallbackUrl;
                         setRebitEditorPreviewImage(previewUrl || '');
                         if (rebitEditorImageCropButton) {
-                            rebitEditorImageCropButton.disabled = !previewUrl;
+                            rebitEditorImageCropButton.disabled = false;
                         }
                     }).catch(() => {
                         setRebitEditorPreviewImage(fallbackUrl);
                         if (rebitEditorImageCropButton) {
-                            rebitEditorImageCropButton.disabled = true;
+                            rebitEditorImageCropButton.disabled = false;
                         }
                     });
                     return;
@@ -1319,7 +1326,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 setRebitEditorPreviewImage(fallbackUrl);
                 if (rebitEditorImageCropButton) {
-                    rebitEditorImageCropButton.disabled = attachmentId <= 0;
+                    rebitEditorImageCropButton.disabled = false;
                 }
             }
 
@@ -1352,6 +1359,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             mime: data.mime || 'image/jpeg',
                             sizes: data.sizes || { medium: { url: data.url } }
                         });
+                        if (rebitOgImageRemovedInput) {
+                            rebitOgImageRemovedInput.value = '0';
+                        }
                         updateRebitEditorImagePreview();
                     });
 
@@ -1364,18 +1374,75 @@ document.addEventListener('DOMContentLoaded', function() {
                     event.preventDefault();
                     const input = document.getElementById('bitstream-rebit-attachment-id');
                     const attachmentId = input ? parseInt(input.value || '0', 10) : 0;
+                    const fetchedImageUrl = rebitOgImageInput ? (rebitOgImageInput.value || '').trim() : '';
+
+                    const openCropForAttachment = () => {
+                        openCropper('bitstream-rebit-attachment-id', 'bitstream-rebit-media-preview', {
+                            enforceSquare: false,
+                            onComplete: (croppedMedia) => {
+                                handleMediaSelection('bitstream-rebit-attachment-id', 'bitstream-rebit-media-preview', croppedMedia);
+                                if (rebitOgImageRemovedInput) {
+                                    rebitOgImageRemovedInput.value = '0';
+                                }
+                                updateRebitEditorImagePreview();
+                            }
+                        });
+                    };
+
                     if (!attachmentId) {
+                        if (fetchedImageUrl) {
+                            if (!bitstream_ajax || !bitstream_ajax.ajax_url || !bitstream_ajax.media_upload_nonce) {
+                                setStatus('Image cropper is unavailable.', true);
+                                return;
+                            }
+
+                            const payload = new FormData();
+                            payload.append('action', 'bitstream_prepare_rebit_image_for_crop');
+                            payload.append('nonce', bitstream_ajax.media_upload_nonce);
+                            payload.append('image_url', fetchedImageUrl);
+
+                            setStatus('Preparing fetched image for crop...');
+
+                            fetch(bitstream_ajax.ajax_url, {
+                                method: 'POST',
+                                credentials: 'same-origin',
+                                body: payload
+                            })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (!data.success) {
+                                        throw new Error(data.data || 'Could not prepare image for crop.');
+                                    }
+
+                                    const prepared = data.data || {};
+                                    handleMediaSelection('bitstream-rebit-attachment-id', 'bitstream-rebit-media-preview', {
+                                        id: prepared.id,
+                                        url: prepared.url,
+                                        mime: prepared.mime || 'image/jpeg',
+                                        sizes: { medium: { url: prepared.url } }
+                                    });
+
+                                    if (rebitOgImageRemovedInput) {
+                                        rebitOgImageRemovedInput.value = '0';
+                                    }
+
+                                    updateRebitEditorImagePreview();
+                                    openCropForAttachment();
+                                })
+                                .catch(error => {
+                                    setStatus(error.message || 'Could not prepare image for crop.', true);
+                                });
+                            return;
+                        }
+
                         setStatus('Choose an image first.', true);
+                        if (rebitEditorImageSelectButton) {
+                            rebitEditorImageSelectButton.click();
+                        }
                         return;
                     }
 
-                    openCropper('bitstream-rebit-attachment-id', 'bitstream-rebit-media-preview', {
-                        enforceSquare: false,
-                        onComplete: (croppedMedia) => {
-                            handleMediaSelection('bitstream-rebit-attachment-id', 'bitstream-rebit-media-preview', croppedMedia);
-                            updateRebitEditorImagePreview();
-                        }
-                    });
+                    openCropForAttachment();
                 });
             }
 
@@ -1388,6 +1455,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     if (rebitOgImageInput) {
                         rebitOgImageInput.value = '';
+                    }
+                    if (rebitOgImageRemovedInput) {
+                        rebitOgImageRemovedInput.value = '1';
                     }
                     renderMediaPreview(preview, null);
                     setRemoveVisibility('bitstream-rebit-attachment-id');
@@ -1420,6 +1490,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const titleHidden = posterRoot.querySelector('#bitstream-rebit-og-title');
             const descHidden = posterRoot.querySelector('#bitstream-rebit-og-desc');
             const imageHidden = posterRoot.querySelector('#bitstream-rebit-og-image');
+            const imageRemovedHidden = posterRoot.querySelector('#bitstream-rebit-og-image-removed');
             const attachmentHidden = posterRoot.querySelector('#bitstream-rebit-attachment-id');
 
             const rebitModal = posterRoot.querySelector('.bitstream-rebit-editor-modal');
@@ -1531,6 +1602,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 payload.append('rebit_og_title', (titleHidden && titleHidden.value) ? titleHidden.value : '');
                 payload.append('rebit_og_desc', (descHidden && descHidden.value) ? descHidden.value : '');
                 payload.append('rebit_og_image', (imageHidden && imageHidden.value) ? imageHidden.value : '');
+                payload.append('rebit_og_image_removed', (imageRemovedHidden && imageRemovedHidden.value) ? imageRemovedHidden.value : '0');
                 payload.append('rebit_attachment_id', (attachmentHidden && attachmentHidden.value) ? attachmentHidden.value : '');
 
                 if (livePreviewRoot) {
@@ -1649,6 +1721,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                             if (imageHidden) {
                                 imageHidden.value = meta.image || '';
+                            }
+                            if (imageRemovedHidden) {
+                                imageRemovedHidden.value = '0';
                             }
 
                             syncModalFromHidden();

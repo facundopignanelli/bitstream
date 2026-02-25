@@ -204,6 +204,7 @@ class BitStream_Ajax_Handlers {
         add_action('wp_ajax_bitstream_get_quoted_bit', [$this, 'handle_get_quoted_bit']);
         add_action('wp_ajax_bitstream_submit_poster', [$this, 'handle_submit_poster']);
         add_action('wp_ajax_bitstream_upload_media', [$this, 'handle_upload_media']);
+        add_action('wp_ajax_bitstream_prepare_rebit_image_for_crop', [$this, 'handle_prepare_rebit_image_for_crop']);
         add_action('wp_ajax_bitstream_crop_media', [$this, 'handle_crop_media']);
         add_action('wp_ajax_bitstream_get_audio_meta', [$this, 'handle_get_audio_meta']);
         add_action('wp_ajax_bitstream_update_audio_meta', [$this, 'handle_update_audio_meta']);
@@ -878,6 +879,66 @@ class BitStream_Ajax_Handlers {
     }
 
     /**
+     * Import a remote ReBit image URL as an attachment so it can be cropped.
+     */
+    public function handle_prepare_rebit_image_for_crop() {
+        try {
+            check_ajax_referer('bitstream_media_upload_nonce', 'nonce');
+
+            if (!current_user_can('upload_files') || !current_user_can('edit_posts')) {
+                wp_send_json_error('Insufficient permissions.');
+            }
+
+            $image_url = esc_url_raw(wp_unslash($_POST['image_url'] ?? ''));
+            if (empty($image_url) || !filter_var($image_url, FILTER_VALIDATE_URL)) {
+                wp_send_json_error('A valid image URL is required.');
+            }
+
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            require_once ABSPATH . 'wp-admin/includes/media.php';
+            require_once ABSPATH . 'wp-admin/includes/image.php';
+
+            $tmp_file = download_url($image_url, 20);
+            if (is_wp_error($tmp_file)) {
+                wp_send_json_error('Could not download image for cropping.');
+            }
+
+            $parsed_path = wp_parse_url($image_url, PHP_URL_PATH);
+            $filename = $parsed_path ? wp_basename($parsed_path) : '';
+            if (empty($filename) || strpos($filename, '.') === false) {
+                $filename = 'bitstream-rebit-image.jpg';
+            }
+
+            $file_array = [
+                'name' => sanitize_file_name($filename),
+                'tmp_name' => $tmp_file,
+            ];
+
+            $attachment_id = media_handle_sideload($file_array, 0, 'BitStream ReBit image');
+            if (is_wp_error($attachment_id) || !$attachment_id) {
+                @unlink($tmp_file);
+                wp_send_json_error('Could not prepare image for cropping.');
+            }
+
+            if (!wp_attachment_is_image($attachment_id)) {
+                wp_delete_attachment($attachment_id, true);
+                wp_send_json_error('The fetched URL is not a valid image.');
+            }
+
+            update_post_meta($attachment_id, '_bitstream_uploaded_via_poster', 1);
+            update_post_meta($attachment_id, '_bitstream_upload_created_at', time());
+
+            wp_send_json_success([
+                'id' => $attachment_id,
+                'url' => wp_get_attachment_url($attachment_id),
+                'mime' => get_post_mime_type($attachment_id),
+            ]);
+        } catch (Exception $e) {
+            wp_send_json_error($e->getMessage() ?: 'Could not prepare image for cropping.');
+        }
+    }
+
+    /**
      * Handle cropping an existing attachment image and replacing the file
      */
     public function handle_crop_media() {
@@ -1014,6 +1075,7 @@ class BitStream_Ajax_Handlers {
             $manual_title = sanitize_text_field(wp_unslash($_POST['rebit_og_title'] ?? ''));
             $manual_desc = sanitize_textarea_field(wp_unslash($_POST['rebit_og_desc'] ?? ''));
             $manual_image = esc_url_raw(wp_unslash($_POST['rebit_og_image'] ?? ''));
+            $manual_image_removed = !empty($_POST['rebit_og_image_removed']) && strval($_POST['rebit_og_image_removed']) === '1';
             $attachment_id = $this->get_valid_attachment_id($_POST['rebit_attachment_id'] ?? 0);
             $schedule = $this->build_schedule_args('rebit_schedule_enabled', 'rebit_schedule_datetime');
 
@@ -1028,7 +1090,7 @@ class BitStream_Ajax_Handlers {
 
             $og_title = !empty($manual_title) ? $manual_title : ($og_data['title'] ?? '');
             $og_desc = !empty($manual_desc) ? $manual_desc : ($og_data['description'] ?? '');
-            $og_image = !empty($manual_image) ? $manual_image : ($og_data['image'] ?? '');
+            $og_image = $manual_image_removed ? '' : (!empty($manual_image) ? $manual_image : ($og_data['image'] ?? ''));
 
             if ($attachment_id > 0) {
                 $attachment_image = wp_get_attachment_image_url($attachment_id, 'large');
@@ -1410,6 +1472,7 @@ class BitStream_Ajax_Handlers {
             $manual_title = sanitize_text_field(wp_unslash($_POST['rebit_og_title'] ?? ''));
             $manual_desc = sanitize_textarea_field(wp_unslash($_POST['rebit_og_desc'] ?? ''));
             $manual_image = esc_url_raw(wp_unslash($_POST['rebit_og_image'] ?? ''));
+            $manual_image_removed = !empty($_POST['rebit_og_image_removed']) && strval($_POST['rebit_og_image_removed']) === '1';
             $attachment_id = $this->get_valid_attachment_id($_POST['rebit_attachment_id'] ?? 0);
 
             $og_data = [];
@@ -1423,7 +1486,7 @@ class BitStream_Ajax_Handlers {
 
             $og_title = !empty($manual_title) ? $manual_title : ($og_data['title'] ?? '');
             $og_desc = !empty($manual_desc) ? $manual_desc : ($og_data['description'] ?? '');
-            $og_image = !empty($manual_image) ? $manual_image : ($og_data['image'] ?? '');
+            $og_image = $manual_image_removed ? '' : (!empty($manual_image) ? $manual_image : ($og_data['image'] ?? ''));
 
             if ($attachment_id > 0) {
                 $attachment_image = wp_get_attachment_image_url($attachment_id, 'large');
