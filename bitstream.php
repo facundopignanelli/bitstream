@@ -210,7 +210,10 @@ function bitstream_render_nested_quoted_card($post_id) {
     }
 
     $content = wpautop(get_post_field('post_content', $post_id));
-    $timestamp = human_time_diff(get_post_modified_time('U', false, $post_id), current_time('timestamp')) . ' ago';
+    $timestamp = human_time_diff(get_post_time('U', false, $post_id), current_time('timestamp')) . ' ago';
+    $posted_datetime = get_post_time('d/m/Y H:i', false, $post_id);
+    $is_edited = get_post_modified_time('U', false, $post_id) > get_post_time('U', false, $post_id);
+    $timestamp_tooltip = 'Posted: ' . $posted_datetime . ($is_edited ? ' • Edited' : '');
     $rebit_markup = bitstream_render_rebit_section($post_id);
 
     ob_start();
@@ -218,7 +221,7 @@ function bitstream_render_nested_quoted_card($post_id) {
     <article id="bit-quoted-<?php echo esc_attr($post_id); ?>" class="bit-card bit-card-quoted-nested" style="margin:0;padding:1.5rem;width:100%;max-width:none;box-sizing:border-box;border:1px solid #ddd;border-radius:15px;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,0.05);">
         <header class="bit-card-header" style="display:flex;align-items:center;margin-bottom:1rem;">
             <div class="bit-meta" style="font-size:0.875rem;color:var(--wp--preset--color--secondary,#666);">
-                <span class="bit-timestamp"><?php echo esc_html($timestamp); ?></span>
+                <span class="bit-timestamp" tabindex="0" data-timestamp-tooltip="<?php echo esc_attr($timestamp_tooltip); ?>" title="<?php echo esc_attr($timestamp_tooltip); ?>"><?php echo esc_html($timestamp); ?></span>
             </div>
         </header>
 
@@ -251,7 +254,10 @@ function bitstream_render_card($post_id, $skip_content_filter = false) {
         unset($GLOBALS['bitstream_is_rendering_card']);
     }
     
-    $timestamp = human_time_diff(get_post_modified_time('U',false,$post_id),current_time('timestamp')).' ago';
+    $timestamp = human_time_diff(get_post_time('U',false,$post_id),current_time('timestamp')).' ago';
+    $posted_datetime = get_post_time('d/m/Y H:i', false, $post_id);
+    $is_edited = get_post_modified_time('U', false, $post_id) > get_post_time('U', false, $post_id);
+    $timestamp_tooltip = 'Posted: ' . $posted_datetime . ($is_edited ? ' • Edited' : '');
     $avatar    = get_avatar(get_post_field('post_author',$post_id),48,'','',['class'=>'bit-avatar-img']);
     $likes     = (int)get_post_meta($post_id,'_bitstream_likes',true);
     $comments  = get_comments_number($post_id);
@@ -270,7 +276,7 @@ function bitstream_render_card($post_id, $skip_content_filter = false) {
                 <?php echo $avatar; ?>
             </div>
             <div class="bit-meta" style="font-size:0.875rem;color:var(--wp--preset--color--secondary,#666);">
-                <span class="bit-timestamp"><?php echo esc_html($timestamp); ?></span>
+                <span class="bit-timestamp" tabindex="0" data-timestamp-tooltip="<?php echo esc_attr($timestamp_tooltip); ?>" title="<?php echo esc_attr($timestamp_tooltip); ?>"><?php echo esc_html($timestamp); ?></span>
             </div>
         </header>
 

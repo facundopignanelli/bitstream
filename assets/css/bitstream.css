@@ -788,6 +788,56 @@ img.avatar {
     margin-top: 0.5rem;
 }
 
+.bit-timestamp {
+    position: relative;
+    cursor: default;
+}
+
+.bit-timestamp[data-timestamp-tooltip]::after {
+    content: attr(data-timestamp-tooltip);
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 10px);
+    transform: translateX(-50%);
+    background: #111;
+    color: #fff;
+    padding: 0.4rem 0.55rem;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    z-index: 25;
+    transition: opacity 0.16s ease, visibility 0.16s ease;
+}
+
+.bit-timestamp[data-timestamp-tooltip]::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 4px);
+    transform: translateX(-50%);
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 6px solid #111;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    z-index: 24;
+    transition: opacity 0.16s ease, visibility 0.16s ease;
+}
+
+.bit-timestamp[data-timestamp-tooltip]:hover::after,
+.bit-timestamp[data-timestamp-tooltip]:hover::before,
+.bit-timestamp[data-timestamp-tooltip]:focus::after,
+.bit-timestamp[data-timestamp-tooltip]:focus::before {
+    opacity: 1;
+    visibility: visible;
+}
+
 
 /* Like button animation and active state */
 .bit-like.liked {
