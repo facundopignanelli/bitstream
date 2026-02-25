@@ -1488,7 +1488,7 @@ class BitStream_Ajax_Handlers {
             $og_desc = !empty($manual_desc) ? $manual_desc : ($og_data['description'] ?? '');
             $og_image = $manual_image_removed ? '' : (!empty($manual_image) ? $manual_image : ($og_data['image'] ?? ''));
 
-            if ($attachment_id > 0) {
+            if ($attachment_id > 0 && empty($manual_image)) {
                 $attachment_image = wp_get_attachment_image_url($attachment_id, 'large');
                 if ($attachment_image) {
                     $og_image = $attachment_image;
