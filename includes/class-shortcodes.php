@@ -224,10 +224,10 @@ class BitStream_Shortcodes
 
         ob_start();
 ?>
-        <div class="bitstream-filter-box bitstream-sidebar-quick-post">
+        <div class="bitstream-filter-box bitstream-sidebar-quick-post" style="box-sizing: border-box;">
             <h3 class="bitstream-feed-sidebar-title">Quick Post</h3>
-            <form class="bitstream-sidebar-quick-post-form" data-submit-nonce="<?php echo esc_attr($submit_nonce); ?>">
-                <textarea name="bit_content" rows="3" placeholder="What's on your mind?" required class="bitstream-poster-field"></textarea>
+            <form class="bitstream-sidebar-quick-post-form" data-submit-nonce="<?php echo esc_attr($submit_nonce); ?>" style="display: flex; flex-direction: column;">
+                <textarea name="bit_content" rows="3" placeholder="What's on your mind?" required class="bitstream-poster-field" style="width: 100%; box-sizing: border-box; resize: vertical; min-height: 80px;"></textarea>
                 <div style="text-align: right; margin-top: 10px;">
                     <button type="submit" class="bitstream-poster-submit">Post Bit</button>
                 </div>
@@ -534,35 +534,43 @@ class BitStream_Shortcodes
         $desktop_rss_links = self::render_public_rss_links();
         $desktop_quick_post = self::render_quick_post_form();
 
-        $aside_class = (!empty($desktop_quick_post) || !empty($desktop_quick_actions) || !empty($desktop_rss_links)) ? 'bitstream-feed-sidebar bitstream-feed-sidebar-right' : 'bitstream-feed-sidebar-right';
+        echo '<div class="bitstream-feed-sidebar-right">';
 
-        echo '<aside class="' . esc_attr($aside_class) . '">';
         $has_content = false;
 
         if (!empty($desktop_quick_post)) {
+            echo '<aside class="bitstream-feed-sidebar">';
             echo $desktop_quick_post;
+            echo '</aside>';
             $has_content = true;
         }
 
         if (!empty($desktop_quick_actions)) {
+            echo '<aside class="bitstream-feed-sidebar">';
             echo '<div class="bitstream-filter-box">';
             echo '<h3 class="bitstream-feed-sidebar-title">Quick Actions</h3>';
             echo $desktop_quick_actions;
             echo '</div>';
+            echo '</aside>';
             $has_content = true;
         }
+
         if (!empty($desktop_rss_links)) {
+            echo '<aside class="bitstream-feed-sidebar">';
             echo '<div class="bitstream-filter-box">';
             echo '<h3 class="bitstream-feed-sidebar-title">RSS Feeds</h3>';
             echo $desktop_rss_links;
             echo '</div>';
+            echo '</aside>';
             $has_content = true;
         }
 
         if (!$has_content) {
+            echo '<aside class="bitstream-feed-sidebar" style="visibility:hidden;">';
             echo '<div class="bitstream-right-rail-reserved" aria-hidden="true"></div>';
+            echo '</aside>';
         }
-        echo '</aside>';
+
         echo '</div>';
 
         wp_reset_postdata();
