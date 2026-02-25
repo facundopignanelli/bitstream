@@ -759,7 +759,7 @@ class BitStream_Shortcodes {
                                         <small>Scheduled for <?php echo esc_html(get_the_date('Y-m-d H:i', $scheduled_id)); ?></small>
                                     </div>
                                     <div class="bitstream-scheduled-actions">
-                                        <a href="<?php echo esc_url(BitStream_Shortcodes::get_poster_page_url(['poster_tab' => $row_type, 'edit_post_id' => $scheduled_id])); ?>" target="_blank" rel="noopener">Edit</a>
+                                        <a href="<?php echo esc_url(BitStream_Shortcodes::get_poster_page_url(['poster_tab' => $row_type, 'edit_post_id' => $scheduled_id])); ?>">Edit</a>
                                         <a href="<?php echo esc_url(get_preview_post_link($scheduled_id)); ?>" target="_blank" rel="noopener">Preview</a>
                                     </div>
                                 </article>

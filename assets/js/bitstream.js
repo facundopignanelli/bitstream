@@ -2203,7 +2203,7 @@ document.addEventListener('DOMContentLoaded', function() {
         editUrl.searchParams.set('poster_tab', postType);
         editUrl.searchParams.set('edit_post_id', String(postId));
 
-        window.open(editUrl.toString(), '_blank');
+        window.location.href = editUrl.toString();
 
         const icon = button.querySelector('i');
         if (icon) {
