@@ -230,7 +230,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     scheduledRows.forEach(row => {
                         const type = row.dataset.type || 'bit';
-                        row.hidden = !(filter === 'all' || filter === type);
+                        row.classList.toggle('is-filtered-out', !(filter === 'all' || filter === type));
                     });
                 });
             });
@@ -251,7 +251,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     draftsRows.forEach(row => {
                         const type = row.dataset.type || 'bit';
-                        row.hidden = !(filter === 'all' || filter === type);
+                        row.classList.toggle('is-filtered-out', !(filter === 'all' || filter === type));
                     });
                 });
             });

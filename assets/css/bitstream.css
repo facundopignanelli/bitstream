@@ -2166,6 +2166,10 @@ body.bitstream-cropper-open {
     align-items: flex-start;
 }
 
+.bitstream-scheduled-item.is-filtered-out {
+    display: none;
+}
+
 .bitstream-scheduled-item.is-highlighted,
 .bitstream-highlight-target {
     border-color: var(--wp--preset--color--accent-1, #2c6e49) !important;
