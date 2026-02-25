@@ -767,9 +767,15 @@ class BitStream_Shortcodes {
                                         <small>Scheduled for <?php echo esc_html(get_the_date('Y-m-d H:i', $scheduled_id)); ?></small>
                                     </div>
                                     <div class="bitstream-scheduled-actions">
-                                        <a href="<?php echo esc_url(BitStream_Shortcodes::get_poster_page_url(['poster_tab' => $row_type, 'edit_post_id' => $scheduled_id])); ?>">Edit</a>
-                                        <a href="<?php echo esc_url(get_preview_post_link($scheduled_id)); ?>" target="_blank" rel="noopener">Preview</a>
-                                        <button type="button" class="bitstream-scheduled-delete" data-post-id="<?php echo esc_attr($scheduled_id); ?>">Delete</button>
+                                        <a href="<?php echo esc_url(BitStream_Shortcodes::get_poster_page_url(['poster_tab' => $row_type, 'edit_post_id' => $scheduled_id])); ?>" aria-label="Edit scheduled bit" title="Edit scheduled bit">
+                                            <i class="fa-solid fa-pencil" aria-hidden="true"></i>
+                                        </a>
+                                        <a href="<?php echo esc_url(get_preview_post_link($scheduled_id)); ?>" target="_blank" rel="noopener" aria-label="Preview scheduled bit" title="Preview scheduled bit">
+                                            <i class="fa-solid fa-up-right-from-square" aria-hidden="true"></i>
+                                        </a>
+                                        <button type="button" class="bitstream-scheduled-delete" data-post-id="<?php echo esc_attr($scheduled_id); ?>" aria-label="Delete scheduled bit" title="Delete scheduled bit">
+                                            <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                                        </button>
                                     </div>
                                 </article>
                             <?php endwhile; ?>
