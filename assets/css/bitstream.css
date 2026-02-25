@@ -2148,14 +2148,30 @@ body.bitstream-cropper-open {
     gap: 0.4rem;
 }
 
-.bitstream-scheduled-actions a {
+.bitstream-scheduled-actions a,
+.bitstream-scheduled-delete {
     text-decoration: none;
     background: var(--wp--preset--color--accent-1, #2c6e49);
     color: #fff;
+    border: none;
     border-radius: 15px;
     padding: 0.35rem 0.55rem;
     font-weight: 600;
     font-size: 0.85rem;
+    text-align: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.bitstream-scheduled-delete {
+    background: #ff9900;
+}
+
+.bitstream-scheduled-delete:disabled {
+    opacity: 0.7;
+    cursor: wait;
 }
 
 @media (max-width: 640px) {

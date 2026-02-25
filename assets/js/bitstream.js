@@ -233,6 +233,66 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
+        posterRoot.addEventListener('click', (event) => {
+            const deleteButton = event.target.closest('.bitstream-scheduled-delete');
+            if (!deleteButton) {
+                return;
+            }
+
+            event.preventDefault();
+
+            const postId = parseInt(deleteButton.dataset.postId || '0', 10);
+            if (!postId) {
+                return;
+            }
+
+            if (!window.bitstream_ajax || !bitstream_ajax.ajax_url || !bitstream_ajax.delete_post_nonce) {
+                setStatus('Delete endpoint is unavailable.', true);
+                return;
+            }
+
+            if (!window.confirm('Delete this scheduled Bit before publication?')) {
+                return;
+            }
+
+            deleteButton.disabled = true;
+            setStatus('Deleting scheduled Bit...');
+
+            const payload = new FormData();
+            payload.append('action', 'bitstream_delete_post');
+            payload.append('post_id', String(postId));
+            payload.append('nonce', bitstream_ajax.delete_post_nonce);
+
+            fetch(bitstream_ajax.ajax_url, {
+                method: 'POST',
+                credentials: 'same-origin',
+                body: payload
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) {
+                        throw new Error(data.data || 'Could not delete scheduled Bit.');
+                    }
+
+                    const row = deleteButton.closest('.bitstream-scheduled-item');
+                    if (row) {
+                        row.remove();
+                    }
+
+                    const scheduledList = posterRoot.querySelector('.bitstream-scheduled-list');
+                    const remainingRows = scheduledList ? scheduledList.querySelectorAll('.bitstream-scheduled-item') : [];
+                    if (scheduledList && remainingRows.length === 0) {
+                        scheduledList.innerHTML = '<p>No scheduled Bits or Rebits yet.</p>';
+                    }
+
+                    setStatus('Scheduled Bit deleted.');
+                })
+                .catch(error => {
+                    setStatus(error.message || 'Could not delete scheduled Bit.', true);
+                    deleteButton.disabled = false;
+                });
+        });
+
         function renderMediaPreview(previewEl, attachment) {
             if (!previewEl) {
                 return;

@@ -769,6 +769,7 @@ class BitStream_Shortcodes {
                                     <div class="bitstream-scheduled-actions">
                                         <a href="<?php echo esc_url(BitStream_Shortcodes::get_poster_page_url(['poster_tab' => $row_type, 'edit_post_id' => $scheduled_id])); ?>">Edit</a>
                                         <a href="<?php echo esc_url(get_preview_post_link($scheduled_id)); ?>" target="_blank" rel="noopener">Preview</a>
+                                        <button type="button" class="bitstream-scheduled-delete" data-post-id="<?php echo esc_attr($scheduled_id); ?>">Delete</button>
                                     </div>
                                 </article>
                             <?php endwhile; ?>
