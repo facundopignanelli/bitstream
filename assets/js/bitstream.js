@@ -1656,6 +1656,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const imageHidden = posterRoot.querySelector('#bitstream-rebit-og-image');
             const imageRemovedHidden = posterRoot.querySelector('#bitstream-rebit-og-image-removed');
             const attachmentHidden = posterRoot.querySelector('#bitstream-rebit-attachment-id');
+            const editPostHidden = posterRoot.querySelector('#bitstream-poster-panel-rebit input[name="edit_post_id"]');
+            const isRebitEditMode = !!(editPostHidden && parseInt(editPostHidden.value || '0', 10) > 0);
 
             const rebitModal = posterRoot.querySelector('.bitstream-rebit-editor-modal');
             const modalCloseButtons = rebitModal ? rebitModal.querySelectorAll('[data-rebit-editor-close="true"]') : [];
@@ -1948,8 +1950,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
 
                 const hasPrefilledUrl = urlInput && urlInput.value && urlInput.value.trim();
-                if (hasPrefilledUrl) {
+                if (hasPrefilledUrl && !isRebitEditMode) {
                     fetchButton.click();
+                }
+
+                if (hasPrefilledUrl && isRebitEditMode) {
+                    setMetadataReadyState(true);
+                    syncModalFromHidden();
+                    refreshRebitEditorImagePreview();
+                    queueLiveRebitPreviewRender(0);
                 }
             }
 
@@ -2170,6 +2179,39 @@ document.addEventListener('DOMContentLoaded', function() {
           setTimeout(() => icon.classList.remove('pulse'), 300);
         }
       });
+    });
+
+    // Edit button functionality
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest('.bit-edit');
+        if (!button) {
+            return;
+        }
+
+        event.preventDefault();
+
+        const postId = parseInt(button.dataset.postId || '0', 10);
+        if (!postId) {
+            return;
+        }
+
+        const postType = (button.dataset.postType === 'rebit') ? 'rebit' : 'bit';
+        const basePosterUrl = (window.bitstream_ajax && bitstream_ajax.poster_url)
+            ? bitstream_ajax.poster_url
+            : (window.location.origin + '/bitstream/');
+        const editUrl = new URL(basePosterUrl, window.location.origin);
+        editUrl.searchParams.set('poster_tab', postType);
+        editUrl.searchParams.set('edit_post_id', String(postId));
+
+        window.open(editUrl.toString(), '_blank');
+
+        const icon = button.querySelector('i');
+        if (icon) {
+            icon.classList.remove('pulse');
+            void icon.offsetWidth;
+            icon.classList.add('pulse');
+            setTimeout(() => icon.classList.remove('pulse'), 300);
+        }
     });
 
         // Delete button functionality (delegated for dynamically loaded cards)

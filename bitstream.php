@@ -256,6 +256,7 @@ function bitstream_render_card($post_id, $skip_content_filter = false) {
     $likes     = (int)get_post_meta($post_id,'_bitstream_likes',true);
     $comments  = get_comments_number($post_id);
     $quoted_id = (int) get_post_meta($post_id, '_bitstream_quoted_bit', true);
+    $is_rebit_card = !empty(get_post_meta($post_id, 'bitstream_rebit_url', true));
     $rebit_markup = bitstream_render_rebit_section($post_id);
     $quoted_markup = '';
     if ($quoted_id > 0) {
@@ -287,25 +288,43 @@ function bitstream_render_card($post_id, $skip_content_filter = false) {
 
         <hr style="margin:1rem 0;border:none;border-top:1px solid #eee;">
 
-        <footer class="bit-card-footer" style="display:flex;gap:1rem;font-size:0.875rem;align-items:center;">
-            <button class="bit-comment-toggle bit-action" data-target="comments-<?php echo esc_attr($post_id); ?>" style="background:none;border:none;cursor:pointer;">
-                <i class="fas fa-comment-dots"></i> <?php echo esc_html($comments); ?>
-            </button>
-            <button class="bit-like bit-action" data-post-id="<?php echo esc_attr($post_id); ?>" style="background:none;border:none;cursor:pointer;">
-                <i class="fas fa-heart"></i> <span class="bit-like-count"><?php echo esc_html($likes); ?></span>
-            </button>
-            <button class="bit-permalink bit-action" data-url="<?php echo esc_url(get_permalink($post_id)); ?>" style="background:none;border:none;cursor:pointer;" title="Copy link: <?php echo esc_attr(get_permalink($post_id)); ?>">
-                <i class="fa-solid fa-up-right-from-square"></i>
-            </button>
-            <?php if (current_user_can('edit_posts')): ?>
-            <button class="bit-quote bit-action" data-post-id="<?php echo esc_attr($post_id); ?>" style="background:none;border:none;cursor:pointer;" title="Quote this bit">
-                <i class="fa-solid fa-retweet"></i>
-            </button>
-            <?php endif; ?>
-            <?php if (is_user_logged_in() && current_user_can('delete_post', $post_id)): ?>
-            <button class="bit-delete bit-action" data-post-id="<?php echo esc_attr($post_id); ?>" style="background:none;border:none;cursor:pointer;" title="Delete this bit">
-                <i class="fa-solid fa-trash"></i>
-            </button>
+        <?php
+        $can_quote = current_user_can('edit_posts');
+        $can_edit = current_user_can('edit_post', $post_id);
+        $can_delete = is_user_logged_in() && current_user_can('delete_post', $post_id);
+        $show_admin_actions = $can_quote || $can_edit || $can_delete;
+        ?>
+        <footer class="bit-card-footer" style="display:flex;gap:0.75rem;font-size:0.875rem;align-items:center;">
+            <div class="bit-card-footer-main-actions">
+                <button class="bit-comment-toggle bit-action" data-target="comments-<?php echo esc_attr($post_id); ?>" style="background:none;border:none;cursor:pointer;">
+                    <i class="fas fa-comment-dots"></i> <?php echo esc_html($comments); ?>
+                </button>
+                <button class="bit-like bit-action" data-post-id="<?php echo esc_attr($post_id); ?>" style="background:none;border:none;cursor:pointer;">
+                    <i class="fas fa-heart"></i> <span class="bit-like-count"><?php echo esc_html($likes); ?></span>
+                </button>
+                <button class="bit-permalink bit-action" data-url="<?php echo esc_url(get_permalink($post_id)); ?>" style="background:none;border:none;cursor:pointer;" title="Copy link: <?php echo esc_attr(get_permalink($post_id)); ?>">
+                    <i class="fa-solid fa-up-right-from-square"></i>
+                </button>
+            </div>
+            <?php if ($show_admin_actions): ?>
+                <span class="bit-card-footer-spacer" aria-hidden="true"></span>
+                <div class="bit-card-footer-admin-actions">
+                    <?php if ($can_quote): ?>
+                    <button class="bit-quote bit-action" data-post-id="<?php echo esc_attr($post_id); ?>" style="background:none;border:none;cursor:pointer;" title="Quote this bit">
+                        <i class="fa-solid fa-retweet"></i>
+                    </button>
+                    <?php endif; ?>
+                    <?php if ($can_edit): ?>
+                    <button class="bit-edit bit-action" data-post-id="<?php echo esc_attr($post_id); ?>" data-post-type="<?php echo esc_attr($is_rebit_card ? 'rebit' : 'bit'); ?>" style="background:none;border:none;cursor:pointer;" title="Edit this bit">
+                        <i class="fa-solid fa-pencil"></i>
+                    </button>
+                    <?php endif; ?>
+                    <?php if ($can_delete): ?>
+                    <button class="bit-delete bit-action" data-post-id="<?php echo esc_attr($post_id); ?>" style="background:none;border:none;cursor:pointer;" title="Delete this bit">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                    <?php endif; ?>
+                </div>
             <?php endif; ?>
         </footer>
 

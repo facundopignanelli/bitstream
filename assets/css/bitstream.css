@@ -594,6 +594,21 @@
 
 
 /* BitStream Action Icons Styling */
+.bit-card-footer-main-actions,
+.bit-card-footer-admin-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.bit-card-footer-spacer {
+    display: inline-block;
+    width: 1px;
+    height: 1.1rem;
+    margin: 0 0.25rem;
+    background: rgba(0, 0, 0, 0.18);
+}
+
 .bit-action i {
     color: var(--wp--preset--color--accent-1, #2c6e49);
     transition: color 0.2s ease;
@@ -614,6 +629,15 @@
 .bit-delete.is-active i {
     color: #e74c3c;
 }
+
+.bit-edit i {
+    color: #044389;
+}
+
+.bit-edit:hover i,
+.bit-edit:focus i {
+    color: #044389;
+}
 /* Liked state */
 .bit-like.liked i {
     color: var(--wp--preset--color--accent-2, #044389);
@@ -625,7 +649,8 @@
   100% { transform: scale(1); }
 }
 .bit-like.pulse,
-.bit-permalink i.pulse {
+.bit-permalink i.pulse,
+.bit-edit i.pulse {
   animation: bitstream-pulse 0.3s ease-in-out;
 }
 

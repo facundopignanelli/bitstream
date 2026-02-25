@@ -11,6 +11,57 @@ if (!defined('ABSPATH')) exit;
 class BitStream_Shortcodes {
 
     /**
+     * Resolve a primary attachment id used by a Bit post.
+     */
+    private function get_primary_attachment_id($post_id) {
+        $post_id = intval($post_id);
+        if ($post_id <= 0) {
+            return 0;
+        }
+
+        $tracked_id = intval(get_post_meta($post_id, '_bitstream_attachment_id', true));
+        if ($tracked_id > 0) {
+            return $tracked_id;
+        }
+
+        $thumb_id = intval(get_post_thumbnail_id($post_id));
+        if ($thumb_id > 0) {
+            return $thumb_id;
+        }
+
+        $children = get_children([
+            'post_parent' => $post_id,
+            'post_type' => 'attachment',
+            'post_status' => 'inherit',
+            'fields' => 'ids',
+            'numberposts' => 1,
+        ]);
+
+        if (!empty($children)) {
+            return intval(reset($children));
+        }
+
+        return 0;
+    }
+
+    /**
+     * Strip media markup from a Bit body for textarea editing.
+     */
+    private function get_editable_text_content($content) {
+        $content = (string) $content;
+        if ($content === '') {
+            return '';
+        }
+
+        $content = strip_shortcodes($content);
+        $content = preg_replace('#<figure[^>]*>[\s\S]*?</figure>#i', '', $content);
+        $content = preg_replace('#<(audio|video)[^>]*>[\s\S]*?</\1>#i', '', $content);
+        $content = preg_replace('#<img[^>]*>#i', '', $content);
+
+        return trim(html_entity_decode(wp_strip_all_tags($content), ENT_QUOTES, 'UTF-8'));
+    }
+
+    /**
      * Render a compact quote preview card without interactive controls/forms
      */
     private function render_quote_preview_card($post_id) {
@@ -441,6 +492,7 @@ class BitStream_Shortcodes {
         $shared_url = isset($_GET['shared_url']) ? esc_url_raw(wp_unslash($_GET['shared_url'])) : '';
         $shared_title = isset($_GET['shared_title']) ? sanitize_text_field(wp_unslash($_GET['shared_title'])) : '';
         $shared_text = isset($_GET['shared_text']) ? sanitize_textarea_field(wp_unslash($_GET['shared_text'])) : '';
+        $edit_post_id = isset($_GET['edit_post_id']) ? intval($_GET['edit_post_id']) : 0;
 
         if (!empty($_GET['shared_key'])) {
             $shared_key = sanitize_text_field(wp_unslash($_GET['shared_key']));
@@ -459,17 +511,30 @@ class BitStream_Shortcodes {
             $initial_tab = 'rebit';
         }
 
-        $media_id = 0;
+        $bit_attachment_id_prefill = 0;
+        $rebit_attachment_id_prefill = 0;
         if (!empty($_GET['media_ids'])) {
             $media_ids_raw = sanitize_text_field(wp_unslash($_GET['media_ids']));
             $media_ids = array_filter(array_map('intval', explode(',', $media_ids_raw)));
             if (!empty($media_ids)) {
-                $media_id = intval(reset($media_ids));
+                $bit_attachment_id_prefill = intval(reset($media_ids));
             }
         }
 
         $bit_content_prefill = '';
         $rebit_commentary_prefill = '';
+        $rebit_og_desc_prefill = '';
+        $rebit_og_image_prefill = '';
+        $rebit_image_removed_prefill = '0';
+        $is_edit_mode = false;
+        $editing_is_rebit = false;
+
+        $bit_schedule_mode = 'now';
+        $bit_schedule_datetime = '';
+        $bit_schedule_enabled = '0';
+        $rebit_schedule_mode = 'now';
+        $rebit_schedule_datetime = '';
+        $rebit_schedule_enabled = '0';
 
         if (!empty($shared_url)) {
             if (!empty($shared_text) && $shared_text !== $shared_url) {
@@ -478,6 +543,46 @@ class BitStream_Shortcodes {
         } elseif (!empty($shared_text)) {
             $bit_content_prefill = $shared_text;
         }
+
+        if ($edit_post_id > 0) {
+            $editing_post = get_post($edit_post_id);
+            if ($editing_post && $editing_post->post_type === 'bit' && current_user_can('edit_post', $edit_post_id)) {
+                $is_edit_mode = true;
+                $editing_is_rebit = !empty(get_post_meta($edit_post_id, 'bitstream_rebit_url', true));
+
+                if ($editing_is_rebit) {
+                    $initial_tab = 'rebit';
+                    $shared_url = esc_url_raw(get_post_meta($edit_post_id, 'bitstream_rebit_url', true));
+                    $rebit_commentary_prefill = $this->get_editable_text_content($editing_post->post_content);
+                    $shared_title = sanitize_text_field(get_post_meta($edit_post_id, '_bitstream_og_title', true));
+                    $rebit_og_desc_prefill = sanitize_textarea_field(get_post_meta($edit_post_id, '_bitstream_og_desc', true));
+                    $rebit_og_image_prefill = esc_url_raw(get_post_meta($edit_post_id, '_bitstream_og_image', true));
+                    $rebit_attachment_id_prefill = $this->get_primary_attachment_id($edit_post_id);
+
+                    if ($editing_post->post_status === 'future') {
+                        $rebit_schedule_mode = 'later';
+                        $rebit_schedule_enabled = '1';
+                        $rebit_schedule_datetime = mysql2date('Y-m-d\\TH:i', $editing_post->post_date, false);
+                    }
+                } else {
+                    $initial_tab = 'bit';
+                    $bit_content_prefill = $this->get_editable_text_content($editing_post->post_content);
+                    $quote_post_id = intval(get_post_meta($edit_post_id, '_bitstream_quoted_bit', true));
+                    $bit_attachment_id_prefill = $this->get_primary_attachment_id($edit_post_id);
+
+                    if ($editing_post->post_status === 'future') {
+                        $bit_schedule_mode = 'later';
+                        $bit_schedule_enabled = '1';
+                        $bit_schedule_datetime = mysql2date('Y-m-d\\TH:i', $editing_post->post_date, false);
+                    }
+                }
+            }
+        }
+
+        $bit_edit_post_id = ($is_edit_mode && !$editing_is_rebit) ? $edit_post_id : 0;
+        $rebit_edit_post_id = ($is_edit_mode && $editing_is_rebit) ? $edit_post_id : 0;
+        $bit_submit_label = ($bit_edit_post_id > 0) ? 'Update Bit' : 'Publish Bit';
+        $rebit_submit_label = ($rebit_edit_post_id > 0) ? 'Update Rebit' : 'Publish Rebit';
 
         $is_bit_active = ($initial_tab === 'bit');
         $is_rebit_active = ($initial_tab === 'rebit');
@@ -527,7 +632,8 @@ class BitStream_Shortcodes {
                     <input type="hidden" name="quote_post_id" value="<?php echo esc_attr($quote_post_id); ?>">
 
                     <div class="bitstream-media-field">
-                        <input type="hidden" id="bitstream-bit-attachment-id" name="bit_attachment_id" value="<?php echo esc_attr($media_id); ?>">
+                        <input type="hidden" name="edit_post_id" value="<?php echo esc_attr($bit_edit_post_id); ?>">
+                        <input type="hidden" id="bitstream-bit-attachment-id" name="bit_attachment_id" value="<?php echo esc_attr($bit_attachment_id_prefill); ?>">
                         <div class="bitstream-media-dropzone" data-target-input="bitstream-bit-attachment-id" data-target-preview="bitstream-bit-media-preview" data-accept="image/*,video/*,audio/*">
                             <i class="fa-solid fa-photo-film bitstream-media-dropzone-icon" aria-hidden="true"></i>
                             <span>Drag and drop media here, or click to upload</span>
@@ -561,20 +667,20 @@ class BitStream_Shortcodes {
                             <h4 class="bitstream-post-options-section-title">Schedule</h4>
                         <div class="bitstream-schedule-options">
                             <label class="bitstream-schedule-radio">
-                                <input type="radio" name="bit_schedule_mode" value="now" data-schedule-toggle="bit" checked>
+                                <input type="radio" name="bit_schedule_mode" value="now" data-schedule-toggle="bit" <?php checked($bit_schedule_mode, 'now'); ?>>
                                 Post now
                             </label>
                             <label class="bitstream-schedule-radio">
-                                <input type="radio" name="bit_schedule_mode" value="later" data-schedule-toggle="bit">
+                                <input type="radio" name="bit_schedule_mode" value="later" data-schedule-toggle="bit" <?php checked($bit_schedule_mode, 'later'); ?>>
                                 Schedule for later
                             </label>
                         </div>
-                        <input type="datetime-local" name="bit_schedule_datetime" class="bitstream-schedule-datetime" data-schedule-input="bit" disabled>
-                        <input type="hidden" name="bit_schedule_enabled" value="0" data-schedule-hidden="bit">
+                        <input type="datetime-local" name="bit_schedule_datetime" class="bitstream-schedule-datetime" data-schedule-input="bit" value="<?php echo esc_attr($bit_schedule_datetime); ?>" <?php echo $bit_schedule_enabled === '1' ? '' : 'disabled'; ?>>
+                        <input type="hidden" name="bit_schedule_enabled" value="<?php echo esc_attr($bit_schedule_enabled); ?>" data-schedule-hidden="bit">
                         </div>
                     </details>
 
-                    <button type="submit" class="bitstream-poster-submit">Publish Bit</button>
+                    <button type="submit" class="bitstream-poster-submit"><?php echo esc_html($bit_submit_label); ?></button>
                 </form>
             </div>
 
@@ -588,11 +694,12 @@ class BitStream_Shortcodes {
 
                     <label for="bitstream-rebit-commentary"><strong>Bit Content</strong></label>
                     <textarea id="bitstream-rebit-commentary" name="rebit_commentary" rows="5" placeholder="What’s happening?"><?php echo esc_textarea($rebit_commentary_prefill); ?></textarea>
+                    <input type="hidden" name="edit_post_id" value="<?php echo esc_attr($rebit_edit_post_id); ?>">
                     <input type="hidden" id="bitstream-rebit-og-title" name="rebit_og_title" value="<?php echo esc_attr($shared_title); ?>">
-                    <input type="hidden" id="bitstream-rebit-og-desc" name="rebit_og_desc" value="">
-                    <input type="hidden" id="bitstream-rebit-og-image" name="rebit_og_image" value="">
-                    <input type="hidden" id="bitstream-rebit-og-image-removed" name="rebit_og_image_removed" value="0">
-                    <input type="hidden" id="bitstream-rebit-attachment-id" name="rebit_attachment_id" value="">
+                    <input type="hidden" id="bitstream-rebit-og-desc" name="rebit_og_desc" value="<?php echo esc_attr($rebit_og_desc_prefill); ?>">
+                    <input type="hidden" id="bitstream-rebit-og-image" name="rebit_og_image" value="<?php echo esc_attr($rebit_og_image_prefill); ?>">
+                    <input type="hidden" id="bitstream-rebit-og-image-removed" name="rebit_og_image_removed" value="<?php echo esc_attr($rebit_image_removed_prefill); ?>">
+                    <input type="hidden" id="bitstream-rebit-attachment-id" name="rebit_attachment_id" value="<?php echo esc_attr($rebit_attachment_id_prefill); ?>">
 
                     <div class="bitstream-rebit-preview-actions" hidden>
                         <button type="button" class="bitstream-rebit-edit-preview">Edit metadata</button>
@@ -611,20 +718,20 @@ class BitStream_Shortcodes {
                             <h4 class="bitstream-post-options-section-title">Schedule</h4>
                         <div class="bitstream-schedule-options">
                             <label class="bitstream-schedule-radio">
-                                <input type="radio" name="rebit_schedule_mode" value="now" data-schedule-toggle="rebit" checked>
+                                <input type="radio" name="rebit_schedule_mode" value="now" data-schedule-toggle="rebit" <?php checked($rebit_schedule_mode, 'now'); ?>>
                                 Post now
                             </label>
                             <label class="bitstream-schedule-radio">
-                                <input type="radio" name="rebit_schedule_mode" value="later" data-schedule-toggle="rebit">
+                                <input type="radio" name="rebit_schedule_mode" value="later" data-schedule-toggle="rebit" <?php checked($rebit_schedule_mode, 'later'); ?>>
                                 Schedule for later
                             </label>
                         </div>
-                        <input type="datetime-local" name="rebit_schedule_datetime" class="bitstream-schedule-datetime" data-schedule-input="rebit" disabled>
-                        <input type="hidden" name="rebit_schedule_enabled" value="0" data-schedule-hidden="rebit">
+                        <input type="datetime-local" name="rebit_schedule_datetime" class="bitstream-schedule-datetime" data-schedule-input="rebit" value="<?php echo esc_attr($rebit_schedule_datetime); ?>" <?php echo $rebit_schedule_enabled === '1' ? '' : 'disabled'; ?>>
+                        <input type="hidden" name="rebit_schedule_enabled" value="<?php echo esc_attr($rebit_schedule_enabled); ?>" data-schedule-hidden="rebit">
                         </div>
                     </details>
 
-                    <button type="submit" class="bitstream-poster-submit">Publish Rebit</button>
+                    <button type="submit" class="bitstream-poster-submit"><?php echo esc_html($rebit_submit_label); ?></button>
                 </form>
             </div>
 
@@ -652,7 +759,7 @@ class BitStream_Shortcodes {
                                         <small>Scheduled for <?php echo esc_html(get_the_date('Y-m-d H:i', $scheduled_id)); ?></small>
                                     </div>
                                     <div class="bitstream-scheduled-actions">
-                                        <a href="<?php echo esc_url(get_edit_post_link($scheduled_id, '')); ?>" target="_blank" rel="noopener">Edit</a>
+                                        <a href="<?php echo esc_url(BitStream_Shortcodes::get_poster_page_url(['poster_tab' => $row_type, 'edit_post_id' => $scheduled_id])); ?>" target="_blank" rel="noopener">Edit</a>
                                         <a href="<?php echo esc_url(get_preview_post_link($scheduled_id)); ?>" target="_blank" rel="noopener">Preview</a>
                                     </div>
                                 </article>

@@ -1072,8 +1072,28 @@ class BitStream_Ajax_Handlers {
             }
 
             $author_id = get_current_user_id();
+            $edit_post_id = intval($_POST['edit_post_id'] ?? 0);
+            $is_update = false;
+            $editing_post = null;
+
+            if ($edit_post_id > 0) {
+                $editing_post = get_post($edit_post_id);
+                if (!$editing_post || $editing_post->post_type !== 'bit') {
+                    wp_send_json_error('Post not found for editing.');
+                }
+
+                if (!current_user_can('edit_post', $edit_post_id)) {
+                    wp_send_json_error('Insufficient permissions to edit this post.');
+                }
+
+                $is_update = true;
+            }
 
             if ($poster_type === 'bit') {
+                if ($is_update && !empty(get_post_meta($edit_post_id, 'bitstream_rebit_url', true))) {
+                    wp_send_json_error('This post is a Rebit. Edit it from the Rebit tab.');
+                }
+
                 $raw_content = wp_unslash($_POST['bit_content'] ?? '');
                 $content = wp_kses_post($raw_content);
                 $attachment_id = $this->get_valid_attachment_id($_POST['bit_attachment_id'] ?? 0);
@@ -1090,18 +1110,25 @@ class BitStream_Ajax_Handlers {
                     $post_content .= (empty($post_content) ? '' : "\n\n") . $media_markup;
                 }
 
-                $post_id = wp_insert_post([
+                $post_args = [
                     'post_type' => 'bit',
                     'post_status' => $schedule['post_status'],
-                    'post_author' => $author_id,
                     'post_content' => $post_content,
                     'comment_status' => 'open',
                     'post_date' => $schedule['post_date'],
                     'post_date_gmt' => $schedule['post_date_gmt'],
-                ], true);
+                ];
+
+                if ($is_update) {
+                    $post_args['ID'] = $edit_post_id;
+                } else {
+                    $post_args['post_author'] = $author_id;
+                }
+
+                $post_id = $is_update ? wp_update_post($post_args, true) : wp_insert_post($post_args, true);
 
                 if (is_wp_error($post_id)) {
-                    wp_send_json_error('Failed to create Bit.');
+                    wp_send_json_error($is_update ? 'Failed to update Bit.' : 'Failed to create Bit.');
                 }
 
                 if ($quote_post_id > 0) {
@@ -1109,21 +1136,32 @@ class BitStream_Ajax_Handlers {
                     if ($quoted_post && $quoted_post->post_type === 'bit' && $quoted_post->post_status === 'publish') {
                         update_post_meta($post_id, '_bitstream_quoted_bit', $quote_post_id);
                     }
+                } else {
+                    delete_post_meta($post_id, '_bitstream_quoted_bit');
                 }
 
                 if ($attachment_id > 0) {
                     $this->assign_attachment_to_bit($post_id, $attachment_id);
+                } else {
+                    delete_post_meta($post_id, '_bitstream_attachment_id');
                 }
 
                 wp_send_json_success([
-                    'message' => $schedule['is_scheduled'] ? 'Bit scheduled successfully.' : 'Bit published successfully.',
+                    'message' => $is_update
+                        ? ($schedule['is_scheduled'] ? 'Bit updated and scheduled successfully.' : 'Bit updated successfully.')
+                        : ($schedule['is_scheduled'] ? 'Bit scheduled successfully.' : 'Bit published successfully.'),
                     'post_id' => $post_id,
                     'permalink' => get_permalink($post_id),
                     'view_url' => $schedule['is_scheduled'] ? get_preview_post_link($post_id) : get_permalink($post_id),
                     'edit_url' => get_edit_post_link($post_id, ''),
                     'rendered_html' => $this->sanitize_live_preview_markup(bitstream_render_card($post_id)),
                     'is_scheduled' => $schedule['is_scheduled'],
+                    'was_updated' => $is_update,
                 ]);
+            }
+
+            if ($is_update && empty(get_post_meta($edit_post_id, 'bitstream_rebit_url', true))) {
+                wp_send_json_error('This post is a Bit. Edit it from the Bit tab.');
             }
 
             $url = esc_url_raw(wp_unslash($_POST['rebit_url'] ?? ''));
@@ -1159,18 +1197,25 @@ class BitStream_Ajax_Handlers {
                 }
             }
 
-            $post_id = wp_insert_post([
+            $post_args = [
                 'post_type' => 'bit',
                 'post_status' => $schedule['post_status'],
-                'post_author' => $author_id,
                 'post_content' => $commentary,
                 'comment_status' => 'open',
                 'post_date' => $schedule['post_date'],
                 'post_date_gmt' => $schedule['post_date_gmt'],
-            ], true);
+            ];
+
+            if ($is_update) {
+                $post_args['ID'] = $edit_post_id;
+            } else {
+                $post_args['post_author'] = $author_id;
+            }
+
+            $post_id = $is_update ? wp_update_post($post_args, true) : wp_insert_post($post_args, true);
 
             if (is_wp_error($post_id)) {
-                wp_send_json_error('Failed to create Rebit.');
+                wp_send_json_error($is_update ? 'Failed to update Rebit.' : 'Failed to create Rebit.');
             }
 
             update_post_meta($post_id, 'bitstream_rebit_url', esc_url_raw($url));
@@ -1181,16 +1226,21 @@ class BitStream_Ajax_Handlers {
 
             if ($attachment_id > 0) {
                 $this->assign_attachment_to_bit($post_id, $attachment_id);
+            } else {
+                delete_post_meta($post_id, '_bitstream_attachment_id');
             }
 
             wp_send_json_success([
-                'message' => $schedule['is_scheduled'] ? 'Rebit scheduled successfully.' : 'Rebit published successfully.',
+                'message' => $is_update
+                    ? ($schedule['is_scheduled'] ? 'Rebit updated and scheduled successfully.' : 'Rebit updated successfully.')
+                    : ($schedule['is_scheduled'] ? 'Rebit scheduled successfully.' : 'Rebit published successfully.'),
                 'post_id' => $post_id,
                 'permalink' => get_permalink($post_id),
                 'view_url' => $schedule['is_scheduled'] ? get_preview_post_link($post_id) : get_permalink($post_id),
                 'edit_url' => get_edit_post_link($post_id, ''),
                 'rendered_html' => $this->sanitize_live_preview_markup(bitstream_render_card($post_id)),
                 'is_scheduled' => $schedule['is_scheduled'],
+                'was_updated' => $is_update,
                 'og' => [
                     'title' => $og_title,
                     'description' => $og_desc,
