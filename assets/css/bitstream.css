@@ -984,6 +984,7 @@ iframe, embed, object, video {
 }
 
 .bitstream-fetch-og,
+.bitstream-rebit-edit-preview,
 .bitstream-media-select,
 .bitstream-media-remove,
 .bitstream-poster-submit {
@@ -995,11 +996,56 @@ iframe, embed, object, video {
     font-weight: 600;
 }
 
+.bitstream-fetch-og.is-loading::before,
+.bitstream-rebit-editor-save.is-loading::before {
+    content: "\f110";
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    margin-right: 0.45rem;
+    display: inline-block;
+    animation: bitstream-fetch-spin 1s linear infinite;
+}
+
+@keyframes bitstream-fetch-spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 .bitstream-fetch-og,
+.bitstream-rebit-edit-preview,
 .bitstream-media-select,
 .bitstream-poster-submit {
     background: var(--wp--preset--color--accent-1, #2c6e49);
     color: #fff;
+}
+
+.bitstream-rebit-preview-actions {
+    display: flex;
+    justify-content: flex-start;
+    margin-top: 0.2rem;
+}
+
+.bitstream-rebit-live-preview {
+    margin-top: 0.4rem;
+}
+
+.bitstream-rebit-live-preview-label {
+    margin: 0 0 0.55rem;
+}
+
+.bitstream-rebit-live-preview-loading {
+    margin: 0 0 0.55rem;
+    font-size: 0.88rem;
+    color: #5b5b5b;
+}
+
+.bitstream-rebit-live-preview-card {
+    border-radius: 15px;
+    overflow: hidden;
 }
 
 .bitstream-media-remove {
@@ -1357,7 +1403,26 @@ iframe, embed, object, video {
     display: none;
 }
 
+.bitstream-rebit-editor-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bitstream-rebit-editor-modal[hidden] {
+    display: none;
+}
+
 .bitstream-audio-tags-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 20, 0.6);
+}
+
+.bitstream-rebit-editor-backdrop {
     position: absolute;
     inset: 0;
     background: rgba(15, 23, 20, 0.6);
@@ -1366,6 +1431,19 @@ iframe, embed, object, video {
 .bitstream-audio-tags-dialog {
     position: relative;
     width: min(520px, 92vw);
+    max-height: 90vh;
+    background: #fff;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+    z-index: 1;
+}
+
+.bitstream-rebit-editor-dialog {
+    position: relative;
+    width: min(620px, 92vw);
     max-height: 90vh;
     background: #fff;
     border-radius: 15px;
@@ -1385,6 +1463,15 @@ iframe, embed, object, video {
     border-bottom: 1px solid #e6e6e6;
 }
 
+.bitstream-rebit-editor-header,
+.bitstream-rebit-editor-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid #e6e6e6;
+}
+
 .bitstream-audio-tags-header {
     justify-content: flex-start;
 }
@@ -1394,7 +1481,21 @@ iframe, embed, object, video {
     border-top: 1px solid #e6e6e6;
 }
 
+.bitstream-rebit-editor-header {
+    justify-content: flex-start;
+}
+
+.bitstream-rebit-editor-footer {
+    border-bottom: none;
+    border-top: 1px solid #e6e6e6;
+}
+
 .bitstream-audio-tags-header h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.bitstream-rebit-editor-header h3 {
     margin: 0;
     font-size: 1rem;
 }
@@ -1405,7 +1506,20 @@ iframe, embed, object, video {
     gap: 0.75rem;
 }
 
+.bitstream-rebit-editor-body {
+    padding: 1rem;
+    display: grid;
+    gap: 0.75rem;
+    overflow: auto;
+}
+
 .bitstream-audio-tags-body label {
+    display: grid;
+    gap: 0.35rem;
+    font-weight: 600;
+}
+
+.bitstream-rebit-editor-body label {
     display: grid;
     gap: 0.35rem;
     font-weight: 600;
@@ -1417,6 +1531,21 @@ iframe, embed, object, video {
     padding: 0.55rem 0.7rem;
     font-family: inherit;
     font-size: 0.95rem;
+}
+
+.bitstream-rebit-editor-body input,
+.bitstream-rebit-editor-body textarea {
+    border: 1px solid #ccc;
+    border-radius: 15px;
+    padding: 0.55rem 0.7rem;
+    font-family: inherit;
+    font-size: 0.95rem;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.bitstream-rebit-editor-body .bitstream-media-field {
+    margin-top: 0.25rem;
 }
 
 .bitstream-audio-tags-artwork {
@@ -1499,7 +1628,8 @@ iframe, embed, object, video {
 }
 
 .bitstream-cropper-cancel,
-.bitstream-audio-tags-footer .bitstream-audio-tags-close {
+.bitstream-audio-tags-footer .bitstream-audio-tags-close,
+.bitstream-rebit-editor-footer .bitstream-rebit-editor-close {
     background: #ff9900;
     color: #fff;
     border: none;
@@ -1623,7 +1753,8 @@ iframe, embed, object, video {
 }
 
 .bitstream-cropper-apply,
-.bitstream-audio-tags-footer .bitstream-audio-tags-save {
+.bitstream-audio-tags-footer .bitstream-audio-tags-save,
+.bitstream-rebit-editor-footer .bitstream-rebit-editor-save {
     background: var(--wp--preset--color--accent-1, #2c6e49);
     color: #fff;
     border: none;

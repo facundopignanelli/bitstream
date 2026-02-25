@@ -584,42 +584,20 @@ class BitStream_Shortcodes {
                         <button type="button" class="bitstream-fetch-og">Fetch metadata</button>
                     </div>
 
-                    <label for="bitstream-rebit-commentary"><strong>Commentary</strong></label>
-                    <textarea id="bitstream-rebit-commentary" name="rebit_commentary" rows="4" placeholder="Add your thoughts"><?php echo esc_textarea($rebit_commentary_prefill); ?></textarea>
+                    <input type="hidden" id="bitstream-rebit-commentary" name="rebit_commentary" value="<?php echo esc_attr($rebit_commentary_prefill); ?>">
+                    <input type="hidden" id="bitstream-rebit-og-title" name="rebit_og_title" value="<?php echo esc_attr($shared_title); ?>">
+                    <input type="hidden" id="bitstream-rebit-og-desc" name="rebit_og_desc" value="">
+                    <input type="hidden" id="bitstream-rebit-og-image" name="rebit_og_image" value="">
+                    <input type="hidden" id="bitstream-rebit-attachment-id" name="rebit_attachment_id" value="">
 
-                    <label for="bitstream-rebit-og-title"><strong>Preview title</strong></label>
-                    <input type="text" id="bitstream-rebit-og-title" name="rebit_og_title" placeholder="Auto-filled from metadata" value="<?php echo esc_attr($shared_title); ?>">
-
-                    <label for="bitstream-rebit-og-desc"><strong>Preview description</strong></label>
-                    <textarea id="bitstream-rebit-og-desc" name="rebit_og_desc" rows="3" placeholder="Auto-filled from metadata"></textarea>
-
-                    <div class="bitstream-media-field">
-                        <input type="hidden" id="bitstream-rebit-attachment-id" name="rebit_attachment_id" value="">
-                        <div class="bitstream-media-dropzone" data-target-input="bitstream-rebit-attachment-id" data-target-preview="bitstream-rebit-media-preview" data-accept="image/*">
-                            <i class="fa-solid fa-photo-film bitstream-media-dropzone-icon" aria-hidden="true"></i>
-                            <span>Drag and drop image here, or click to upload</span>
-                            <div class="bitstream-media-preview" id="bitstream-rebit-media-preview"></div>
-                            <input type="file" class="bitstream-media-file" accept="image/*">
-                        </div>
-                        <div class="bitstream-media-progress is-hidden" data-progress-bar="bitstream-rebit-attachment-id">
-                            <div class="bitstream-media-progress-track">
-                                <div class="bitstream-media-progress-bar"></div>
-                            </div>
-                            <span class="bitstream-media-progress-text">Uploading...</span>
-                        </div>
-                        <div class="bitstream-media-controls">
-                            <button type="button" class="bitstream-media-remove is-hidden" data-target-input="bitstream-rebit-attachment-id" data-target-preview="bitstream-rebit-media-preview">Remove selected image</button>
-                            <a class="bitstream-media-crop is-hidden" data-target-input="bitstream-rebit-attachment-id" href="#" target="_blank" rel="noopener">Crop image</a>
-                        </div>
+                    <div class="bitstream-rebit-preview-actions">
+                        <button type="button" class="bitstream-rebit-edit-preview">Edit preview</button>
                     </div>
 
-                    <div class="bitstream-rebit-preview-card" id="bitstream-rebit-og-preview" hidden>
-                        <img src="" alt="" class="bitstream-rebit-preview-image">
-                        <div class="bitstream-rebit-preview-content">
-                            <h4 class="bitstream-rebit-preview-title"></h4>
-                            <p class="bitstream-rebit-preview-description"></p>
-                        </div>
-
+                    <div class="bitstream-rebit-live-preview" id="bitstream-rebit-live-preview" hidden>
+                        <p class="bitstream-rebit-live-preview-label"><strong>Live preview</strong></p>
+                        <p class="bitstream-rebit-live-preview-loading" hidden>Loading live preview...</p>
+                        <div class="bitstream-rebit-live-preview-card"></div>
                     </div>
 
                     <details class="bitstream-post-options">
@@ -723,6 +701,52 @@ class BitStream_Shortcodes {
                     <footer class="bitstream-audio-tags-footer">
                         <button type="button" class="bitstream-audio-tags-close" data-audio-tags-close="true">Close</button>
                         <button type="button" class="bitstream-audio-tags-save">Save tags</button>
+                    </footer>
+                </div>
+            </div>
+
+            <div class="bitstream-rebit-editor-modal" hidden>
+                <div class="bitstream-rebit-editor-backdrop" data-rebit-editor-close="true"></div>
+                <div class="bitstream-rebit-editor-dialog" role="dialog" aria-modal="true" aria-labelledby="bitstream-rebit-editor-title">
+                    <header class="bitstream-rebit-editor-header">
+                        <h3 id="bitstream-rebit-editor-title">Edit preview</h3>
+                    </header>
+                    <div class="bitstream-rebit-editor-body">
+                        <label for="bitstream-rebit-modal-commentary">
+                            <span>Commentary</span>
+                            <textarea id="bitstream-rebit-modal-commentary" rows="4" placeholder="Add your thoughts"></textarea>
+                        </label>
+                        <label for="bitstream-rebit-modal-og-title">
+                            <span>Preview title</span>
+                            <input type="text" id="bitstream-rebit-modal-og-title" placeholder="Auto-filled from metadata">
+                        </label>
+                        <label for="bitstream-rebit-modal-og-desc">
+                            <span>Preview description</span>
+                            <textarea id="bitstream-rebit-modal-og-desc" rows="3" placeholder="Auto-filled from metadata"></textarea>
+                        </label>
+
+                        <div class="bitstream-media-field">
+                            <div class="bitstream-media-dropzone" data-target-input="bitstream-rebit-attachment-id" data-target-preview="bitstream-rebit-media-preview" data-accept="image/*">
+                                <i class="fa-solid fa-photo-film bitstream-media-dropzone-icon" aria-hidden="true"></i>
+                                <span>Drag and drop image here, or click to upload</span>
+                                <div class="bitstream-media-preview" id="bitstream-rebit-media-preview"></div>
+                                <input type="file" class="bitstream-media-file" accept="image/*">
+                            </div>
+                            <div class="bitstream-media-progress is-hidden" data-progress-bar="bitstream-rebit-attachment-id">
+                                <div class="bitstream-media-progress-track">
+                                    <div class="bitstream-media-progress-bar"></div>
+                                </div>
+                                <span class="bitstream-media-progress-text">Uploading...</span>
+                            </div>
+                            <div class="bitstream-media-controls">
+                                <button type="button" class="bitstream-media-remove is-hidden" data-target-input="bitstream-rebit-attachment-id" data-target-preview="bitstream-rebit-media-preview">Remove selected image</button>
+                                <a class="bitstream-media-crop is-hidden" data-target-input="bitstream-rebit-attachment-id" href="#" target="_blank" rel="noopener">Crop image</a>
+                            </div>
+                        </div>
+                    </div>
+                    <footer class="bitstream-rebit-editor-footer">
+                        <button type="button" class="bitstream-rebit-editor-close" data-rebit-editor-close="true">Close</button>
+                        <button type="button" class="bitstream-rebit-editor-save">Save</button>
                     </footer>
                 </div>
             </div>

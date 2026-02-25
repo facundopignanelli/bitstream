@@ -79,6 +79,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const resultView = posterRoot.querySelector('.bitstream-poster-action-view');
         const resultCopy = posterRoot.querySelector('.bitstream-poster-action-copy');
         let latestPermalink = '';
+        let refreshRebitPreview = () => {};
 
         function setStatus(message, isError = false) {
             if (!statusEl) {
@@ -796,18 +797,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 targetInput.value = attachment.id || '';
 
-                const fallbackImageInput = targetInputId === 'bitstream-rebit-attachment-id'
-                    ? document.getElementById('bitstream-rebit-og-image')
-                    : null;
-
-                if (fallbackImageInput && attachment.url) {
-                    fallbackImageInput.value = attachment.url;
-                }
-
                 renderMediaPreview(targetPreview, attachment);
                 setRemoveVisibility(targetInputId);
                 setCropVisibility(targetInputId, attachment.mime || '');
                 setAudioTagVisibility(targetInputId, attachment.mime || '');
+
+                if (targetInputId === 'bitstream-rebit-attachment-id') {
+                    refreshRebitPreview();
+                }
             }
 
             function uploadMediaFile(file, targetInputId, targetPreviewId) {
@@ -925,6 +922,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         targetInput.value = '';
                     }
                     renderMediaPreview(targetPreview, null);
+
+                    if ((button.dataset.targetInput || '') === 'bitstream-rebit-attachment-id') {
+                        refreshRebitPreview();
+                    }
 
                     if (button.dataset.targetInput) {
                         setRemoveVisibility(button.dataset.targetInput);
@@ -1268,77 +1269,142 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
-        function updateRebitPreview(data) {
-            const previewCard = posterRoot.querySelector('#bitstream-rebit-og-preview');
-            if (!previewCard) {
-                return;
-            }
+        function initRebitPreview() {
+            const urlInput = posterRoot.querySelector('#bitstream-rebit-url');
+            const fetchButton = posterRoot.querySelector('.bitstream-fetch-og');
+            const fetchButtonDefaultLabel = (fetchButton && fetchButton.textContent)
+                ? fetchButton.textContent.trim()
+                : 'Fetch metadata';
+            const editButton = posterRoot.querySelector('.bitstream-rebit-edit-preview');
+            const livePreviewRoot = posterRoot.querySelector('#bitstream-rebit-live-preview');
+            const livePreviewLoading = livePreviewRoot ? livePreviewRoot.querySelector('.bitstream-rebit-live-preview-loading') : null;
+            const livePreviewCard = livePreviewRoot ? livePreviewRoot.querySelector('.bitstream-rebit-live-preview-card') : null;
+            let isRenderingLivePreview = false;
+            let isFetchingMetadata = false;
 
-            const titleEl = previewCard.querySelector('.bitstream-rebit-preview-title');
-            const descEl = previewCard.querySelector('.bitstream-rebit-preview-description');
-            const imageEl = previewCard.querySelector('.bitstream-rebit-preview-image');
-            const existingEmbed = previewCard.querySelector('.bitstream-rebit-preview-embed');
+            const commentaryHidden = posterRoot.querySelector('#bitstream-rebit-commentary');
+            const titleHidden = posterRoot.querySelector('#bitstream-rebit-og-title');
+            const descHidden = posterRoot.querySelector('#bitstream-rebit-og-desc');
+            const imageHidden = posterRoot.querySelector('#bitstream-rebit-og-image');
+            const attachmentHidden = posterRoot.querySelector('#bitstream-rebit-attachment-id');
 
-            if (existingEmbed) {
-                existingEmbed.remove();
-            }
+            const rebitModal = posterRoot.querySelector('.bitstream-rebit-editor-modal');
+            const modalCloseButtons = rebitModal ? rebitModal.querySelectorAll('[data-rebit-editor-close="true"]') : [];
+            const modalSaveButton = rebitModal ? rebitModal.querySelector('.bitstream-rebit-editor-save') : null;
+            const modalSaveDefaultLabel = (modalSaveButton && modalSaveButton.textContent)
+                ? modalSaveButton.textContent.trim()
+                : 'Save';
+            const modalCommentary = rebitModal ? rebitModal.querySelector('#bitstream-rebit-modal-commentary') : null;
+            const modalTitle = rebitModal ? rebitModal.querySelector('#bitstream-rebit-modal-og-title') : null;
+            const modalDesc = rebitModal ? rebitModal.querySelector('#bitstream-rebit-modal-og-desc') : null;
 
-            if (titleEl) {
-                titleEl.textContent = data.title || '';
-            }
-            if (descEl) {
-                descEl.textContent = data.description || '';
-            }
-
-            const hasEmbed = !!(data && data.is_embeddable && data.embed_type === 'youtube' && data.embed_url);
-
-            if (hasEmbed) {
-                const embedWrap = document.createElement('div');
-                embedWrap.className = 'bitstream-rebit-preview-embed';
-                embedWrap.innerHTML = '<iframe src="' + data.embed_url + '" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>';
-                if (previewCard.firstChild) {
-                    previewCard.insertBefore(embedWrap, previewCard.firstChild);
-                } else {
-                    previewCard.appendChild(embedWrap);
+            function clearLivePreview() {
+                if (livePreviewCard) {
+                    livePreviewCard.innerHTML = '';
+                }
+                if (livePreviewLoading) {
+                    livePreviewLoading.hidden = true;
+                }
+                if (livePreviewRoot) {
+                    livePreviewRoot.hidden = true;
                 }
             }
 
-            if (imageEl) {
-                imageEl.src = hasEmbed ? '' : (data.image || '');
-                imageEl.style.display = (!hasEmbed && data.image) ? 'block' : 'none';
+            function setLivePreviewLoadingState(isLoading) {
+                isRenderingLivePreview = !!isLoading;
+                updateActionButtonsState();
             }
 
-            const hasPreview = !!(hasEmbed || data.title || data.description || data.image);
-            previewCard.hidden = !hasPreview;
-        }
+            function setMetadataLoadingState(isLoading) {
+                isFetchingMetadata = !!isLoading;
+                updateActionButtonsState();
+            }
 
-        const fetchButton = posterRoot.querySelector('.bitstream-fetch-og');
-        if (fetchButton) {
-            fetchButton.addEventListener('click', () => {
-                const urlInput = posterRoot.querySelector('#bitstream-rebit-url');
-                const titleInput = posterRoot.querySelector('#bitstream-rebit-og-title');
-                const descInput = posterRoot.querySelector('#bitstream-rebit-og-desc');
-                const imageInput = posterRoot.querySelector('#bitstream-rebit-og-image');
+            function updateActionButtonsState() {
+                const hasLoading = isRenderingLivePreview || isFetchingMetadata;
 
+                if (editButton) {
+                    editButton.disabled = hasLoading;
+                    editButton.setAttribute('aria-busy', hasLoading ? 'true' : 'false');
+                }
+
+                if (fetchButton) {
+                    fetchButton.disabled = hasLoading;
+                    fetchButton.setAttribute('aria-busy', isFetchingMetadata ? 'true' : 'false');
+                    fetchButton.classList.toggle('is-loading', isFetchingMetadata);
+                    fetchButton.textContent = isFetchingMetadata ? 'Fetching metadata' : fetchButtonDefaultLabel;
+                }
+
+                if (modalSaveButton) {
+                    modalSaveButton.disabled = hasLoading;
+                    modalSaveButton.setAttribute('aria-busy', isRenderingLivePreview ? 'true' : 'false');
+                    modalSaveButton.classList.toggle('is-loading', isRenderingLivePreview);
+                    modalSaveButton.textContent = isRenderingLivePreview ? 'Saving' : modalSaveDefaultLabel;
+                }
+            }
+
+            function syncModalFromHidden() {
+                if (modalCommentary && commentaryHidden) {
+                    modalCommentary.value = commentaryHidden.value || '';
+                }
+                if (modalTitle && titleHidden) {
+                    modalTitle.value = titleHidden.value || '';
+                }
+                if (modalDesc && descHidden) {
+                    modalDesc.value = descHidden.value || '';
+                }
+            }
+
+            function syncHiddenFromModal() {
+                if (modalCommentary && commentaryHidden) {
+                    commentaryHidden.value = modalCommentary.value || '';
+                }
+                if (modalTitle && titleHidden) {
+                    titleHidden.value = modalTitle.value || '';
+                }
+                if (modalDesc && descHidden) {
+                    descHidden.value = modalDesc.value || '';
+                }
+            }
+
+            function closeRebitModal() {
+                if (!rebitModal) {
+                    return;
+                }
+                rebitModal.hidden = true;
+            }
+
+            function renderLiveRebitPreview() {
                 const url = (urlInput && urlInput.value) ? urlInput.value.trim() : '';
                 if (!url) {
-                    setStatus('Please enter a URL first.', true);
+                    setLivePreviewLoadingState(false);
+                    clearLivePreview();
                     return;
                 }
 
                 if (!window.bitstream_ajax || !bitstream_ajax.ajax_url || !bitstream_ajax.og_fetch_nonce) {
-                    setStatus('Metadata fetcher is unavailable.', true);
+                    setLivePreviewLoadingState(false);
+                    setStatus('Live preview is unavailable.', true);
                     return;
                 }
 
                 const payload = new FormData();
-                payload.append('action', 'bitstream_fetch_og_data');
+                payload.append('action', 'bitstream_render_rebit_preview');
                 payload.append('nonce', bitstream_ajax.og_fetch_nonce);
-                payload.append('url', url);
-                payload.append('post_id', '0');
+                payload.append('rebit_url', url);
+                payload.append('rebit_commentary', (commentaryHidden && commentaryHidden.value) ? commentaryHidden.value : '');
+                payload.append('rebit_og_title', (titleHidden && titleHidden.value) ? titleHidden.value : '');
+                payload.append('rebit_og_desc', (descHidden && descHidden.value) ? descHidden.value : '');
+                payload.append('rebit_og_image', (imageHidden && imageHidden.value) ? imageHidden.value : '');
+                payload.append('rebit_attachment_id', (attachmentHidden && attachmentHidden.value) ? attachmentHidden.value : '');
 
-                fetchButton.disabled = true;
-                setStatus('Fetching metadata...');
+                if (livePreviewRoot) {
+                    livePreviewRoot.hidden = false;
+                }
+                if (livePreviewLoading) {
+                    livePreviewLoading.hidden = false;
+                }
+                setLivePreviewLoadingState(true);
 
                 fetch(bitstream_ajax.ajax_url, {
                     method: 'POST',
@@ -1348,41 +1414,129 @@ document.addEventListener('DOMContentLoaded', function() {
                     .then(response => response.json())
                     .then(data => {
                         if (!data.success) {
-                            throw new Error(data.data || 'Metadata fetch failed.');
+                            throw new Error(data.data || 'Could not render preview.');
                         }
 
-                        const meta = data.data || {};
-
-                        if (titleInput) {
-                            titleInput.value = meta.title || '';
+                        const responseData = data.data || {};
+                        if (livePreviewCard) {
+                            livePreviewCard.innerHTML = responseData.rendered_html || '';
+                            applyMediaDeterrents(livePreviewCard);
                         }
-                        if (descInput) {
-                            descInput.value = meta.description || '';
+                        if (livePreviewLoading) {
+                            livePreviewLoading.hidden = true;
                         }
-                        if (imageInput) {
-                            imageInput.value = meta.image || imageInput.value || '';
+                        if (livePreviewRoot) {
+                            livePreviewRoot.hidden = false;
                         }
-
-                        updateRebitPreview(meta);
-                        setStatus('Metadata loaded. You can edit it before publishing.');
                     })
                     .catch(error => {
-                        setStatus(error.message || 'Could not fetch metadata.', true);
+                        clearLivePreview();
+                        setStatus(error.message || 'Could not render preview.', true);
                     })
                     .finally(() => {
-                        fetchButton.disabled = false;
+                        setLivePreviewLoadingState(false);
                     });
-            });
+            }
 
-            const sharedUrlInput = posterRoot.querySelector('#bitstream-rebit-url');
-            const hasPrefilledUrl = sharedUrlInput && sharedUrlInput.value && sharedUrlInput.value.trim();
-            if (hasPrefilledUrl) {
-                const titleInput = posterRoot.querySelector('#bitstream-rebit-og-title');
-                const descInput = posterRoot.querySelector('#bitstream-rebit-og-desc');
-                const hasManualPreview = (titleInput && titleInput.value.trim()) || (descInput && descInput.value.trim());
-                if (!hasManualPreview) {
+            refreshRebitPreview = renderLiveRebitPreview;
+
+            if (editButton) {
+                editButton.addEventListener('click', () => {
+                    if (isRenderingLivePreview) {
+                        return;
+                    }
+                    syncModalFromHidden();
+                    if (rebitModal) {
+                        rebitModal.hidden = false;
+                    }
+                });
+            }
+
+            if (modalCloseButtons && modalCloseButtons.length) {
+                modalCloseButtons.forEach(button => {
+                    button.addEventListener('click', closeRebitModal);
+                });
+            }
+
+            if (modalSaveButton) {
+                modalSaveButton.addEventListener('click', () => {
+                    syncHiddenFromModal();
+                    closeRebitModal();
+                    renderLiveRebitPreview();
+                    setStatus('Preview updated.');
+                });
+            }
+
+            if (fetchButton) {
+                fetchButton.addEventListener('click', () => {
+                    if (isFetchingMetadata || isRenderingLivePreview) {
+                        return;
+                    }
+
+                    const url = (urlInput && urlInput.value) ? urlInput.value.trim() : '';
+                    if (!url) {
+                        setStatus('Please enter a URL first.', true);
+                        return;
+                    }
+
+                    if (!window.bitstream_ajax || !bitstream_ajax.ajax_url || !bitstream_ajax.og_fetch_nonce) {
+                        setStatus('Metadata fetcher is unavailable.', true);
+                        return;
+                    }
+
+                    const payload = new FormData();
+                    payload.append('action', 'bitstream_fetch_og_data');
+                    payload.append('nonce', bitstream_ajax.og_fetch_nonce);
+                    payload.append('url', url);
+                    payload.append('post_id', '0');
+
+                    setMetadataLoadingState(true);
+                    setStatus('Fetching metadata...');
+
+                    fetch(bitstream_ajax.ajax_url, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        body: payload
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (!data.success) {
+                                throw new Error(data.data || 'Metadata fetch failed.');
+                            }
+
+                            const meta = data.data || {};
+                            if (titleHidden) {
+                                titleHidden.value = meta.title || '';
+                            }
+                            if (descHidden) {
+                                descHidden.value = meta.description || '';
+                            }
+                            if (imageHidden) {
+                                imageHidden.value = meta.image || '';
+                            }
+
+                            syncModalFromHidden();
+                            renderLiveRebitPreview();
+                            setStatus('Metadata loaded.');
+                        })
+                        .catch(error => {
+                            setStatus(error.message || 'Could not fetch metadata.', true);
+                        })
+                        .finally(() => {
+                            setMetadataLoadingState(false);
+                        });
+                });
+
+                const hasPrefilledUrl = urlInput && urlInput.value && urlInput.value.trim();
+                if (hasPrefilledUrl) {
                     fetchButton.click();
                 }
+            }
+
+            if (urlInput) {
+                urlInput.addEventListener('input', () => {
+                    clearLivePreview();
+                });
             }
         }
 
@@ -1444,7 +1598,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         });
 
                         if ((form.dataset.posterType || '') === 'rebit') {
-                            updateRebitPreview({});
+                            const livePreviewRoot = posterRoot.querySelector('#bitstream-rebit-live-preview');
+                            const livePreviewCard = livePreviewRoot ? livePreviewRoot.querySelector('.bitstream-rebit-live-preview-card') : null;
+                            if (livePreviewCard) {
+                                livePreviewCard.innerHTML = '';
+                            }
+                            if (livePreviewRoot) {
+                                livePreviewRoot.hidden = true;
+                            }
                         }
                     })
                     .catch(error => {
@@ -1460,6 +1621,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         bindMediaButtons();
+        initRebitPreview();
     }
 
     initBitstreamPoster();

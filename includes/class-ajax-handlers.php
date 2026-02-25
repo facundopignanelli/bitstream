@@ -200,6 +200,7 @@ class BitStream_Ajax_Handlers {
         add_action('wp_ajax_bitstream_load_more', [$this, 'handle_load_more']);
         add_action('wp_ajax_nopriv_bitstream_load_more', [$this, 'handle_load_more']);
         add_action('wp_ajax_bitstream_fetch_og_data', [$this, 'handle_fetch_og_data']);
+        add_action('wp_ajax_bitstream_render_rebit_preview', [$this, 'handle_render_rebit_preview']);
         add_action('wp_ajax_bitstream_get_quoted_bit', [$this, 'handle_get_quoted_bit']);
         add_action('wp_ajax_bitstream_submit_poster', [$this, 'handle_submit_poster']);
         add_action('wp_ajax_bitstream_upload_media', [$this, 'handle_upload_media']);
@@ -1384,6 +1385,83 @@ class BitStream_Ajax_Handlers {
 
         } catch (Exception $e) {
             wp_send_json_error('An error occurred while fetching preview data.');
+        }
+    }
+
+    /**
+     * Render a live ReBit preview using the same frontend card renderer.
+     */
+    public function handle_render_rebit_preview() {
+        try {
+            if (!wp_verify_nonce($_POST['nonce'] ?? '', 'bitstream_og_fetch_nonce')) {
+                wp_send_json_error('Invalid nonce.');
+            }
+
+            if (!is_user_logged_in() || !current_user_can('edit_posts')) {
+                wp_send_json_error('Insufficient permissions.');
+            }
+
+            $url = esc_url_raw(wp_unslash($_POST['rebit_url'] ?? ''));
+            if (empty($url) || !filter_var($url, FILTER_VALIDATE_URL)) {
+                wp_send_json_error('A valid URL is required for preview.');
+            }
+
+            $commentary = wp_kses_post(wp_unslash($_POST['rebit_commentary'] ?? ''));
+            $manual_title = sanitize_text_field(wp_unslash($_POST['rebit_og_title'] ?? ''));
+            $manual_desc = sanitize_textarea_field(wp_unslash($_POST['rebit_og_desc'] ?? ''));
+            $manual_image = esc_url_raw(wp_unslash($_POST['rebit_og_image'] ?? ''));
+            $attachment_id = $this->get_valid_attachment_id($_POST['rebit_attachment_id'] ?? 0);
+
+            $og_data = [];
+            if (class_exists('BitStream_OG_Fetcher')) {
+                $fetcher = new BitStream_OG_Fetcher();
+                $fetched = $fetcher->fetch_og_data($url);
+                if (is_array($fetched)) {
+                    $og_data = $fetched;
+                }
+            }
+
+            $og_title = !empty($manual_title) ? $manual_title : ($og_data['title'] ?? '');
+            $og_desc = !empty($manual_desc) ? $manual_desc : ($og_data['description'] ?? '');
+            $og_image = !empty($manual_image) ? $manual_image : ($og_data['image'] ?? '');
+
+            if ($attachment_id > 0) {
+                $attachment_image = wp_get_attachment_image_url($attachment_id, 'large');
+                if ($attachment_image) {
+                    $og_image = $attachment_image;
+                }
+            }
+
+            $preview_post_id = wp_insert_post([
+                'post_type' => 'bit',
+                'post_status' => 'draft',
+                'post_author' => get_current_user_id(),
+                'post_content' => $commentary,
+                'comment_status' => 'closed',
+            ], true);
+
+            if (is_wp_error($preview_post_id) || !$preview_post_id) {
+                wp_send_json_error('Could not build live preview.');
+            }
+
+            update_post_meta($preview_post_id, 'bitstream_rebit_url', esc_url_raw($url));
+            update_post_meta($preview_post_id, '_bitstream_og_title', sanitize_text_field($og_title));
+            update_post_meta($preview_post_id, '_bitstream_og_desc', sanitize_text_field($og_desc));
+            update_post_meta($preview_post_id, '_bitstream_og_image', esc_url_raw($og_image));
+
+            $rendered_html = bitstream_render_card($preview_post_id);
+            wp_delete_post($preview_post_id, true);
+
+            wp_send_json_success([
+                'rendered_html' => $rendered_html,
+                'og' => [
+                    'title' => $og_title,
+                    'description' => $og_desc,
+                    'image' => $og_image,
+                ],
+            ]);
+        } catch (Exception $e) {
+            wp_send_json_error($e->getMessage() ?: 'Could not render preview.');
         }
     }
     
