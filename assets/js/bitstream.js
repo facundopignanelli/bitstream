@@ -3145,4 +3145,51 @@ function applyCommentStyles() {
 // Apply comment styles on document ready
 jQuery(document).ready(function ($) {
     applyCommentStyles();
+
+    // Quick Post form handler
+    const quickPostForms = document.querySelectorAll('.bitstream-sidebar-quick-post-form');
+    quickPostForms.forEach(form => {
+        const statusEl = form.querySelector('.bitstream-sidebar-quick-post-status');
+        const submitBtn = form.querySelector('[type="submit"]');
+
+        function setStatus(msg, isError = false) {
+            if (!statusEl) return;
+            statusEl.textContent = msg;
+            statusEl.style.color = isError ? '#cc0000' : '#2c6e49';
+        }
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            setStatus('Posting...');
+            if (submitBtn) submitBtn.disabled = true;
+
+            const fd = new FormData(form);
+            fd.append('action', 'bitstream_submit_poster');
+            fd.append('nonce', form.dataset.submitNonce);
+            fd.append('poster_type', 'bit');
+
+            fetch(bitstream_ajax.ajax_url, {
+                method: 'POST',
+                body: fd
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        setStatus('Posted!');
+                        form.reset();
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 500);
+                    } else {
+                        setStatus(data.data || 'Failed to post.', true);
+                        if (submitBtn) submitBtn.disabled = false;
+                    }
+                })
+                .catch(err => {
+                    setStatus('Network error.', true);
+                    if (submitBtn) submitBtn.disabled = false;
+                });
+        });
+    });
 });

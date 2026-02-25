@@ -211,6 +211,33 @@ class BitStream_Shortcodes
         return $html;
     }
 
+    /**
+     * Render the Quick Post sidebar box
+     */
+    public static function render_quick_post_form()
+    {
+        if (!is_user_logged_in() || !current_user_can('edit_posts')) {
+            return '';
+        }
+
+        $submit_nonce = wp_create_nonce('bitstream_poster_submit_nonce');
+
+        ob_start();
+?>
+        <div class="bitstream-filter-box bitstream-sidebar-quick-post">
+            <h3 class="bitstream-feed-sidebar-title">Quick Post</h3>
+            <form class="bitstream-sidebar-quick-post-form" data-submit-nonce="<?php echo esc_attr($submit_nonce); ?>">
+                <textarea name="bit_content" rows="3" placeholder="What's on your mind?" required class="bitstream-poster-field"></textarea>
+                <div style="text-align: right; margin-top: 10px;">
+                    <button type="submit" class="bitstream-poster-submit">Post Bit</button>
+                </div>
+                <div class="bitstream-sidebar-quick-post-status" style="margin-top: 5px; font-size: 0.85rem;" aria-live="polite"></div>
+            </form>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
+
     public function __construct()
     {
         add_action('init', [$this, 'register_shortcodes']);
@@ -505,10 +532,18 @@ class BitStream_Shortcodes
 
         $desktop_quick_actions = self::render_quick_action_links();
         $desktop_rss_links = self::render_public_rss_links();
-        $aside_class = (!empty($desktop_quick_actions) || !empty($desktop_rss_links)) ? 'bitstream-feed-sidebar bitstream-feed-sidebar-right' : 'bitstream-feed-sidebar-right';
+        $desktop_quick_post = self::render_quick_post_form();
+
+        $aside_class = (!empty($desktop_quick_post) || !empty($desktop_quick_actions) || !empty($desktop_rss_links)) ? 'bitstream-feed-sidebar bitstream-feed-sidebar-right' : 'bitstream-feed-sidebar-right';
 
         echo '<aside class="' . esc_attr($aside_class) . '">';
         $has_content = false;
+
+        if (!empty($desktop_quick_post)) {
+            echo $desktop_quick_post;
+            $has_content = true;
+        }
+
         if (!empty($desktop_quick_actions)) {
             echo '<div class="bitstream-filter-box">';
             echo '<h3 class="bitstream-feed-sidebar-title">Quick Actions</h3>';
