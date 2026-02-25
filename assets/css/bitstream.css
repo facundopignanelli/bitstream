@@ -2145,31 +2145,30 @@ body.bitstream-cropper-open {
 .bitstream-scheduled-actions {
     display: flex;
     flex-direction: row;
-    gap: 0.4rem;
+    gap: 0.55rem;
     align-items: center;
 }
 
 .bitstream-scheduled-actions a,
 .bitstream-scheduled-delete {
     text-decoration: none;
-    background: var(--wp--preset--color--accent-1, #2c6e49);
-    color: #fff;
+    background: none;
+    color: inherit;
     border: none;
-    border-radius: 15px;
-    width: 2rem;
-    height: 2rem;
     padding: 0;
-    font-weight: 600;
-    font-size: 0.85rem;
-    text-align: center;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
 }
 
+.bitstream-scheduled-edit i,
+.bitstream-scheduled-preview i {
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+}
+
 .bitstream-scheduled-delete {
-    background: #ff9900;
+    color: #ff9900;
 }
 
 .bitstream-scheduled-delete:disabled {
@@ -2178,7 +2177,7 @@ body.bitstream-cropper-open {
 }
 
 .bitstream-scheduled-actions i {
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     line-height: 1;
 }
 
