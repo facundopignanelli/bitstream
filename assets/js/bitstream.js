@@ -215,23 +215,47 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
 
-        const scheduledFilterButtons = posterRoot.querySelectorAll('.bitstream-scheduled-filter-btn');
-        const scheduledRows = posterRoot.querySelectorAll('.bitstream-scheduled-item');
-        scheduledFilterButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                const filter = button.dataset.filter || 'all';
+        // Scheduled filter — scoped to the scheduled panel only
+        const scheduledPanel = posterRoot.querySelector('#bitstream-poster-panel-scheduled');
+        if (scheduledPanel) {
+            const scheduledFilterButtons = scheduledPanel.querySelectorAll('.bitstream-scheduled-filter-btn');
+            const scheduledRows = scheduledPanel.querySelectorAll('.bitstream-scheduled-item');
+            scheduledFilterButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const filter = button.dataset.filter || 'all';
 
-                scheduledFilterButtons.forEach(btn => {
-                    btn.classList.toggle('is-active', btn === button);
-                });
+                    scheduledFilterButtons.forEach(btn => {
+                        btn.classList.toggle('is-active', btn === button);
+                    });
 
-                scheduledRows.forEach(row => {
-                    const type = row.dataset.type || 'bit';
-                    const show = (filter === 'all' || filter === type);
-                    row.hidden = !show;
+                    scheduledRows.forEach(row => {
+                        const type = row.dataset.type || 'bit';
+                        row.hidden = !(filter === 'all' || filter === type);
+                    });
                 });
             });
-        });
+        }
+
+        // Drafts filter — scoped to the drafts panel only
+        const draftsPanel = posterRoot.querySelector('#bitstream-poster-panel-drafts');
+        if (draftsPanel) {
+            const draftsFilterButtons = draftsPanel.querySelectorAll('.bitstream-drafts-filter-btn');
+            const draftsRows = draftsPanel.querySelectorAll('.bitstream-draft-item');
+            draftsFilterButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const filter = button.dataset.filter || 'all';
+
+                    draftsFilterButtons.forEach(btn => {
+                        btn.classList.toggle('is-active', btn === button);
+                    });
+
+                    draftsRows.forEach(row => {
+                        const type = row.dataset.type || 'bit';
+                        row.hidden = !(filter === 'all' || filter === type);
+                    });
+                });
+            });
+        }
 
         posterRoot.addEventListener('click', (event) => {
             const deleteButton = event.target.closest('.bitstream-scheduled-delete');
@@ -303,24 +327,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
         });
 
-        // Drafts filter buttons
-        const draftsFilterButtons = posterRoot.querySelectorAll('.bitstream-drafts-filter-btn');
-        const draftsRows = posterRoot.querySelectorAll('.bitstream-draft-item');
-        draftsFilterButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                const filter = button.dataset.filter || 'all';
 
-                draftsFilterButtons.forEach(btn => {
-                    btn.classList.toggle('is-active', btn === button);
-                });
-
-                draftsRows.forEach(row => {
-                    const type = row.dataset.type || 'bit';
-                    const show = (filter === 'all' || filter === type);
-                    row.hidden = !show;
-                });
-            });
-        });
 
         function renderMediaPreview(previewEl, attachment) {
             if (!previewEl) {
