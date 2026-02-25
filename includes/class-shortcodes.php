@@ -238,6 +238,27 @@ class BitStream_Shortcodes
         return ob_get_clean();
     }
 
+    /**
+     * Render the About Box
+     */
+    public static function render_about_box()
+    {
+        ob_start();
+?>
+        <div class="bitstream-filter-box bitstream-about-box" style="font-size: 0.85rem; color: var(--wp--preset--color--secondary, #666); text-align: center;">
+            <p style="margin: 0 0 0.5rem; font-weight: 600;">
+                BitStream v<?php echo esc_html(BITSTREAM_VERSION); ?>
+            </p>
+            <p style="margin: 0;">
+                <a href="https://github.com/facundopignanelli/bitstream" target="_blank" rel="noopener" style="color: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem;">
+                    <i class="fa-brands fa-github" aria-hidden="true" style="font-size: 1.1em;"></i> GitHub Repository
+                </a>
+            </p>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
+
     public function __construct()
     {
         add_action('init', [$this, 'register_shortcodes']);
@@ -443,6 +464,11 @@ class BitStream_Shortcodes
             echo '</details>';
         }
 
+        echo '<details class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-about mobile-about-panel" open>';
+        echo '<summary class="bitstream-feed-sidebar-summary"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> About</summary>';
+        echo self::render_about_box();
+        echo '</details>';
+
         echo '<details class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-filters" open>';
         echo '<summary class="bitstream-feed-sidebar-summary"><i class="fa-solid fa-sliders" aria-hidden="true"></i> Filters</summary>';
         echo '<div class="bitstream-filter-box">';
@@ -580,6 +606,7 @@ class BitStream_Shortcodes
                 echo $desktop_rss_links;
                 echo '</div>';
             }
+            echo self::render_about_box();
             echo '</aside>';
             $has_content = true;
         }
