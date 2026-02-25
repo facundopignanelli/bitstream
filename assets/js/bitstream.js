@@ -1281,6 +1281,63 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             });
 
+            function getActivePosterMediaTarget() {
+                const activePanel = posterRoot.querySelector('.bitstream-poster-panel.is-active');
+                if (!activePanel) {
+                    return null;
+                }
+
+                if (activePanel.id === 'bitstream-poster-panel-rebit') {
+                    return {
+                        targetInputId: 'bitstream-rebit-attachment-id',
+                        targetPreviewId: 'bitstream-rebit-media-preview',
+                        label: 'Rebit image'
+                    };
+                }
+
+                if (activePanel.id === 'bitstream-poster-panel-bit') {
+                    return {
+                        targetInputId: 'bitstream-bit-attachment-id',
+                        targetPreviewId: 'bitstream-bit-media-preview',
+                        label: 'Bit media'
+                    };
+                }
+
+                return null;
+            }
+
+            posterRoot.addEventListener('paste', (event) => {
+                const clipboard = event.clipboardData;
+                if (!clipboard || !clipboard.items || !clipboard.items.length) {
+                    return;
+                }
+
+                let imageFile = null;
+                for (let i = 0; i < clipboard.items.length; i++) {
+                    const item = clipboard.items[i];
+                    if (item && item.type && item.type.indexOf('image/') === 0) {
+                        imageFile = item.getAsFile();
+                        if (imageFile) {
+                            break;
+                        }
+                    }
+                }
+
+                if (!imageFile) {
+                    return;
+                }
+
+                const mediaTarget = getActivePosterMediaTarget();
+                if (!mediaTarget) {
+                    setStatus('Open Bit or Rebit tab to paste an image.', true);
+                    return;
+                }
+
+                event.preventDefault();
+                uploadMediaFile(imageFile, mediaTarget.targetInputId, mediaTarget.targetPreviewId);
+                setStatus('Uploading pasted image...');
+            });
+
             const existingMediaInputs = posterRoot.querySelectorAll('input[name="bit_attachment_id"], input[name="rebit_attachment_id"]');
             existingMediaInputs.forEach(input => {
                 const value = parseInt(input.value || '0', 10);
