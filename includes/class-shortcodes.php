@@ -228,8 +228,8 @@ class BitStream_Shortcodes
             <h3 class="bitstream-feed-sidebar-title">Quick Bit</h3>
             <form class="bitstream-sidebar-quick-post-form" data-submit-nonce="<?php echo esc_attr($submit_nonce); ?>" style="display: flex; flex-direction: column;">
                 <textarea name="bit_content" rows="3" placeholder="What's on your mind?" required class="bitstream-poster-field" style="width: 100%; box-sizing: border-box; resize: vertical; min-height: 80px;"></textarea>
-                <div style="text-align: right; margin-top: 10px;">
-                    <button type="submit" class="bitstream-poster-submit">Post Bit</button>
+                <div style="margin-top: 10px;">
+                    <button type="submit" class="bitstream-poster-submit" style="width: 100%; padding: 0.4rem 0.8rem; font-size: 0.9rem;">Post Bit</button>
                 </div>
                 <div class="bitstream-sidebar-quick-post-status" style="margin-top: 5px; font-size: 0.85rem;" aria-live="polite"></div>
             </form>
