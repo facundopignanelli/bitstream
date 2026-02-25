@@ -1911,40 +1911,6 @@ body.bitstream-cropper-open {
     box-shadow: none !important;
 }
 
-.bitstream-poster-result {
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid #ddd;
-}
-
-.bitstream-poster-result-actions {
-    display: flex;
-    gap: 0.6rem;
-    flex-wrap: wrap;
-    margin-bottom: 0.75rem;
-}
-
-.bitstream-poster-result-actions a,
-.bitstream-poster-result-actions button {
-    border: none;
-    border-radius: 15px;
-    padding: 0.55rem 0.8rem;
-    background: var(--wp--preset--color--accent-1, #2c6e49);
-    color: #fff;
-    text-decoration: none;
-    cursor: pointer;
-    font-family: inherit;
-    font-weight: 600;
-}
-
-.bitstream-poster-result-card .bit-card {
-    position: static !important;
-    width: 100% !important;
-    left: auto !important;
-    top: auto !important;
-    margin: 0 !important;
-}
-
 .bitstream-post-options {
     border: 1px solid #ddd;
     border-radius: 15px;

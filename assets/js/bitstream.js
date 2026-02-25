@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     document.addEventListener('contextmenu', (event) => {
-        const container = event.target.closest('.bitstream-feed, .bitstream-poster, .bitstream-poster-result');
+        const container = event.target.closest('.bitstream-feed, .bitstream-poster');
         if (!container) {
             return;
         }
@@ -73,12 +73,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const statusEl = posterRoot.querySelector('.bitstream-poster-status');
         const submitNonce = posterRoot.dataset.submitNonce || '';
-        const resultRoot = posterRoot.querySelector('.bitstream-poster-result');
-        const resultCard = posterRoot.querySelector('.bitstream-poster-result-card');
-        const resultEdit = posterRoot.querySelector('.bitstream-poster-action-edit');
-        const resultView = posterRoot.querySelector('.bitstream-poster-action-view');
-        const resultCopy = posterRoot.querySelector('.bitstream-poster-action-copy');
-        let latestPermalink = '';
         let refreshRebitPreview = () => {};
         let refreshRebitEditorImagePreview = () => {};
 
@@ -92,37 +86,46 @@ document.addEventListener('DOMContentLoaded', function() {
             statusEl.classList.toggle('is-success', !isError && !!message);
         }
 
-        function setPublishedPreview(data) {
-            if (!resultRoot || !resultCard) {
+        function setInlinePublishedPreview(form, data) {
+            if (!form) {
                 return;
             }
 
             const renderedHtml = data.rendered_html || '';
-            latestPermalink = data.permalink || '';
-
-            resultCard.innerHTML = renderedHtml;
-            resultRoot.hidden = false;
-            applyMediaDeterrents(resultCard);
-
-            if (resultEdit) {
-                resultEdit.href = data.edit_url || '#';
+            if (!renderedHtml) {
+                return;
             }
-            if (resultView) {
-                resultView.href = data.view_url || latestPermalink || '#';
-            }
-        }
 
-        if (resultCopy) {
-            resultCopy.addEventListener('click', () => {
-                if (!latestPermalink) {
-                    setStatus('No permalink available to copy yet.', true);
-                    return;
+            const posterType = form.dataset.posterType || 'bit';
+            let previewRoot = null;
+            let previewCard = null;
+
+            if (posterType === 'rebit') {
+                previewRoot = posterRoot.querySelector('#bitstream-rebit-live-preview');
+                previewCard = previewRoot ? previewRoot.querySelector('.bitstream-rebit-live-preview-card') : null;
+            } else {
+                previewRoot = form.querySelector('.bitstream-bit-live-preview');
+                if (!previewRoot) {
+                    previewRoot = document.createElement('div');
+                    previewRoot.className = 'bitstream-rebit-live-preview bitstream-bit-live-preview';
+                    previewRoot.innerHTML = '<p class="bitstream-rebit-live-preview-label"><strong>Preview</strong></p><div class="bitstream-rebit-live-preview-card"></div>';
+                    const submitButton = form.querySelector('.bitstream-poster-submit');
+                    if (submitButton && submitButton.parentNode) {
+                        submitButton.parentNode.insertBefore(previewRoot, submitButton);
+                    } else {
+                        form.appendChild(previewRoot);
+                    }
                 }
+                previewCard = previewRoot.querySelector('.bitstream-rebit-live-preview-card');
+            }
 
-                navigator.clipboard.writeText(latestPermalink)
-                    .then(() => setStatus('Permalink copied.'))
-                    .catch(() => setStatus('Could not copy permalink.', true));
-            });
+            if (!previewRoot || !previewCard) {
+                return;
+            }
+
+            previewCard.innerHTML = renderedHtml;
+            previewRoot.hidden = false;
+            applyMediaDeterrents(previewCard);
         }
 
         const tabButtons = posterRoot.querySelectorAll('.bitstream-poster-tab');
@@ -1875,7 +1878,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                         const responseData = data.data || {};
                         setStatus(responseData.message || 'Published successfully.');
-                        setPublishedPreview(responseData);
+                        setInlinePublishedPreview(form, responseData);
 
                         form.reset();
                         form.querySelectorAll('.bitstream-media-preview').forEach(previewEl => {
@@ -1884,12 +1887,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
                         if ((form.dataset.posterType || '') === 'rebit') {
                             const livePreviewRoot = posterRoot.querySelector('#bitstream-rebit-live-preview');
-                            const livePreviewCard = livePreviewRoot ? livePreviewRoot.querySelector('.bitstream-rebit-live-preview-card') : null;
-                            if (livePreviewCard) {
-                                livePreviewCard.innerHTML = '';
-                            }
                             if (livePreviewRoot) {
-                                livePreviewRoot.hidden = true;
+                                livePreviewRoot.hidden = false;
                             }
                         }
                     })
@@ -2231,7 +2230,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function getCardTextTitle(mediaEl) {
-        const card = mediaEl.closest('.bit-card, .bitstream-poster-result-card, .bitstream-media-preview, .bitstream-poster');
+        const card = mediaEl.closest('.bit-card, .bitstream-media-preview, .bitstream-poster');
         if (!card) {
             return '';
         }

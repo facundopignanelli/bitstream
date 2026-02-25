@@ -664,16 +664,6 @@ class BitStream_Shortcodes {
 
             <div class="bitstream-poster-status" aria-live="polite"></div>
 
-            <div class="bitstream-poster-result" hidden>
-                <h3>Published preview</h3>
-                <div class="bitstream-poster-result-actions">
-                    <a class="bitstream-poster-action-edit" href="#" target="_blank" rel="noopener">Edit</a>
-                    <button type="button" class="bitstream-poster-action-copy">Copy permalink</button>
-                    <a class="bitstream-poster-action-view" href="#" target="_blank" rel="noopener">Open post</a>
-                </div>
-                <div class="bitstream-poster-result-card"></div>
-            </div>
-
             <div class="bitstream-audio-tags-modal" hidden>
                 <div class="bitstream-audio-tags-backdrop" data-audio-tags-close="true"></div>
                 <div class="bitstream-audio-tags-dialog" role="dialog" aria-modal="true" aria-labelledby="bitstream-audio-tags-title">
