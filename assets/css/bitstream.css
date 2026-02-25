@@ -55,6 +55,24 @@
     min-height: 100px;
 }
 
+/* WordPress emoji images must stay inline text-size — our !important rules above would otherwise blow them up */
+.bit-card-content img.emoji,
+.bit-rebit-preview img.emoji,
+.bitstream-quoted-preview img.emoji,
+.bitstream-og-card img.emoji {
+    display: inline !important;
+    width: 1em !important;
+    height: 1em !important;
+    max-width: 1em !important;
+    max-height: 1em !important;
+    min-height: unset !important;
+    margin: 0 0.05em !important;
+    vertical-align: -0.1em !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    object-fit: unset !important;
+}
+
 /* Constrain video/mediaelement output inside cards */
 .bit-card-content video,
 .bit-rebit-preview video,
@@ -1979,8 +1997,12 @@ body.bitstream-cropper-open {
 }
 
 .bitstream-rebit-preview-image {
-    width: 100%;
+    max-width: 100%;
+    max-height: 400px;
+    width: auto;
+    object-fit: contain;
     display: block;
+    margin: 0 auto;
 }
 
 .bitstream-rebit-preview-embed {
