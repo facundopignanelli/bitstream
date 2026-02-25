@@ -1121,7 +1121,7 @@ class BitStream_Ajax_Handlers {
                     'permalink' => get_permalink($post_id),
                     'view_url' => $schedule['is_scheduled'] ? get_preview_post_link($post_id) : get_permalink($post_id),
                     'edit_url' => get_edit_post_link($post_id, ''),
-                    'rendered_html' => bitstream_render_card($post_id),
+                    'rendered_html' => $this->sanitize_live_preview_markup(bitstream_render_card($post_id)),
                     'is_scheduled' => $schedule['is_scheduled'],
                 ]);
             }
@@ -1189,7 +1189,7 @@ class BitStream_Ajax_Handlers {
                 'permalink' => get_permalink($post_id),
                 'view_url' => $schedule['is_scheduled'] ? get_preview_post_link($post_id) : get_permalink($post_id),
                 'edit_url' => get_edit_post_link($post_id, ''),
-                'rendered_html' => bitstream_render_card($post_id),
+                'rendered_html' => $this->sanitize_live_preview_markup(bitstream_render_card($post_id)),
                 'is_scheduled' => $schedule['is_scheduled'],
                 'og' => [
                     'title' => $og_title,

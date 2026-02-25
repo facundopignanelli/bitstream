@@ -2035,6 +2035,13 @@ body.bitstream-cropper-open {
     align-items: flex-start;
 }
 
+.bitstream-scheduled-item.is-highlighted,
+.bitstream-highlight-target {
+    border-color: var(--wp--preset--color--accent-1, #2c6e49) !important;
+    box-shadow: 0 0 0 2px rgba(44, 110, 73, 0.2);
+    background: #f8fbf9;
+}
+
 .bitstream-scheduled-item p,
 .bitstream-scheduled-item small {
     margin: 0.25rem 0 0;

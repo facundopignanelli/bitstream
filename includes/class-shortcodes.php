@@ -482,6 +482,7 @@ class BitStream_Shortcodes {
         $is_bit_active = ($initial_tab === 'bit');
         $is_rebit_active = ($initial_tab === 'rebit');
         $is_scheduled_active = ($initial_tab === 'scheduled');
+        $highlight_scheduled_id = isset($_GET['highlight_scheduled']) ? intval($_GET['highlight_scheduled']) : 0;
 
         $scheduled_query = new WP_Query([
             'post_type' => 'bit',
@@ -642,8 +643,9 @@ class BitStream_Shortcodes {
                                 $scheduled_id = get_the_ID();
                                 $is_rebit = !empty(get_post_meta($scheduled_id, 'bitstream_rebit_url', true));
                                 $row_type = $is_rebit ? 'rebit' : 'bit';
+                                $is_highlighted = ($highlight_scheduled_id > 0 && $highlight_scheduled_id === $scheduled_id);
                                 ?>
-                                <article class="bitstream-scheduled-item" data-type="<?php echo esc_attr($row_type); ?>">
+                                <article class="bitstream-scheduled-item <?php echo $is_highlighted ? 'is-highlighted' : ''; ?>" data-type="<?php echo esc_attr($row_type); ?>" data-post-id="<?php echo esc_attr($scheduled_id); ?>">
                                     <div>
                                         <strong><?php echo $is_rebit ? 'Rebit' : 'Bit'; ?></strong>
                                         <p><?php echo esc_html(wp_trim_words(get_post_field('post_content', $scheduled_id), 16)); ?></p>

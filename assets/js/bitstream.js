@@ -64,6 +64,28 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    function highlightFromQueryParams() {
+        const params = new URLSearchParams(window.location.search);
+        const highlightBit = parseInt(params.get('highlight_bit') || '0', 10);
+        const highlightScheduled = parseInt(params.get('highlight_scheduled') || '0', 10);
+
+        if (highlightBit > 0) {
+            const bitCard = document.getElementById('bit-' + highlightBit);
+            if (bitCard) {
+                bitCard.classList.add('bitstream-highlight-target');
+                bitCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        if (highlightScheduled > 0) {
+            const scheduledRow = document.querySelector('.bitstream-scheduled-item[data-post-id="' + highlightScheduled + '"]');
+            if (scheduledRow) {
+                scheduledRow.classList.add('is-highlighted');
+                scheduledRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    }
+
     // Continue with the rest of the initialization...
     function initBitstreamPoster() {
         const posterRoot = document.querySelector('.bitstream-poster');
@@ -1999,7 +2021,32 @@ document.addEventListener('DOMContentLoaded', function() {
 
                         const responseData = data.data || {};
                         setStatus(responseData.message || 'Published successfully.');
-                        setInlinePublishedPreview(form, responseData);
+
+                        const createdPostId = parseInt(responseData.post_id || '0', 10);
+                        const isScheduled = !!responseData.is_scheduled;
+
+                        if (isScheduled) {
+                            const posterBaseUrl = (window.bitstream_ajax && bitstream_ajax.poster_url)
+                                ? bitstream_ajax.poster_url
+                                : window.location.href;
+                            const redirectUrl = new URL(posterBaseUrl, window.location.origin);
+                            redirectUrl.searchParams.set('poster_tab', 'scheduled');
+                            if (createdPostId > 0) {
+                                redirectUrl.searchParams.set('highlight_scheduled', String(createdPostId));
+                            }
+                            window.location.href = redirectUrl.toString();
+                            return;
+                        }
+
+                        const feedBaseUrl = (window.bitstream_ajax && bitstream_ajax.feed_url)
+                            ? bitstream_ajax.feed_url
+                            : (window.location.origin + '/bitstream/');
+                        const feedUrl = new URL(feedBaseUrl, window.location.origin);
+                        if (createdPostId > 0) {
+                            feedUrl.searchParams.set('highlight_bit', String(createdPostId));
+                        }
+                        window.location.href = feedUrl.toString();
+                        return;
 
                         form.reset();
                         form.querySelectorAll('.bitstream-media-preview').forEach(previewEl => {
@@ -2030,6 +2077,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     initBitstreamPoster();
+    highlightFromQueryParams();
     applyMediaDeterrents(document);
     
     // Performance optimized like button with debouncing
