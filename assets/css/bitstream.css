@@ -1026,13 +1026,23 @@ iframe, embed, object, video {
 .bitstream-rebit-preview-actions {
     display: flex;
     justify-content: flex-start;
+    gap: 0.6rem;
     margin-top: 0.2rem;
 }
 
-.bitstream-rebit-preview-actions .bitstream-rebit-edit-preview {
+.bitstream-rebit-preview-actions .bitstream-rebit-edit-preview,
+.bitstream-rebit-preview-actions .bitstream-rebit-refresh-preview {
     font-size: 0.8rem;
     padding: 0.35rem 0.6rem;
     border-radius: 15px;
+}
+
+.bitstream-rebit-preview-actions .bitstream-rebit-refresh-preview {
+    border: none;
+    background: #044389;
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
 }
 
 .bitstream-rebit-live-preview {

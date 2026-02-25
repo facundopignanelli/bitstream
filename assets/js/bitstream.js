@@ -804,6 +804,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 targetInput.value = attachment.id || '';
 
+                if (targetInputId === 'bitstream-rebit-attachment-id' && rebitOgImageInput) {
+                    rebitOgImageInput.value = attachment.url || '';
+                }
+
                 renderMediaPreview(targetPreview, attachment);
                 setRemoveVisibility(targetInputId);
                 setCropVisibility(targetInputId, attachment.mime || '');
@@ -1305,18 +1309,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 const input = document.getElementById('bitstream-rebit-attachment-id');
                 const attachmentId = input ? parseInt(input.value || '0', 10) : 0;
                 const fallbackUrl = rebitOgImageInput ? (rebitOgImageInput.value || '') : '';
+                const internalPreview = document.getElementById('bitstream-rebit-media-preview');
+                const latestPreviewUrl = internalPreview ? (internalPreview.dataset.attachmentUrl || '') : '';
 
                 if (attachmentId > 0 && window.wp && wp.media) {
                     const attachment = wp.media.attachment(attachmentId);
                     attachment.fetch().then(() => {
                         const data = attachment.toJSON();
-                        const previewUrl = (data.sizes && data.sizes.medium && data.sizes.medium.url) || data.url || fallbackUrl;
+                        const previewUrl = latestPreviewUrl || (data.sizes && data.sizes.medium && data.sizes.medium.url) || data.url || fallbackUrl;
                         setRebitEditorPreviewImage(previewUrl || '');
                         if (rebitEditorImageCropButton) {
                             rebitEditorImageCropButton.disabled = false;
                         }
                     }).catch(() => {
-                        setRebitEditorPreviewImage(fallbackUrl);
+                        setRebitEditorPreviewImage(latestPreviewUrl || fallbackUrl);
                         if (rebitEditorImageCropButton) {
                             rebitEditorImageCropButton.disabled = false;
                         }
@@ -1324,7 +1330,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
 
-                setRebitEditorPreviewImage(fallbackUrl);
+                setRebitEditorPreviewImage(latestPreviewUrl || fallbackUrl);
                 if (rebitEditorImageCropButton) {
                     rebitEditorImageCropButton.disabled = false;
                 }
@@ -1479,6 +1485,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 : 'Fetch metadata';
             const editPreviewActions = posterRoot.querySelector('.bitstream-rebit-preview-actions');
             const editButton = posterRoot.querySelector('.bitstream-rebit-edit-preview');
+            const refreshButton = posterRoot.querySelector('.bitstream-rebit-refresh-preview');
             const livePreviewRoot = posterRoot.querySelector('#bitstream-rebit-live-preview');
             const livePreviewLoading = livePreviewRoot ? livePreviewRoot.querySelector('.bitstream-rebit-live-preview-loading') : null;
             const livePreviewCard = livePreviewRoot ? livePreviewRoot.querySelector('.bitstream-rebit-live-preview-card') : null;
@@ -1537,6 +1544,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (editButton) {
                     editButton.disabled = hasLoading;
                     editButton.setAttribute('aria-busy', hasLoading ? 'true' : 'false');
+                }
+
+                if (refreshButton) {
+                    refreshButton.disabled = hasLoading || !hasFetchedMetadata;
+                    refreshButton.setAttribute('aria-busy', isRenderingLivePreview ? 'true' : 'false');
                 }
 
                 if (fetchButton) {
@@ -1657,6 +1669,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (rebitModal) {
                         rebitModal.hidden = false;
                     }
+                });
+            }
+
+            if (refreshButton) {
+                refreshButton.addEventListener('click', () => {
+                    if (!hasFetchedMetadata) {
+                        setStatus('Fetch metadata first.', true);
+                        return;
+                    }
+                    renderLiveRebitPreview();
                 });
             }
 

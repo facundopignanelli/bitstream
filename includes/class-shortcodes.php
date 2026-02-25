@@ -593,7 +593,8 @@ class BitStream_Shortcodes {
                     <input type="hidden" id="bitstream-rebit-attachment-id" name="rebit_attachment_id" value="">
 
                     <div class="bitstream-rebit-preview-actions" hidden>
-                        <button type="button" class="bitstream-rebit-edit-preview">Edit preview</button>
+                        <button type="button" class="bitstream-rebit-edit-preview">Edit metadata</button>
+                        <button type="button" class="bitstream-rebit-refresh-preview">Refresh preview</button>
                     </div>
 
                     <div class="bitstream-rebit-live-preview" id="bitstream-rebit-live-preview" hidden>
@@ -711,7 +712,7 @@ class BitStream_Shortcodes {
                 <div class="bitstream-rebit-editor-backdrop" data-rebit-editor-close="true"></div>
                 <div class="bitstream-rebit-editor-dialog" role="dialog" aria-modal="true" aria-labelledby="bitstream-rebit-editor-title">
                     <header class="bitstream-rebit-editor-header">
-                        <h3 id="bitstream-rebit-editor-title">Edit preview</h3>
+                        <h3 id="bitstream-rebit-editor-title">Edit metadata</h3>
                     </header>
                     <div class="bitstream-rebit-editor-body">
                         <label for="bitstream-rebit-modal-og-title">
