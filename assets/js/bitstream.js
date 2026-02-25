@@ -80,6 +80,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const resultCopy = posterRoot.querySelector('.bitstream-poster-action-copy');
         let latestPermalink = '';
         let refreshRebitPreview = () => {};
+        let refreshRebitEditorImagePreview = () => {};
 
         function setStatus(message, isError = false) {
             if (!statusEl) {
@@ -334,6 +335,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const audioTagsSaveButton = audioTagsModal ? audioTagsModal.querySelector('.bitstream-audio-tags-save') : null;
             const audioTagsPreview = audioTagsModal ? audioTagsModal.querySelector('.bitstream-audio-tags-preview') : null;
             const audioTagInputs = audioTagsModal ? audioTagsModal.querySelectorAll('.bitstream-audio-tags-input') : [];
+            const rebitEditorImagePreview = posterRoot.querySelector('.bitstream-rebit-editor-image-preview');
+            const rebitEditorImageSelectButton = posterRoot.querySelector('.bitstream-rebit-editor-image-select');
+            const rebitEditorImageCropButton = posterRoot.querySelector('.bitstream-rebit-editor-image-crop');
+            const rebitEditorImageClearButton = posterRoot.querySelector('.bitstream-rebit-editor-image-clear');
+            const rebitOgImageInput = posterRoot.querySelector('#bitstream-rebit-og-image');
             let audioTagsTargetInputId = '';
             let audioTagsTargetPreviewId = '';
             let audioTagsArtworkId = 0;
@@ -803,6 +809,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 setAudioTagVisibility(targetInputId, attachment.mime || '');
 
                 if (targetInputId === 'bitstream-rebit-attachment-id') {
+                    refreshRebitEditorImagePreview();
                     refreshRebitPreview();
                 }
             }
@@ -924,6 +931,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     renderMediaPreview(targetPreview, null);
 
                     if ((button.dataset.targetInput || '') === 'bitstream-rebit-attachment-id') {
+                        refreshRebitEditorImagePreview();
                         refreshRebitPreview();
                     }
 
@@ -1192,6 +1200,10 @@ document.addEventListener('DOMContentLoaded', function() {
                                 handleMediaSelection(cropperState.targetInputId, cropperState.targetPreviewId, croppedMedia);
                             }
 
+                            if (cropperState.targetInputId === 'bitstream-rebit-attachment-id') {
+                                refreshRebitEditorImagePreview();
+                            }
+
                             setStatus('Image cropped.');
                             closeCropper();
                         })
@@ -1267,6 +1279,126 @@ document.addEventListener('DOMContentLoaded', function() {
                     setAudioTagVisibility(input.id, attachment.get('mime'));
                 }).catch(() => {});
             });
+
+            function setRebitEditorPreviewImage(url) {
+                if (!rebitEditorImagePreview) {
+                    return;
+                }
+
+                if (url) {
+                    rebitEditorImagePreview.src = url;
+                    rebitEditorImagePreview.hidden = false;
+                } else {
+                    rebitEditorImagePreview.src = '';
+                    rebitEditorImagePreview.hidden = true;
+                }
+            }
+
+            function updateRebitEditorImagePreview() {
+                const input = document.getElementById('bitstream-rebit-attachment-id');
+                const attachmentId = input ? parseInt(input.value || '0', 10) : 0;
+                const fallbackUrl = rebitOgImageInput ? (rebitOgImageInput.value || '') : '';
+
+                if (attachmentId > 0 && window.wp && wp.media) {
+                    const attachment = wp.media.attachment(attachmentId);
+                    attachment.fetch().then(() => {
+                        const data = attachment.toJSON();
+                        const previewUrl = (data.sizes && data.sizes.medium && data.sizes.medium.url) || data.url || fallbackUrl;
+                        setRebitEditorPreviewImage(previewUrl || '');
+                        if (rebitEditorImageCropButton) {
+                            rebitEditorImageCropButton.disabled = !previewUrl;
+                        }
+                    }).catch(() => {
+                        setRebitEditorPreviewImage(fallbackUrl);
+                        if (rebitEditorImageCropButton) {
+                            rebitEditorImageCropButton.disabled = true;
+                        }
+                    });
+                    return;
+                }
+
+                setRebitEditorPreviewImage(fallbackUrl);
+                if (rebitEditorImageCropButton) {
+                    rebitEditorImageCropButton.disabled = attachmentId <= 0;
+                }
+            }
+
+            refreshRebitEditorImagePreview = updateRebitEditorImagePreview;
+
+            if (rebitEditorImageSelectButton) {
+                rebitEditorImageSelectButton.addEventListener('click', () => {
+                    if (!window.wp || !wp.media) {
+                        setStatus('Media library is unavailable.', true);
+                        return;
+                    }
+
+                    const frame = wp.media({
+                        title: 'Select image',
+                        button: { text: 'Use image' },
+                        multiple: false,
+                        library: { type: 'image' }
+                    });
+
+                    frame.on('select', () => {
+                        const selection = frame.state().get('selection').first();
+                        if (!selection) {
+                            return;
+                        }
+
+                        const data = selection.toJSON();
+                        handleMediaSelection('bitstream-rebit-attachment-id', 'bitstream-rebit-media-preview', {
+                            id: data.id,
+                            url: data.url,
+                            mime: data.mime || 'image/jpeg',
+                            sizes: data.sizes || { medium: { url: data.url } }
+                        });
+                        updateRebitEditorImagePreview();
+                    });
+
+                    frame.open();
+                });
+            }
+
+            if (rebitEditorImageCropButton) {
+                rebitEditorImageCropButton.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    const input = document.getElementById('bitstream-rebit-attachment-id');
+                    const attachmentId = input ? parseInt(input.value || '0', 10) : 0;
+                    if (!attachmentId) {
+                        setStatus('Choose an image first.', true);
+                        return;
+                    }
+
+                    openCropper('bitstream-rebit-attachment-id', 'bitstream-rebit-media-preview', {
+                        enforceSquare: false,
+                        onComplete: (croppedMedia) => {
+                            handleMediaSelection('bitstream-rebit-attachment-id', 'bitstream-rebit-media-preview', croppedMedia);
+                            updateRebitEditorImagePreview();
+                        }
+                    });
+                });
+            }
+
+            if (rebitEditorImageClearButton) {
+                rebitEditorImageClearButton.addEventListener('click', () => {
+                    const input = document.getElementById('bitstream-rebit-attachment-id');
+                    const preview = document.getElementById('bitstream-rebit-media-preview');
+                    if (input) {
+                        input.value = '';
+                    }
+                    if (rebitOgImageInput) {
+                        rebitOgImageInput.value = '';
+                    }
+                    renderMediaPreview(preview, null);
+                    setRemoveVisibility('bitstream-rebit-attachment-id');
+                    setCropVisibility('bitstream-rebit-attachment-id', '');
+                    setAudioTagVisibility('bitstream-rebit-attachment-id', '');
+                    updateRebitEditorImagePreview();
+                    refreshRebitPreview();
+                });
+            }
+
+            updateRebitEditorImagePreview();
         }
 
         function initRebitPreview() {
@@ -1275,14 +1407,16 @@ document.addEventListener('DOMContentLoaded', function() {
             const fetchButtonDefaultLabel = (fetchButton && fetchButton.textContent)
                 ? fetchButton.textContent.trim()
                 : 'Fetch metadata';
+            const editPreviewActions = posterRoot.querySelector('.bitstream-rebit-preview-actions');
             const editButton = posterRoot.querySelector('.bitstream-rebit-edit-preview');
             const livePreviewRoot = posterRoot.querySelector('#bitstream-rebit-live-preview');
             const livePreviewLoading = livePreviewRoot ? livePreviewRoot.querySelector('.bitstream-rebit-live-preview-loading') : null;
             const livePreviewCard = livePreviewRoot ? livePreviewRoot.querySelector('.bitstream-rebit-live-preview-card') : null;
             let isRenderingLivePreview = false;
             let isFetchingMetadata = false;
+            let hasFetchedMetadata = false;
 
-            const commentaryHidden = posterRoot.querySelector('#bitstream-rebit-commentary');
+            const commentaryInput = posterRoot.querySelector('#bitstream-rebit-commentary');
             const titleHidden = posterRoot.querySelector('#bitstream-rebit-og-title');
             const descHidden = posterRoot.querySelector('#bitstream-rebit-og-desc');
             const imageHidden = posterRoot.querySelector('#bitstream-rebit-og-image');
@@ -1294,9 +1428,15 @@ document.addEventListener('DOMContentLoaded', function() {
             const modalSaveDefaultLabel = (modalSaveButton && modalSaveButton.textContent)
                 ? modalSaveButton.textContent.trim()
                 : 'Save';
-            const modalCommentary = rebitModal ? rebitModal.querySelector('#bitstream-rebit-modal-commentary') : null;
             const modalTitle = rebitModal ? rebitModal.querySelector('#bitstream-rebit-modal-og-title') : null;
             const modalDesc = rebitModal ? rebitModal.querySelector('#bitstream-rebit-modal-og-desc') : null;
+
+            function setMetadataReadyState(isReady) {
+                hasFetchedMetadata = !!isReady;
+                if (editPreviewActions) {
+                    editPreviewActions.hidden = !hasFetchedMetadata;
+                }
+            }
 
             function clearLivePreview() {
                 if (livePreviewCard) {
@@ -1344,21 +1484,16 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             function syncModalFromHidden() {
-                if (modalCommentary && commentaryHidden) {
-                    modalCommentary.value = commentaryHidden.value || '';
-                }
                 if (modalTitle && titleHidden) {
                     modalTitle.value = titleHidden.value || '';
                 }
                 if (modalDesc && descHidden) {
                     modalDesc.value = descHidden.value || '';
                 }
+                refreshRebitEditorImagePreview();
             }
 
             function syncHiddenFromModal() {
-                if (modalCommentary && commentaryHidden) {
-                    commentaryHidden.value = modalCommentary.value || '';
-                }
                 if (modalTitle && titleHidden) {
                     titleHidden.value = modalTitle.value || '';
                 }
@@ -1392,7 +1527,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 payload.append('action', 'bitstream_render_rebit_preview');
                 payload.append('nonce', bitstream_ajax.og_fetch_nonce);
                 payload.append('rebit_url', url);
-                payload.append('rebit_commentary', (commentaryHidden && commentaryHidden.value) ? commentaryHidden.value : '');
+                payload.append('rebit_commentary', (commentaryInput && commentaryInput.value) ? commentaryInput.value : '');
                 payload.append('rebit_og_title', (titleHidden && titleHidden.value) ? titleHidden.value : '');
                 payload.append('rebit_og_desc', (descHidden && descHidden.value) ? descHidden.value : '');
                 payload.append('rebit_og_image', (imageHidden && imageHidden.value) ? imageHidden.value : '');
@@ -1428,6 +1563,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (livePreviewRoot) {
                             livePreviewRoot.hidden = false;
                         }
+                        setMetadataReadyState(true);
                     })
                     .catch(error => {
                         clearLivePreview();
@@ -1442,7 +1578,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (editButton) {
                 editButton.addEventListener('click', () => {
-                    if (isRenderingLivePreview) {
+                    if (isRenderingLivePreview || !hasFetchedMetadata) {
                         return;
                     }
                     syncModalFromHidden();
@@ -1516,6 +1652,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
 
                             syncModalFromHidden();
+                            refreshRebitEditorImagePreview();
                             renderLiveRebitPreview();
                             setStatus('Metadata loaded.');
                         })
@@ -1536,8 +1673,19 @@ document.addEventListener('DOMContentLoaded', function() {
             if (urlInput) {
                 urlInput.addEventListener('input', () => {
                     clearLivePreview();
+                    setMetadataReadyState(false);
                 });
             }
+
+            if (commentaryInput) {
+                commentaryInput.addEventListener('input', () => {
+                    if (hasFetchedMetadata) {
+                        renderLiveRebitPreview();
+                    }
+                });
+            }
+
+            setMetadataReadyState(false);
         }
 
         const forms = posterRoot.querySelectorAll('.bitstream-poster-form');
