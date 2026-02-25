@@ -125,32 +125,37 @@ class BitStream_Shortcodes
      */
     public static function get_quick_actions()
     {
-        if (!is_user_logged_in() || !current_user_can('edit_posts')) {
-            return [];
-        }
+        $actions = [];
 
-        return [
-            [
+        if (is_user_logged_in() && current_user_can('edit_posts')) {
+            $actions[] = [
                 'url' => self::get_poster_page_url(['poster_tab' => 'bit']),
                 'icon' => 'fa-solid fa-comment',
                 'label' => 'Add New Bit',
-            ],
-            [
+            ];
+            $actions[] = [
                 'url' => self::get_poster_page_url(['poster_tab' => 'rebit']),
                 'icon' => 'fa-solid fa-link',
                 'label' => 'Add New ReBit',
-            ],
-            [
-                'url' => admin_url('edit.php?post_type=bit&page=bitstream-rss-feeds'),
-                'icon' => 'fa-solid fa-rss',
-                'label' => 'RSS Feeds',
-            ],
-            [
+            ];
+        }
+
+        // Always show RSS Feeds link
+        $actions[] = [
+            'url' => home_url('/bitstream/feed/'),
+            'icon' => 'fa-solid fa-rss',
+            'label' => 'RSS Feeds',
+        ];
+
+        if (is_user_logged_in() && current_user_can('edit_posts')) {
+            $actions[] = [
                 'url' => admin_url('edit.php?post_type=bit&page=bitstream-rebit-mappings'),
                 'icon' => 'fa-solid fa-sitemap',
                 'label' => 'ReBit Mappings',
-            ],
-        ];
+            ];
+        }
+
+        return $actions;
     }
 
     /**
