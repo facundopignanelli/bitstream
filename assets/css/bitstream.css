@@ -888,21 +888,33 @@
 .bit-modern-comment {
     display: flex;
     gap: 15px;
-    margin-bottom: 25px;
+}
+
+/* Thread layout (top-level comment wrappers) */
+.comment-list>li {
     padding-bottom: 25px;
+    margin-bottom: 25px;
     border-bottom: 1px solid #eee;
 }
 
-.comment-list>li:last-child>.bit-modern-comment {
-    border-bottom: none;
-    margin-bottom: 0;
+.comment-list>li:last-child {
     padding-bottom: 0;
+    margin-bottom: 0;
+    border-bottom: none;
 }
 
-.comment-list .children .bit-modern-comment {
-    margin-bottom: 15px;
-    padding-bottom: 0;
-    border-bottom: none;
+/* Spacing between parent and replies */
+.comment-list .children {
+    margin-top: 20px;
+}
+
+/* Spacing between sibling replies */
+.comment-list .children>li {
+    margin-top: 20px;
+}
+
+.comment-list .children>li:first-child {
+    margin-top: 0;
 }
 
 .bit-modern-comment-avatar img.avatar {
