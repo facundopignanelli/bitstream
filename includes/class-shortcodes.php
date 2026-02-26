@@ -579,7 +579,7 @@ class BitStream_Shortcodes
         $has_content = false;
 
         if (!empty($desktop_quick_post)) {
-            echo '<aside class="bitstream-feed-sidebar">';
+            echo '<aside class="bitstream-feed-sidebar hide-on-mobile">';
             echo $desktop_quick_post;
             echo '</aside>';
             $has_content = true;
@@ -587,13 +587,13 @@ class BitStream_Shortcodes
 
         if (!empty($desktop_quick_actions) || !empty($desktop_rss_links)) {
             if (!empty($desktop_quick_actions)) {
-                echo '<aside class="bitstream-feed-sidebar">';
+                echo '<aside class="bitstream-feed-sidebar hide-on-mobile">';
                 echo '<h3 class="bitstream-feed-sidebar-title">Quick Actions</h3>';
                 echo $desktop_quick_actions;
                 echo '</aside>';
             }
             if (!empty($desktop_rss_links)) {
-                echo '<aside class="bitstream-feed-sidebar">';
+                echo '<aside class="bitstream-feed-sidebar hide-on-mobile">';
                 echo '<h3 class="bitstream-feed-sidebar-title">RSS Feeds</h3>';
                 echo $desktop_rss_links;
                 echo '</aside>';

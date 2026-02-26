@@ -167,7 +167,9 @@
 
 .bitstream-feed-sidebar-right {
     grid-area: right;
-    display: none;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
 }
 
 .bitstream-right-rail-reserved {
@@ -243,7 +245,7 @@
 
 .bitstream-feed-sidebar-tabs {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.65rem;
     align-items: start;
 }
@@ -273,12 +275,18 @@
     list-style: none;
     display: flex;
     align-items: center;
+    justify-content: center;
     background: #fff;
-    padding: 0.7rem 1rem;
+    padding: 0.5rem 0.5rem;
     border-radius: 8px;
     border: 1px solid #e2e6e3;
     transition: background 0.2s ease;
 }
+
+.hide-on-mobile {
+    display: none !important;
+}
+
 
 .bitstream-feed-sidebar-summary:hover {
     background: #eef2ef;
@@ -517,6 +525,10 @@
 
     .bitstream-mobile-quick-post-container {
         display: none !important;
+    }
+
+    .hide-on-mobile {
+        display: block !important;
     }
 
     .bitstream-feed-sidebar-panel> :not(summary) {
