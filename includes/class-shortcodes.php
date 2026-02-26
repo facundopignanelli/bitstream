@@ -435,7 +435,7 @@ class BitStream_Shortcodes
         echo '<div class="bitstream-feed-sidebar-left">';
         echo '<div class="bitstream-feed-sidebar-tabs">';
 
-        echo '<details class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-search" open>';
+        echo '<details class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-search" name="mobile_sidebar_tabs">';
         echo '<summary class="bitstream-feed-sidebar-summary" title="Search" aria-label="Search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i></summary>';
         echo '<div class="bitstream-feed-sidebar">';
         echo '<h3 class="bitstream-feed-sidebar-title">Search</h3>';
@@ -453,7 +453,7 @@ class BitStream_Shortcodes
         echo '</details>';
 
         if (!empty($desktop_rss_links)) {
-            echo '<details class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-rss mobile-rss-panel" open>';
+            echo '<details class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-rss mobile-rss-panel" name="mobile_sidebar_tabs">';
             echo '<summary class="bitstream-feed-sidebar-summary" title="RSS Feeds" aria-label="RSS Feeds"><i class="fa-solid fa-rss" aria-hidden="true"></i></summary>';
             echo '<div class="bitstream-feed-sidebar">';
             echo '<h3 class="bitstream-feed-sidebar-title">RSS Feeds</h3>';
@@ -462,7 +462,7 @@ class BitStream_Shortcodes
             echo '</details>';
         }
 
-        echo '<details class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-filters" open>';
+        echo '<details class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-filters" name="mobile_sidebar_tabs">';
         echo '<summary class="bitstream-feed-sidebar-summary" title="Filters" aria-label="Filters"><i class="fa-solid fa-sliders" aria-hidden="true"></i></summary>';
         echo '<div class="bitstream-feed-sidebar">';
         echo '<h3 class="bitstream-feed-sidebar-title">Archive</h3>';
