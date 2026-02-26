@@ -3190,10 +3190,10 @@ jQuery(document).ready(function ($) {
         });
     });
 
-    // Handle standard WP comment form submission via AJAX
+    // Handle standard WP comment form submission via AJAX (also handles moved forms for nested replies)
     document.addEventListener('submit', function (e) {
-        const form = e.target.closest('.bit-comment-form form');
-        if (!form) return;
+        const form = e.target.closest('#respond form, .bit-comment-form form');
+        if (!form || !form.action || !form.action.includes('wp-comments-post.php')) return;
 
         e.preventDefault();
 

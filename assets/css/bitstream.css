@@ -817,20 +817,41 @@
     background-color: var(--wp--preset--color--accent-2, #044389);
 }
 
-.bit-comments-list>ul {
+.bit-comment-form input[type="submit"] {
+    background-color: var(--wp--preset--color--accent-1, #2c6e49);
+    color: white;
+    border: none;
+    padding: 0.4rem 1rem;
+    font-size: 0.9rem;
+    border-radius: 15px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background-color 0.2s ease;
+}
+
+.akismet_comment_form_privacy_notice {
+    font-size: 0.75rem !important;
+    color: #888 !important;
+    margin-top: 1rem;
+}
+
+.akismet_comment_form_privacy_notice a {
+    color: #888 !important;
+    text-decoration: underline;
+}
+
+.comment-list,
+.comment-list ul,
+.comment-list ol {
     list-style: none;
     padding-left: 0;
     margin-left: 0;
 }
 
-.bit-comments-list>ul ul {
-    list-style: none;
-}
-
 /* Modern Comment Styling */
 .comment-list ul.children {
     margin-left: 15px;
-    border-left: 2px solid #eee;
+    border-left: 1px solid #ccc;
     padding-left: 15px;
 }
 
@@ -844,12 +865,20 @@
     display: flex;
     gap: 15px;
     margin-bottom: 25px;
+    padding-bottom: 25px;
+    border-bottom: 1px solid #eee;
+}
+
+.comment-list>li:last-child>.bit-modern-comment {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
 }
 
 .bit-modern-comment-avatar img.avatar {
     width: 48px;
     height: 48px;
-    border-radius: 50%;
+    border-radius: 15px;
     display: block;
 }
 
