@@ -256,32 +256,27 @@
     margin-top: 0.5rem;
 }
 
-.bitstream-feed-sidebar-panel:nth-child(1) summary {
+.bitstream-feed-sidebar-panel:nth-of-type(1) summary {
     grid-column: 1;
     grid-row: 1;
 }
 
-.bitstream-feed-sidebar-panel:nth-child(2) summary {
+.bitstream-feed-sidebar-panel:nth-of-type(2) summary {
     grid-column: 2;
     grid-row: 1;
 }
 
-.bitstream-feed-sidebar-panel:nth-child(3) summary {
+.bitstream-feed-sidebar-panel:nth-of-type(3) summary {
     grid-column: 3;
     grid-row: 1;
 }
 
-
 .mobile-rss-panel {
-    display: block;
+    display: contents;
 }
 
 .bitstream-mobile-quick-post-container {
-    display: block;
-}
-
-.bitstream-feed-sidebar-tabs .bitstream-feed-sidebar-panel {
-    min-width: 0;
+    display: contents;
 }
 
 
