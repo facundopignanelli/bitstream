@@ -1429,43 +1429,72 @@ video {
 }
 
 /* Mapping rows — each is its own card */
+/* !important needed to override inline <style> from admin-rebit-mappings-interface.php */
 .bitstream-settings .mapping-row {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    padding: 1.15rem;
-    border: 1px solid #e0e0e0;
-    border-radius: 12px;
-    background: #fafafa;
+    display: flex !important;
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    gap: 0.5rem !important;
+    padding: 1rem !important;
+    margin-bottom: 0 !important;
+    border: 1px solid #e0e0e0 !important;
+    border-radius: 12px !important;
+    background: #fafafa !important;
+    width: auto !important;
 }
 
 /* Kill the <br> tags after labels that create huge gaps */
 .bitstream-settings .mapping-row br,
 .bitstream-settings .mapping-field br {
-    display: none;
+    display: none !important;
 }
 
 .bitstream-settings .mapping-field {
-    width: 100%;
-    min-width: 0;
+    flex: none !important;
+    width: 100% !important;
+    min-width: 0 !important;
 }
 
 .bitstream-settings .mapping-field label {
     display: block;
-    margin-bottom: 0.35rem;
+    margin-bottom: 0.3rem;
     font-weight: 600;
     font-size: 0.9rem;
 }
 
 .bitstream-settings .mapping-field.preview-field {
-    width: 100%;
+    flex: none !important;
+    width: 100% !important;
+    min-width: 0 !important;
 }
 
+/* Hide the empty &nbsp; label in the actions field */
 .bitstream-settings .mapping-field.actions-field {
-    width: 100%;
+    flex: none !important;
+    width: 100% !important;
+    min-width: 0 !important;
     display: flex;
     align-items: center;
-    min-width: 0;
+}
+
+.bitstream-settings .mapping-field.actions-field>label {
+    display: none !important;
+}
+
+/* Remove button as an actual button */
+.bitstream-settings .mapping-field.actions-field .button-link-delete {
+    display: inline-block !important;
+    width: 100%;
+    padding: 0.45rem 1rem !important;
+    background: #dc3545 !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: 8px !important;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none !important;
 }
 
 /* Mapping preview */
