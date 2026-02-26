@@ -813,8 +813,18 @@
 }
 
 .bitstream-load-more:hover,
-.bitstream-load-more:focus {
+.bit-comment-form input[type="submit"]:hover {
     background-color: var(--wp--preset--color--accent-2, #044389);
+}
+
+.bit-comments-list>ul {
+    list-style: none;
+    padding-left: 0;
+    margin-left: 0;
+}
+
+.bit-comments-list>ul ul {
+    list-style: none;
 }
 
 /* Infinite scroll trigger styling */
