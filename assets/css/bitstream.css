@@ -251,7 +251,8 @@
 }
 
 .bitstream-feed-sidebar-tabs .bitstream-feed-sidebar {
-    flex: 1 1 100%;
+    width: 100%;
+    flex-basis: 100%;
     order: 2;
     margin-top: 0;
 }
