@@ -123,7 +123,7 @@ class BitStream_Admin_Interface
     public function add_admin_menus()
     {
         // 1. New Bit (Unified Poster)
-        $hook = add_submenu_page(
+        $poster_hook = add_submenu_page(
             'edit.php?post_type=bit',
             'New Bit',
             'New Bit',
@@ -132,26 +132,19 @@ class BitStream_Admin_Interface
         [$this, 'new_bit_admin_page'],
             1
         );
+        add_action('admin_print_styles-' . $poster_hook, [$this, 'enqueue_admin_poster_assets']);
 
-        // Enqueue assets specifically for this admin page
-        add_action('admin_print_styles-' . $hook, [$this, 'enqueue_admin_poster_assets']);
-
-        // Feed Intro Text
-        add_submenu_page('edit.php?post_type=bit', 'Feed Intro', 'Feed Intro', 'edit_posts', 'bitstream-feed-intro', [$this, 'feed_intro_page']);
-
-        // 3. All Bits is automatically handled by WordPress (All Bits menu item)
-
-        // 4. ReBit Mappings
-        add_submenu_page('edit.php?post_type=bit', 'ReBit Mappings', 'ReBit Mappings', 'manage_options', 'bitstream-rebit-mappings', [$this, 'rebit_mappings_page']);
-
-        // 5. RSS Feeds
-        add_submenu_page('edit.php?post_type=bit', 'RSS Feeds', 'RSS Feeds', 'read', 'bitstream-rss-feeds', [$this, 'rss_feeds_page']);
-
-        // 6. Media Cleanup
-        add_submenu_page('edit.php?post_type=bit', 'Media Cleanup', 'Media Cleanup', 'manage_options', 'bitstream-media-cleanup', [$this, 'media_cleanup_page']);
-
-        // 7. Reset BitStream (dev only)
-        add_submenu_page('edit.php?post_type=bit', 'Reset BitStream', 'Reset BitStream', 'manage_options', 'bitstream-reset', [$this, 'reset_bitstream_page']);
+        // 2. Settings (Unified Settings Page)
+        $settings_hook = add_submenu_page(
+            'edit.php?post_type=bit',
+            'Settings',
+            'Settings',
+            'edit_posts',
+            'bitstream-settings',
+        [$this, 'settings_admin_page'],
+            2
+        );
+        add_action('admin_print_styles-' . $settings_hook, [$this, 'enqueue_admin_settings_assets']);
     }
 
     /**
@@ -176,6 +169,19 @@ class BitStream_Admin_Interface
     }
 
     /**
+     * Display the Settings page inside the admin area
+     */
+    public function settings_admin_page()
+    {
+        echo '<div class="wrap">';
+        echo '<h1>' . esc_html__('BitStream Settings', 'bitstream') . '</h1>';
+        echo '<div style="margin-top: 20px;">';
+        echo do_shortcode('[bitstream_settings]');
+        echo '</div>';
+        echo '</div>';
+    }
+
+    /**
      * Enqueue CSS/JS for the admin poster page
      */
     public function enqueue_admin_poster_assets()
@@ -188,6 +194,20 @@ class BitStream_Admin_Interface
             'ajaxurl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('bitstream_nonce'),
             'admin_page_redirect' => admin_url('edit.php?post_type=bit')
+        ]);
+    }
+
+    /**
+     * Enqueue CSS/JS for the admin settings page
+     */
+    public function enqueue_admin_settings_assets()
+    {
+        wp_enqueue_style('bitstream-css', BITSTREAM_PLUGIN_URL . 'assets/css/bitstream.css', [], BITSTREAM_VERSION);
+        wp_enqueue_script('bitstream-js', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream.js', ['jquery'], BITSTREAM_VERSION, true);
+
+        wp_localize_script('bitstream-js', 'bitstream_ajax', [
+            'ajaxurl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('bitstream_nonce'),
         ]);
     }
 
@@ -305,7 +325,7 @@ class BitStream_Admin_Interface
     /**
      * Scan and optionally delete orphaned BitStream-managed media.
      */
-    private function run_bitstream_media_cleanup($perform_delete = false)
+    public function run_bitstream_media_cleanup($perform_delete = false)
     {
         $results = [
             'scanned' => 0,
@@ -418,7 +438,7 @@ class BitStream_Admin_Interface
     /**
      * Perform the complete BitStream reset.
      */
-    private function perform_bitstream_reset()
+    public function perform_bitstream_reset()
     {
         global $wpdb;
 

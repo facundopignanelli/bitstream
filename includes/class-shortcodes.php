@@ -136,14 +136,9 @@ class BitStream_Shortcodes
                 'label' => 'New Bit',
             ],
             [
-                'url' => admin_url('edit.php?post_type=bit&page=bitstream-rss-feeds'),
-                'icon' => 'fa-solid fa-rss',
-                'label' => 'RSS Feeds Admin',
-            ],
-            [
-                'url' => admin_url('edit.php?post_type=bit&page=bitstream-rebit-mappings'),
-                'icon' => 'fa-solid fa-sitemap',
-                'label' => 'ReBit Mappings',
+                'url' => admin_url('edit.php?post_type=bit&page=bitstream-settings'),
+                'icon' => 'fa-solid fa-gear',
+                'label' => 'Settings',
             ],
         ];
     }
@@ -267,6 +262,7 @@ class BitStream_Shortcodes
     {
         add_shortcode('bitstream', [$this, 'render_feed']);
         add_shortcode('bitstream_poster', [$this, 'render_poster']);
+        add_shortcode('bitstream_settings', [$this, 'render_settings']);
     }
 
     /**
@@ -707,6 +703,330 @@ class BitStream_Shortcodes
 
         wp_reset_postdata();
         return ob_get_clean();
+    }
+
+    /**
+     * Render the BitStream Settings tabbed interface
+     */
+    public function render_settings($atts)
+    {
+        if (!is_user_logged_in()) {
+            return '<p>Please log in to access settings.</p>';
+        }
+
+        if (!current_user_can('edit_posts')) {
+            return '<p>You do not have permission to access settings.</p>';
+        }
+
+        $requested_tab = isset($_GET['settings_tab']) ? sanitize_key(wp_unslash($_GET['settings_tab'])) : 'personalisation';
+        $valid_tabs = ['personalisation', 'mappings', 'rss', 'advanced'];
+        $initial_tab = in_array($requested_tab, $valid_tabs, true) ? $requested_tab : 'personalisation';
+
+        $is_personalisation = ($initial_tab === 'personalisation');
+        $is_mappings = ($initial_tab === 'mappings');
+        $is_rss = ($initial_tab === 'rss');
+        $is_advanced = ($initial_tab === 'advanced');
+
+        ob_start();
+?>
+        <section class="bitstream-settings">
+            <div class="bitstream-settings-tabs" role="tablist" aria-label="BitStream Settings">
+                <button type="button" class="bitstream-settings-tab <?php echo $is_personalisation ? 'is-active' : ''; ?>" data-settings-tab="personalisation" role="tab" aria-selected="<?php echo $is_personalisation ? 'true' : 'false'; ?>">
+                    <i class="fa-solid fa-palette" aria-hidden="true"></i> Personalisation
+                </button>
+                <button type="button" class="bitstream-settings-tab <?php echo $is_mappings ? 'is-active' : ''; ?>" data-settings-tab="mappings" role="tab" aria-selected="<?php echo $is_mappings ? 'true' : 'false'; ?>">
+                    <i class="fa-solid fa-sitemap" aria-hidden="true"></i> ReBit Mappings
+                </button>
+                <button type="button" class="bitstream-settings-tab <?php echo $is_rss ? 'is-active' : ''; ?>" data-settings-tab="rss" role="tab" aria-selected="<?php echo $is_rss ? 'true' : 'false'; ?>">
+                    <i class="fa-solid fa-rss" aria-hidden="true"></i> RSS Feeds
+                </button>
+                <?php if (current_user_can('manage_options')): ?>
+                <button type="button" class="bitstream-settings-tab <?php echo $is_advanced ? 'is-active' : ''; ?>" data-settings-tab="advanced" role="tab" aria-selected="<?php echo $is_advanced ? 'true' : 'false'; ?>">
+                    <i class="fa-solid fa-gear" aria-hidden="true"></i> Advanced
+                </button>
+                <?php
+        endif; ?>
+            </div>
+
+            <!-- Personalisation Panel -->
+            <div class="bitstream-settings-panel <?php echo $is_personalisation ? 'is-active' : ''; ?>" id="bitstream-settings-panel-personalisation" role="tabpanel" <?php echo $is_personalisation ? '' : 'hidden'; ?>>
+                <?php $this->render_settings_personalisation(); ?>
+            </div>
+
+            <!-- ReBit Mappings Panel -->
+            <div class="bitstream-settings-panel <?php echo $is_mappings ? 'is-active' : ''; ?>" id="bitstream-settings-panel-mappings" role="tabpanel" <?php echo $is_mappings ? '' : 'hidden'; ?>>
+                <?php $this->render_settings_mappings(); ?>
+            </div>
+
+            <!-- RSS Feeds Panel -->
+            <div class="bitstream-settings-panel <?php echo $is_rss ? 'is-active' : ''; ?>" id="bitstream-settings-panel-rss" role="tabpanel" <?php echo $is_rss ? '' : 'hidden'; ?>>
+                <?php $this->render_settings_rss(); ?>
+            </div>
+
+            <!-- Advanced Panel -->
+            <?php if (current_user_can('manage_options')): ?>
+            <div class="bitstream-settings-panel <?php echo $is_advanced ? 'is-active' : ''; ?>" id="bitstream-settings-panel-advanced" role="tabpanel" <?php echo $is_advanced ? '' : 'hidden'; ?>>
+                <?php $this->render_settings_advanced(); ?>
+            </div>
+            <?php
+        endif; ?>
+        </section>
+        <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * Settings Tab 1: Personalisation (Feed Intro)
+     */
+    private function render_settings_personalisation()
+    {
+        $default_intro_title = 'About BitStream';
+        $default_intro_text = 'BitStream is a lightweight microblog where you can post Bits, share Rebits, and follow updates in one place.';
+
+        $intro_title = get_option('bitstream_feed_intro_title', $default_intro_title);
+        $intro_text = get_option('bitstream_feed_intro_text', $default_intro_text);
+        $updated = false;
+
+        if (isset($_POST['bitstream_save_feed_intro']) && check_admin_referer('bitstream_feed_intro_save', 'bitstream_feed_intro_nonce')) {
+            $new_intro_title = sanitize_text_field(wp_unslash($_POST['bitstream_feed_intro_title'] ?? ''));
+            $new_intro_text = sanitize_textarea_field(wp_unslash($_POST['bitstream_feed_intro_text'] ?? ''));
+
+            $intro_title = !empty($new_intro_title) ? $new_intro_title : $default_intro_title;
+            $intro_text = !empty($new_intro_text) ? $new_intro_text : $default_intro_text;
+
+            update_option('bitstream_feed_intro_title', $intro_title, false);
+            update_option('bitstream_feed_intro_text', $intro_text, false);
+            $updated = true;
+        }
+
+        echo '<h2 style="margin-top: 0;">Feed Intro</h2>';
+        echo '<p>Edit the intro text shown in the BitStream feed sidebar.</p>';
+
+        if ($updated) {
+            echo '<div class="notice notice-success" style="padding: 10px; border-left: 4px solid #2c6e49; background: #f0f9f4; margin-bottom: 1rem;"><p style="margin: 0;">Intro text updated.</p></div>';
+        }
+
+        echo '<form method="post" style="max-width: 600px;">';
+        wp_nonce_field('bitstream_feed_intro_save', 'bitstream_feed_intro_nonce');
+        echo '<input type="hidden" name="settings_tab" value="personalisation">';
+
+        echo '<div style="margin-bottom: 1rem;">';
+        echo '<label for="bitstream-feed-intro-title" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Title</label>';
+        echo '<input id="bitstream-feed-intro-title" name="bitstream_feed_intro_title" type="text" style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box;" value="' . esc_attr($intro_title) . '">';
+        echo '</div>';
+
+        echo '<div style="margin-bottom: 1rem;">';
+        echo '<label for="bitstream-feed-intro-text" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Description</label>';
+        echo '<textarea id="bitstream-feed-intro-text" name="bitstream_feed_intro_text" rows="5" style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box;">' . esc_textarea($intro_text) . '</textarea>';
+        echo '</div>';
+
+        echo '<button type="submit" name="bitstream_save_feed_intro" style="background: var(--wp--preset--color--accent-1, #2c6e49); color: #fff; border: none; border-radius: 10px; padding: 0.6rem 1.5rem; cursor: pointer; font-weight: 600; font-size: 0.95rem;">Save Intro</button>';
+        echo '</form>';
+    }
+
+    /**
+     * Settings Tab 2: ReBit Mappings
+     */
+    private function render_settings_mappings()
+    {
+        if (!current_user_can('manage_options')) {
+            echo '<p>You do not have permission to manage ReBit mappings.</p>';
+            return;
+        }
+
+        // Delegate to existing admin interface method which handles form processing & rendering
+        $admin = new BitStream_Admin_Interface();
+        $admin->rebit_mappings_page();
+    }
+
+    /**
+     * Settings Tab 3: RSS Feeds
+     */
+    private function render_settings_rss()
+    {
+        $home_url = home_url();
+
+        // Handle flush rewrite rules request
+        if (isset($_POST['flush_feeds']) && check_admin_referer('bitstream_flush_feeds', 'bitstream_flush_feeds_nonce')) {
+            flush_rewrite_rules();
+            echo '<div style="padding: 10px; border-left: 4px solid #2c6e49; background: #f0f9f4; margin-bottom: 1rem;"><p style="margin: 0;">Rewrite rules flushed! RSS feeds should now work properly.</p></div>';
+        }
+
+        $feeds = [
+            'All Content' => [
+                'url' => $home_url . '/bitstream/feed/',
+                'description' => 'Complete BitStream feed with all Bits and ReBits'
+            ],
+            'Bits Only' => [
+                'url' => $home_url . '/bitstream/feed/bits/',
+                'description' => 'Original Bits only (excluding ReBits)'
+            ],
+            'ReBits Only' => [
+                'url' => $home_url . '/bitstream/feed/rebits/',
+                'description' => 'ReBits only (shared content from other platforms)'
+            ]
+        ];
+
+        echo '<h2 style="margin-top: 0;">RSS Feeds</h2>';
+        echo '<p>BitStream provides multiple RSS feeds for different content types.</p>';
+
+        foreach ($feeds as $name => $feed) {
+            echo '<div class="bitstream-settings-section">';
+            echo '<h3>' . esc_html($name) . '</h3>';
+            echo '<p>' . esc_html($feed['description']) . '</p>';
+
+            echo '<div style="margin-bottom: 0.75rem;">';
+            echo '<label style="font-weight: 600; display: block; margin-bottom: 0.4rem;">Feed URL:</label>';
+            echo '<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">';
+            echo '<input type="text" value="' . esc_attr($feed['url']) . '" readonly style="flex: 1; min-width: 200px; padding: 0.5rem; border: 1px solid #ccc; border-radius: 8px; font-family: monospace; background: #f9f9f9; box-sizing: border-box;" onclick="this.select();" />';
+            echo '<button type="button" class="bitstream-copy-btn" data-copy-text="' . esc_attr($feed['url']) . '" style="background: var(--wp--preset--color--accent-1, #2c6e49); color: #fff; border: none; border-radius: 8px; padding: 0.5rem 1rem; cursor: pointer; font-weight: 600; white-space: nowrap;">Copy</button>';
+            echo '<a href="' . esc_url($feed['url']) . '" target="_blank" style="display: inline-block; padding: 0.5rem 1rem; border: 1px solid #ccc; border-radius: 8px; text-decoration: none; color: #333; font-weight: 600; white-space: nowrap;">View Feed</a>';
+            echo '</div>';
+            echo '</div>';
+
+            $feed_url_encoded = urlencode($feed['url']);
+            $subscribe_links = [
+                'Feedly' => 'https://feedly.com/i/subscription/feed/' . $feed_url_encoded,
+                'Inoreader' => 'https://www.inoreader.com/?add_feed=' . $feed_url_encoded,
+                'NewsBlur' => 'https://newsblur.com/?url=' . $feed_url_encoded,
+                'Pocket' => 'https://getpocket.com/edit?url=' . $feed_url_encoded
+            ];
+
+            echo '<div style="margin-top: 0.5rem;">';
+            echo '<strong>Subscribe with:</strong> ';
+            echo '<span style="display: inline-flex; gap: 6px; flex-wrap: wrap; margin-top: 0.4rem;">';
+            foreach ($subscribe_links as $service => $link) {
+                echo '<a href="' . esc_url($link) . '" target="_blank" style="display: inline-block; padding: 0.3rem 0.7rem; border: 1px solid #ccc; border-radius: 6px; text-decoration: none; color: #333; font-size: 0.85rem;">' . esc_html($service) . '</a>';
+            }
+            echo '</span>';
+            echo '</div>';
+            echo '</div>';
+        }
+
+        // Troubleshooting
+        if (current_user_can('manage_options')) {
+            echo '<div style="padding: 1rem; background: #f9f9f9; border: 1px solid #eee; border-radius: 10px;">';
+            echo '<h3 style="margin-top: 0;">Troubleshooting</h3>';
+            echo '<p>If the RSS feeds are showing 404 errors, try flushing the rewrite rules:</p>';
+            echo '<form method="post">';
+            wp_nonce_field('bitstream_flush_feeds', 'bitstream_flush_feeds_nonce');
+            echo '<input type="hidden" name="settings_tab" value="rss">';
+            echo '<button type="submit" name="flush_feeds" style="background: #666; color: #fff; border: none; border-radius: 8px; padding: 0.5rem 1rem; cursor: pointer; font-weight: 600;">Flush Rewrite Rules</button>';
+            echo '</form>';
+            echo '</div>';
+        }
+    }
+
+    /**
+     * Settings Tab 4: Advanced (Debug Logs, Media Cleanup, Reset)
+     */
+    private function render_settings_advanced()
+    {
+        if (!current_user_can('manage_options')) {
+            echo '<p>You do not have permission to access advanced settings.</p>';
+            return;
+        }
+
+        // --- Debug Logs Section ---
+        echo '<div class="bitstream-settings-section">';
+        echo '<h2 style="margin-top: 0;">Debug Logs</h2>';
+
+        if (isset($_POST['clear_logs']) && check_admin_referer('bitstream_clear_logs')) {
+            delete_option('bitstream_debug_logs');
+            echo '<div style="padding: 10px; border-left: 4px solid #2c6e49; background: #f0f9f4; margin-bottom: 1rem;"><p style="margin: 0;">Logs cleared successfully.</p></div>';
+        }
+
+        $logs = get_option('bitstream_debug_logs', []);
+        if (empty($logs)) {
+            echo '<p>No logs found.</p>';
+        }
+        else {
+            echo '<form method="post" style="margin-bottom: 1rem;">';
+            wp_nonce_field('bitstream_clear_logs');
+            echo '<input type="hidden" name="settings_tab" value="advanced">';
+            echo '<button type="submit" name="clear_logs" style="background: #666; color: #fff; border: none; border-radius: 8px; padding: 0.5rem 1rem; cursor: pointer; font-weight: 600;">Clear Logs</button>';
+            echo '</form>';
+
+            echo '<div style="max-height: 300px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px;">';
+            echo '<table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">';
+            echo '<thead><tr style="background: #f5f5f5;"><th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid #ddd;">Time</th><th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid #ddd;">Level</th><th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid #ddd;">Message</th></tr></thead>';
+            echo '<tbody>';
+            foreach ($logs as $log) {
+                $color = ($log['level'] === 'error') ? '#dc3545' : '#555';
+                echo '<tr><td style="padding: 0.4rem 0.5rem; border-bottom: 1px solid #f0f0f0; white-space: nowrap;">' . esc_html($log['time']) . '</td>';
+                echo '<td style="padding: 0.4rem 0.5rem; border-bottom: 1px solid #f0f0f0; color: ' . $color . '; font-weight: 600;">' . esc_html(strtoupper($log['level'])) . '</td>';
+                echo '<td style="padding: 0.4rem 0.5rem; border-bottom: 1px solid #f0f0f0;">' . esc_html($log['message']) . '</td></tr>';
+            }
+            echo '</tbody></table>';
+            echo '</div>';
+        }
+        echo '</div>';
+
+        // --- Media Cleanup Section ---
+        echo '<div class="bitstream-settings-section">';
+        echo '<h2>Media Cleanup</h2>';
+        echo '<p>Scan BitStream-managed uploads and remove media no longer referenced anywhere on your site.</p>';
+        echo '<p><strong>Safety checks:</strong> media is only deleted when not referenced by active content, and recent uploads (&lt; 30 minutes) are skipped.</p>';
+
+        $results = null;
+        $did_delete = false;
+        $last_weekly = get_option('bitstream_last_weekly_media_cleanup', []);
+
+        if (isset($_POST['bitstream_media_scan']) && check_admin_referer('bitstream_media_cleanup', 'bitstream_media_cleanup_nonce')) {
+            $admin = new BitStream_Admin_Interface();
+            $results = $admin->run_bitstream_media_cleanup(false);
+        }
+
+        if (isset($_POST['bitstream_media_delete']) && check_admin_referer('bitstream_media_cleanup', 'bitstream_media_cleanup_nonce')) {
+            $admin = new BitStream_Admin_Interface();
+            $results = $admin->run_bitstream_media_cleanup(true);
+            $did_delete = true;
+        }
+
+        if (!empty($last_weekly) && !empty($last_weekly['timestamp'])) {
+            $run_time = wp_date(get_option('date_format') . ' ' . get_option('time_format'), intval($last_weekly['timestamp']));
+            echo '<p><strong>Last weekly cleanup:</strong> ' . esc_html($run_time) . ' — Scanned: ' . intval($last_weekly['scanned'] ?? 0) . ', Deleted: ' . intval($last_weekly['deleted'] ?? 0) . ', Protected: ' . intval($last_weekly['protected'] ?? 0) . '</p>';
+        }
+
+        if ($results) {
+            $bg = $did_delete ? '#f0f9f4' : '#e7f3ff';
+            $border = $did_delete ? '#2c6e49' : '#72aee6';
+            echo '<div style="padding: 10px; border-left: 4px solid ' . $border . '; background: ' . $bg . '; margin-bottom: 1rem;"><p style="margin: 0;">';
+            echo($did_delete ? 'Cleanup complete. ' : 'Scan complete. ');
+            echo 'Scanned: <strong>' . intval($results['scanned']) . '</strong>, Candidates: <strong>' . intval($results['candidates']) . '</strong>, Deleted: <strong>' . intval($results['deleted']) . '</strong>, Protected: <strong>' . intval($results['protected']) . '</strong>';
+            echo '</p></div>';
+        }
+
+        echo '<form method="post" style="display: flex; gap: 8px; flex-wrap: wrap;">';
+        wp_nonce_field('bitstream_media_cleanup', 'bitstream_media_cleanup_nonce');
+        echo '<input type="hidden" name="settings_tab" value="advanced">';
+        echo '<button type="submit" name="bitstream_media_scan" style="background: #666; color: #fff; border: none; border-radius: 8px; padding: 0.5rem 1rem; cursor: pointer; font-weight: 600;">Scan Only</button>';
+        echo '<button type="submit" name="bitstream_media_delete" style="background: #dc3545; color: #fff; border: none; border-radius: 8px; padding: 0.5rem 1rem; cursor: pointer; font-weight: 600;" onclick="return confirm(\'Delete all currently detected orphaned BitStream media? This cannot be undone.\');">Scan and Delete Orphans</button>';
+        echo '</form>';
+        echo '</div>';
+
+        // --- Reset Section ---
+        echo '<div class="bitstream-settings-section">';
+        echo '<h2>Reset BitStream</h2>';
+        echo '<div style="padding: 1rem; background: #fff5f5; border: 1px solid #dc3545; border-radius: 10px;">';
+        echo '<p style="color: #dc3545; font-weight: 600;"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> WARNING: This will permanently delete all Bits, ReBits, associated media files, and plugin settings. This cannot be undone!</p>';
+
+        if (isset($_POST['bitstream_confirm_reset']) && check_admin_referer('bitstream_reset', 'bitstream_reset_nonce')) {
+            $admin = new BitStream_Admin_Interface();
+            $admin->perform_bitstream_reset();
+            echo '<div style="padding: 10px; border-left: 4px solid #2c6e49; background: #f0f9f4; margin: 1rem 0;"><p style="margin: 0;"><strong>BitStream Reset Complete.</strong> All posts, media, and settings have been removed.</p></div>';
+            echo '<script>setTimeout(function() { window.location.href = "' . esc_js(admin_url('edit.php?post_type=bit&page=bitstream-settings')) . '"; }, 2000);</script>';
+            echo '</div></div>';
+            return;
+        }
+
+        echo '<form method="post" style="margin-top: 1rem;">';
+        wp_nonce_field('bitstream_reset', 'bitstream_reset_nonce');
+        echo '<input type="hidden" name="settings_tab" value="advanced">';
+        echo '<button type="submit" name="bitstream_confirm_reset" style="background: #dc3545; color: #fff; border: none; border-radius: 8px; padding: 0.6rem 1.5rem; cursor: pointer; font-weight: 600;" onclick="return confirm(\'Permanently delete ALL BitStream data and reset to virgin state? This cannot be undone.\');">Reset Everything</button>';
+        echo '</form>';
+        echo '</div>';
+        echo '</div>';
     }
 
     /**

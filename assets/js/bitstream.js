@@ -3270,4 +3270,57 @@ jQuery(document).ready(function ($) {
         }
         sessionStorage.removeItem('bitstream_open_comments');
     }
+
+    // ── Settings Tab Switching ──────────────────────────────────────────
+    const settingsRoot = document.querySelector('.bitstream-settings');
+    if (settingsRoot) {
+        const settingsTabButtons = settingsRoot.querySelectorAll('.bitstream-settings-tab');
+
+        settingsTabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const selectedTab = button.dataset.settingsTab;
+
+                if (button.classList.contains('is-active')) {
+                    return;
+                }
+
+                // Navigate via URL so the page reloads with fresh data
+                const url = new URL(window.location.href);
+                url.searchParams.set('settings_tab', selectedTab);
+                window.location.href = url.toString();
+            });
+        });
+    }
+
+    // ── Copy-to-Clipboard for Settings RSS Feeds ────────────────────────
+    document.querySelectorAll('.bitstream-copy-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const text = btn.dataset.copyText;
+            if (!text) return;
+
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = btn.textContent;
+                btn.textContent = 'Copied!';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 2000);
+            }).catch(() => {
+                // Fallback
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+
+                const originalText = btn.textContent;
+                btn.textContent = 'Copied!';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 2000);
+            });
+        });
+    });
 });
