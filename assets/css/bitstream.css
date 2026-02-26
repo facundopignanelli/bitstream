@@ -252,9 +252,25 @@
 
 .bitstream-feed-sidebar-tabs .bitstream-feed-sidebar {
     grid-column: 1 / -1;
-    order: 2;
+    grid-row: 2;
     margin-top: 0.5rem;
 }
+
+.bitstream-feed-sidebar-panel:nth-child(1) summary {
+    grid-column: 1;
+    grid-row: 1;
+}
+
+.bitstream-feed-sidebar-panel:nth-child(2) summary {
+    grid-column: 2;
+    grid-row: 1;
+}
+
+.bitstream-feed-sidebar-panel:nth-child(3) summary {
+    grid-column: 3;
+    grid-row: 1;
+}
+
 
 .mobile-rss-panel {
     display: block;
