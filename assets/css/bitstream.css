@@ -827,6 +827,99 @@
     list-style: none;
 }
 
+/* Modern Comment Styling */
+.comment-list ul.children {
+    margin-left: 15px;
+    border-left: 2px solid #eee;
+    padding-left: 15px;
+}
+
+@media (min-width: 768px) {
+    .comment-list ul.children {
+        margin-left: 63px;
+    }
+}
+
+.bit-modern-comment {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.bit-modern-comment-avatar img.avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: block;
+}
+
+.bit-modern-comment-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.bit-modern-comment-header {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.bit-modern-comment-author,
+.bit-modern-comment-author a {
+    font-weight: 700;
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    font-size: 1.05rem;
+    font-style: normal;
+    text-decoration: none;
+}
+
+.bit-modern-comment-author a:hover {
+    text-decoration: underline;
+}
+
+.bit-modern-comment-date,
+.bit-modern-comment-date a {
+    color: var(--wp--preset--color--accent-2, #044389);
+    font-size: 0.9rem;
+    text-decoration: none;
+}
+
+.bit-modern-comment-date a:hover {
+    text-decoration: underline;
+}
+
+.bit-modern-comment-text {
+    font-size: 1rem;
+    line-height: 1.5;
+    color: #222;
+    margin-bottom: 12px;
+}
+
+.bit-modern-comment-text p {
+    margin: 0 0 8px 0;
+}
+
+.bit-modern-comment-text p:last-child {
+    margin-bottom: 0;
+}
+
+.bit-modern-comment-actions {
+    display: flex;
+    gap: 12px;
+    font-size: 0.85rem;
+}
+
+.bit-modern-comment-actions a {
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    text-decoration: underline;
+}
+
+.bit-modern-comment-actions a:hover {
+    color: var(--wp--preset--color--accent-2, #044389);
+}
+
 /* Infinite scroll trigger styling */
 .bitstream-scroll-trigger {
     width: 100%;

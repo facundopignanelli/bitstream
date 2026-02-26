@@ -284,35 +284,83 @@ function bitstream_render_nested_quoted_card($post_id)
  * @param bool $skip_content_filter Whether to skip the content filter to avoid infinite loops
  * @return string The rendered HTML
  */
-function bitstream_render_card($post_id, $skip_content_filter = false)
-{
-    // Avoid infinite loop by skipping content filter when rendering in single bit context
-    if ($skip_content_filter) {
-        $content = get_post_field('post_content', $post_id);
-        $content = wpautop($content); // Basic paragraph formatting
-    }
-    else {
-        $GLOBALS['bitstream_is_rendering_card'] = true;
-        $content = apply_filters('the_content', get_post_field('post_content', $post_id));
-        unset($GLOBALS['bitstream_is_rendering_card']);
-    }
+if (!function_exists('bitstream_comment_callback')) {
+    function bitstream_comment_callback($comment, $args, $depth)
+    {
+        $GLOBALS['comment'] = $comment;
+        $tag = ('div' === $args['style']) ? 'div' : 'li';
+?>
+        <<?php echo $tag; ?> id="comment-<?php comment_ID(); ?>" <?php comment_class(empty($args['has_children']) ? '' : 'parent'); ?>>
+            <article id="div-comment-<?php comment_ID(); ?>" class="bit-modern-comment">
+                <div class="bit-modern-comment-avatar">
+                    <?php if (0 != $args['avatar_size'])
+            echo get_avatar($comment, $args['avatar_size']); ?>
+                </div>
+                <div class="bit-modern-comment-content">
+                    <div class="bit-modern-comment-header">
+                        <cite class="fn bit-modern-comment-author"><?php echo get_comment_author_link(); ?></cite>
+                        <span class="bit-modern-comment-date">
+                            <a href="<?php echo esc_url(get_comment_link($comment, $args)); ?>">
+                                <?php printf('%s', get_comment_date()); ?>
+                            </a>
+                        </span>
+                    </div>
+                    
+                    <?php if ('0' == $comment->comment_approved): ?>
+                        <p class="comment-awaiting-moderation"><?php esc_html_e('Your comment is awaiting moderation.', 'bitstream'); ?></p>
+                    <?php
+        endif; ?>
 
-    $timestamp = human_time_diff(get_post_time('U', false, $post_id), current_time('timestamp')) . ' ago';
-    $posted_datetime = get_post_time('d/m/Y H:i', false, $post_id);
-    $is_edited = get_post_modified_time('U', false, $post_id) > get_post_time('U', false, $post_id);
-    $timestamp_tooltip = 'Posted: ' . $posted_datetime . ($is_edited ? ' • Edited' : '');
-    $avatar = get_avatar(get_post_field('post_author', $post_id), 48, '', '', ['class' => 'bit-avatar-img']);
-    $likes = (int)get_post_meta($post_id, '_bitstream_likes', true);
-    $comments = get_comments_number($post_id);
-    $quoted_id = (int)get_post_meta($post_id, '_bitstream_quoted_bit', true);
-    $is_rebit_card = !empty(get_post_meta($post_id, 'bitstream_rebit_url', true));
-    $rebit_markup = bitstream_render_rebit_section($post_id);
-    $quoted_markup = '';
-    if ($quoted_id > 0) {
-        $quoted_markup = bitstream_render_nested_quoted_card($quoted_id);
-    }
+                    <div class="bit-modern-comment-text">
+                        <?php comment_text(); ?>
+                    </div>
 
-    ob_start(); ?>
+                    <div class="bit-modern-comment-actions">
+                        <?php edit_comment_link(esc_html__('Edit', 'bitstream'), '<span class="edit-link">', '</span>'); ?>
+                        <?php
+        comment_reply_link(array_merge($args, [
+            'add_below' => 'div-comment',
+            'depth' => $depth,
+            'max_depth' => $args['max_depth'],
+            'before' => '<span class="reply-link">',
+            'after' => '</span>'
+        ]));
+?>
+                    </div>
+                </div>
+            </article>
+        <?php
+    }
+}
+
+if (!function_exists('bitstream_render_card')) {    function bitstream_render_card($post_id, $skip_content_filter = false)    {
+        // Avoid infinite loop by skipping content filter when rendering in single bit context
+        if ($skip_content_filter) {
+            $content = get_post_field('post_content', $post_id);
+            $content = wpautop($content); // Basic paragraph formatting
+        }
+        else {
+            $GLOBALS['bitstream_is_rendering_card'] = true;
+            $content = apply_filters('the_content', get_post_field('post_content', $post_id));
+            unset($GLOBALS['bitstream_is_rendering_card']);
+        }
+
+        $timestamp = human_time_diff(get_post_time('U', false, $post_id), current_time('timestamp')) . ' ago';
+        $posted_datetime = get_post_time('d/m/Y H:i', false, $post_id);
+        $is_edited = get_post_modified_time('U', false, $post_id) > get_post_time('U', false, $post_id);
+        $timestamp_tooltip = 'Posted: ' . $posted_datetime . ($is_edited ? ' • Edited' : '');
+        $avatar = get_avatar(get_post_field('post_author', $post_id), 48, '', '', ['class' => 'bit-avatar-img']);
+        $likes = (int)get_post_meta($post_id, '_bitstream_likes', true);
+        $comments = get_comments_number($post_id);
+        $quoted_id = (int)get_post_meta($post_id, '_bitstream_quoted_bit', true);
+        $is_rebit_card = !empty(get_post_meta($post_id, 'bitstream_rebit_url', true));
+        $rebit_markup = bitstream_render_rebit_section($post_id);
+        $quoted_markup = '';
+        if ($quoted_id > 0) {
+            $quoted_markup = bitstream_render_nested_quoted_card($quoted_id);
+        }
+
+        ob_start(); ?>
     <article id="bit-<?php echo esc_attr($post_id); ?>" class="bit-card" style="margin:0;padding:1.5rem;width:100%;max-width:none;box-sizing:border-box;border:1px solid #eee;border-radius:15px;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,0.05);">
         <header class="bit-card-header" style="display:flex;align-items:center;margin-bottom:1rem;">
             <div class="bit-avatar" style="width:48px;height:48px;margin-right:0.75rem;border-radius:15px;overflow:hidden;">
@@ -334,15 +382,15 @@ function bitstream_render_card($post_id, $skip_content_filter = false)
                 <?php echo $quoted_markup; ?>
             </div>
         <?php
-    endif; ?>
+        endif; ?>
 
         <hr style="margin:1rem 0;border:none;border-top:1px solid #eee;">
 
         <?php
-    $can_quote = current_user_can('edit_posts');
-    $can_edit = current_user_can('edit_post', $post_id);
-    $can_delete = is_user_logged_in() && current_user_can('delete_post', $post_id);
-    $show_admin_actions = $can_quote || $can_edit || $can_delete;
+        $can_quote = current_user_can('edit_posts');
+        $can_edit = current_user_can('edit_post', $post_id);
+        $can_delete = is_user_logged_in() && current_user_can('delete_post', $post_id);
+        $show_admin_actions = $can_quote || $can_edit || $can_delete;
 ?>
         <footer class="bit-card-footer" style="display:flex;gap:0.75rem;font-size:0.875rem;align-items:center;">
             <div class="bit-card-footer-main-actions">
@@ -364,43 +412,43 @@ function bitstream_render_card($post_id, $skip_content_filter = false)
                         <i class="fa-solid fa-retweet"></i>
                     </button>
                     <?php
-        endif; ?>
+            endif; ?>
                     <?php if ($can_edit): ?>
                     <button class="bit-edit bit-action" data-post-id="<?php echo esc_attr($post_id); ?>" data-post-type="<?php echo esc_attr($is_rebit_card ? 'rebit' : 'bit'); ?>" style="background:none;border:none;cursor:pointer;" title="Edit this bit">
                         <i class="fa-solid fa-pencil"></i>
                     </button>
                     <?php
-        endif; ?>
+            endif; ?>
                     <?php if ($can_delete): ?>
                     <button class="bit-delete bit-action" data-post-id="<?php echo esc_attr($post_id); ?>" style="background:none;border:none;cursor:pointer;" title="Delete this bit">
                         <i class="fa-solid fa-trash"></i>
                     </button>
                     <?php
-        endif; ?>
+            endif; ?>
                 </div>
             <?php
-    endif; ?>
+        endif; ?>
         </footer>
 
         <div id="comments-<?php echo $post_id; ?>" class="bit-comments">
             <ol class="comment-list">
-                <?php wp_list_comments(['style' => 'ol', 'short_ping' => true, 'max_depth' => 3], get_comments(['post_id' => $post_id, 'status' => 'approve'])); ?>
+                <?php wp_list_comments(['style' => 'ol', 'callback' => 'bitstream_comment_callback', 'avatar_size' => 48, 'short_ping' => true, 'max_depth' => 3], get_comments(['post_id' => $post_id, 'status' => 'approve'])); ?>
             </ol>
             <div class="bit-comment-form">
                 <?php comment_form([
-        'comment_notes_after' => '',
-        'title_reply' => 'Leave a Comment',
-        'logged_in_as' => '',
-        'comment_field' => '<p><textarea name="comment" required></textarea></p>',
-        'form_action' => esc_url($_SERVER['REQUEST_URI']),
-        'comment_post_redirect' => esc_url($_SERVER['REQUEST_URI']),
-    ], $post_id); ?>
+            'comment_notes_after' => '',
+            'title_reply' => 'Leave a Comment',
+            'logged_in_as' => '',
+            'comment_field' => '<p><textarea name="comment" required></textarea></p>',
+            'form_action' => esc_url($_SERVER['REQUEST_URI']),
+            'comment_post_redirect' => esc_url($_SERVER['REQUEST_URI']),
+        ], $post_id); ?>
             </div>
         </div>
     </article>
     <?php
 
-    return ob_get_clean();
+        return ob_get_clean();    }
 }
 
 // Initialize the plugin
