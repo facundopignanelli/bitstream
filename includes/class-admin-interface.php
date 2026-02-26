@@ -8,12 +8,16 @@
  */
 
 // Exit if accessed directly
-if (!defined('ABSPATH')) exit;
+if (!defined('ABSPATH'))
+    exit;
 
-class BitStream_Admin_Interface {
-    
-    public function __construct() {
+class BitStream_Admin_Interface
+{
+
+    public function __construct()
+    {
         add_action('admin_menu', [$this, 'add_admin_menus']);
+        add_action('admin_menu', [$this, 'remove_default_add_new'], 99);
         add_action('admin_notices', [$this, 'permalink_admin_notice']);
         add_action('wp_ajax_bitstream_flush_permalinks', [$this, 'flush_permalinks_ajax']);
         add_filter('post_row_actions', [$this, 'add_quote_action'], 10, 2);
@@ -28,7 +32,8 @@ class BitStream_Admin_Interface {
     /**
      * Register BitStream cron schedules.
      */
-    public function register_cron_schedules($schedules) {
+    public function register_cron_schedules($schedules)
+    {
         if (!isset($schedules['bitstream_weekly'])) {
             $schedules['bitstream_weekly'] = [
                 'interval' => WEEK_IN_SECONDS,
@@ -42,7 +47,8 @@ class BitStream_Admin_Interface {
     /**
      * Ensure weekly cleanup event is scheduled.
      */
-    public function ensure_weekly_media_cleanup_scheduled() {
+    public function ensure_weekly_media_cleanup_scheduled()
+    {
         if (!wp_next_scheduled('bitstream_weekly_media_cleanup_event')) {
             wp_schedule_event(time() + HOUR_IN_SECONDS, 'bitstream_weekly', 'bitstream_weekly_media_cleanup_event');
         }
@@ -51,7 +57,8 @@ class BitStream_Admin_Interface {
     /**
      * Resolve poster page URL
      */
-    private function get_poster_url($query_args = []) {
+    private function get_poster_url($query_args = [])
+    {
         if (class_exists('BitStream_Shortcodes')) {
             return BitStream_Shortcodes::get_poster_page_url($query_args);
         }
@@ -65,9 +72,10 @@ class BitStream_Admin_Interface {
     }
 
     /**
-     * Force new bit creation to use frontend poster
+     * Force new bit creation to use admin poster
      */
-    public function redirect_new_bit_creation() {
+    public function redirect_new_bit_creation()
+    {
         global $pagenow;
 
         if (!is_admin() || $pagenow !== 'post-new.php') {
@@ -82,8 +90,12 @@ class BitStream_Admin_Interface {
             return;
         }
 
-        $poster_tab = (isset($_GET['rebit']) && $_GET['rebit'] === '1') ? 'rebit' : 'bit';
-        $query_args = ['poster_tab' => $poster_tab];
+        $poster_tab = (isset($_GET['rebit']) || isset($_GET['poster_tab']) && $_GET['poster_tab'] === 'rebit') ? 'rebit' : 'bit';
+        $query_args = [
+            'post_type' => 'bit',
+            'page' => 'bitstream-new-bit',
+            'poster_tab' => $poster_tab
+        ];
 
         $forward_keys = ['shared_url', 'shared_title', 'shared_text', 'media_ids', 'quote_post_id', 'shared_key'];
         foreach ($forward_keys as $key) {
@@ -91,34 +103,47 @@ class BitStream_Admin_Interface {
                 $value = wp_unslash($_GET[$key]);
                 if ($key === 'shared_url') {
                     $query_args[$key] = esc_url_raw($value);
-                } elseif ($key === 'quote_post_id') {
+                }
+                elseif ($key === 'quote_post_id') {
                     $query_args[$key] = intval($value);
-                } else {
+                }
+                else {
                     $query_args[$key] = sanitize_text_field($value);
                 }
             }
         }
 
-        wp_redirect($this->get_poster_url($query_args));
+        wp_redirect(add_query_arg($query_args, admin_url('edit.php')));
         exit;
     }
-    
+
     /**
      * Add admin menu items
      */
-    public function add_admin_menus() {
-        // 1. Add New Bit - WordPress handles this automatically as "Add New Bit"
-        // 2. Add New ReBit 
-        add_submenu_page('edit.php?post_type=bit', 'Add New ReBit', 'Add New ReBit', 'edit_posts', 'bitstream-post-rebit', [$this, 'handle_post_rebit_redirect']);
+    public function add_admin_menus()
+    {
+        // 1. New Bit (Unified Poster)
+        $hook = add_submenu_page(
+            'edit.php?post_type=bit',
+            'New Bit',
+            'New Bit',
+            'edit_posts',
+            'bitstream-new-bit',
+        [$this, 'new_bit_admin_page'],
+            1
+        );
+
+        // Enqueue assets specifically for this admin page
+        add_action('admin_print_styles-' . $hook, [$this, 'enqueue_admin_poster_assets']);
 
         // Feed Intro Text
         add_submenu_page('edit.php?post_type=bit', 'Feed Intro', 'Feed Intro', 'edit_posts', 'bitstream-feed-intro', [$this, 'feed_intro_page']);
-        
+
         // 3. All Bits is automatically handled by WordPress (All Bits menu item)
-        
+
         // 4. ReBit Mappings
         add_submenu_page('edit.php?post_type=bit', 'ReBit Mappings', 'ReBit Mappings', 'manage_options', 'bitstream-rebit-mappings', [$this, 'rebit_mappings_page']);
-        
+
         // 5. RSS Feeds
         add_submenu_page('edit.php?post_type=bit', 'RSS Feeds', 'RSS Feeds', 'read', 'bitstream-rss-feeds', [$this, 'rss_feeds_page']);
 
@@ -130,9 +155,47 @@ class BitStream_Admin_Interface {
     }
 
     /**
+     * Remove the default "Add New" submenu (runs at priority 99 so it fires after WP registers it)
+     */
+    public function remove_default_add_new()
+    {
+        remove_submenu_page('edit.php?post_type=bit', 'post-new.php?post_type=bit');
+    }
+
+    /**
+     * Display the New Bit poster inside the admin area
+     */
+    public function new_bit_admin_page()
+    {
+        echo '<div class="wrap">';
+        echo '<h1>' . esc_html__('New Bit', 'bitstream') . '</h1>';
+        echo '<div style="max-width: 600px; margin-top: 20px;">';
+        echo do_shortcode('[bitstream_poster]');
+        echo '</div>';
+        echo '</div>';
+    }
+
+    /**
+     * Enqueue CSS/JS for the admin poster page
+     */
+    public function enqueue_admin_poster_assets()
+    {
+        wp_enqueue_media();
+        wp_enqueue_style('bitstream-css', BITSTREAM_PLUGIN_URL . 'assets/css/bitstream.css', [], BITSTREAM_VERSION);
+        wp_enqueue_script('bitstream-js', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream.js', ['jquery'], BITSTREAM_VERSION, true);
+
+        wp_localize_script('bitstream-js', 'bitstream_ajax', [
+            'ajaxurl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('bitstream_nonce'),
+            'admin_page_redirect' => admin_url('edit.php?post_type=bit')
+        ]);
+    }
+
+    /**
      * Determine whether an attachment is likely managed by BitStream.
      */
-    private function is_bitstream_attachment($attachment_id) {
+    private function is_bitstream_attachment($attachment_id)
+    {
         if ($attachment_id <= 0 || get_post_type($attachment_id) !== 'attachment') {
             return false;
         }
@@ -160,7 +223,8 @@ class BitStream_Admin_Interface {
     /**
      * Check if an attachment is referenced by non-trash content/meta across the site.
      */
-    private function attachment_is_used_sitewide($attachment_id) {
+    private function attachment_is_used_sitewide($attachment_id)
+    {
         global $wpdb;
 
         if ($attachment_id <= 0 || get_post_type($attachment_id) !== 'attachment') {
@@ -193,20 +257,20 @@ class BitStream_Admin_Interface {
             return true;
         }
 
-                $audio_meta_like = '%"artwork_id";i:' . intval($attachment_id) . ';%';
-                $audio_meta_ref = $wpdb->get_var($wpdb->prepare(
-                        "SELECT pm.post_id
+        $audio_meta_like = '%"artwork_id";i:' . intval($attachment_id) . ';%';
+        $audio_meta_ref = $wpdb->get_var($wpdb->prepare(
+            "SELECT pm.post_id
                          FROM {$wpdb->postmeta} pm
                          INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
                          WHERE pm.meta_key = '_bitstream_audio_meta'
                              AND pm.meta_value LIKE %s
                              AND p.post_status NOT IN ('trash','auto-draft')
                          LIMIT 1",
-                        $audio_meta_like
-                ));
-                if (!empty($audio_meta_ref)) {
-                        return true;
-                }
+            $audio_meta_like
+        ));
+        if (!empty($audio_meta_ref)) {
+            return true;
+        }
 
         $attachment_url = wp_get_attachment_url($attachment_id);
         if ($attachment_url) {
@@ -241,7 +305,8 @@ class BitStream_Admin_Interface {
     /**
      * Scan and optionally delete orphaned BitStream-managed media.
      */
-    private function run_bitstream_media_cleanup($perform_delete = false) {
+    private function run_bitstream_media_cleanup($perform_delete = false)
+    {
         $results = [
             'scanned' => 0,
             'candidates' => 0,
@@ -295,7 +360,8 @@ class BitStream_Admin_Interface {
                     if (count($results['deleted_items']) < 20) {
                         $results['deleted_items'][] = $attachment_id;
                     }
-                } else {
+                }
+                else {
                     $results['errors']++;
                 }
             }
@@ -309,7 +375,8 @@ class BitStream_Admin_Interface {
     /**
      * Weekly automated cleanup job.
      */
-    public function run_weekly_media_cleanup() {
+    public function run_weekly_media_cleanup()
+    {
         $results = $this->run_bitstream_media_cleanup(true);
         update_option('bitstream_last_weekly_media_cleanup', [
             'timestamp' => time(),
@@ -324,7 +391,8 @@ class BitStream_Admin_Interface {
     /**
      * Reset BitStream page handler.
      */
-    public function reset_bitstream_page() {
+    public function reset_bitstream_page()
+    {
         if (!current_user_can('manage_options')) {
             wp_die(__('You do not have sufficient permissions to access this page.'));
         }
@@ -350,7 +418,8 @@ class BitStream_Admin_Interface {
     /**
      * Perform the complete BitStream reset.
      */
-    private function perform_bitstream_reset() {
+    private function perform_bitstream_reset()
+    {
         global $wpdb;
 
         // 1. Delete all BitStream posts and their attachments
@@ -363,7 +432,7 @@ class BitStream_Admin_Interface {
 
         foreach ($posts->posts as $post_id) {
             $post_id = intval($post_id);
-            
+
             // Get all attachments for this post
             $attachments = get_posts([
                 'post_parent' => $post_id,
@@ -372,11 +441,11 @@ class BitStream_Admin_Interface {
                 'fields' => 'ids',
                 'post_status' => 'any',
             ]);
-            
+
             foreach ($attachments as $attachment_id) {
                 wp_delete_attachment(intval($attachment_id), true);
             }
-            
+
             // Delete post (force delete, skip trash)
             wp_delete_post($post_id, true);
         }
@@ -453,7 +522,8 @@ class BitStream_Admin_Interface {
     /**
      * Media cleanup admin page.
      */
-    public function media_cleanup_page() {
+    public function media_cleanup_page()
+    {
         if (!current_user_can('manage_options')) {
             wp_die(__('You do not have sufficient permissions to access this page.'));
         }
@@ -478,13 +548,14 @@ class BitStream_Admin_Interface {
 
         if (!empty($last_weekly) && !empty($last_weekly['timestamp'])) {
             $run_time = wp_date(get_option('date_format') . ' ' . get_option('time_format'), intval($last_weekly['timestamp']));
-            echo '<p><strong>Last weekly cleanup run:</strong> ' . esc_html($run_time) . ' | '; 
-            echo 'Scanned: <strong>' . intval($last_weekly['scanned'] ?? 0) . '</strong> | '; 
-            echo 'Candidates: <strong>' . intval($last_weekly['candidates'] ?? 0) . '</strong> | '; 
-            echo 'Deleted: <strong>' . intval($last_weekly['deleted'] ?? 0) . '</strong> | '; 
-            echo 'Protected/Skipped: <strong>' . intval($last_weekly['protected'] ?? 0) . '</strong> | '; 
+            echo '<p><strong>Last weekly cleanup run:</strong> ' . esc_html($run_time) . ' | ';
+            echo 'Scanned: <strong>' . intval($last_weekly['scanned'] ?? 0) . '</strong> | ';
+            echo 'Candidates: <strong>' . intval($last_weekly['candidates'] ?? 0) . '</strong> | ';
+            echo 'Deleted: <strong>' . intval($last_weekly['deleted'] ?? 0) . '</strong> | ';
+            echo 'Protected/Skipped: <strong>' . intval($last_weekly['protected'] ?? 0) . '</strong> | ';
             echo 'Errors: <strong>' . intval($last_weekly['errors'] ?? 0) . '</strong></p>';
-        } else {
+        }
+        else {
             echo '<p><strong>Last weekly cleanup run:</strong> Not run yet.</p>';
         }
 
@@ -493,13 +564,14 @@ class BitStream_Admin_Interface {
             echo '<div class="notice ' . esc_attr($notice_class) . '"><p>';
             if ($did_delete) {
                 echo 'Cleanup complete. ';
-            } else {
+            }
+            else {
                 echo 'Scan complete. ';
             }
-            echo 'Scanned: <strong>' . intval($results['scanned']) . '</strong> | '; 
-            echo 'Candidates: <strong>' . intval($results['candidates']) . '</strong> | '; 
-            echo 'Deleted: <strong>' . intval($results['deleted']) . '</strong> | '; 
-            echo 'Protected/Skipped: <strong>' . intval($results['protected']) . '</strong> | '; 
+            echo 'Scanned: <strong>' . intval($results['scanned']) . '</strong> | ';
+            echo 'Candidates: <strong>' . intval($results['candidates']) . '</strong> | ';
+            echo 'Deleted: <strong>' . intval($results['deleted']) . '</strong> | ';
+            echo 'Protected/Skipped: <strong>' . intval($results['protected']) . '</strong> | ';
             echo 'Errors: <strong>' . intval($results['errors']) . '</strong>';
             echo '</p></div>';
 
@@ -516,13 +588,15 @@ class BitStream_Admin_Interface {
 
         echo '</div>';
     }
-    
+
     /**
      * Admin notice for permalink issues
      */
-    public function permalink_admin_notice() {
-        if (!current_user_can('manage_options')) return;
-        
+    public function permalink_admin_notice()
+    {
+        if (!current_user_can('manage_options'))
+            return;
+
         // Check if we need to flush permalinks due to debug request
         if (isset($_GET['bitstream_debug']) && $_GET['bitstream_debug'] === 'flush_rewrite') {
             flush_rewrite_rules();
@@ -532,14 +606,14 @@ class BitStream_Admin_Interface {
             echo '</div>';
             return;
         }
-        
+
         if (get_option('bitstream_permalinks_flushed') !== BITSTREAM_VERSION) {
             echo '<div class="notice notice-warning is-dismissible">';
             echo '<p><strong>BitStream:</strong> Permalink issues detected after plugin update. ';
             echo '<button type="button" class="button button-primary" onclick="bitstreamFlushPermalinks()">Fix Permalinks</button> ';
             echo 'or go to <a href="' . admin_url('options-permalink.php') . '">Settings > Permalinks</a> and click "Save Changes".</p>';
             echo '</div>';
-            
+
             // Add JavaScript for AJAX call
             echo '<script>
             function bitstreamFlushPermalinks() {
@@ -575,24 +649,26 @@ class BitStream_Admin_Interface {
             </script>';
         }
     }
-    
+
     /**
      * AJAX handler to flush permalinks
      */
-    public function flush_permalinks_ajax() {
+    public function flush_permalinks_ajax()
+    {
         if (!current_user_can('manage_options') || !wp_verify_nonce($_POST['nonce'] ?? '', 'flush_permalinks')) {
             wp_send_json_error('Unauthorized');
         }
-        
+
         flush_rewrite_rules();
         update_option('bitstream_permalinks_flushed', BITSTREAM_VERSION);
         wp_send_json_success('Permalinks flushed successfully');
     }
-    
+
     /**
      * Handle ReBit redirect
      */
-    public function handle_post_rebit_redirect() {
+    public function handle_post_rebit_redirect()
+    {
         wp_redirect($this->get_poster_url(['poster_tab' => 'rebit']));
         exit;
     }
@@ -600,7 +676,8 @@ class BitStream_Admin_Interface {
     /**
      * Feed intro admin page.
      */
-    public function feed_intro_page() {
+    public function feed_intro_page()
+    {
         if (!current_user_can('edit_posts')) {
             wp_die(__('You do not have sufficient permissions to access this page.'));
         }
@@ -652,19 +729,20 @@ class BitStream_Admin_Interface {
         echo '</form>';
         echo '</div>';
     }
-    
+
     /**
      * RSS Feeds admin page
      */
-    public function rss_feeds_page() {
+    public function rss_feeds_page()
+    {
         $home_url = home_url();
-        
+
         // Handle flush rewrite rules request
         if (isset($_POST['flush_feeds']) && check_admin_referer('bitstream_flush_feeds', 'bitstream_flush_feeds_nonce')) {
             flush_rewrite_rules();
             echo '<div class="notice notice-success"><p>Rewrite rules flushed! RSS feeds should now work properly.</p></div>';
         }
-        
+
         $feeds = [
             'All Content' => [
                 'url' => $home_url . '/bitstream/feed/',
@@ -679,7 +757,7 @@ class BitStream_Admin_Interface {
                 'description' => 'ReBits only (shared content from other platforms)'
             ]
         ];
-        
+
         echo '<style>
         /* Force full width for RSS feeds admin page */
         .wrap {
@@ -697,14 +775,14 @@ class BitStream_Admin_Interface {
         echo '<div class="wrap" style="max-width: none !important; width: 98% !important; margin: 0 auto !important;">';
         echo '<h1>RSS Feeds</h1>';
         echo '<p class="description">BitStream provides multiple RSS feeds for different content types. Choose the feed that best fits your needs.</p>';
-        
+
         echo '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; margin-top: 20px;">';
-        
+
         foreach ($feeds as $name => $feed) {
             echo '<div class="card" style="padding: 20px;">';
             echo '<h2 class="title" style="margin-top: 0;">' . esc_html($name) . '</h2>';
             echo '<p class="description">' . esc_html($feed['description']) . '</p>';
-            
+
             echo '<div style="margin: 15px 0;">';
             echo '<label><strong>Feed URL:</strong></label><br>';
             echo '<div style="display: flex; gap: 10px; align-items: center;">';
@@ -713,12 +791,12 @@ class BitStream_Admin_Interface {
             echo '<a href="' . esc_url($feed['url']) . '" target="_blank" class="button button-secondary">View Feed</a>';
             echo '</div>';
             echo '</div>';
-            
+
             // Add subscription options
             echo '<div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">';
             echo '<p><strong>Subscribe with:</strong></p>';
             echo '<div style="display: flex; gap: 10px; flex-wrap: wrap;">';
-            
+
             $feed_url_encoded = urlencode($feed['url']);
             $subscribe_links = [
                 'Feedly' => 'https://feedly.com/i/subscription/feed/' . $feed_url_encoded,
@@ -726,7 +804,7 @@ class BitStream_Admin_Interface {
                 'NewsBlur' => 'https://newsblur.com/?url=' . $feed_url_encoded,
                 'Pocket' => 'https://getpocket.com/edit?url=' . $feed_url_encoded
             ];
-            
+
             foreach ($subscribe_links as $service => $link) {
                 echo '<a href="' . esc_url($link) . '" target="_blank" class="button button-small">' . esc_html($service) . '</a>';
             }
@@ -734,9 +812,9 @@ class BitStream_Admin_Interface {
             echo '</div>';
             echo '</div>';
         }
-        
+
         echo '</div>';
-        
+
         // Add flush rewrite rules form
         echo '<div style="margin-top: 30px; padding: 20px; background: #fff; border: 1px solid #ccd0d4; border-radius: 4px;">';
         echo '<h3>Troubleshooting</h3>';
@@ -746,7 +824,7 @@ class BitStream_Admin_Interface {
         echo '<button type="submit" name="flush_feeds" class="button button-secondary">Flush Rewrite Rules</button>';
         echo '</form>';
         echo '</div>';
-        
+
         // Add JavaScript for copy functionality
         echo '<script>
         function copyToClipboard(text, button) {
@@ -777,23 +855,24 @@ class BitStream_Admin_Interface {
             });
         }
         </script>';
-        
+
         echo '</div>';
     }
-    
+
     /**
      * Enhanced ReBit mappings admin page with improved UX
      */
-    public function rebit_mappings_page() {
+    public function rebit_mappings_page()
+    {
         if (!current_user_can('manage_options')) {
             wp_die(__('You do not have sufficient permissions to access this page.'));
         }
-        
+
         // Handle form submission for saving/editing mappings
-        if (isset($_POST['bitstream_rebit_mappings']) && check_admin_referer('bitstream_rebit_mappings_save','bitstream_rebit_mappings_nonce')) {
+        if (isset($_POST['bitstream_rebit_mappings']) && check_admin_referer('bitstream_rebit_mappings_save', 'bitstream_rebit_mappings_nonce')) {
             $posted = $_POST['bitstream_rebit_mappings'];
             $mappings_to_save = [];
-            
+
             // Handle existing mappings (edits and keeps)
             if (isset($posted['existing'])) {
                 foreach ($posted['existing'] as $map) {
@@ -801,11 +880,11 @@ class BitStream_Admin_Interface {
                     if (!empty($map['remove'])) {
                         continue;
                     }
-                    
+
                     $domain = sanitize_text_field($map['domain'] ?? '');
-                    $label  = sanitize_text_field($map['label'] ?? '');
-                    $icon   = sanitize_text_field($map['icon'] ?? '');
-                    
+                    $label = sanitize_text_field($map['label'] ?? '');
+                    $icon = sanitize_text_field($map['icon'] ?? '');
+
                     if (!empty($domain) && !empty($label) && !empty($icon)) {
                         $mappings_to_save[] = [
                             'domain' => $domain,
@@ -815,13 +894,13 @@ class BitStream_Admin_Interface {
                     }
                 }
             }
-            
+
             // Handle new mapping
             if (isset($posted['new'])) {
                 $domain = sanitize_text_field($posted['new']['domain'] ?? '');
-                $label  = sanitize_text_field($posted['new']['label'] ?? '');
-                $icon   = sanitize_text_field($posted['new']['icon'] ?? '');
-                
+                $label = sanitize_text_field($posted['new']['label'] ?? '');
+                $icon = sanitize_text_field($posted['new']['icon'] ?? '');
+
                 if (!empty($domain) && !empty($label) && !empty($icon)) {
                     // Check if domain already exists in what we're saving
                     $exists = false;
@@ -831,7 +910,7 @@ class BitStream_Admin_Interface {
                             break;
                         }
                     }
-                    
+
                     if (!$exists) {
                         $mappings_to_save[] = [
                             'domain' => $domain,
@@ -841,20 +920,20 @@ class BitStream_Admin_Interface {
                     }
                 }
             }
-            
+
             // Save all mappings via the centralized class
             BitStream_ReBit_Mappings::save_mappings($mappings_to_save);
             echo '<div class="updated notice is-dismissible"><p><strong>ReBit mappings saved successfully!</strong></p></div>';
         }
-        
+
         // Handle preset addition
-        if (isset($_POST['add_preset']) && check_admin_referer('bitstream_rebit_mappings_save','bitstream_rebit_mappings_nonce')) {
+        if (isset($_POST['add_preset']) && check_admin_referer('bitstream_rebit_mappings_save', 'bitstream_rebit_mappings_nonce')) {
             $preset_key = sanitize_text_field($_POST['preset_selection'] ?? '');
             $presets = BitStream_ReBit_Mappings::get_rebit_presets();
-            
+
             if (!empty($preset_key) && isset($presets[$preset_key])) {
                 $new_mapping = $presets[$preset_key];
-                
+
                 // Check if domain already exists
                 $existing_mappings = BitStream_ReBit_Mappings::get_all_mappings();
                 $exists = false;
@@ -864,65 +943,70 @@ class BitStream_Admin_Interface {
                         break;
                     }
                 }
-                
+
                 if (!$exists) {
                     $existing_mappings[] = $new_mapping;
                     BitStream_ReBit_Mappings::save_mappings($existing_mappings);
                     echo '<div class="updated notice is-dismissible"><p><strong>Preset added successfully!</strong></p></div>';
-                } else {
+                }
+                else {
                     echo '<div class="error notice is-dismissible"><p><strong>Error:</strong> A mapping for this domain already exists.</p></div>';
                 }
             }
         }
-        
+
         // Handle import all presets
-        if (isset($_POST['import_defaults']) && check_admin_referer('bitstream_rebit_mappings_save','bitstream_rebit_mappings_nonce')) {
+        if (isset($_POST['import_defaults']) && check_admin_referer('bitstream_rebit_mappings_save', 'bitstream_rebit_mappings_nonce')) {
             BitStream_ReBit_Mappings::import_all_presets();
             echo '<div class="updated notice is-dismissible"><p><strong>Default mappings imported successfully!</strong></p></div>';
         }
-        
+
         // Get current mappings and render the form
         $mappings = BitStream_ReBit_Mappings::get_all_mappings();
-        
+
         // Include the ReBit Mappings interface
         include_once BITSTREAM_PLUGIN_PATH . 'includes/admin-rebit-mappings-interface.php';
     }
-    
+
     /**
      * Add quote action to post rows
      */
-    public function add_quote_action($actions, $post) {
+    public function add_quote_action($actions, $post)
+    {
         if ($post->post_type === 'bit') {
             $url = $this->get_poster_url(['poster_tab' => 'bit', 'quote_post_id' => $post->ID]);
             $actions['quote'] = '<a href="' . esc_url($url) . '">Quote</a>';
         }
         return $actions;
     }
-    
+
     /**
      * Show quoted bit preview in editor
      */
-    public function show_quoted_preview($post) {
+    public function show_quoted_preview($post)
+    {
         if ($post->post_type === 'bit' && isset($_GET['quoted_bit'])) {
             $quoted_id = intval($_GET['quoted_bit']);
             $quoted_post = get_post($quoted_id);
             if ($quoted_post && $quoted_post->post_type === 'bit') {
                 $content = apply_filters('the_content', $quoted_post->post_content);
                 echo '<div class="bitstream-quoted-preview" style="border-radius:13px; box-shadow:0 2px 12px rgba(0,0,0,0.10); padding:16px; background:#fafafa; margin-bottom:20px;">';
-                echo '<strong>Quoting Bit #'.$quoted_id.'</strong><br>' . $content;
+                echo '<strong>Quoting Bit #' . $quoted_id . '</strong><br>' . $content;
                 echo '</div>';
-                echo '<input type="hidden" name="bitstream_quoted_bit" value="'.$quoted_id.'">';
+                echo '<input type="hidden" name="bitstream_quoted_bit" value="' . $quoted_id . '">';
             }
         }
     }
-    
+
     /**
      * Save quoted bit meta
      */
-    public function save_quoted_meta($post_id) {
+    public function save_quoted_meta($post_id)
+    {
         if (isset($_POST['bitstream_quoted_bit'])) {
             update_post_meta($post_id, '_bitstream_quoted_bit', intval($_POST['bitstream_quoted_bit']));
-        } else {
+        }
+        else {
             delete_post_meta($post_id, '_bitstream_quoted_bit');
         }
     }

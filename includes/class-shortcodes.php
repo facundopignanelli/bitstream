@@ -133,12 +133,7 @@ class BitStream_Shortcodes
             [
                 'url' => self::get_poster_page_url(['poster_tab' => 'bit']),
                 'icon' => 'fa-solid fa-comment',
-                'label' => 'Add New Bit',
-            ],
-            [
-                'url' => self::get_poster_page_url(['poster_tab' => 'rebit']),
-                'icon' => 'fa-solid fa-link',
-                'label' => 'Add New ReBit',
+                'label' => 'New Bit',
             ],
             [
                 'url' => admin_url('edit.php?post_type=bit&page=bitstream-rss-feeds'),
@@ -633,7 +628,11 @@ class BitStream_Shortcodes
             }
         }
         else {
-            echo '<p>No Bits found for this filter.</p>';
+            echo '<div class="' . $feed_classes . '">';
+            echo '<div class="bit-card" style="padding: 3rem 1.5rem; text-align: center; border-radius: 15px; background: #fff;">';
+            echo '<p style="margin: 0; color: #666; font-size: 1.05rem;">No Bits found for this filter.</p>';
+            echo '</div>';
+            echo '</div>';
         }
         echo '</main>';
 
