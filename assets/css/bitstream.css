@@ -293,7 +293,7 @@
 }
 
 .bitstream-feed-sidebar-summary i {
-    margin-right: 0.4rem;
+    font-size: 1.15rem;
 }
 
 .bitstream-feed-sidebar-summary::-webkit-details-marker {
