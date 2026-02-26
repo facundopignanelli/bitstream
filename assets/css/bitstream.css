@@ -240,7 +240,7 @@
 }
 
 .bitstream-feed-sidebar-panel {
-    display: block;
+    display: contents;
 }
 
 .bitstream-feed-sidebar-tabs {
@@ -251,13 +251,9 @@
 }
 
 .bitstream-feed-sidebar-tabs .bitstream-feed-sidebar {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    z-index: 10;
+    grid-column: 1 / -1;
+    order: 2;
     margin-top: 0.5rem;
-    min-width: 280px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .mobile-rss-panel {
@@ -270,7 +266,6 @@
 
 .bitstream-feed-sidebar-tabs .bitstream-feed-sidebar-panel {
     min-width: 0;
-    position: relative;
 }
 
 
@@ -289,6 +284,7 @@
     border-radius: 8px;
     border: none;
     transition: background 0.2s ease, filter 0.2s ease;
+    order: 1;
 }
 
 .hide-on-mobile {
@@ -547,9 +543,19 @@
         min-width: 0;
         box-shadow: none;
         margin-top: 0;
+        order: initial;
+        grid-column: initial;
     }
 
     .bitstream-feed-sidebar-tabs {
+        display: block;
+    }
+
+    .bitstream-feed-sidebar-summary {
+        order: initial;
+    }
+
+    .bitstream-feed-sidebar-panel {
         display: block;
     }
 
