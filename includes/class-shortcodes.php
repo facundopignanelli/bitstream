@@ -558,6 +558,7 @@ class BitStream_Shortcodes
         echo '<a class="bitstream-filter-link ' . ($selected_type === 'bits' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'bits', $selected_month, $selected_search, $selected_hashtag)) . '">Bits</a>';
         echo '<a class="bitstream-filter-link ' . ($selected_type === 'rebits' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'rebits', $selected_month, $selected_search, $selected_hashtag)) . '">Rebits</a>';
         echo '</div>';
+        echo '</div>'; // End filters panel
 
         // Hashtags Panel
         if (!empty($hashtag_counts)) {
@@ -575,7 +576,6 @@ class BitStream_Shortcodes
             echo '</div>';
             echo '</div>';
         }
-        echo '</div>';
 
         echo '</div>'; // End tabs
         echo '</div>'; // End sidebar left
