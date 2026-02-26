@@ -742,7 +742,7 @@ class BitStream_Shortcodes
                 </button>
                 <?php if (current_user_can('manage_options')): ?>
                 <button type="button" class="bitstream-settings-tab <?php echo $is_advanced ? 'is-active' : ''; ?>" data-settings-tab="advanced" role="tab" aria-selected="<?php echo $is_advanced ? 'true' : 'false'; ?>">
-                    <i class="fa-solid fa-gear" aria-hidden="true"></i> Advanced
+                    <i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> Advanced
                 </button>
                 <?php
         endif; ?>

@@ -1661,13 +1661,17 @@ video {
     }
 
     .bitstream-settings-tabs {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(4, 1fr);
         gap: 0.5rem;
     }
 
     .bitstream-settings-tab {
-        font-size: 0.85rem;
-        padding: 0.6rem 0.5rem;
+        font-size: 0;
+        padding: 0.7rem;
+    }
+
+    .bitstream-settings-tab i {
+        font-size: 1.1rem;
     }
 
     .bitstream-settings .flex-container {
