@@ -849,14 +849,14 @@
 }
 
 /* Modern Comment Styling */
-.comment-list ul.children {
+.comment-list .children {
     margin-left: 15px;
     border-left: 1px solid #ccc;
     padding-left: 15px;
 }
 
 @media (min-width: 768px) {
-    .comment-list ul.children {
+    .comment-list .children {
         margin-left: 63px;
     }
 }
