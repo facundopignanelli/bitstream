@@ -806,7 +806,7 @@ class BitStream_Shortcodes
             echo '<div class="notice notice-success" style="padding: 10px; border-left: 4px solid #2c6e49; background: #f0f9f4; margin-bottom: 1rem;"><p style="margin: 0;">Intro text updated.</p></div>';
         }
 
-        echo '<form method="post" style="max-width: 600px;">';
+        echo '<form method="post">';
         wp_nonce_field('bitstream_feed_intro_save', 'bitstream_feed_intro_nonce');
         echo '<input type="hidden" name="settings_tab" value="personalisation">';
 
