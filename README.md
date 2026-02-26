@@ -10,18 +10,16 @@
 
 ## 🎯 Overview
 
-BitStream transforms WordPress into a powerful microblogging platform with Twitter-like functionality. Share quick thoughts (Bits), reshare external content (ReBits), interact through likes and comments, and enjoy a modern Progressive Web App experience.
+BitStream transforms WordPress into a powerful microblogging platform with Twitter-like functionality. Share quick thoughts (Bits), reshare external content (ReBits), schedule posts, save drafts, use hashtags, and enjoy a modern Progressive Web App experience with a clear social-app style timeline.
 
 ### Key Highlights
 
-- 📱 **Progressive Web App** - Install as native app on mobile/desktop
-- 🎨 **Beautiful Masonry Layout** - Pinterest-style responsive grid
-- 🔄 **ReBit System** - Share links with automatic OpenGraph previews
-- 💬 **Social Features** - Likes, comments, quotes, and more
-- 🚀 **Performance Optimized** - Smart caching, lazy loading, efficient queries
-- 🔒 **Security First** - Nonces, sanitization, capability checks throughout
-- 🎨 **Theme Agnostic** - Works with any properly coded WordPress theme
-- 🌐 **Translation Ready** - Fully internationalized and RTL-ready
+- 📱 **Progressive Web App** - Install as native app on mobile/desktop with robust share sheet integration
+- 🎨 **Modern Social Timeline** - Clean, responsive feed layout replacing the old masonry grid
+- � **Advanced Poster Interface** - Tabbed posting with drafts, scheduling, and rich media
+- 🏷️ **Hashtags & Discovery** - Auto-linked tags, trending sidebars, and hashtag feed filtering
+- � **Enhanced ReBit System** - Secure, cached OpenGraph previews with manual overrides
+- ⚙️ **Unified Settings** - Centralized management for all your personalization and mapping needs
 
 ## 📋 Table of Contents
 
@@ -31,7 +29,7 @@ BitStream transforms WordPress into a powerful microblogging platform with Twitt
 - [Shortcodes](#-shortcodes)
 - [Progressive Web App](#-progressive-web-app)
 - [ReBit System](#-rebit-system)
-- [Admin Features](#-admin-features)
+- [Administration & Settings](#-administration--settings)
 - [Technical Details](#-technical-details)
 - [Contributing](#-contributing)
 - [Changelog](#-changelog)
@@ -44,7 +42,7 @@ BitStream transforms WordPress into a powerful microblogging platform with Twitt
 2. Upload the `bitstream` folder to `/wp-content/plugins/`
 3. Activate the plugin through the 'Plugins' menu in WordPress
 4. Visit Settings → Permalinks and click "Save Changes" to flush rewrite rules
-5. Create a page and add the `[bitstream]` shortcode
+5. Create a page and add the `[bitstream]` and/or `[bitstream_poster]` shortcodes
 
 ### Manual Installation
 
@@ -60,92 +58,67 @@ BitStream transforms WordPress into a powerful microblogging platform with Twitt
 
 ### Display the Feed
 
-Create a new page and add the shortcode:
+Create a new page and add the shortcode to display your timeline:
 
 ```
 [bitstream]
 ```
 
-This will display a masonry grid of bits with load more functionality.
+### Create the Posting Interface
+
+Create another page to serve as your dedicated posting area:
+
+```
+[bitstream_poster]
+```
 
 ### Install as PWA
 
-On mobile devices, use the "Add to Home Screen" option to install BitStream as a native app.
+On mobile devices, use the "Add to Home Screen" option to install BitStream as a native app for the best experience.
 
 ## ✨ Features
 
-### 📱 Progressive Web App (PWA)
+### 🎨 Modern Social Timeline
 
-- **Installable App** - Add to home screen on mobile and desktop
-- **Offline Support** - Service worker caches content for offline access
-- **App-Like Feel** - Standalone display mode with custom theme colors
-- **Android Share Sheet** - Share links from any app directly to BitStream
-- **Quick Actions** - Home screen shortcuts for "Add New Bit" and "Add New ReBit"
-- **Push Notifications Ready** - Infrastructure in place for future push notifications
-- **Smart Caching** - Automatic cache management with version control
+- **Social-App Style Feed** - Clear, single-column reading experience replacing the old masonry layout
+- **Adaptive Sidebars** - Left filter links, right Quick Actions rails, and responsive stacking across devices
+- **Interactive Cards** - Rich media, quoted bits, audio players, and inline actions
+- **Quick Bit Box** - Instantly post Bits or auto-detected ReBits directly from the sidebar feed
+- **In-Feed Deletion** - Instantly delete posts if you have the proper capabilities
 
-### 🎨 Modern Masonry Layout
+### 📝 Advanced Poster Interface
 
-- **Pinterest-Style Grid** - Dynamic height-based card positioning
-- **Responsive Columns** - 1 column (mobile), 2 columns (tablet), 3 columns (desktop)
-- **Zero Overlaps** - Intelligent height calculation prevents card overlap
-- **Smooth Animations** - CSS transitions for card positioning
-- **Dynamic Adjustments** - Automatically recalculates on content changes
-- **Image Load Detection** - Waits for images before finalizing layout
-- **Performance Optimized** - 60fps animations using requestAnimationFrame
+- **Tabbed Workflow** - Seamlessly switch between composing Bits, ReBits, Drafts, and Scheduled posts
+- **Drafts Support** - Save posts mid-thought, auto-save on tab close (`navigator.sendBeacon`), and resume later
+- **Robust Scheduling** - Plan ahead with a native datetime picker for future publishing (Bits and ReBits)
+- **Rich Media & Audio** - Drag-and-drop uploads, custom image cropper, and support for audio formats (MP3, OGG, WAV, FLAC, etc.) integrated via native `wp.media`
+- **Publish Previews** - In-window publish result panel showing the exact frontend-rendered card without refreshing
+- **Quick Actions Post-Publish** - Copy permalinks, quickly edit, or jump to the published post straight from the success screen
 
-### 💬 Social Features
+### � Social & Discovery
 
-- **Likes** - AJAX-powered like/unlike with localStorage persistence
-- **Comments** - Native WordPress comments with custom styling
-- **Nested Comments** - Full threading support with visual hierarchy
-- **Quote Bits** - Quote and respond to other bits
-- **Real-time Updates** - No page reloads needed for interactions
-- **AJAX Toggling** - Smooth expand/collapse for comments
+- **Hashtags** - Dynamic link generation, searchable tags across your feed, and a "Hashtags" section in the sidebar showing trending terms
+- **Likes & Comments** - AJAX-powered likes, nested threaded comments (with visual hierarchy), and an inline reply system
+- **Quoted Bits** - Visually rich nested cards providing beautiful context when responding to another post
 
-### 🔄 ReBit System
+### � Enhanced ReBit System
 
-- **Share External Links** - Post links from anywhere on the web
-- **Auto OpenGraph** - Automatically fetches title, description, and image
-- **Custom Mappings** - Configure icons and labels for 20+ popular platforms
-- **Visual Admin** - Modern interface for managing domain mappings
-- **Icon Picker** - Browse 600+ Font Awesome icons with live preview
-- **Quick Presets** - One-click setup for Twitter, YouTube, GitHub, etc.
+- **Secure OpenGraph Fetcher** - Built-in strict SSRF protection (`wp_safe_remote_get`), timeout retries, URL resolution, and JSON-LD parsing
+- **Fast Previews** - 24-hour transient caching minimizes external requests for ReBit data
+- **Manual Overrides** - Edit the fetched title, description, and image directly in the poster before publishing
 
-### 📝 Content Management
+### � Progressive Web App (PWA)
 
-- **Custom Post Type** - Dedicated "Bit" post type with REST API support
-- **Automatic Titles** - Smart title generation with 24-hour caching
-- **Block Editor Support** - Custom ReBit URL block for Gutenberg
-- **Media Library Integration** - Full WordPress media uploader support
-- **Quick Post Form** - Frontend posting with `[bitstream_quick_post]` shortcode
-- **Draft Support** - Save and preview before publishing
-
-### 📡 RSS Feed System
-
-- **Multiple Feeds** - Three dedicated feeds:
-  - `/bitstream/feed/` - All content
-  - `/bitstream/feed/bits/` - Original bits only
-  - `/bitstream/feed/rebits/` - ReBits only
-- **Auto-Discovery** - RSS links in HTML head
-- **Full Content** - Complete bit content in feed items
-- **Admin Interface** - Dedicated page for feed management
-
-### 🎯 Display Options
-
-- **Load More Button** - Traditional pagination with AJAX loading
-- **Infinite Scroll** - Automatic loading as user scrolls
-- **Fixed Display** - Show specific number of posts (e.g., latest 3)
-- **Customizable Post Count** - Control posts per page
-- **Mobile Optimized** - Single column on small screens
+- **Installable** - Add to home screen on mobile and desktop
+- **Offline Aware** - Service worker caching functionality
+- **Advanced Share Parsing** - Better Android share integration, automatically separating text and URLs when combined by specific apps
+- **Contextual Routing** - Quick Actions shortcuts map directly to specific poster tabs
 
 ## 📝 Shortcodes
 
 ### `[bitstream]` - Display Feed
 
-The main shortcode for displaying a feed of bits with masonry layout.
-
-#### Parameters
+The main shortcode for displaying your timeline.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -154,148 +127,32 @@ The main shortcode for displaying a feed of bits with masonry layout.
 | `infinite_scroll` | boolean | false | Enable infinite scroll |
 | `show_load_more` | boolean | true | Show/hide load more button |
 
-#### Examples
+### `[bitstream_poster]` - Unified Posting Interface
 
-**Basic Feed**
-```
-[bitstream]
-```
-Displays masonry grid with 10 posts per page and load more button.
+Renders a custom frontend posting interface with intelligent tabs:
 
-**Limited Posts**
-```
-[bitstream limit="3"]
-```
-Shows only the 3 most recent bits, no pagination.
+- **Post a Bit**: Compose text, drag & drop media, crop images, upload audio.
+- **Post a ReBit**: Paste a URL, auto-fetch OG data, manually tweak properties.
+- **Scheduled**: Review, preview, edit, or delete upcoming posts.
+- **Drafts**: Save and manage unpublished works in progress.
 
-**Infinite Scroll**
-```
-[bitstream infinite_scroll="true"]
-```
-Automatically loads more posts as user scrolls.
+**Requirements**:
+- User must be logged in with posting capabilities.
 
-**Custom Page Size**
-```
-[bitstream posts_per_page="20"]
-```
-Shows 20 posts per page with load more button.
+## 🎛️ Administration & Settings
 
-**Combined Options**
-```
-[bitstream posts_per_page="15" infinite_scroll="true"]
-```
-15 posts per page with infinite scroll enabled.
+### Unified Settings Dashboard
 
-**Static Display**
-```
-[bitstream limit="5" show_load_more="false"]
-```
-Shows exactly 5 posts, no pagination controls.
+BitStream 3.0 consolidates all administrative panels into a single, clean **Settings** entry under the WordPress Admin menu:
 
-### `[bitstream_poster]` - Tabbed Bit/Rebit Poster
+- **Personalisation**: Theme colors, display preferences, and feed configuration.
+- **ReBit Mappings**: Define custom labels and Font Awesome icons for your most shared platforms (e.g., YouTube, Twitter, GitHub) using a responsive card-based layout.
+- **RSS Feeds**: Manage dedicated feeds for all bits, original bits only, or ReBits only directly from here.
+- **Advanced Tools**: Advanced configuration and tools.
 
-Renders a custom frontend posting interface with two tabs:
+### Housekeeping Improvements
 
-- **Post a Bit**: text + optional media from WordPress Media Library
-- **Post a Rebit**: URL + commentary + OpenGraph metadata fetch + manual overrides
-
-The poster uses native WordPress media modal (`wp.media`), so uploads and media processing stay in WordPress core. ReBit metadata fetch uses the existing BitStream OG fetch pipeline.
-
-**Usage**
-```
-[bitstream_poster]
-```
-
-**Requirements**
-- User must be logged in
-- User must have permission to edit posts
-
-#### Responsive Behavior
-
-- **Mobile (< 768px)**: Single column layout
-- **Tablet (768px - 1023px)**: Two column layout
-- **Desktop (≥ 1024px)**: Three column layout
-
-## 📱 Progressive Web App
-
-### Installation on Mobile
-
-1. Visit your BitStream page on Android Chrome or iOS Safari
-2. Tap the menu (⋮) and select "Add to Home Screen"
-3. The BitStream app icon will appear on your home screen
-4. Launch it for a full-screen, app-like experience
-
-### Features
-
-- **Standalone Mode**: Opens without browser UI
-- **Offline Access**: Cached content available offline
-- **Quick Actions**: Long-press icon for shortcuts
-- **Share Target**: Share from other apps directly to BitStream
-
-### Android Share Sheet
-
-1. In any Android app, tap the Share button
-2. Select "BitStream" from the share sheet
-3. The shared link automatically populates the ReBit form
-4. Add your commentary and publish
-
-## 🔄 ReBit System
-
-### What are ReBits?
-
-ReBits let you share external links with your commentary. When you add a URL, BitStream automatically fetches the page title, description, and image for a rich preview.
-
-### Managing Domain Mappings
-
-1. Go to **Bits → ReBit Mappings** in WordPress admin
-2. Use **Quick Presets** for popular platforms (Twitter, YouTube, GitHub, etc.)
-3. Or create custom mappings:
-   - Enter domain (e.g., `medium.com`)
-   - Choose label (e.g., "shared an article")
-   - Select icon from visual picker
-4. Mappings apply to all bits containing that domain
-
-### Supported Platforms
-
-Pre-configured presets for:
-- Social: Twitter/X, LinkedIn, Facebook, Instagram, TikTok, Reddit
-- Development: GitHub, StackOverflow, Dev.to
-- Media: YouTube, Spotify, Twitch
-- Content: Medium, Wikipedia, News sites
-- And more...
-
-## 🎛️ Admin Features
-
-### Floating Action Button
-
-Quick access button (visible on BitStream pages) provides:
-- Add New Bit
-- Add New ReBit
-- ReBit Mappings
-- RSS Feeds
-
-### ReBit Mappings Interface
-
-- **Card-Based Design**: Visual, modern interface
-- **Icon Picker**: Browse 600+ Font Awesome icons
-- **Live Preview**: See exactly how mappings will look
-- **Category Filters**: Brands, Solid, Regular icons
-- **Undo Removal**: Easy removal with undo option
-- **Quick Presets**: One-click setup for 20+ platforms
-
-### RSS Feeds Manager
-
-- View all available feeds
-- Copy feed URLs
-- Subscribe via feed reader services
-- Auto-discovery links for feed readers
-
-### Bit Management
-
-- **Quote Action**: Quote any bit from the bits list
-- **Bulk Actions**: Quote multiple bits at once
-- **Quick Edit**: Fast inline editing
-- **Search & Filter**: Find bits quickly
+- **Weekly Media Cleanup**: Automatic pruning of unattached orphaned files from incomplete poster uploads (`bitstream_weekly_media_cleanup_event`).
 
 ## 🔧 Technical Details
 
@@ -303,11 +160,14 @@ Quick access button (visible on BitStream pages) provides:
 
 - **WordPress**: 5.8 or higher
 - **PHP**: 7.4 or higher
-- **MySQL**: 5.6 or higher
 - **Font Awesome**: Recommended for icons (free version)
 
-### Debug Mode
-If WP_DEBUG is enabled, access **BitStream → Debug Logs** in admin to view error logs and troubleshoot issues.
+### Architecture Highlights
+
+- Robust OOP architecture with namespaced classes (`BitStream_*`)
+- Security-first approach with nonces, capability checks, input sanitization, and output escaping
+- Strict SSRF protection on external URL requests
+- Performance optimizations via transient caching, conditional loading, and efficient AJAX endpoints
 
 ## 🤝 Contributing
 
@@ -315,7 +175,7 @@ If WP_DEBUG is enabled, access **BitStream → Debug Logs** in admin to view err
 
 ### Why No PRs?
 
-BitStream was created specifically to explore and test AI coding tools like GitHub Copilot. The entire codebase has been generated through AI-assisted development as part of this ongoing experiment. Accepting traditional pull requests would compromise the experimental nature and learning goals of this project.
+BitStream was created specifically to explore and test AI coding tools like GitHub Copilot and other advanced agentic systems. The entire codebase has been generated through AI-assisted development. Accepting traditional pull requests would compromise the experimental nature and learning goals of this project.
 
 ### But You Can Still Contribute!
 
@@ -336,3 +196,7 @@ This project is licensed under GPL-2.0+, which means:
 - ✅ You can redistribute your modified versions
 - ✅ You must maintain the same license (GPL-2.0+)
 - ✅ You must document changes you make
+
+## 📜 Changelog
+
+For a detailed list of all changes, please refer to the [changelog.md](changelog.md) file.

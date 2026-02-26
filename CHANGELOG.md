@@ -55,6 +55,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Consolidated Personalisation, ReBit Mappings, RSS Feeds, and Advanced settings into a single tabbed interface (`[bitstream_settings]`)
   - Redesigned ReBit Mappings UI for responsive card-based layout (2-column on desktop, stacked on mobile)
   - Simplified WordPress Admin menu down to a single "Settings" entry
+- **Hashtag Functionality:**
+  - Auto-link `#hashtags` in Bit content to filter feeds by tag
+  - New "Hashtags" section in the left sidebar showing dynamically counted, trending tags
+  - Intercepts `#tag` queries in the search bar and converts them to hashtag filters
+  - Support for hashtags in mobile tab navigation and infinite scroll pagination
 
 ### Changed
 - Unified posting workflow around the custom poster interface instead of Gutenberg new-post flow
@@ -436,7 +441,6 @@ BitStream 2.0 is a complete rewrite and modernization of the plugin, transformin
 - Real-time updates via WebSockets
 - Multiple media attachments
 - Polls and voting
-- Hashtag support
 - Mention system
 - Direct messages
 - User profiles
