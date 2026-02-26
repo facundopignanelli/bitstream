@@ -201,6 +201,13 @@
     color: #2f3b34;
     background: #f7faf8;
     text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+a.bitstream-filter-chip:hover {
+    background: #eef6f1;
+    border-color: #c6d1cb;
+    color: var(--wp--preset--color--accent-1, #2c6e49);
 }
 
 .bitstream-filter-chip-clear {

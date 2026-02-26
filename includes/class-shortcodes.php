@@ -596,16 +596,20 @@ class BitStream_Shortcodes
             echo '<div class="bitstream-active-filters" aria-label="Active filters">';
             if ($selected_type !== 'all') {
                 $type_label = ($selected_type === 'rebits') ? 'Rebits' : 'Bits';
-                echo '<span class="bitstream-filter-chip">' . esc_html($type_label) . '</span>';
+                $remove_url = $build_filter_url($base_filter_url, 'all', $selected_month, $selected_search, $selected_hashtag);
+                echo '<a href="' . esc_url($remove_url) . '" class="bitstream-filter-chip" title="Remove filter">' . esc_html($type_label) . ' <i class="fa-solid fa-xmark" aria-hidden="true" style="margin-left: 6px; font-size: 0.9em; opacity: 0.6;"></i></a>';
             }
             if (!empty($selected_month_label)) {
-                echo '<span class="bitstream-filter-chip">' . esc_html($selected_month_label) . '</span>';
+                $remove_url = $build_filter_url($base_filter_url, $selected_type, '', $selected_search, $selected_hashtag);
+                echo '<a href="' . esc_url($remove_url) . '" class="bitstream-filter-chip" title="Remove filter">' . esc_html($selected_month_label) . ' <i class="fa-solid fa-xmark" aria-hidden="true" style="margin-left: 6px; font-size: 0.9em; opacity: 0.6;"></i></a>';
             }
             if (!empty($selected_search)) {
-                echo '<span class="bitstream-filter-chip">Search: ' . esc_html($selected_search) . '</span>';
+                $remove_url = $build_filter_url($base_filter_url, $selected_type, $selected_month, '', $selected_hashtag);
+                echo '<a href="' . esc_url($remove_url) . '" class="bitstream-filter-chip" title="Remove filter">Search: ' . esc_html($selected_search) . ' <i class="fa-solid fa-xmark" aria-hidden="true" style="margin-left: 6px; font-size: 0.9em; opacity: 0.6;"></i></a>';
             }
             if (!empty($selected_hashtag)) {
-                echo '<span class="bitstream-filter-chip">#' . esc_html($selected_hashtag) . '</span>';
+                $remove_url = $build_filter_url($base_filter_url, $selected_type, $selected_month, $selected_search, '');
+                echo '<a href="' . esc_url($remove_url) . '" class="bitstream-filter-chip" title="Remove filter">#' . esc_html($selected_hashtag) . ' <i class="fa-solid fa-xmark" aria-hidden="true" style="margin-left: 6px; font-size: 0.9em; opacity: 0.6;"></i></a>';
             }
             echo '<a class="bitstream-filter-chip bitstream-filter-chip-clear" href="' . esc_url($base_filter_url) . '">Clear all</a>';
             echo '</div>';
