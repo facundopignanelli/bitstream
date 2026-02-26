@@ -3036,6 +3036,7 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('filter_type', feed.dataset.filterType || 'all');
         formData.append('filter_month', feed.dataset.filterMonth || '');
         formData.append('filter_search', feed.dataset.filterSearch || '');
+        formData.append('filter_hashtag', feed.dataset.filterHashtag || '');
 
         fetch(bitstream_ajax.ajax_url, {
             method: 'POST',
@@ -3142,6 +3143,24 @@ function applyCommentStyles() {
 // Apply comment styles on document ready
 jQuery(document).ready(function ($) {
     applyCommentStyles();
+
+    // Hashtag-aware search: redirect #tag searches to hashtag filter
+    document.querySelectorAll('.bitstream-filter-search').forEach(form => {
+        form.addEventListener('submit', (e) => {
+            const input = form.querySelector('input[name="bitstream_search"]');
+            if (!input) return;
+            const value = input.value.trim();
+            if (value.startsWith('#') && value.length > 1) {
+                e.preventDefault();
+                const tag = value.substring(1);
+                const url = new URL(form.action || window.location.href);
+                // Clear regular search param, set hashtag param
+                url.searchParams.delete('bitstream_search');
+                url.searchParams.set('bitstream_hashtag', tag);
+                window.location.href = url.toString();
+            }
+        });
+    });
 
     // Quick Post form handler
     const quickPostForms = document.querySelectorAll('.bitstream-sidebar-quick-post-form');

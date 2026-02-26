@@ -1498,7 +1498,24 @@ class BitStream_Ajax_Handlers
             $query_args['s'] = $selected_search;
         }
 
+        $requested_hashtag = isset($_POST['filter_hashtag']) ? sanitize_text_field(wp_unslash($_POST['filter_hashtag'])) : '';
+        $selected_hashtag = preg_match('/^[A-Za-z][A-Za-z0-9_\x{00C0}-\x{024F}]*$/u', $requested_hashtag) ? $requested_hashtag : '';
+
+        if (!empty($selected_hashtag)) {
+            $hashtag_term = $selected_hashtag;
+            add_filter('posts_where', $bitstream_hashtag_where = static function ($where) use ($hashtag_term) {
+                global $wpdb;
+                $like = '%#' . $wpdb->esc_like($hashtag_term) . '%';
+                $where .= $wpdb->prepare(" AND {$wpdb->posts}.post_content LIKE %s", $like);
+                return $where;
+            });
+        }
+
         $q = new WP_Query($query_args);
+
+        if (!empty($selected_hashtag) && isset($bitstream_hashtag_where)) {
+            remove_filter('posts_where', $bitstream_hashtag_where);
+        }
 
         if ($q->have_posts()) {
             while ($q->have_posts()) {

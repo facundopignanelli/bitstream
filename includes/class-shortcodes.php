@@ -317,6 +317,9 @@ class BitStream_Shortcodes
         $requested_search = isset($_GET['bitstream_search']) ? sanitize_text_field(wp_unslash($_GET['bitstream_search'])) : '';
         $selected_search = trim($requested_search);
 
+        $requested_hashtag = isset($_GET['bitstream_hashtag']) ? sanitize_text_field(wp_unslash($_GET['bitstream_hashtag'])) : '';
+        $selected_hashtag = preg_match('/^[A-Za-z][A-Za-z0-9_\x{00C0}-\x{024F}]*$/u', $requested_hashtag) ? $requested_hashtag : '';
+
         $intro_title = get_option('bitstream_feed_intro_title', 'About BitStream');
         $intro_text = get_option('bitstream_feed_intro_text', 'BitStream is a lightweight microblog where you can post Bits, share Rebits, and follow updates in one place.');
 
@@ -369,7 +372,23 @@ class BitStream_Shortcodes
             $query_args['s'] = $selected_search;
         }
 
+        // Hashtag content filter — applied via posts_where
+        if (!empty($selected_hashtag)) {
+            $hashtag_term = $selected_hashtag;
+            add_filter('posts_where', $bitstream_hashtag_where = static function ($where) use ($hashtag_term) {
+                global $wpdb;
+                $like = '%#' . $wpdb->esc_like($hashtag_term) . '%';
+                $where .= $wpdb->prepare(" AND {$wpdb->posts}.post_content LIKE %s", $like);
+                return $where;
+            });
+        }
+
         $q = new WP_Query($query_args);
+
+        // Remove the hashtag where filter after query
+        if (!empty($selected_hashtag) && isset($bitstream_hashtag_where)) {
+            remove_filter('posts_where', $bitstream_hashtag_where);
+        }
 
         $max = $q->max_num_pages;
         $infinite_scroll = ($atts['infinite_scroll'] === 'true' || $atts['infinite_scroll'] === '1');
@@ -390,8 +409,8 @@ class BitStream_Shortcodes
             );
         }
 
-        $base_filter_url = remove_query_arg(['bitstream_type', 'bitstream_month', 'bitstream_search', 'paged']);
-        $build_filter_url = static function ($base_url, $type, $month, $search) {
+        $base_filter_url = remove_query_arg(['bitstream_type', 'bitstream_month', 'bitstream_search', 'bitstream_hashtag', 'paged']);
+        $build_filter_url = static function ($base_url, $type, $month, $search, $hashtag = '') {
             $params = [];
             if (!empty($type) && $type !== 'all') {
                 $params['bitstream_type'] = $type;
@@ -401,6 +420,9 @@ class BitStream_Shortcodes
             }
             if (!empty($search)) {
                 $params['bitstream_search'] = $search;
+            }
+            if (!empty($hashtag)) {
+                $params['bitstream_hashtag'] = $hashtag;
             }
             return empty($params) ? $base_url : add_query_arg($params, $base_url);
         };
@@ -412,7 +434,7 @@ class BitStream_Shortcodes
             $feed_classes .= ' bitstream-infinite-scroll';
         }
 
-        $has_active_filters = ($selected_type !== 'all') || !empty($selected_month) || !empty($selected_search);
+        $has_active_filters = ($selected_type !== 'all') || !empty($selected_month) || !empty($selected_search) || !empty($selected_hashtag);
         $selected_month_label = '';
         if (!empty($selected_month)) {
             [$selected_year, $selected_month_num] = explode('-', $selected_month);
@@ -437,12 +459,16 @@ class BitStream_Shortcodes
         echo '<div class="bitstream-feed-sidebar-left">';
 
         // Mobile Tab Buttons (Hidden on desktop)
+        $hashtag_counts = class_exists('BitStream_Content_Display') ?BitStream_Content_Display::get_hashtag_counts() : [];
         echo '<div class="bitstream-mobile-tabs-nav hide-on-desktop">';
         echo '<button class="bitstream-feed-sidebar-summary" data-panel="search" title="Search" aria-label="Search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i></button>';
         if (!empty($desktop_rss_links)) {
             echo '<button class="bitstream-feed-sidebar-summary" data-panel="rss" title="RSS Feeds" aria-label="RSS Feeds"><i class="fa-solid fa-rss" aria-hidden="true"></i></button>';
         }
         echo '<button class="bitstream-feed-sidebar-summary" data-panel="filters" title="Filters" aria-label="Filters"><i class="fa-solid fa-sliders" aria-hidden="true"></i></button>';
+        if (!empty($hashtag_counts)) {
+            echo '<button class="bitstream-feed-sidebar-summary" data-panel="hashtags" title="Hashtags" aria-label="Hashtags"><i class="fa-solid fa-hashtag" aria-hidden="true"></i></button>';
+        }
         echo '</div>';
 
         echo '<div class="bitstream-feed-sidebar-tabs">';
@@ -478,7 +504,7 @@ class BitStream_Shortcodes
         echo '<div class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-filters" data-panel-id="filters">';
         echo '<h3 class="bitstream-feed-sidebar-title hide-on-mobile">Archive</h3>';
         echo '<div class="bitstream-feed-sidebar">';
-        echo '<a class="bitstream-filter-link ' . (empty($selected_month) ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, $selected_type, '', $selected_search)) . '">All dates</a>';
+        echo '<a class="bitstream-filter-link ' . (empty($selected_month) ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, $selected_type, '', $selected_search, $selected_hashtag)) . '">All dates</a>';
         if (!empty($archive_rows)) {
             $archive_by_year = [];
             foreach ($archive_rows as $row) {
@@ -513,7 +539,7 @@ class BitStream_Shortcodes
                     $month_value = sprintf('%04d-%02d', intval($year), intval($month_data['m']));
                     $is_active = ($selected_month === $month_value) ? ' is-active' : '';
                     $label = date_i18n('F', mktime(0, 0, 0, intval($month_data['m']), 1, intval($year)));
-                    echo '<a class="bitstream-filter-link' . $is_active . '" href="' . esc_url($build_filter_url($base_filter_url, $selected_type, $month_value, $selected_search)) . '">';
+                    echo '<a class="bitstream-filter-link' . $is_active . '" href="' . esc_url($build_filter_url($base_filter_url, $selected_type, $month_value, $selected_search, $selected_hashtag)) . '">';
                     echo '<strong class="bitstream-archive-label">' . esc_html($label) . '</strong> <span class="bitstream-archive-count">(' . intval($month_data['c']) . ')</span>';
                     echo '</a>';
                 }
@@ -528,10 +554,27 @@ class BitStream_Shortcodes
 
         echo '<div class="bitstream-feed-sidebar" style="margin-top: 0.75rem;">';
         echo '<h3 class="bitstream-feed-sidebar-title hide-on-mobile">Content</h3>';
-        echo '<a class="bitstream-filter-link ' . ($selected_type === 'all' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'all', $selected_month, $selected_search)) . '">All</a>';
-        echo '<a class="bitstream-filter-link ' . ($selected_type === 'bits' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'bits', $selected_month, $selected_search)) . '">Bits</a>';
-        echo '<a class="bitstream-filter-link ' . ($selected_type === 'rebits' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'rebits', $selected_month, $selected_search)) . '">Rebits</a>';
+        echo '<a class="bitstream-filter-link ' . ($selected_type === 'all' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'all', $selected_month, $selected_search, $selected_hashtag)) . '">All</a>';
+        echo '<a class="bitstream-filter-link ' . ($selected_type === 'bits' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'bits', $selected_month, $selected_search, $selected_hashtag)) . '">Bits</a>';
+        echo '<a class="bitstream-filter-link ' . ($selected_type === 'rebits' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'rebits', $selected_month, $selected_search, $selected_hashtag)) . '">Rebits</a>';
         echo '</div>';
+
+        // Hashtags Panel
+        if (!empty($hashtag_counts)) {
+            echo '<div class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-hashtags" data-panel-id="hashtags">';
+            echo '<h3 class="bitstream-feed-sidebar-title hide-on-mobile">Hashtags</h3>';
+            echo '<div class="bitstream-feed-sidebar bitstream-hashtag-list">';
+            foreach ($hashtag_counts as $tag => $count) {
+                $is_active_tag = (mb_strtolower($selected_hashtag, 'UTF-8') === mb_strtolower($tag, 'UTF-8')) ? ' is-active' : '';
+                $tag_url = $build_filter_url($base_filter_url, $selected_type, $selected_month, $selected_search, $tag);
+                echo '<a class="bitstream-filter-link bitstream-hashtag-sidebar-link' . $is_active_tag . '" href="' . esc_url($tag_url) . '">';
+                echo '<span class="bitstream-hashtag-sidebar-tag">#' . esc_html($tag) . '</span>';
+                echo '<span class="bitstream-archive-count">(' . intval($count) . ')</span>';
+                echo '</a>';
+            }
+            echo '</div>';
+            echo '</div>';
+        }
         echo '</div>';
 
         echo '</div>'; // End tabs
@@ -561,12 +604,15 @@ class BitStream_Shortcodes
             if (!empty($selected_search)) {
                 echo '<span class="bitstream-filter-chip">Search: ' . esc_html($selected_search) . '</span>';
             }
+            if (!empty($selected_hashtag)) {
+                echo '<span class="bitstream-filter-chip">#' . esc_html($selected_hashtag) . '</span>';
+            }
             echo '<a class="bitstream-filter-chip bitstream-filter-chip-clear" href="' . esc_url($base_filter_url) . '">Clear all</a>';
             echo '</div>';
         }
 
         if ($q->have_posts()) {
-            echo '<div class="' . $feed_classes . '" data-page="' . $current_page . '" data-max-page="' . $max . '" data-infinite-scroll="' . ($infinite_scroll ? 'true' : 'false') . '" data-filter-type="' . esc_attr($selected_type) . '" data-filter-month="' . esc_attr($selected_month) . '" data-filter-search="' . esc_attr($selected_search) . '">';
+            echo '<div class="' . $feed_classes . '" data-page="' . $current_page . '" data-max-page="' . $max . '" data-infinite-scroll="' . ($infinite_scroll ? 'true' : 'false') . '" data-filter-type="' . esc_attr($selected_type) . '" data-filter-month="' . esc_attr($selected_month) . '" data-filter-search="' . esc_attr($selected_search) . '" data-filter-hashtag="' . esc_attr($selected_hashtag) . '">';
             while ($q->have_posts()) {
                 $q->the_post();
                 echo bitstream_render_card(get_the_ID());

@@ -111,6 +111,11 @@ class BitStream_Plugin
         $this->components['rss_feeds'] = new BitStream_RSS_Feeds();
         $this->components['content_display'] = new BitStream_Content_Display();
 
+        // Invalidate hashtag count cache when bits are created/updated/deleted
+        add_action('save_post_bit', ['BitStream_Content_Display', 'flush_hashtag_cache']);
+        add_action('trashed_post', ['BitStream_Content_Display', 'flush_hashtag_cache']);
+        add_action('deleted_post', ['BitStream_Content_Display', 'flush_hashtag_cache']);
+
     // ReBit mappings is a utility class, no need to instantiate
     }
 
@@ -333,7 +338,9 @@ if (!function_exists('bitstream_comment_callback')) {
     }
 }
 
-if (!function_exists('bitstream_render_card')) {    function bitstream_render_card($post_id, $skip_content_filter = false)    {
+if (!function_exists('bitstream_render_card')) {
+    function bitstream_render_card($post_id, $skip_content_filter = false)
+    {
         // Avoid infinite loop by skipping content filter when rendering in single bit context
         if ($skip_content_filter) {
             $content = get_post_field('post_content', $post_id);
@@ -448,7 +455,8 @@ if (!function_exists('bitstream_render_card')) {    function bitstream_render_ca
     </article>
     <?php
 
-        return ob_get_clean();    }
+        return ob_get_clean();
+    }
 }
 
 // Initialize the plugin

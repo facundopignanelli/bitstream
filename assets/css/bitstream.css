@@ -245,7 +245,7 @@
 
 .bitstream-mobile-tabs-nav {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
     gap: 0.65rem;
     margin-top: 0.75rem;
     margin-bottom: 0.75rem;
@@ -2677,4 +2677,32 @@ iframe[src*="youtu.be"] {
         bottom: 76px;
         /* Adjust for mobile admin bar */
     }
+}
+
+/* Hashtag link styling in bit content */
+.bitstream-hashtag-link {
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 0.15s ease, opacity 0.15s ease;
+}
+
+.bitstream-hashtag-link:hover {
+    color: var(--wp--preset--color--accent-2, #044389);
+    text-decoration: underline;
+}
+
+/* Sidebar hashtag list */
+.bitstream-hashtag-list {
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+.bitstream-hashtag-sidebar-link {
+    gap: 0.35rem;
+}
+
+.bitstream-hashtag-sidebar-tag {
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    font-weight: 600;
 }
