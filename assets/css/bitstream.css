@@ -1227,6 +1227,7 @@ video {
     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     gap: 0.75rem;
     margin-bottom: 1.5rem;
+    align-items: stretch;
 }
 
 .bitstream-settings-tab {
@@ -1242,6 +1243,10 @@ video {
     transition: all 0.15s ease;
     font-family: inherit;
     line-height: 1.4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
 }
 
 .bitstream-settings-tab:hover {
@@ -1416,16 +1421,26 @@ video {
 }
 
 /* Flex containers in mappings */
+/* !important needed to override inline <style> from admin-rebit-mappings-interface.php */
 .bitstream-settings .flex-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    margin-bottom: 1rem;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 1rem !important;
+    margin-bottom: 1rem !important;
 }
 
 .bitstream-settings .flex-item {
-    flex: 1;
-    min-width: 280px;
+    flex: 1 !important;
+    min-width: 0 !important;
+}
+
+/* Force all inline min-width elements to fit */
+.bitstream-settings .card div[style*="min-width"] {
+    min-width: 0 !important;
+}
+
+.bitstream-settings .card div[style*="flex"] {
+    min-width: 0 !important;
 }
 
 /* Mapping rows — each is its own card */
@@ -1656,7 +1671,7 @@ video {
     }
 
     .bitstream-settings .flex-container {
-        flex-direction: column;
+        flex-direction: column !important;
     }
 
     .bitstream-settings #mappings-container {
