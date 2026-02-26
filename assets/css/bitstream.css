@@ -240,58 +240,56 @@
 }
 
 .bitstream-feed-sidebar-panel {
-    display: contents;
+    display: block;
 }
 
 .bitstream-feed-sidebar-tabs {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.65rem;
     align-items: start;
 }
 
-.bitstream-feed-sidebar-tabs .bitstream-feed-sidebar {
-    width: 100%;
-    flex-basis: 100%;
-    order: 2;
-    margin-top: 0;
-}
-
 .mobile-rss-panel {
-    display: contents;
+    display: block;
 }
 
 .bitstream-mobile-quick-post-container {
-    display: contents;
+    display: block;
 }
 
+.bitstream-feed-sidebar-tabs .bitstream-feed-sidebar-panel {
+    min-width: 0;
+}
+
+.bitstream-feed-sidebar-panel[open] {
+    grid-column: 1 / -1;
+}
 
 .bitstream-feed-sidebar-summary {
     cursor: pointer;
     font-weight: 700;
     font-size: 0.95rem;
-    color: #fff;
+    color: var(--wp--preset--color--accent-1, #2c6e49);
     margin-bottom: 0.55rem;
     list-style: none;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--wp--preset--color--accent-1, #2c6e49);
+    background: #fff;
     padding: 0.5rem 0.5rem;
     border-radius: 8px;
-    border: none;
-    transition: background 0.2s ease, filter 0.2s ease;
-    order: 1;
-    flex: 1 1 0;
-    min-width: 0;
+    border: 1px solid #e2e6e3;
+    transition: background 0.2s ease;
 }
 
 .hide-on-mobile {
     display: none !important;
 }
 
+
 .bitstream-feed-sidebar-summary:hover {
-    filter: brightness(0.9);
+    background: #eef2ef;
 }
 
 .bitstream-feed-sidebar-summary i {
@@ -537,25 +535,7 @@
         display: block;
     }
 
-    .bitstream-feed-sidebar-tabs .bitstream-feed-sidebar {
-        position: static;
-        min-width: 0;
-        box-shadow: none;
-        margin-top: 0;
-        order: initial;
-        grid-column: initial;
-    }
-
     .bitstream-feed-sidebar-tabs {
-        display: block;
-    }
-
-    .bitstream-feed-sidebar-summary {
-        order: initial;
-        flex: none;
-    }
-
-    .bitstream-feed-sidebar-panel {
         display: block;
     }
 
