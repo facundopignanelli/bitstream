@@ -436,7 +436,7 @@ class BitStream_Shortcodes
 
         // Mobile Tab Buttons (Hidden on desktop)
         echo '<div class="bitstream-mobile-tabs-nav hide-on-desktop">';
-        echo '<button class="bitstream-feed-sidebar-summary is-active" data-panel="search" title="Search" aria-label="Search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i></button>';
+        echo '<button class="bitstream-feed-sidebar-summary" data-panel="search" title="Search" aria-label="Search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i></button>';
         if (!empty($desktop_rss_links)) {
             echo '<button class="bitstream-feed-sidebar-summary" data-panel="rss" title="RSS Feeds" aria-label="RSS Feeds"><i class="fa-solid fa-rss" aria-hidden="true"></i></button>';
         }
@@ -446,7 +446,7 @@ class BitStream_Shortcodes
         echo '<div class="bitstream-feed-sidebar-tabs">';
 
         // Search Panel
-        echo '<div class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-search is-active" data-panel-id="search">';
+        echo '<div class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-search" data-panel-id="search" style="display:none;">';
         echo '<h3 class="bitstream-feed-sidebar-title hide-on-mobile">Search</h3>';
         echo '<div class="bitstream-feed-sidebar">';
         echo '<form class="bitstream-filter-search" method="get" action="' . esc_url($base_filter_url) . '">';

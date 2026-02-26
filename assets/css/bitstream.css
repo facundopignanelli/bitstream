@@ -244,14 +244,15 @@
 }
 
 .bitstream-mobile-tabs-nav {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.65rem;
-    margin-top: 1rem;
-    margin-bottom: 1rem;
+    margin-top: 0.75rem;
+    margin-bottom: 0.75rem;
 }
 
 .bitstream-mobile-tabs-nav button {
-    flex: 1;
+    width: 100%;
 }
 
 .bitstream-feed-sidebar-tabs {
