@@ -129,16 +129,62 @@ class BitStream_Shortcodes
             return [];
         }
 
+        $author_id = get_current_user_id();
+
+        // Count drafts for current user
+        $draft_count = (int)(new WP_Query([
+            'post_type' => 'bit',
+            'post_status' => 'draft',
+            'author' => $author_id,
+            'posts_per_page' => 1,
+            'fields' => 'ids'
+        ]))->found_posts;
+
+        // Count scheduled for current user
+        $future_count = (int)(new WP_Query([
+            'post_type' => 'bit',
+            'post_status' => 'future',
+            'author' => $author_id,
+            'posts_per_page' => 1,
+            'fields' => 'ids'
+        ]))->found_posts;
+
         return [
             [
                 'url' => self::get_poster_page_url(['poster_tab' => 'bit']),
                 'icon' => 'fa-solid fa-comment',
                 'label' => 'New Bit',
+                'type' => 'link',
+            ],
+            [
+                'url' => self::get_poster_page_url(['poster_tab' => 'rebit']),
+                'icon' => 'fa-solid fa-retweet',
+                'label' => 'New Rebit',
+                'type' => 'link',
+            ],
+            [
+                'type' => 'divider',
+            ],
+            [
+                'url' => admin_url('edit.php?post_status=draft&post_type=bit'),
+                'icon' => 'fa-solid fa-file-lines',
+                'label' => 'Drafts (' . $draft_count . ')',
+                'type' => 'link',
+            ],
+            [
+                'url' => admin_url('edit.php?post_status=future&post_type=bit'),
+                'icon' => 'fa-solid fa-clock',
+                'label' => 'Scheduled (' . $future_count . ')',
+                'type' => 'link',
+            ],
+            [
+                'type' => 'divider',
             ],
             [
                 'url' => admin_url('edit.php?post_type=bit&page=bitstream-settings'),
                 'icon' => 'fa-solid fa-gear',
                 'label' => 'Settings',
+                'type' => 'link',
             ],
         ];
     }
@@ -155,10 +201,15 @@ class BitStream_Shortcodes
 
         $html = '';
         foreach ($actions as $action) {
-            $html .= '<a class="' . esc_attr(trim($link_class . ' bitstream-quick-action-link')) . '" href="' . esc_url($action['url']) . '">';
-            $html .= '<i class="' . esc_attr($action['icon']) . '" aria-hidden="true"></i>';
-            $html .= '<span>' . esc_html($action['label']) . '</span>';
-            $html .= '</a>';
+            if (isset($action['type']) && $action['type'] === 'divider') {
+                $html .= '<hr class="bitstream-quick-action-divider" style="margin: 0.5rem 0; border: 0; border-top: 1px solid #e0e0e0;">';
+            }
+            else {
+                $html .= '<a class="' . esc_attr(trim($link_class . ' bitstream-quick-action-link')) . '" href="' . esc_url($action['url']) . '">';
+                $html .= '<i class="' . esc_attr($action['icon']) . '" aria-hidden="true"></i>';
+                $html .= '<span>' . esc_html($action['label']) . '</span>';
+                $html .= '</a>';
+            }
         }
 
         return $html;
