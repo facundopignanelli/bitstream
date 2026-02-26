@@ -433,12 +433,22 @@ class BitStream_Shortcodes
         echo '</aside>';
 
         echo '<div class="bitstream-feed-sidebar-left">';
+
+        // Mobile Tab Buttons (Hidden on desktop)
+        echo '<div class="bitstream-mobile-tabs-nav hide-on-desktop">';
+        echo '<button class="bitstream-feed-sidebar-summary is-active" data-panel="search" title="Search" aria-label="Search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i></button>';
+        if (!empty($desktop_rss_links)) {
+            echo '<button class="bitstream-feed-sidebar-summary" data-panel="rss" title="RSS Feeds" aria-label="RSS Feeds"><i class="fa-solid fa-rss" aria-hidden="true"></i></button>';
+        }
+        echo '<button class="bitstream-feed-sidebar-summary" data-panel="filters" title="Filters" aria-label="Filters"><i class="fa-solid fa-sliders" aria-hidden="true"></i></button>';
+        echo '</div>';
+
         echo '<div class="bitstream-feed-sidebar-tabs">';
 
-        echo '<details class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-search" open>';
-        echo '<summary class="bitstream-feed-sidebar-summary" title="Search" aria-label="Search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i></summary>';
+        // Search Panel
+        echo '<div class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-search is-active" data-panel-id="search">';
+        echo '<h3 class="bitstream-feed-sidebar-title hide-on-mobile">Search</h3>';
         echo '<div class="bitstream-feed-sidebar">';
-        echo '<h3 class="bitstream-feed-sidebar-title">Search</h3>';
         echo '<form class="bitstream-filter-search" method="get" action="' . esc_url($base_filter_url) . '">';
         if ($selected_type !== 'all') {
             echo '<input type="hidden" name="bitstream_type" value="' . esc_attr($selected_type) . '">';
@@ -450,22 +460,22 @@ class BitStream_Shortcodes
         echo '<button type="submit">Search</button>';
         echo '</form>';
         echo '</div>';
-        echo '</details>';
+        echo '</div>';
 
+        // RSS Panel
         if (!empty($desktop_rss_links)) {
-            echo '<details class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-rss mobile-rss-panel" open>';
-            echo '<summary class="bitstream-feed-sidebar-summary" title="RSS Feeds" aria-label="RSS Feeds"><i class="fa-solid fa-rss" aria-hidden="true"></i></summary>';
+            echo '<div class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-rss mobile-rss-panel" data-panel-id="rss" style="display:none;">';
+            echo '<h3 class="bitstream-feed-sidebar-title hide-on-mobile">RSS Feeds</h3>';
             echo '<div class="bitstream-feed-sidebar">';
-            echo '<h3 class="bitstream-feed-sidebar-title">RSS Feeds</h3>';
             echo $desktop_rss_links;
             echo '</div>';
-            echo '</details>';
+            echo '</div>';
         }
 
-        echo '<details class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-filters" open>';
-        echo '<summary class="bitstream-feed-sidebar-summary" title="Filters" aria-label="Filters"><i class="fa-solid fa-sliders" aria-hidden="true"></i></summary>';
+        // Filters Panel
+        echo '<div class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-filters" data-panel-id="filters" style="display:none;">';
+        echo '<h3 class="bitstream-feed-sidebar-title hide-on-mobile">Archive</h3>';
         echo '<div class="bitstream-feed-sidebar">';
-        echo '<h3 class="bitstream-feed-sidebar-title">Archive</h3>';
         echo '<a class="bitstream-filter-link ' . (empty($selected_month) ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, $selected_type, '', $selected_search)) . '">All dates</a>';
         if (!empty($archive_rows)) {
             $archive_by_year = [];
@@ -514,16 +524,16 @@ class BitStream_Shortcodes
         }
         echo '</div>';
 
-        echo '<div class="bitstream-feed-sidebar">';
-        echo '<h3 class="bitstream-feed-sidebar-title">Content</h3>';
+        echo '<div class="bitstream-feed-sidebar" style="margin-top: 0.75rem;">';
+        echo '<h3 class="bitstream-feed-sidebar-title hide-on-mobile">Content</h3>';
         echo '<a class="bitstream-filter-link ' . ($selected_type === 'all' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'all', $selected_month, $selected_search)) . '">All</a>';
         echo '<a class="bitstream-filter-link ' . ($selected_type === 'bits' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'bits', $selected_month, $selected_search)) . '">Bits</a>';
         echo '<a class="bitstream-filter-link ' . ($selected_type === 'rebits' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'rebits', $selected_month, $selected_search)) . '">Rebits</a>';
         echo '</div>';
-        echo '</details>';
+        echo '</div>';
 
-        echo '</div>';
-        echo '</div>';
+        echo '</div>'; // End tabs
+        echo '</div>'; // End sidebar left
 
         echo '</div>';
 
@@ -613,7 +623,35 @@ class BitStream_Shortcodes
             echo '</aside>';
         }
 
-        echo '</div>';
+        echo '</div>'; // End feed layout
+
+        // Inline script for Mobile Tabs
+        echo '<script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var tabsNav = document.querySelector(".bitstream-mobile-tabs-nav");
+            if (!tabsNav) return;
+            var buttons = tabsNav.querySelectorAll("button");
+            var panels = document.querySelectorAll(".bitstream-feed-sidebar-panel");
+            
+            buttons.forEach(function(btn) {
+                btn.addEventListener("click", function() {
+                    var targetId = this.getAttribute("data-panel");
+                    var isActive = this.classList.contains("is-active");
+                    
+                    // Reset all
+                    buttons.forEach(function(b) { b.classList.remove("is-active"); });
+                    panels.forEach(function(p) { p.style.display = "none"; });
+                    
+                    // Toggle current
+                    if (!isActive) {
+                        this.classList.add("is-active");
+                        var targetPanel = document.querySelector(".bitstream-feed-sidebar-panel-" + targetId);
+                        if(targetPanel) targetPanel.style.display = "block";
+                    }
+                });
+            });
+        });
+        </script>';
 
         wp_reset_postdata();
         return ob_get_clean();

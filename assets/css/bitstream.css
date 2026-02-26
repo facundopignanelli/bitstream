@@ -243,16 +243,18 @@
     display: block;
 }
 
-.bitstream-feed-sidebar-tabs {
+.bitstream-mobile-tabs-nav {
     display: flex;
-    flex-wrap: wrap;
     gap: 0.65rem;
-    align-items: flex-start;
+    margin-bottom: 0.65rem;
 }
 
-.bitstream-feed-sidebar-panel {
-    display: contents;
-    /* Allows child elements to participate in the flex layout directly */
+.bitstream-mobile-tabs-nav button {
+    flex: 1;
+}
+
+.bitstream-feed-sidebar-tabs {
+    display: block;
 }
 
 
@@ -268,10 +270,8 @@
     min-width: 0;
 }
 
-.bitstream-feed-sidebar-panel[open]>.bitstream-feed-sidebar {
-    width: 100%;
-    order: 2;
-    /* Content goes below */
+.bitstream-feed-sidebar-panel[open] {
+    grid-column: 1 / -1;
 }
 
 
@@ -280,20 +280,16 @@
     font-weight: 700;
     font-size: 0.95rem;
     color: #fff;
-    margin-bottom: 0;
+    margin-bottom: 0.55rem;
     list-style: none;
     display: flex;
     align-items: center;
     justify-content: center;
     background: var(--wp--preset--color--accent-1, #2c6e49);
-    padding: 0.6rem 0.6rem;
+    padding: 0.5rem 0.5rem;
     border-radius: 8px;
     border: none;
-    transition: opacity 0.2s ease;
-    flex: 1 1 0;
-    /* Equal width for the buttons */
-    order: 1;
-    /* Buttons stay on top */
+    transition: background 0.2s ease;
 }
 
 .hide-on-mobile {
@@ -543,28 +539,12 @@
         display: block !important;
     }
 
-    .bitstream-feed-sidebar-panel> :not(summary) {
-        display: block;
-    }
-
     .bitstream-feed-sidebar-panel {
         display: block;
-        /* Revert display contents for desktop */
     }
 
-    .bitstream-feed-sidebar-tabs {
-        display: flex;
-        flex-direction: column;
-    }
-
-    .bitstream-feed-sidebar-summary {
-        flex: none;
-        /* Revert flex sizing on desktop */
-        margin-bottom: 0.55rem;
-    }
-
-    .bitstream-feed-sidebar-panel[open]>.bitstream-feed-sidebar {
-        order: unset;
+    .hide-on-desktop {
+        display: none !important;
     }
 
     .bitstream-feed-sidebar-tabs .bitstream-feed-sidebar-panel+.bitstream-feed-sidebar-panel {
