@@ -48,7 +48,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Optimized HTML parser to stop reading after the closing `</head>` tag
 - In-feed right sidebar improvements:
   - Added a "Quick Bit" inline posting box for logged-in users
+  - **Auto-ReBit Detection:** Quick Bit automatically detects when only a URL is pasted and posts it as a ReBit instead of a standard Bit
   - Added dedicated RSS Feeds section visible to all users
+  - **Dynamic Quick Actions Menu:** Right rail and mobile floating menu now feature dynamic drafts/scheduled counts and section dividers
+- **Unified Settings Page:**
+  - Consolidated Personalisation, ReBit Mappings, RSS Feeds, and Advanced settings into a single tabbed interface (`[bitstream_settings]`)
+  - Redesigned ReBit Mappings UI for responsive card-based layout (2-column on desktop, stacked on mobile)
+  - Simplified WordPress Admin menu down to a single "Settings" entry
 
 ### Changed
 - Unified posting workflow around the custom poster interface instead of Gutenberg new-post flow

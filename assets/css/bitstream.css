@@ -837,19 +837,29 @@ a.bitstream-filter-chip:hover {
     transition: background-color 0.2s ease;
 }
 
+.bit-comment-form input[type="text"],
+.bit-comment-form input[type="email"],
+.bit-comment-form input[type="url"],
+#respond input[type="text"],
+#respond input[type="email"],
+#respond input[type="url"],
 .bit-comment-form textarea,
 #respond textarea {
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
-    resize: none;
-    border-radius: 15px;
-    padding: 1rem;
+    border-radius: 10px;
+    padding: 0.8rem;
     border: 1px solid #ccc;
     font-family: inherit;
     font-size: 1rem;
-    height: 120px;
     margin-bottom: 0.5rem;
+}
+
+.bit-comment-form textarea,
+#respond textarea {
+    resize: vertical;
+    min-height: 120px;
 }
 
 #respond .comment-reply-title {

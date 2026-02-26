@@ -166,13 +166,13 @@ class BitStream_Shortcodes
                 'type' => 'divider',
             ],
             [
-                'url' => admin_url('edit.php?post_status=draft&post_type=bit'),
+                'url' => self::get_poster_page_url(['poster_tab' => 'drafts']),
                 'icon' => 'fa-solid fa-file-lines',
                 'label' => 'Drafts (' . $draft_count . ')',
                 'type' => 'link',
             ],
             [
-                'url' => admin_url('edit.php?post_status=future&post_type=bit'),
+                'url' => self::get_poster_page_url(['poster_tab' => 'scheduled']),
                 'icon' => 'fa-solid fa-clock',
                 'label' => 'Scheduled (' . $future_count . ')',
                 'type' => 'link',
