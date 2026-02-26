@@ -246,7 +246,8 @@
 .bitstream-mobile-tabs-nav {
     display: flex;
     gap: 0.65rem;
-    margin-bottom: 0.65rem;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
 }
 
 .bitstream-mobile-tabs-nav button {
@@ -280,13 +281,14 @@
     font-weight: 700;
     font-size: 0.95rem;
     color: #fff;
-    margin-bottom: 0.55rem;
+    margin-bottom: 0;
     list-style: none;
     display: flex;
     align-items: center;
     justify-content: center;
     background: var(--wp--preset--color--accent-1, #2c6e49);
-    padding: 0.5rem 0.5rem;
+    padding: 0;
+    height: 2.5rem;
     border-radius: 8px;
     border: none;
     transition: background 0.2s ease;
