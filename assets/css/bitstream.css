@@ -1668,6 +1668,7 @@ video {
     .bitstream-settings-tab {
         font-size: 0;
         padding: 0.7rem;
+        gap: 0;
     }
 
     .bitstream-settings-tab i {
