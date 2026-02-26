@@ -632,47 +632,6 @@
 }
 
 
-/* Hide duplicated 'says:' */
-.bit-comments .says {
-    display: none !important;
-}
-
-/* Author name styling */
-.bit-comments-list .comment-author .fn {
-    font-size: 0.9em;
-    color: var(--wp--preset--color--accent-1, #2c6e49) !important;
-    font-style: normal;
-}
-
-/* Date/time link styling (disable link) */
-.bit-comments-list .comment-metadata a:first-child {
-    pointer-events: none !important;
-    color: var(--wp--preset--color--accent-2, #044389) !important;
-    font-style: italic !important;
-    text-decoration: none !important;
-}
-
-/* Preserve edit link */
-.bit-comments-list .comment-edit-link {
-    pointer-events: auto !important;
-    font-style: normal !important;
-}
-
-/* Indent nested replies */
-.bit-comments-list .children {
-    margin-left: 1.5em !important;
-    margin-top: 0.75em !important;
-    /* Add top margin to separate from Reply button */
-    border-left: 1px solid var(--wp--preset--color--accent-3, #ccc) !important;
-    padding-left: 1em !important;
-}
-
-/* Divider lines between comments */
-.bit-comments-list .comment {
-    border-bottom: 1px solid var(--wp--preset--color--accent-3, #ccc);
-    padding-bottom: 0.5em;
-    margin-bottom: 0.5em;
-}
 
 
 /* BitStream Action Icons Styling */
@@ -758,136 +717,7 @@
     animation: bitstream-pulse 0.3s ease-in-out;
 }
 
-/* Comments Layout Tweaks */
-.bit-comments-list .bit-comment {
-    border-bottom: 1px solid #eee;
-    padding-bottom: 1rem;
-    margin-bottom: 1rem;
-}
 
-.bit-comment .comment-author.vcard {
-    display: flex;
-    align-items: center;
-    font-size: 0.875rem;
-}
-
-.bit-comment .comment-author.vcard img.avatar {
-    width: 32px;
-    height: 32px;
-    margin-right: 0.5rem;
-    border-radius: 15px;
-}
-
-.bit-comment .comment-author.vcard b.fn {
-    margin-right: 0.25rem;
-}
-
-.bit-comment .comment-author.vcard .says {
-    margin-left: 0.25rem;
-}
-
-.bit-comment .commentmetadata a,
-.bit-comment .commentmetadata a:visited {
-    font-style: italic;
-    color: var(--wp--preset--color--accent-2, #044389);
-    text-decoration: none;
-    pointer-events: none;
-    cursor: default;
-}
-
-.bit-comment .children .bit-comment {
-    margin-left: 20px;
-    border-left: 2px solid #eee;
-    padding-left: 1rem;
-}
-
-
-
-
-/* BitStream Comment Form Styling */
-
-.bit-comment-form {
-    max-width: 720px;
-    margin: 0 auto;
-}
-
-.bit-comment-form textarea {
-    width: 100%;
-    min-width: 100%;
-    max-width: 100%;
-    height: 140px;
-    padding: 0.75rem;
-    border: 1px solid #ccc;
-    border-radius: 15px;
-    font-size: 1rem;
-    font-family: inherit;
-    resize: vertical;
-    box-sizing: border-box;
-}
-
-.bit-comment-form input[type="submit"] {
-    background-color: var(--wp--preset--color--accent-1, #2c6e49);
-    color: white;
-    border: none;
-    padding: 0.6rem 1.2rem;
-    font-size: 1rem;
-    border-radius: 15px;
-    cursor: pointer;
-    font-family: inherit;
-    transition: background-color 0.2s ease;
-}
-
-.bit-comment-form input[type="submit"]:hover {
-    background-color: var(--wp--preset--color--accent-2, #044389);
-}
-
-.bit-comments-list .comment {
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #eee;
-}
-
-.bit-comments-list .comment-author {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 0.25rem;
-}
-
-.bit-comments-list .comment-author .avatar {
-    border-radius: 15px;
-    width: 40px;
-    height: 40px;
-}
-
-.bit-avatar,
-.bit-avatar img,
-.bit-avatar-img,
-img.avatar {
-    border-radius: 15px !important;
-    overflow: hidden;
-}
-
-.bit-comments-list .comment-author b {
-    font-size: 1rem;
-    font-weight: 600;
-}
-
-.bit-comments-list .comment-metadata {
-    font-size: 0.85rem;
-    color: #666;
-}
-
-.bit-comments-list .comment-content {
-    font-size: 0.95rem;
-    line-height: 1.6;
-    margin-top: 0.25rem;
-}
-
-.bit-comments-list .reply {
-    font-size: 0.85rem;
-    margin-top: 0.5rem;
-}
 
 .bit-timestamp {
     position: relative;
@@ -1011,21 +841,15 @@ img.avatar {
 
 .bit-comments.open {
     max-height: 2000px;
-    /* Increased for longer comment threads */
     opacity: 1;
     margin-top: 1rem;
-    background: #f8f9fa;
-    /* Subtle background to distinguish comments */
+    background: #fff;
     border-radius: 15px;
-    /* Match card styling */
-    padding: 1rem;
-    /* Add some padding for better spacing */
-    border-left: 3px solid #2c6e49;
-    /* Green accent border */
+    border: 1px solid #ddd;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    padding: 1.5rem;
     z-index: 15;
-    /* Very high z-index when open to ensure visibility above everything */
     visibility: visible;
-    /* Make visible when open */
 }
 
 /* Responsive feed adjustments */

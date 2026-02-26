@@ -384,7 +384,7 @@ function bitstream_render_card($post_id, $skip_content_filter = false)
 
         <div id="comments-<?php echo $post_id; ?>" class="bit-comments">
             <div class="bit-comments-list">
-                <?php wp_list_comments(['style' => 'div', 'short_ping' => true, 'avatar_size' => 32, 'max_depth' => 3], get_comments(['post_id' => $post_id, 'status' => 'approve'])); ?>
+                <?php wp_list_comments(['short_ping' => true, 'max_depth' => 3], get_comments(['post_id' => $post_id, 'status' => 'approve'])); ?>
             </div>
             <div class="bit-comment-form">
                 <?php comment_form([
