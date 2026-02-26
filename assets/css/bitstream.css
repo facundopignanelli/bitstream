@@ -250,6 +250,16 @@
     align-items: start;
 }
 
+.bitstream-feed-sidebar-tabs .bitstream-feed-sidebar {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 10;
+    margin-top: 0.5rem;
+    min-width: 280px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
 .mobile-rss-panel {
     display: block;
 }
@@ -260,36 +270,33 @@
 
 .bitstream-feed-sidebar-tabs .bitstream-feed-sidebar-panel {
     min-width: 0;
+    position: relative;
 }
 
-.bitstream-feed-sidebar-panel[open] {
-    grid-column: 1 / -1;
-}
 
 .bitstream-feed-sidebar-summary {
     cursor: pointer;
     font-weight: 700;
     font-size: 0.95rem;
-    color: var(--wp--preset--color--accent-1, #2c6e49);
+    color: #fff;
     margin-bottom: 0.55rem;
     list-style: none;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #fff;
+    background: var(--wp--preset--color--accent-1, #2c6e49);
     padding: 0.5rem 0.5rem;
     border-radius: 8px;
-    border: 1px solid #e2e6e3;
-    transition: background 0.2s ease;
+    border: none;
+    transition: background 0.2s ease, filter 0.2s ease;
 }
 
 .hide-on-mobile {
     display: none !important;
 }
 
-
 .bitstream-feed-sidebar-summary:hover {
-    background: #eef2ef;
+    filter: brightness(0.9);
 }
 
 .bitstream-feed-sidebar-summary i {
@@ -533,6 +540,13 @@
 
     .bitstream-feed-sidebar-panel> :not(summary) {
         display: block;
+    }
+
+    .bitstream-feed-sidebar-tabs .bitstream-feed-sidebar {
+        position: static;
+        min-width: 0;
+        box-shadow: none;
+        margin-top: 0;
     }
 
     .bitstream-feed-sidebar-tabs {
