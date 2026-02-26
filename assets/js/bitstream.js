@@ -3174,16 +3174,38 @@ jQuery(document).ready(function ($) {
             statusEl.style.color = isError ? '#cc0000' : '#2c6e49';
         }
 
+        // Detect if content is just a URL (with optional whitespace)
+        function isUrlOnly(text) {
+            const trimmed = text.trim();
+            try {
+                const url = new URL(trimmed);
+                return url.protocol === 'http:' || url.protocol === 'https:';
+            } catch {
+                return false;
+            }
+        }
+
         form.addEventListener('submit', (e) => {
             e.preventDefault();
 
-            setStatus('Posting...');
+            const textarea = form.querySelector('textarea[name="bit_content"]');
+            const content = textarea ? textarea.value : '';
+            const isRebit = isUrlOnly(content);
+
+            setStatus(isRebit ? 'Posting ReBit...' : 'Posting...');
             if (submitBtn) submitBtn.disabled = true;
 
             const fd = new FormData(form);
             fd.append('action', 'bitstream_submit_poster');
             fd.append('nonce', form.dataset.submitNonce);
-            fd.append('poster_type', 'bit');
+
+            if (isRebit) {
+                fd.append('poster_type', 'rebit');
+                fd.append('rebit_url', content.trim());
+                fd.delete('bit_content');
+            } else {
+                fd.append('poster_type', 'bit');
+            }
 
             fetch(bitstream_ajax.ajax_url, {
                 method: 'POST',
@@ -3192,7 +3214,7 @@ jQuery(document).ready(function ($) {
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        setStatus('Posted!');
+                        setStatus(isRebit ? 'ReBit posted!' : 'Posted!');
                         form.reset();
                         setTimeout(() => {
                             window.location.reload();
