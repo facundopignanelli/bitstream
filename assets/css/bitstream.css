@@ -850,7 +850,26 @@
     font-weight: 800;
     color: var(--wp--preset--color--accent-1, #2c6e49);
     margin-bottom: 1rem;
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+#cancel-comment-reply-link {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #444;
+    text-decoration: none;
+    padding: 0.3rem 0.8rem;
+    border: 1px solid #ccc;
+    border-radius: 15px;
+    background-color: #f8f9fa;
+    transition: all 0.2s ease;
+}
+
+#cancel-comment-reply-link:hover {
+    background-color: #eee;
+    color: #000;
 }
 
 .akismet_comment_form_privacy_notice {
