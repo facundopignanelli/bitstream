@@ -817,7 +817,8 @@
     background-color: var(--wp--preset--color--accent-2, #044389);
 }
 
-.bit-comment-form input[type="submit"] {
+.bit-comment-form input[type="submit"],
+#respond input[type="submit"] {
     background-color: var(--wp--preset--color--accent-1, #2c6e49);
     color: white;
     border: none;
@@ -827,6 +828,29 @@
     cursor: pointer;
     font-family: inherit;
     transition: background-color 0.2s ease;
+}
+
+.bit-comment-form textarea,
+#respond textarea {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    resize: none;
+    border-radius: 15px;
+    padding: 1rem;
+    border: 1px solid #ccc;
+    font-family: inherit;
+    font-size: 1rem;
+    height: 120px;
+    margin-bottom: 0.5rem;
+}
+
+#respond .comment-reply-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    margin-bottom: 1rem;
+    display: block;
 }
 
 .akismet_comment_form_privacy_notice {
@@ -873,6 +897,12 @@
     border-bottom: none;
     margin-bottom: 0;
     padding-bottom: 0;
+}
+
+.comment-list .children .bit-modern-comment {
+    margin-bottom: 15px;
+    padding-bottom: 0;
+    border-bottom: none;
 }
 
 .bit-modern-comment-avatar img.avatar {
