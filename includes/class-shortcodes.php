@@ -283,6 +283,8 @@ class BitStream_Shortcodes
             return;
         }
 
+        wp_enqueue_script('comment-reply');
+
         global $post;
         if (!($post instanceof WP_Post)) {
             return;
@@ -446,7 +448,7 @@ class BitStream_Shortcodes
         echo '<div class="bitstream-feed-sidebar-tabs">';
 
         // Search Panel
-        echo '<div class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-search" data-panel-id="search" style="display:none;">';
+        echo '<div class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-search" data-panel-id="search">';
         echo '<h3 class="bitstream-feed-sidebar-title hide-on-mobile">Search</h3>';
         echo '<div class="bitstream-feed-sidebar">';
         echo '<form class="bitstream-filter-search" method="get" action="' . esc_url($base_filter_url) . '">';
@@ -464,7 +466,7 @@ class BitStream_Shortcodes
 
         // RSS Panel
         if (!empty($desktop_rss_links)) {
-            echo '<div class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-rss mobile-rss-panel" data-panel-id="rss" style="display:none;">';
+            echo '<div class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-rss mobile-rss-panel" data-panel-id="rss">';
             echo '<h3 class="bitstream-feed-sidebar-title hide-on-mobile">RSS Feeds</h3>';
             echo '<div class="bitstream-feed-sidebar">';
             echo $desktop_rss_links;
@@ -473,7 +475,7 @@ class BitStream_Shortcodes
         }
 
         // Filters Panel
-        echo '<div class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-filters" data-panel-id="filters" style="display:none;">';
+        echo '<div class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-filters" data-panel-id="filters">';
         echo '<h3 class="bitstream-feed-sidebar-title hide-on-mobile">Archive</h3>';
         echo '<div class="bitstream-feed-sidebar">';
         echo '<a class="bitstream-filter-link ' . (empty($selected_month) ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, $selected_type, '', $selected_search)) . '">All dates</a>';

@@ -2972,16 +2972,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const isDesktop = window.innerWidth >= 1024;
 
-        sidebarPanels.forEach(panel => {
-            if (isDesktop) {
-                panel.open = true;
-                return;
+        if (isDesktop) {
+            // Remove inline styles to let desktop CSS take over
+            sidebarPanels.forEach(panel => {
+                panel.style.display = '';
+            });
+            // Reset active mobile tabs state
+            const tabsNav = document.querySelector('.bitstream-mobile-tabs-nav');
+            if (tabsNav) {
+                tabsNav.querySelectorAll('button').forEach(b => b.classList.remove('is-active'));
             }
-
-            if (panel.dataset.userToggled !== 'true') {
-                panel.open = false;
-            }
-        });
+        }
     }
 
     function syncArchiveYearState() {
@@ -3004,11 +3005,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    sidebarPanels.forEach(panel => {
-        panel.addEventListener('toggle', () => {
-            panel.dataset.userToggled = 'true';
-        });
-    });
+
 
     archiveYears.forEach(year => {
         year.addEventListener('toggle', () => {
@@ -3192,4 +3189,66 @@ jQuery(document).ready(function ($) {
                 });
         });
     });
+
+    // Handle standard WP comment form submission via AJAX
+    document.addEventListener('submit', function (e) {
+        const form = e.target.closest('.bit-comment-form form');
+        if (!form) return;
+
+        e.preventDefault();
+
+        const submitBtn = form.querySelector('input[type="submit"], button[type="submit"]');
+        const originalBtnText = submitBtn ? (submitBtn.value || submitBtn.textContent) : 'Post Comment';
+
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            if (submitBtn.tagName === 'INPUT') submitBtn.value = 'Posting...';
+            else submitBtn.textContent = 'Posting...';
+        }
+
+        const formData = new FormData(form);
+        const postId = form.querySelector('input[name="comment_post_ID"]').value;
+
+        fetch(form.action, {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => {
+                if (response.ok) {
+                    // Set flag to reopen this specific comment section after reload
+                    sessionStorage.setItem('bitstream_open_comments', 'comments-' + postId);
+                    window.location.reload();
+                } else {
+                    alert('Error posting comment. Please try again.');
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        if (submitBtn.tagName === 'INPUT') submitBtn.value = originalBtnText;
+                        else submitBtn.textContent = originalBtnText;
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Comment submission error:', error);
+                alert('Network error. Please try again.');
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    if (submitBtn.tagName === 'INPUT') submitBtn.value = originalBtnText;
+                    else submitBtn.textContent = originalBtnText;
+                }
+            });
+    });
+
+    // Re-open comments section if returning from an AJAX reload
+    const openCommentsId = sessionStorage.getItem('bitstream_open_comments');
+    if (openCommentsId) {
+        const targetSection = document.getElementById(openCommentsId);
+        if (targetSection) {
+            targetSection.classList.add('open');
+            // Scroll to the section smoothly
+            setTimeout(() => {
+                targetSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 500);
+        }
+        sessionStorage.removeItem('bitstream_open_comments');
+    }
 });
