@@ -599,7 +599,6 @@ a.bitstream-filter-chip:hover {
     text-align: center;
     font-weight: 600;
     color: #2c6e49;
-    background: #fafafa;
     border: none;
     border-radius: 0;
     padding: 0.9rem 1rem;
@@ -882,6 +881,8 @@ a.bitstream-filter-chip:hover {
     border-radius: 15px;
     background-color: #f8f9fa;
     transition: all 0.2s ease;
+    white-space: nowrap;
+    display: inline-block;
 }
 
 #cancel-comment-reply-link:hover {

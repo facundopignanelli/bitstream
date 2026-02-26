@@ -374,6 +374,7 @@ class BitStream_Content_Display
                         . $this->format_quoted_date($quoted_id) . '</div>';
                     $quoted_content = wpautop($quoted_post->post_content);
                     $quoted_content = preg_replace('/<!--\s*wp:.*?\/-->/s', '', $quoted_content);
+                    $quoted_content = $this->linkify_hashtags($quoted_content);
                     $rich_preview = $this->render_og_card($quoted_id);
                     $nested_card = $header . $quoted_content . $rich_preview;
                 }

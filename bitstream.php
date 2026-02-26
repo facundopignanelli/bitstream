@@ -256,6 +256,16 @@ function bitstream_render_nested_quoted_card($post_id)
     }
 
     $content = wpautop(get_post_field('post_content', $post_id));
+
+    if (class_exists('BitStream_Content_Display')) {
+        global $post;
+        $original_post = $post;
+        $post = $quoted_post;
+        $display = new BitStream_Content_Display();
+        $content = $display->linkify_hashtags($content);
+        $post = $original_post;
+    }
+
     $timestamp = human_time_diff(get_post_time('U', false, $post_id), current_time('timestamp')) . ' ago';
     $posted_datetime = get_post_time('d/m/Y H:i', false, $post_id);
     $is_edited = get_post_modified_time('U', false, $post_id) > get_post_time('U', false, $post_id);
