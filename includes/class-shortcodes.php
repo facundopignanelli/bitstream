@@ -567,6 +567,7 @@ class BitStream_Shortcodes
             echo '<div class="bitstream-feed-sidebar bitstream-hashtag-list">';
             foreach ($hashtag_counts as $tag => $count) {
                 $is_active_tag = (mb_strtolower($selected_hashtag, 'UTF-8') === mb_strtolower($tag, 'UTF-8')) ? ' is-active' : '';
+                // Keep selected type, month, and search when adding a hashtag filter
                 $tag_url = $build_filter_url($base_filter_url, $selected_type, $selected_month, $selected_search, $tag);
                 echo '<a class="bitstream-filter-link bitstream-hashtag-sidebar-link' . $is_active_tag . '" href="' . esc_url($tag_url) . '">';
                 echo '<span class="bitstream-hashtag-sidebar-tag">#' . esc_html($tag) . '</span>';

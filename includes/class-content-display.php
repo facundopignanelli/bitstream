@@ -453,8 +453,22 @@ class BitStream_Content_Display
             return $content;
         }
 
-        // Resolve the feed page URL for hashtag links
+        // Build base URL with current filters
         $feed_url = home_url('/bitstream/');
+
+        $requested_type = isset($_GET['bitstream_type']) ? sanitize_key(wp_unslash($_GET['bitstream_type'])) : '';
+        $requested_month = isset($_GET['bitstream_month']) ? sanitize_text_field(wp_unslash($_GET['bitstream_month'])) : '';
+        $requested_search = isset($_GET['bitstream_search']) ? sanitize_text_field(wp_unslash($_GET['bitstream_search'])) : '';
+
+        if (!empty($requested_type) && $requested_type !== 'all') {
+            $feed_url = add_query_arg('bitstream_type', $requested_type, $feed_url);
+        }
+        if (!empty($requested_month)) {
+            $feed_url = add_query_arg('bitstream_month', $requested_month, $feed_url);
+        }
+        if (!empty($requested_search)) {
+            $feed_url = add_query_arg('bitstream_search', $requested_search, $feed_url);
+        }
 
         // Split content by HTML tags so we only process text nodes
         $parts = preg_split('/(<[^>]*>)/i', $content, -1, PREG_SPLIT_DELIM_CAPTURE);
