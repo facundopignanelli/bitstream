@@ -244,11 +244,17 @@
 }
 
 .bitstream-feed-sidebar-tabs {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: flex;
+    flex-wrap: wrap;
     gap: 0.65rem;
-    align-items: start;
+    align-items: flex-start;
 }
+
+.bitstream-feed-sidebar-panel {
+    display: contents;
+    /* Allows child elements to participate in the flex layout directly */
+}
+
 
 .mobile-rss-panel {
     display: block;
@@ -258,38 +264,44 @@
     display: block;
 }
 
-.bitstream-feed-sidebar-tabs .bitstream-feed-sidebar-panel {
+.bitstream-feed-sidebar-panel {
     min-width: 0;
 }
 
-.bitstream-feed-sidebar-panel[open] {
-    grid-column: 1 / -1;
+.bitstream-feed-sidebar-panel[open]>.bitstream-feed-sidebar {
+    width: 100%;
+    order: 2;
+    /* Content goes below */
 }
+
 
 .bitstream-feed-sidebar-summary {
     cursor: pointer;
     font-weight: 700;
     font-size: 0.95rem;
-    color: var(--wp--preset--color--accent-1, #2c6e49);
-    margin-bottom: 0.55rem;
+    color: #fff;
+    margin-bottom: 0;
     list-style: none;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #fff;
-    padding: 0.5rem 0.5rem;
+    background: var(--wp--preset--color--accent-1, #2c6e49);
+    padding: 0.6rem 0.6rem;
     border-radius: 8px;
-    border: 1px solid #e2e6e3;
-    transition: background 0.2s ease;
+    border: none;
+    transition: opacity 0.2s ease;
+    flex: 1 1 0;
+    /* Equal width for the buttons */
+    order: 1;
+    /* Buttons stay on top */
 }
 
 .hide-on-mobile {
     display: none !important;
 }
 
-
 .bitstream-feed-sidebar-summary:hover {
-    background: #eef2ef;
+    opacity: 0.9;
 }
 
 .bitstream-feed-sidebar-summary i {
@@ -535,8 +547,24 @@
         display: block;
     }
 
-    .bitstream-feed-sidebar-tabs {
+    .bitstream-feed-sidebar-panel {
         display: block;
+        /* Revert display contents for desktop */
+    }
+
+    .bitstream-feed-sidebar-tabs {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .bitstream-feed-sidebar-summary {
+        flex: none;
+        /* Revert flex sizing on desktop */
+        margin-bottom: 0.55rem;
+    }
+
+    .bitstream-feed-sidebar-panel[open]>.bitstream-feed-sidebar {
+        order: unset;
     }
 
     .bitstream-feed-sidebar-tabs .bitstream-feed-sidebar-panel+.bitstream-feed-sidebar-panel {
