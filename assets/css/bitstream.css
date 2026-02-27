@@ -497,6 +497,11 @@ a.bitstream-filter-chip:hover {
     flex: 1;
 }
 
+.bitstream-preview-grid .bit-card-footer,
+.bitstream-preview-grid .bit-card>hr {
+    display: none;
+}
+
 @media (min-width: 768px) {
     .bitstream-preview-grid {
         grid-template-columns: repeat(2, 1fr);
