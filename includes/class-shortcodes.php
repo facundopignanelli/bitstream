@@ -347,8 +347,14 @@ class BitStream_Shortcodes
             'paged' => get_query_var('paged') ?: 1,
             'limit' => '', // Limit total number of posts (e.g., "3" for latest 3)
             'infinite_scroll' => 'false', // Enable infinite scroll instead of load more button
-            'show_load_more' => 'true' // Control whether to show load more button
+            'show_load_more' => 'true', // Control whether to show load more button
+            'mode' => '' // 'preview' = compact grid without sidebars/filters
         ], $atts);
+
+        // Preview mode: render a minimal grid of the latest N bits
+        if ($atts['mode'] === 'preview') {
+            return $this->render_feed_preview($atts);
+        }
 
         $requested_type = isset($_GET['bitstream_type']) ? sanitize_key(wp_unslash($_GET['bitstream_type'])) : 'all';
         $selected_type = in_array($requested_type, ['all', 'bits', 'rebits'], true) ? $requested_type : 'all';
@@ -752,6 +758,42 @@ class BitStream_Shortcodes
         });
         </script>';
 
+        wp_reset_postdata();
+        return ob_get_clean();
+    }
+
+    /**
+     * Render a compact preview grid of the latest N bits.
+     * Used via [bitstream mode="preview" limit="6"].
+     * No sidebars, filters, search, or pagination are rendered.
+     */
+    private function render_feed_preview($atts)
+    {
+        $limit = !empty($atts['limit']) ? absint($atts['limit']) : 6;
+
+        $q = new WP_Query([
+            'post_type' => 'bit',
+            'post_status' => 'publish',
+            'posts_per_page' => $limit,
+            'paged' => 1,
+            'orderby' => 'date',
+            'order' => 'DESC',
+        ]);
+
+        ob_start();
+        echo '<div class="bitstream-preview-grid">';
+
+        if ($q->have_posts()) {
+            while ($q->have_posts()) {
+                $q->the_post();
+                echo bitstream_render_card(get_the_ID());
+            }
+        }
+        else {
+            echo '<p style="grid-column:1/-1;text-align:center;color:#666;">No Bits found.</p>';
+        }
+
+        echo '</div>';
         wp_reset_postdata();
         return ob_get_clean();
     }
