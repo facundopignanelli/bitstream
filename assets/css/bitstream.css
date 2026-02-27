@@ -499,7 +499,7 @@ a.bitstream-filter-chip:hover {
 
 .bitstream-preview-grid .bit-card-footer,
 .bitstream-preview-grid .bit-card>hr {
-    display: none;
+    display: none !important;
 }
 
 @media (min-width: 768px) {
