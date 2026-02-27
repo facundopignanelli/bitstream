@@ -491,7 +491,12 @@ a.bitstream-filter-chip:hover {
     height: 100%;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+}
+
+.bitstream-preview-grid .bitstream-quoted-preview,
+.bitstream-preview-grid .bit-rebit-preview {
+    margin-top: auto;
+    margin-bottom: auto;
 }
 
 .bitstream-preview-grid .bit-card-footer,
@@ -3093,12 +3098,6 @@ iframe[src*="youtu.be"] {
 
 /* Responsive typography adjustments */
 @media (max-width: 767px) {
-    .bit-card-header {
-        flex-direction: column !important;
-        align-items: flex-start !important;
-        gap: 0.5rem !important;
-    }
-
     .bit-card-footer {
         flex-wrap: wrap !important;
         gap: 0.75rem !important;

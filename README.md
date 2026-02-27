@@ -124,6 +124,7 @@ The main shortcode for displaying your timeline.
 |-----------|------|---------|-------------|
 | `posts_per_page` | integer | 10 | Number of posts to load per page |
 | `limit` | integer | - | Limit total posts (disables pagination) |
+| `mode` | string | - | Set to `"preview"` for a compact 3-column grid without sidebars |
 | `infinite_scroll` | boolean | false | Enable infinite scroll |
 | `show_load_more` | boolean | true | Show/hide load more button |
 

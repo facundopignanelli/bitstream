@@ -60,6 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - New "Hashtags" section in the left sidebar showing dynamically counted, trending tags
   - Intercepts `#tag` queries in the search bar and converts them to hashtag filters
   - Support for hashtags in mobile tab navigation and infinite scroll pagination
+- **Homepage Preview Mode:** New `mode="preview"` attribute on `[bitstream]` renders a compact 3-column responsive grid (1→2→3 columns) of the latest N bits without sidebars, filters, or pagination — ideal for homepage embeds
 
 ### Changed
 - Unified posting workflow around the custom poster interface instead of Gutenberg new-post flow
