@@ -457,8 +457,6 @@ if (!function_exists('bitstream_render_card')) {
             'title_reply' => 'Leave a Comment',
             'logged_in_as' => '',
             'comment_field' => '<p><textarea name="comment" required></textarea></p>',
-            'form_action' => esc_url($_SERVER['REQUEST_URI']),
-            'comment_post_redirect' => esc_url($_SERVER['REQUEST_URI']),
         ], $post_id); ?>
             </div>
         </div>

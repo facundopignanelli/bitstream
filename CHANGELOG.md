@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reduced production log exposure in `class-block-editor.php`:
   - Added strict `WP_DEBUG` gating for PHP debug logging.
   - Removed high-volume/raw payload log patterns from runtime paths.
+- Restored native WordPress comment submission flow in `bitstream.php`:
+  - Removed custom `comment_form()` action/redirect overrides that used `$_SERVER['REQUEST_URI']`.
+  - Reverted to default `comment_form()` behavior and native `wp-comments-post.php` handling.
 
 ## [3.0.0] - 2026-02-23
 
