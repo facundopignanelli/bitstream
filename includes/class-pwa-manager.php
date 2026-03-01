@@ -70,6 +70,29 @@ class BitStream_PWA_Manager {
             echo '<script>
             if("serviceWorker" in navigator) {
                 window.addEventListener("load", function() {
+                    const isLocalhost = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+                    if (!window.isSecureContext && !isLocalhost) {
+                        console.warn("BitStream SW skipped: service workers require HTTPS (or localhost).");
+                        return;
+                    }
+
+                    const swUrl = "'.esc_url($sw_url).'";
+                    let resolvedSwUrl;
+                    try {
+                        resolvedSwUrl = new URL(swUrl, window.location.href);
+                    } catch (error) {
+                        console.warn("BitStream SW skipped: invalid service worker URL.", error);
+                        return;
+                    }
+
+                    if (resolvedSwUrl.origin !== window.location.origin) {
+                        console.warn("BitStream SW skipped: service worker URL origin mismatch.", {
+                            currentOrigin: window.location.origin,
+                            serviceWorkerOrigin: resolvedSwUrl.origin
+                        });
+                        return;
+                    }
+
                     // First, unregister any existing service workers with broader scope
                     navigator.serviceWorker.getRegistrations().then(function(registrations) {
                         registrations.forEach(function(registration) {
@@ -81,7 +104,7 @@ class BitStream_PWA_Manager {
                     });
                     
                     // Then register the new service worker with correct scope
-                    navigator.serviceWorker.register("'.esc_url($sw_url).'", {
+                    navigator.serviceWorker.register(resolvedSwUrl.pathname + resolvedSwUrl.search, {
                         scope: "/bitstream/",
                         updateViaCache: "none"
                     }).then(function(registration) {
