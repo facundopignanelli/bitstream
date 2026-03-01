@@ -3,6 +3,34 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2026-03-01
+
+### Security
+- Hardened quoted Bit meta saving flow in `class-admin-interface.php`:
+  - Added nonce field output in quoted preview UI.
+  - Added nonce verification in `save_quoted_meta()`.
+  - Added autosave/revision bailouts.
+  - Added `current_user_can('edit_post', $post_id)` capability check before write/delete.
+- Standardized AJAX nonce validation in `class-ajax-handlers.php`:
+  - Replaced raw `wp_verify_nonce()` checks with `check_ajax_referer()` for like, delete, load more, OG fetch, ReBit preview render, and quoted-bit fetch handlers.
+- Reduced data-leak risk from debug logging in `class-ajax-handlers.php`:
+  - Removed raw request payload dumps.
+  - Gated remaining debug logs behind `if ( defined('WP_DEBUG') && WP_DEBUG )` with redacted/minimal messages.
+- Hardened `class-pwa-manager.php` request logging:
+  - Removed logging of raw `$_GET`, `$_POST`, and `$_FILES` arrays.
+  - Switched to minimal, redacted debug messages behind `WP_DEBUG` gate.
+- Removed PHP session usage from PWA share flow in `class-pwa-manager.php`:
+  - Removed `session_start()` and `$_SESSION` usage.
+  - Replaced temporary share handoff with tokenized transient storage (`set_transient`, `get_transient`, `delete_transient`).
+  - Preserved existing `shared_key` handoff behavior for poster prefill after login.
+- Hardened inline editor script injection in `class-block-editor.php`:
+  - Replaced direct `<script>` echo interpolation for shared/media query data with safe `wp_add_inline_script()` payloads.
+  - Sanitized request-derived values with `sanitize_text_field()`/`absint()` (plus `wp_unslash()` where applicable) before JavaScript use.
+  - Switched to encoded payload passing (`wp_json_encode`) instead of manual string concatenation.
+- Reduced production log exposure in `class-block-editor.php`:
+  - Added strict `WP_DEBUG` gating for PHP debug logging.
+  - Removed high-volume/raw payload log patterns from runtime paths.
+
 ## [3.0.0] - 2026-02-23
 
 ### Added

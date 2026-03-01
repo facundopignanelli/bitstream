@@ -11,6 +11,15 @@
 if (!defined('ABSPATH')) exit;
 
 class BitStream_Block_Editor {
+
+    /**
+     * Log only in debug environments.
+     */
+    private function debug_log($message) {
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log($message);
+        }
+    }
     
     public function __construct() {
         add_action('init', [$this, 'register_meta_and_block']);
@@ -49,17 +58,17 @@ class BitStream_Block_Editor {
         // Get post ID for editor context
         $current_post_id = 0;
         if (is_admin() && isset($_GET['post'])) {
-            $current_post_id = intval($_GET['post']);
+            $current_post_id = absint(wp_unslash($_GET['post']));
         } elseif (is_admin() && isset($_POST['post_ID'])) {
-            $current_post_id = intval($_POST['post_ID']);
+            $current_post_id = absint(wp_unslash($_POST['post_ID']));
         }
 
         // Check for media_ids parameter for PWA shared media
         $media_ids_array = [];
         if (isset($_GET['media_ids']) && !empty($_GET['media_ids'])) {
-            $media_ids = sanitize_text_field($_GET['media_ids']);
-            $media_ids_array = array_map('intval', explode(',', $media_ids));
-            error_log('BitStream: enqueue_block_editor_assets - media_ids detected: ' . print_r($media_ids_array, true));
+            $media_ids = sanitize_text_field(wp_unslash($_GET['media_ids']));
+            $media_ids_array = array_filter(array_map('absint', explode(',', $media_ids)));
+            $this->debug_log('BitStream: enqueue_block_editor_assets - media_ids count: ' . count($media_ids_array));
         }
 
         // Localize script for block editor
@@ -89,9 +98,9 @@ class BitStream_Block_Editor {
         // Get post ID for editor context
         $current_post_id = 0;
         if (is_admin() && isset($_GET['post'])) {
-            $current_post_id = intval($_GET['post']);
+            $current_post_id = absint(wp_unslash($_GET['post']));
         } elseif (is_admin() && isset($_POST['post_ID'])) {
-            $current_post_id = intval($_POST['post_ID']);
+            $current_post_id = absint(wp_unslash($_POST['post_ID']));
         } elseif (!is_admin()) {
             $current_post_id = get_the_ID();
         }
@@ -121,13 +130,13 @@ class BitStream_Block_Editor {
      * Default content for ReBit posts
      */
     public function default_rebit_content($content, $post) {
-        if ($post->post_type === 'bit' && !empty($_GET['rebit']) && $_GET['rebit'] === '1') {
-            $shared_url = isset($_GET['shared_url']) ? urldecode($_GET['shared_url']) : '';
-            $shared_title = isset($_GET['shared_title']) ? urldecode($_GET['shared_title']) : '';
-            $shared_text = isset($_GET['shared_text']) ? urldecode($_GET['shared_text']) : '';
+        $is_rebit = isset($_GET['rebit']) && sanitize_text_field(wp_unslash($_GET['rebit'])) === '1';
+        if ($post->post_type === 'bit' && $is_rebit) {
+            $shared_url = isset($_GET['shared_url']) ? sanitize_text_field(rawurldecode(wp_unslash($_GET['shared_url']))) : '';
+            $shared_title = isset($_GET['shared_title']) ? sanitize_text_field(rawurldecode(wp_unslash($_GET['shared_title']))) : '';
+            $shared_text = isset($_GET['shared_text']) ? sanitize_text_field(rawurldecode(wp_unslash($_GET['shared_text']))) : '';
             
-            // Log for debugging
-            error_log('BitStream: default_rebit_content called with shared content: URL=' . $shared_url . ', Title=' . $shared_title . ', Text=' . $shared_text);
+            $this->debug_log('BitStream: default_rebit_content called for rebit flow');
             
             $content = '<!-- wp:bitstream/rebit-url /-->'."\n";
             
@@ -159,81 +168,51 @@ class BitStream_Block_Editor {
             global $post;
             
             if ($post && $post->post_type === 'bit') {
-                $shared_url = urldecode($_GET['shared_url']);
-                error_log('BitStream: Setting shared URL in meta: ' . $shared_url);
-                
-                // Add JavaScript to set the meta field with better error handling
-                echo '<script type="text/javascript">
-                document.addEventListener("DOMContentLoaded", function() {
-                    console.log("BitStream: Meta handler - Setting shared URL to: ' . esc_js($shared_url) . '");
-                    
-                    // Function to set meta and block value
-                    function setSharedUrl() {
-                        if (wp && wp.data && wp.data.select("core/editor")) {
-                            console.log("BitStream: WordPress editor data available");
-                            
-                            // Method 1: Set post meta directly
-                            try {
-                                wp.data.dispatch("core/editor").editPost({
-                                    meta: { bitstream_rebit_url: "' . esc_js($shared_url) . '" }
-                                });
-                                console.log("BitStream: Meta set via editPost");
-                            } catch (error) {
-                                console.error("BitStream: Error setting meta via editPost:", error);
-                            }
-                            
-                            // Method 2: Find and update the block
-                            setTimeout(function() {
-                                try {
-                                    const blocks = wp.data.select("core/block-editor").getBlocks();
-                                    console.log("BitStream: Meta handler found blocks:", blocks.length);
-                                    
-                                    const rebitBlock = blocks.find(block => block.name === "bitstream/rebit-url");
-                                    if (rebitBlock) {
-                                        console.log("BitStream: Meta handler found ReBit block, updating...");
-                                        console.log("BitStream: Current block attributes:", rebitBlock.attributes);
-                                        
-                                        // Force update the block attributes
-                                        wp.data.dispatch("core/block-editor").updateBlockAttributes(rebitBlock.clientId, {
-                                            bitstream_rebit_url: "' . esc_js($shared_url) . '"
-                                        });
-                                        
-                                        // Also force update the meta
-                                        setTimeout(() => {
-                                            wp.data.dispatch("core/editor").editPost({
-                                                meta: { bitstream_rebit_url: "' . esc_js($shared_url) . '" }
-                                            });
-                                            console.log("BitStream: Forced meta update after block update");
-                                        }, 200);
-                                        
-                                        console.log("BitStream: Meta handler updated block attributes");
-                                        
-                                        // Check if the update worked
-                                        setTimeout(() => {
-                                            const updatedBlocks = wp.data.select("core/block-editor").getBlocks();
-                                            const updatedRebitBlock = updatedBlocks.find(block => block.name === "bitstream/rebit-url");
-                                            if (updatedRebitBlock) {
-                                                console.log("BitStream: Updated block attributes:", updatedRebitBlock.attributes);
-                                            }
-                                        }, 500);
-                                        
-                                    } else {
-                                        console.log("BitStream: Meta handler - no ReBit block found yet");
-                                    }
-                                } catch (error) {
-                                    console.error("BitStream: Error in meta handler block update:", error);
-                                }
-                            }, 1000);
-                        } else {
-                            console.log("BitStream: WordPress editor not ready, retrying...");
-                            setTimeout(setSharedUrl, 500);
-                        }
-                    }
-                    
-                    // Start trying to set the URL
-                    setSharedUrl();
+                $shared_url = isset($_GET['shared_url']) ? sanitize_text_field(rawurldecode(wp_unslash($_GET['shared_url']))) : '';
+                $this->debug_log('BitStream: Setting shared URL in meta flow');
+
+                $shared_url_json = wp_json_encode($shared_url);
+                $inline_script = <<<JS
+document.addEventListener("DOMContentLoaded", function() {
+    const sharedUrl = {$shared_url_json};
+    function setSharedUrl() {
+        if (window.wp && window.wp.data && window.wp.data.select("core/editor")) {
+            try {
+                window.wp.data.dispatch("core/editor").editPost({
+                    meta: { bitstream_rebit_url: sharedUrl }
                 });
-                </script>';
+            } catch (error) {
+                console.error("BitStream: Error setting meta via editPost:", error);
+            }
+
+            setTimeout(function() {
+                try {
+                    const blocks = window.wp.data.select("core/block-editor").getBlocks();
+                    const rebitBlock = blocks.find(block => block.name === "bitstream/rebit-url");
+                    if (rebitBlock) {
+                        window.wp.data.dispatch("core/block-editor").updateBlockAttributes(rebitBlock.clientId, {
+                            bitstream_rebit_url: sharedUrl
+                        });
+
+                        setTimeout(() => {
+                            window.wp.data.dispatch("core/editor").editPost({
+                                meta: { bitstream_rebit_url: sharedUrl }
+                            });
+                        }, 200);
+                    }
+                } catch (error) {
+                    console.error("BitStream: Error in meta handler block update:", error);
+                }
+            }, 1000);
+        } else {
+            setTimeout(setSharedUrl, 500);
+        }
+    }
+
+    setSharedUrl();
+});
+JS;
+                wp_add_inline_script('bitstream-block', $inline_script, 'after');
             }
         }
     }
@@ -247,17 +226,15 @@ class BitStream_Block_Editor {
         // Get post type from multiple sources
         $post_type = '';
         if (isset($_GET['post_type'])) {
-            $post_type = $_GET['post_type'];
+            $post_type = sanitize_text_field(wp_unslash($_GET['post_type']));
         } elseif ($post && isset($post->post_type)) {
             $post_type = $post->post_type;
         } elseif (isset($GLOBALS['typenow'])) {
             $post_type = $GLOBALS['typenow'];
         }
         
-        // Log for debugging
         if ($post_type === 'bit') {
-            error_log('BitStream: inject_shared_url_script running for bit post type');
-            error_log('BitStream: GET params: ' . print_r($_GET, true));
+            $this->debug_log('BitStream: inject_shared_url_script running for bit post type');
         }
         
         // IMPORTANT: Check media_ids FIRST before other shared content
@@ -269,227 +246,186 @@ class BitStream_Block_Editor {
             header('Pragma: no-cache');
             
             // Handle media_ids parameter for PWA shared media
-            error_log('BitStream: Post type for media check: ' . $post_type);
-            error_log('BitStream: isset($_GET[media_ids]): yes');
-            error_log('BitStream: INSIDE MEDIA IDS BLOCK - about to inject script - TIMESTAMP: ' . time());
-            $media_ids = sanitize_text_field($_GET['media_ids']);
-            $ids_array = array_map('intval', explode(',', $media_ids));
-            error_log('BitStream: Parsed media IDs: ' . print_r($ids_array, true));
+            $media_ids = sanitize_text_field(wp_unslash($_GET['media_ids']));
+            $ids_array = array_filter(array_map('absint', explode(',', $media_ids)));
+            $this->debug_log('BitStream: Parsed media IDs count: ' . count($ids_array));
             
-            $timestamp = time();
-            echo '<!-- MEDIA INSERTION SCRIPT v2.0 - Generated at: ' . $timestamp . ' --><script type="text/javascript">
-            console.log("=== BitStream: MEDIA INSERTION SCRIPT START v2.0 - TIMESTAMP: ' . $timestamp . ' ===");
-            console.log("BitStream: Media insertion script loaded - VERSION 3.0.0");
-            console.log("BitStream: Current URL:", window.location.href);
-            (function() {
-                const mediaIds = ' . json_encode($ids_array) . ';
-                console.log("BitStream: Media IDs to insert:", mediaIds);
-                
-                function insertMediaBlocks() {
-                    try {
-                        if (!window.wp || !window.wp.data || !window.wp.blocks) {
-                            console.log("BitStream: WordPress editor not ready for media insertion");
-                            return false;
-                        }
-                        
-                        const { select, dispatch } = window.wp.data;
-                        const { createBlock } = window.wp.blocks;
-                        const blockEditor = select("core/block-editor");
-                        const blockDispatcher = dispatch("core/block-editor");
-                        
-                        if (!blockEditor || !blockDispatcher) {
-                            console.log("BitStream: Block editor not available yet");
-                            return false;
-                        }
-                        
-                        const blocks = blockEditor.getBlocks();
-                        console.log("BitStream: Current blocks:", blocks.length);
-                        
-                        // Insert media blocks (image or video)
-                        const mediaBlocks = [];
-                        mediaIds.forEach(function(mediaId) {
-                            console.log("BitStream: Creating block for media ID:", mediaId);
-                            
-                            // We need to determine if its an image or video
-                            // For now, well create image blocks and let WordPress handle it
-                            const imageBlock = createBlock("core/image", {
-                                id: mediaId,
-                                sizeSlug: "large"
-                            });
-                            mediaBlocks.push(imageBlock);
-                        });
-                        
-                        // Insert blocks at the beginning
-                        if (mediaBlocks.length > 0) {
-                            blockDispatcher.insertBlocks(mediaBlocks, 0);
-                            console.log("BitStream: Inserted", mediaBlocks.length, "media blocks");
-                            return true;
-                        }
-                        
-                        return false;
-                    } catch (error) {
-                        console.error("BitStream: Error inserting media blocks:", error);
-                        return false;
-                    }
-                }
-                
-                // Try to insert media blocks, retry if editor not ready
-                function waitForEditor() {
-                    if (!insertMediaBlocks()) {
-                        setTimeout(waitForEditor, 250);
-                    } else {
-                        console.log("=== BitStream: MEDIA INSERTION COMPLETE ===");
-                    }
-                }
-                
-                setTimeout(waitForEditor, 500);
-            })();
-            </script>';
+            $ids_array_json = wp_json_encode(array_values($ids_array));
+            $timestamp = absint(time());
+            $media_inline_script = <<<JS
+console.log("=== BitStream: MEDIA INSERTION SCRIPT START v2.0 - TIMESTAMP: {$timestamp} ===");
+console.log("BitStream: Media insertion script loaded - VERSION 3.1.0");
+console.log("BitStream: Current URL:", window.location.href);
+(function() {
+    const mediaIds = {$ids_array_json};
+    console.log("BitStream: Media IDs to insert:", mediaIds);
+
+    function insertMediaBlocks() {
+        try {
+            if (!window.wp || !window.wp.data || !window.wp.blocks) {
+                console.log("BitStream: WordPress editor not ready for media insertion");
+                return false;
+            }
+
+            const { select, dispatch } = window.wp.data;
+            const { createBlock } = window.wp.blocks;
+            const blockEditor = select("core/block-editor");
+            const blockDispatcher = dispatch("core/block-editor");
+
+            if (!blockEditor || !blockDispatcher) {
+                console.log("BitStream: Block editor not available yet");
+                return false;
+            }
+
+            const mediaBlocks = [];
+            mediaIds.forEach(function(mediaId) {
+                const imageBlock = createBlock("core/image", {
+                    id: mediaId,
+                    sizeSlug: "large"
+                });
+                mediaBlocks.push(imageBlock);
+            });
+
+            if (mediaBlocks.length > 0) {
+                blockDispatcher.insertBlocks(mediaBlocks, 0);
+                console.log("BitStream: Inserted", mediaBlocks.length, "media blocks");
+                return true;
+            }
+
+            return false;
+        } catch (error) {
+            console.error("BitStream: Error inserting media blocks:", error);
+            return false;
+        }
+    }
+
+    function waitForEditor() {
+        if (!insertMediaBlocks()) {
+            setTimeout(waitForEditor, 250);
+        } else {
+            console.log("=== BitStream: MEDIA INSERTION COMPLETE ===");
+        }
+    }
+
+    setTimeout(waitForEditor, 500);
+})();
+JS;
+            wp_add_inline_script('bitstream-block', $media_inline_script, 'after');
         } elseif ($post_type === 'bit' && (isset($_GET['shared_url']) || isset($_GET['shared_text']) || isset($_GET['shared_title']))) {
-            $shared_url = isset($_GET['shared_url']) ? urldecode($_GET['shared_url']) : '';
-            $shared_text = isset($_GET['shared_text']) ? urldecode($_GET['shared_text']) : '';
-            $shared_title = isset($_GET['shared_title']) ? urldecode($_GET['shared_title']) : '';
-            
-            echo '<script type="text/javascript">
-            // Immediate execution when editor loads
-            (function() {
-                const sharedUrl = "' . addslashes($shared_url) . '";
-                const sharedText = "' . addslashes($shared_text) . '";
-                const sharedTitle = "' . addslashes($shared_title) . '";
-                
-                console.log("BitStream: Inject script - Parameters received:");
-                console.log("  shared_url:", sharedUrl);
-                console.log("  shared_text:", sharedText);
-                console.log("  shared_title:", sharedTitle);
-                
-                // Function to extract URL from any parameter
-                function extractUrl() {
-                    const urlPattern = /https?:\/\/[^\s]+/g;
-                    
-                    // Priority order: shared_url, shared_text, shared_title
-                    const sources = [sharedUrl, sharedText, sharedTitle];
-                    
-                    for (const source of sources) {
-                        if (source) {
-                            const matches = source.match(urlPattern);
-                            if (matches && matches.length > 0) {
-                                // Return the first (and likely most relevant) URL found
-                                const extractedUrl = matches[0];
-                                console.log("BitStream: Extracted URL from", source === sharedUrl ? "shared_url" : source === sharedText ? "shared_text" : "shared_title", ":", extractedUrl);
-                                return extractedUrl;
-                            }
-                        }
-                    }
-                    
-                    console.log("BitStream: No URL found in any shared parameter");
-                    return "";
+            $shared_url = isset($_GET['shared_url']) ? sanitize_text_field(rawurldecode(wp_unslash($_GET['shared_url']))) : '';
+            $shared_text = isset($_GET['shared_text']) ? sanitize_text_field(rawurldecode(wp_unslash($_GET['shared_text']))) : '';
+            $shared_title = isset($_GET['shared_title']) ? sanitize_text_field(rawurldecode(wp_unslash($_GET['shared_title']))) : '';
+
+            $shared_payload_json = wp_json_encode([
+                'sharedUrl' => $shared_url,
+                'sharedText' => $shared_text,
+                'sharedTitle' => $shared_title,
+            ]);
+
+            $shared_inline_script = <<<JS
+// Immediate execution when editor loads
+(function() {
+    const payload = {$shared_payload_json} || {};
+    const sharedUrl = payload.sharedUrl || "";
+    const sharedText = payload.sharedText || "";
+    const sharedTitle = payload.sharedTitle || "";
+
+    console.log("BitStream: Inject script - Parameters received:");
+    console.log("  shared_url:", sharedUrl);
+    console.log("  shared_text:", sharedText);
+    console.log("  shared_title:", sharedTitle);
+
+    function extractUrl() {
+        const urlPattern = /https?:\/\/[^\s]+/g;
+        const sources = [sharedUrl, sharedText, sharedTitle];
+
+        for (const source of sources) {
+            if (source) {
+                const matches = source.match(urlPattern);
+                if (matches && matches.length > 0) {
+                    return matches[0];
                 }
-                
-                const finalUrl = extractUrl();
-                
-                if (!finalUrl) {
-                    console.log("BitStream: No URL to set, skipping ReBit block update");
-                    return;
-                }
-                
-                // Function to set meta with better error handling
-                function setSharedUrl() {
-                    try {
-                        // Check if we have a valid post ID and editor is ready
-                        if (!window.wp || !window.wp.data) {
-                            console.log("BitStream: WordPress editor not ready yet");
-                            return false;
-                        }
-                        
-                        const editor = window.wp.data.select("core/editor");
-                        const dispatcher = window.wp.data.dispatch("core/editor");
-                        
-                        if (!editor || !dispatcher) {
-                            console.log("BitStream: Editor stores not available yet");
-                            return false;
-                        }
-                        
-                        // Check if post is loaded
-                        const currentPost = editor.getCurrentPost();
-                        if (!currentPost || !currentPost.id) {
-                            console.log("BitStream: Post not loaded yet");
-                            return false;
-                        }
-                        
-                        console.log("BitStream: WordPress editor data available");
-                        
-                        // Set meta via the proper method
-                        dispatcher.editPost({
-                            meta: { bitstream_rebit_url: finalUrl }
-                        });
-                        
-                        console.log("BitStream: Meta set successfully");
-                        return true;
-                        
-                    } catch (error) {
-                        console.log("BitStream: Error setting meta via editPost:", error);
-                        return false;
-                    }
-                }
-                
-                // Function to handle block updates
-                function handleBlockUpdates() {
-                    try {
-                        const blockEditor = window.wp.data.select("core/block-editor");
-                        const blockDispatcher = window.wp.data.dispatch("core/block-editor");
-                        
-                        if (!blockEditor || !blockDispatcher) {
-                            return false;
-                        }
-                        
-                        const blocks = blockEditor.getBlocks();
-                        console.log("BitStream: Meta handler found blocks:", blocks.length);
-                        
-                        const rebitBlock = blocks.find(block => block.name === "bitstream/rebit-url");
-                        
-                        if (rebitBlock) {
-                            console.log("BitStream: Meta handler found ReBit block, updating...");
-                            blockDispatcher.updateBlockAttributes(rebitBlock.clientId, {
-                                bitstream_rebit_url: finalUrl
-                            });
-                            console.log("BitStream: Meta handler updated block attributes");
-                            return true;
-                        }
-                        
-                        return false;
-                    } catch (error) {
-                        console.log("BitStream: Error updating block:", error);
-                        return false;
-                    }
-                }
-                
-                // Main waiting function
-                function waitForEditor() {
-                    let metaSet = false;
-                    let blockUpdated = false;
-                    
-                    // Try to set meta
-                    if (!metaSet) {
-                        metaSet = setSharedUrl();
-                    }
-                    
-                    // Try to update blocks
-                    if (!blockUpdated) {
-                        blockUpdated = handleBlockUpdates();
-                    }
-                    
-                    // Continue waiting if either operation failed
-                    if (!metaSet || !blockUpdated) {
-                        setTimeout(waitForEditor, 250);
-                    } else {
-                        console.log("BitStream: All operations completed successfully");
-                    }
-                }
-                
-                // Start the process
-                setTimeout(waitForEditor, 500);
-            })();
-            </script>';
+            }
+        }
+
+        return "";
+    }
+
+    const finalUrl = extractUrl();
+
+    if (!finalUrl) {
+        return;
+    }
+
+    function setSharedUrl() {
+        try {
+            if (!window.wp || !window.wp.data) {
+                return false;
+            }
+
+            const editor = window.wp.data.select("core/editor");
+            const dispatcher = window.wp.data.dispatch("core/editor");
+
+            if (!editor || !dispatcher) {
+                return false;
+            }
+
+            const currentPost = editor.getCurrentPost();
+            if (!currentPost || !currentPost.id) {
+                return false;
+            }
+
+            dispatcher.editPost({
+                meta: { bitstream_rebit_url: finalUrl }
+            });
+
+            return true;
+
+        } catch (error) {
+            console.log("BitStream: Error setting meta via editPost:", error);
+            return false;
+        }
+    }
+
+    function handleBlockUpdates() {
+        try {
+            const blockEditor = window.wp.data.select("core/block-editor");
+            const blockDispatcher = window.wp.data.dispatch("core/block-editor");
+
+            if (!blockEditor || !blockDispatcher) {
+                return false;
+            }
+
+            const blocks = blockEditor.getBlocks();
+            const rebitBlock = blocks.find(block => block.name === "bitstream/rebit-url");
+
+            if (rebitBlock) {
+                blockDispatcher.updateBlockAttributes(rebitBlock.clientId, {
+                    bitstream_rebit_url: finalUrl
+                });
+                return true;
+            }
+
+            return false;
+        } catch (error) {
+            console.log("BitStream: Error updating block:", error);
+            return false;
+        }
+    }
+
+    function waitForEditor() {
+        const metaSet = setSharedUrl();
+        const blockUpdated = handleBlockUpdates();
+
+        if (!metaSet || !blockUpdated) {
+            setTimeout(waitForEditor, 250);
+        }
+    }
+
+    setTimeout(waitForEditor, 500);
+})();
+JS;
+            wp_add_inline_script('bitstream-block', $shared_inline_script, 'after');
         }
     }
     
@@ -498,8 +434,9 @@ class BitStream_Block_Editor {
      */
     public function handle_shared_key_restoration() {
         // Check if we have a shared key from the login redirect
-        if (isset($_GET['shared_key']) && isset($_GET['post_type']) && $_GET['post_type'] === 'bit') {
-            $shared_key = sanitize_text_field($_GET['shared_key']);
+        $is_bit_post_type = isset($_GET['post_type']) && sanitize_text_field(wp_unslash($_GET['post_type'])) === 'bit';
+        if (isset($_GET['shared_key']) && $is_bit_post_type) {
+            $shared_key = sanitize_text_field(wp_unslash($_GET['shared_key']));
             $shared_data = get_transient($shared_key);
             
             if ($shared_data && is_array($shared_data)) {
