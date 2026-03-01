@@ -1005,6 +1005,10 @@ class BitStream_Admin_Interface
      */
     public function show_quoted_preview($post)
     {
+        if ($post->post_type === 'bit') {
+            wp_nonce_field('bitstream_quoted_meta_save', 'bitstream_quoted_meta_nonce');
+        }
+
         if ($post->post_type === 'bit' && isset($_GET['quoted_bit'])) {
             $quoted_id = intval($_GET['quoted_bit']);
             $quoted_post = get_post($quoted_id);
@@ -1023,7 +1027,23 @@ class BitStream_Admin_Interface
      */
     public function save_quoted_meta($post_id)
     {
-        if (isset($_POST['bitstream_quoted_bit'])) {
+        if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
+            return;
+        }
+
+        if (wp_is_post_autosave($post_id) || wp_is_post_revision($post_id)) {
+            return;
+        }
+
+        if (!current_user_can('edit_post', $post_id)) {
+            return;
+        }
+
+        if (!isset($_POST['bitstream_quoted_meta_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['bitstream_quoted_meta_nonce'])), 'bitstream_quoted_meta_save')) {
+            return;
+        }
+
+        if (isset($_POST['bitstream_quoted_bit']) && $_POST['bitstream_quoted_bit'] !== '') {
             update_post_meta($post_id, '_bitstream_quoted_bit', intval($_POST['bitstream_quoted_bit']));
         }
         else {
