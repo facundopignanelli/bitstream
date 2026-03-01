@@ -1351,10 +1351,7 @@ class BitStream_Ajax_Handlers
     public function handle_like()
     {
         try {
-            // Verify nonce
-            if (!wp_verify_nonce($_POST['nonce'] ?? '', 'bitstream_like_nonce')) {
-                wp_send_json_error('Invalid nonce.');
-            }
+            check_ajax_referer('bitstream_like_nonce', 'nonce');
 
             // Check permissions
             if (!current_user_can('read')) {
@@ -1402,9 +1399,7 @@ class BitStream_Ajax_Handlers
                 wp_send_json_error('You must be logged in to delete posts.');
             }
 
-            if (!wp_verify_nonce($_POST['nonce'] ?? '', 'bitstream_delete_post_nonce')) {
-                wp_send_json_error('Invalid nonce.');
-            }
+            check_ajax_referer('bitstream_delete_post_nonce', 'nonce');
 
             if (empty($_POST['post_id']) || !is_numeric($_POST['post_id'])) {
                 wp_send_json_error('Invalid post ID.');
@@ -1437,10 +1432,7 @@ class BitStream_Ajax_Handlers
      */
     public function handle_load_more()
     {
-        // Verify nonce
-        if (!wp_verify_nonce($_POST['nonce'] ?? '', 'bitstream_load_more_nonce')) {
-            wp_send_json_error('Invalid nonce.');
-        }
+        check_ajax_referer('bitstream_load_more_nonce', 'nonce');
 
         $page = isset($_POST['page']) ? intval($_POST['page']) : 1;
 
@@ -1534,28 +1526,27 @@ class BitStream_Ajax_Handlers
     public function handle_fetch_og_data()
     {
         try {
-            // Debug logging
-            error_log('BitStream OG Fetch Request: ' . print_r($_POST, true));
+            check_ajax_referer('bitstream_og_fetch_nonce', 'nonce');
 
-            // Verify nonce
-            if (!wp_verify_nonce($_POST['nonce'] ?? '', 'bitstream_og_fetch_nonce')) {
-                error_log('BitStream OG Fetch: Invalid nonce');
-                wp_send_json_error('Invalid nonce.');
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('BitStream OG Fetch: request received');
             }
 
             // Check permissions
             if (!current_user_can('edit_posts')) {
-                error_log('BitStream OG Fetch: Insufficient permissions');
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log('BitStream OG Fetch: insufficient permissions');
+                }
                 wp_send_json_error('Insufficient permissions.');
             }
 
             $url = sanitize_url($_POST['url'] ?? '');
             $post_id = intval($_POST['post_id'] ?? 0);
 
-            error_log('BitStream OG Fetch: URL=' . $url . ', Post ID=' . $post_id);
-
             if (empty($url) || !filter_var($url, FILTER_VALIDATE_URL)) {
-                error_log('BitStream OG Fetch: Invalid URL: ' . $url);
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log('BitStream OG Fetch: invalid URL supplied');
+                }
                 wp_send_json_error('Invalid URL.');
             }
 
@@ -1626,9 +1617,7 @@ class BitStream_Ajax_Handlers
     public function handle_render_rebit_preview()
     {
         try {
-            if (!wp_verify_nonce($_POST['nonce'] ?? '', 'bitstream_og_fetch_nonce')) {
-                wp_send_json_error('Invalid nonce.');
-            }
+            check_ajax_referer('bitstream_og_fetch_nonce', 'nonce');
 
             if (!is_user_logged_in() || !current_user_can('edit_posts')) {
                 wp_send_json_error('Insufficient permissions.');
@@ -1705,27 +1694,30 @@ class BitStream_Ajax_Handlers
      */
     public function handle_get_quoted_bit()
     {
-        error_log('BitStream: handle_get_quoted_bit called');
-        error_log('BitStream: POST data: ' . print_r($_POST, true));
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('BitStream: handle_get_quoted_bit called');
+        }
 
         try {
-            // Verify nonce
-            if (!wp_verify_nonce($_POST['nonce'] ?? '', 'bitstream_og_fetch_nonce')) {
-                error_log('BitStream: Nonce verification failed');
-                wp_send_json_error('Invalid nonce.');
-            }
+            check_ajax_referer('bitstream_og_fetch_nonce', 'nonce');
 
             // Check permissions
             if (!current_user_can('edit_posts')) {
-                error_log('BitStream: Permission check failed');
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log('BitStream: quoted bit permission check failed');
+                }
                 wp_send_json_error('Insufficient permissions.');
             }
 
             $quoted_bit_id = intval($_POST['quoted_bit_id'] ?? 0);
-            error_log('BitStream: Quoted bit ID: ' . $quoted_bit_id);
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('BitStream: quoted bit request received');
+            }
 
             if ($quoted_bit_id <= 0) {
-                error_log('BitStream: Invalid quoted bit ID');
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log('BitStream: invalid quoted bit id');
+                }
                 wp_send_json_error('Invalid quoted bit ID.');
             }
 
