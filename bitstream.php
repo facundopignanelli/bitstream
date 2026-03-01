@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BitStream
  * Description: A lightweight microblogging platform for WordPress with PWA support, masonry layout, and social sharing.
- * Version: 3.1.0
+ * Version: 3.1.1
  * Author: Facundo Pignanelli
  * Text Domain: bitstream
  * Requires at least: 5.8
@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('BITSTREAM_VERSION', '3.1.0');
+define('BITSTREAM_VERSION', '3.1.1');
 define('BITSTREAM_PLUGIN_PATH', plugin_dir_path(__FILE__));
 define('BITSTREAM_PLUGIN_URL', plugin_dir_url(__FILE__));
 

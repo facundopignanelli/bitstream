@@ -561,8 +561,8 @@ a.bitstream-filter-chip:hover {
 
     .bitstream-feed-sidebar-column,
     .bitstream-feed-sidebar-right {
-        position: sticky;
-        top: 1rem;
+        position: static;
+        top: auto;
     }
 
     .bitstream-feed-sidebar-summary {

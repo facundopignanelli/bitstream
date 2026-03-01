@@ -254,7 +254,7 @@ JS;
             $timestamp = absint(time());
             $media_inline_script = <<<JS
 console.log("=== BitStream: MEDIA INSERTION SCRIPT START v2.0 - TIMESTAMP: {$timestamp} ===");
-console.log("BitStream: Media insertion script loaded - VERSION 3.1.0");
+console.log("BitStream: Media insertion script loaded - VERSION 3.1.1");
 console.log("BitStream: Current URL:", window.location.href);
 (function() {
     const mediaIds = {$ids_array_json};
