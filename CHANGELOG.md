@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.1.0] - 2026-03-01
 
 ### Changed
+- Updated quote action navigation in `assets/js/bitstream.js`:
+  - Changed feed card Quote button behavior to navigate in the current tab (matching other card actions) instead of opening a new tab.
+- Unified Quick Bit publish redirect behavior in `assets/js/bitstream.js`:
+  - Quick Bit/ReBit sidebar posts now redirect to feed URL with `highlight_bit` after publish.
+  - Aligns sidebar quick-post flow with poster shortcode publish/highlight behavior.
+- Improved hashtag sidebar wrapping in `assets/css/bitstream.css`:
+  - Long hashtags now line-wrap inside each row instead of forcing horizontal scrolling on the hashtags container.
+  - Preserved count alignment while allowing tag text to wrap.
 - Hardened quoted Bit meta saving flow in `class-admin-interface.php`:
   - Added nonce field output in quoted preview UI.
   - Added nonce verification in `save_quoted_meta()`.

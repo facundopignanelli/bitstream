@@ -2422,8 +2422,7 @@ document.addEventListener('DOMContentLoaded', function () {
             quoteUrl.searchParams.set('poster_tab', 'bit');
             quoteUrl.searchParams.set('quote_post_id', postId);
 
-            // Open quote editor in new tab/window
-            window.open(quoteUrl.toString(), '_blank');
+            window.location.href = quoteUrl.toString();
 
             // Add visual feedback
             const icon = button.querySelector('i');
@@ -3204,8 +3203,17 @@ jQuery(document).ready(function ($) {
                     if (data.success) {
                         setStatus(isRebit ? 'ReBit posted!' : 'Posted!');
                         form.reset();
+                        const responseData = data.data || {};
+                        const createdPostId = parseInt(responseData.post_id || '0', 10);
+                        const feedBaseUrl = (window.bitstream_ajax && bitstream_ajax.feed_url)
+                            ? bitstream_ajax.feed_url
+                            : (window.location.origin + '/bitstream/');
+                        const feedUrl = new URL(feedBaseUrl, window.location.origin);
+                        if (createdPostId > 0) {
+                            feedUrl.searchParams.set('highlight_bit', String(createdPostId));
+                        }
                         setTimeout(() => {
-                            window.location.reload();
+                            window.location.href = feedUrl.toString();
                         }, 500);
                     } else {
                         setStatus(data.data || 'Failed to post.', true);
