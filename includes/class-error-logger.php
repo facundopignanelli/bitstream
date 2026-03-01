@@ -111,11 +111,13 @@ class BitStream_Error_Logger
      */
     public function clear_logs()
     {
-        if (!current_user_can('manage_options') || !check_admin_referer('bitstream_clear_logs')) {
-            wp_die('Unauthorized');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Unauthorized'], 403);
         }
 
+        check_ajax_referer('bitstream_clear_logs', 'nonce');
+
         delete_option('bitstream_debug_logs');
-        wp_send_json_success('Logs cleared');
+        wp_send_json_success(['message' => 'Logs cleared']);
     }
 }

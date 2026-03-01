@@ -37,6 +37,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Removed brittle regex-based SQL WHERE mutation (`preg_replace`) from search filtering.
   - Replaced raw SQL string manipulation with native `posts_search` hook logic using prepared SQL conditions.
   - Preserved search coverage for Bit content/title and relevant ReBit metadata fields while avoiding query-fragile patterns.
+- Modernized log-clearing AJAX security/response handling in `class-error-logger.php`:
+  - Replaced `check_admin_referer()` with `check_ajax_referer('bitstream_clear_logs', 'nonce')` in `clear_logs()`.
+  - Replaced non-JSON unauthorized path with `wp_send_json_error(..., 403)`.
+  - Standardized success payload via `wp_send_json_success(...)` for AJAX consumers.
 
 ## [3.0.0] - 2026-02-23
 
