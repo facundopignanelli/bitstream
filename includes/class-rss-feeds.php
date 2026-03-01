@@ -177,11 +177,13 @@ class BitStream_RSS_Feeds {
                     $description .= '<p><strong>Description:</strong> ' . esc_html($og_description) . '</p>';
                 }
                 if ($content) {
-                    $description .= '<p><strong>Comment:</strong> ' . wpautop($content) . '</p>';
+                    $description .= '<p><strong>Comment:</strong> ' . wp_kses_post(wpautop($content)) . '</p>';
                 }
             } else {
-                $description = wpautop($content);
+                $description = wp_kses_post(wpautop($content));
             }
+
+            $safe_description = wp_kses_post($description);
         ?>
         <item>
             <title><?php echo esc_html($title); ?></title>
@@ -189,8 +191,8 @@ class BitStream_RSS_Feeds {
             <guid isPermaLink="true"><?php echo esc_url($permalink); ?></guid>
             <pubDate><?php echo esc_html($date); ?></pubDate>
             <author><?php echo esc_html($author); ?></author>
-            <description><![CDATA[<?php echo $description; ?>]]></description>
-            <content:encoded><![CDATA[<?php echo $description; ?>]]></content:encoded>
+            <description><![CDATA[<?php echo $safe_description; ?>]]></description>
+            <content:encoded><![CDATA[<?php echo $safe_description; ?>]]></content:encoded>
             <?php if ($rebit_url) : ?>
             <category>ReBit</category>
             <?php else : ?>

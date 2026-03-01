@@ -41,6 +41,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Replaced `check_admin_referer()` with `check_ajax_referer('bitstream_clear_logs', 'nonce')` in `clear_logs()`.
   - Replaced non-JSON unauthorized path with `wp_send_json_error(..., 403)`.
   - Standardized success payload via `wp_send_json_success(...)` for AJAX consumers.
+- Hardened RSS feed item content sanitization in `class-rss-feeds.php`:
+  - Sanitized feed description/content HTML with `wp_kses_post()` before outputting `<description>` and `<content:encoded>` CDATA payloads.
+  - Preserved standard allowed markup (e.g., paragraphs, links, images) while preventing unsafe HTML/script injection.
 
 ## [3.0.0] - 2026-02-23
 
