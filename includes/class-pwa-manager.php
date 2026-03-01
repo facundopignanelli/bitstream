@@ -264,10 +264,9 @@ class BitStream_PWA_Manager {
     }
 
     /**
-     * Add rewrite rules for Service Worker files
+     * Add rewrite rules for Service Worker file
      */
     public function add_service_worker_rewrite() {
-        add_rewrite_rule('^sw-feed\.js$', 'index.php?bitstream_sw=feed', 'top');
         add_rewrite_rule('^sw\.js$', 'index.php?bitstream_sw=main', 'top');
         
         // Flush rewrite rules if they haven't been flushed for this version
@@ -339,11 +338,9 @@ class BitStream_PWA_Manager {
         header('Access-Control-Allow-Methods: GET');
         header('Access-Control-Allow-Headers: Content-Type');
         
-        // Serve the appropriate Service Worker file
+        // Serve the main Service Worker file
         $file_path = '';
-        if ($sw_type === 'feed') {
-            $file_path = BITSTREAM_PLUGIN_PATH . 'sw-feed.js';
-        } elseif ($sw_type === 'main') {
+        if ($sw_type === 'main') {
             $file_path = BITSTREAM_PLUGIN_PATH . 'sw.js';
         }
         
@@ -566,133 +563,6 @@ class BitStream_PWA_Manager {
         exit;
     }
     
-    /**
-     * Show upload progress page while uploading
-     */
-    private function show_upload_progress_page() {
-        // Only show this for actual file uploads
-        if (empty($_FILES['media'])) {
-            return;
-        }
-        
-        // Calculate total file size and count
-        $totalSize = 0;
-        $fileCount = 0;
-        
-        if (isset($_FILES['media']['name'])) {
-            // Check if it's multiple files (array) or single file
-            if (is_array($_FILES['media']['name'])) {
-                // Multiple files
-                $fileCount = count($_FILES['media']['name']);
-                foreach ($_FILES['media']['size'] as $size) {
-                    $totalSize += $size;
-                }
-            } else {
-                // Single file
-                $fileCount = 1;
-                $totalSize = $_FILES['media']['size'];
-            }
-        }
-        
-        $totalSizeMB = round($totalSize / (1024 * 1024), 2);
-        
-        // Output the progress page with auto-redirect meta tag
-        echo '<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uploading - BitStream</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: linear-gradient(135deg, #2c6e49 0%, #4caf50 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            color: #fff;
-        }
-        .container {
-            text-align: center;
-            padding: 40px;
-            max-width: 500px;
-            width: 90%;
-        }
-        .logo {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 30px;
-            animation: pulse 2s ease-in-out infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.1); opacity: 0.8; }
-        }
-        h1 { font-size: 28px; margin-bottom: 15px; font-weight: 600; }
-        .status { font-size: 16px; margin-bottom: 30px; opacity: 0.9; }
-        .spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: #fff;
-            animation: spin 1s ease-in-out infinite;
-            margin-right: 10px;
-            vertical-align: middle;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .file-info { font-size: 14px; opacity: 0.8; margin-top: 15px; }
-    </style>
-    <script>
-        // Poll for completion - check if upload is done
-        let checkCount = 0;
-        const maxChecks = 60; // 30 seconds max
-        
-        function checkUploadStatus() {
-            checkCount++;
-            
-            // Update status
-            const statusEl = document.getElementById("status-text");
-            if (statusEl) {
-                const dots = ".".repeat((checkCount % 4));
-                statusEl.textContent = "Processing ' . $fileCount . ' file(s)" + dots;
-            }
-            
-            // After reasonable time, redirect to editor
-            if (checkCount < maxChecks) {
-                setTimeout(checkUploadStatus, 500);
-            }
-        }
-        
-        // Start checking after page loads
-        setTimeout(checkUploadStatus, 500);
-    </script>
-</head>
-<body>
-    <div class="container">
-        <div class="logo">
-            <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="100" cy="100" r="90" fill="white" opacity="0.3"/>
-                <path d="M100 40 L100 140 M70 110 L100 140 L130 110" stroke="white" stroke-width="15" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-            </svg>
-        </div>
-        <h1>Uploading Media</h1>
-        <p class="status"><span class="spinner"></span><span id="status-text">Processing ' . $fileCount . ' file(s)...</span></p>
-        <p class="file-info">Total size: ' . $totalSizeMB . ' MB</p>
-        <p class="file-info" style="margin-top: 20px; font-size: 12px;">Please wait, this may take a moment...</p>
-    </div>
-    
-    <!-- Hidden iframe to handle the actual upload without blocking the UI -->
-    <iframe id="upload-frame" name="upload-frame" style="display:none;"></iframe>
-</body>
-</html>';
-        
-        // DON'T flush - let WordPress handle the redirect after upload completes
-    }
-
     /**
      * Handle a single file upload and return attachment ID
      */

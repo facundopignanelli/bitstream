@@ -5,7 +5,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.1.0] - 2026-03-01
 
-### Security
+### Changed
 - Hardened quoted Bit meta saving flow in `class-admin-interface.php`:
   - Added nonce field output in quoted preview UI.
   - Added nonce verification in `save_quoted_meta()`.
@@ -47,6 +47,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reduced dead/unreachable admin surface in `class-admin-interface.php`:
   - Removed obsolete unhooked methods (`handle_post_rebit_redirect`, `feed_intro_page`, `rss_feeds_page`, `reset_bitstream_page`, `media_cleanup_page`).
   - Kept active admin pages/menu callbacks intact (`bitstream-new-bit`, `bitstream-settings`) to preserve current UI behavior.
+- Reduced dead/phantom PWA routing surface in `class-pwa-manager.php`:
+  - Removed rewrite/serving logic for missing `sw-feed.js` file.
+  - Removed unused `show_upload_progress_page()` method after confirming no active call sites.
+  - Kept main `sw.js`, `manifest.json`, and share-target transient handoff logic intact.
 
 ## [3.0.0] - 2026-02-23
 
