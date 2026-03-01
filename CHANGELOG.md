@@ -51,6 +51,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Removed rewrite/serving logic for missing `sw-feed.js` file.
   - Removed unused `show_upload_progress_page()` method after confirming no active call sites.
   - Kept main `sw.js`, `manifest.json`, and share-target transient handoff logic intact.
+- Reduced dead OG background-processing surface in `class-og-fetcher.php`:
+  - Removed unhooked obsolete methods `schedule_og_fetch()` and `process_og_data()`.
+  - Removed stale commented-out constructor hook registrations referencing those methods.
+  - Kept active synchronous/AJAX OG fetching logic unchanged.
 
 ## [3.0.0] - 2026-02-23
 
