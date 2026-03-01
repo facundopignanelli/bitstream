@@ -152,6 +152,14 @@ class BitStream_RSS_Feeds {
             $content = get_the_content();
             $permalink = get_permalink($post_id);
             $author = get_the_author();
+            $author_email = sanitize_email(get_the_author_meta('user_email'));
+            if (empty($author_email)) {
+                $author_email = sanitize_email(get_option('admin_email'));
+            }
+            $author_rss = $author_email;
+            if (!empty($author) && !empty($author_email)) {
+                $author_rss = $author_email . ' (' . $author . ')';
+            }
             $date = get_the_date('D, d M Y H:i:s +0000');
             
             // Generate title
@@ -177,7 +185,7 @@ class BitStream_RSS_Feeds {
                     $description .= '<p><strong>Description:</strong> ' . esc_html($og_description) . '</p>';
                 }
                 if ($content) {
-                    $description .= '<p><strong>Comment:</strong> ' . wp_kses_post(wpautop($content)) . '</p>';
+                    $description .= '<p><strong>Comment:</strong></p>' . wp_kses_post(wpautop($content));
                 }
             } else {
                 $description = wp_kses_post(wpautop($content));
@@ -190,7 +198,7 @@ class BitStream_RSS_Feeds {
             <link><?php echo esc_url($permalink); ?></link>
             <guid isPermaLink="true"><?php echo esc_url($permalink); ?></guid>
             <pubDate><?php echo esc_html($date); ?></pubDate>
-            <author><?php echo esc_html($author); ?></author>
+            <author><?php echo esc_html($author_rss); ?></author>
             <description><![CDATA[<?php echo $safe_description; ?>]]></description>
             <content:encoded><![CDATA[<?php echo $safe_description; ?>]]></content:encoded>
             <?php if ($rebit_url) : ?>
