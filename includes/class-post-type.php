@@ -20,8 +20,21 @@ class BitStream_Post_Type
 
         // Search filters to include ReBit metadata
         add_filter('posts_join', [$this, 'search_join'], 10, 2);
-        add_filter('posts_where', [$this, 'search_where'], 10, 2);
+        add_filter('posts_search', [$this, 'search_posts'], 10, 2);
         add_filter('posts_distinct', [$this, 'search_distinct'], 10, 2);
+    }
+
+    /**
+     * Determine whether a query is a Bit search query.
+     */
+    private function is_bit_search_query($query)
+    {
+        if (!$query || !method_exists($query, 'is_search') || !$query->is_search()) {
+            return false;
+        }
+
+        $post_type = $query->get('post_type');
+        return $post_type === 'bit' || (is_array($post_type) && in_array('bit', $post_type, true));
     }
 
     /**
@@ -29,7 +42,7 @@ class BitStream_Post_Type
      */
     public function search_join($join, $query)
     {
-        if ($query->is_search() && ($query->get('post_type') === 'bit' || (is_array($query->get('post_type')) && in_array('bit', $query->get('post_type'))))) {
+        if ($this->is_bit_search_query($query)) {
             global $wpdb;
             $join .= " LEFT JOIN {$wpdb->postmeta} AS bitstream_search_meta ON ({$wpdb->posts}.ID = bitstream_search_meta.post_id) ";
         }
@@ -37,22 +50,62 @@ class BitStream_Post_Type
     }
 
     /**
-     * Include ReBit metadata fields in search query
+     * Include ReBit metadata fields in search query without regex manipulation.
      */
-    public function search_where($where, $query)
+    public function search_posts($search, $query)
     {
-        if ($query->is_search() && ($query->get('post_type') === 'bit' || (is_array($query->get('post_type')) && in_array('bit', $query->get('post_type'))))) {
-            global $wpdb;
+        if (!$this->is_bit_search_query($query)) {
+            return $search;
+        }
 
-            $meta_keys = "('_bitstream_og_title', '_bitstream_og_desc', 'bitstream_rebit_url')";
+        global $wpdb;
 
-            $where = preg_replace(
-                "/({$wpdb->posts}\.post_title\s+LIKE\s*('[^']+')\s*)/",
-                "$1 OR (bitstream_search_meta.meta_key IN {$meta_keys} AND bitstream_search_meta.meta_value LIKE $2)",
-                $where
+        $search_terms = $query->get('search_terms');
+        if (empty($search_terms)) {
+            $raw_term = (string) $query->get('s');
+            if ($raw_term !== '') {
+                $search_terms = [$raw_term];
+            }
+        }
+
+        if (empty($search_terms) || !is_array($search_terms)) {
+            return $search;
+        }
+
+        $exact = (bool) $query->get('exact');
+        $wildcard = $exact ? '' : '%';
+
+        $meta_conditions = [];
+        foreach ($search_terms as $term) {
+            if ($term === '') {
+                continue;
+            }
+
+            $like = $wildcard . $wpdb->esc_like($term) . $wildcard;
+            $meta_conditions[] = $wpdb->prepare(
+                "(bitstream_search_meta.meta_key IN (%s, %s, %s) AND bitstream_search_meta.meta_value LIKE %s)",
+                '_bitstream_og_title',
+                '_bitstream_og_desc',
+                'bitstream_rebit_url',
+                $like
             );
         }
-        return $where;
+
+        if (empty($meta_conditions)) {
+            return $search;
+        }
+
+        $meta_search_sql = '(' . implode(' AND ', $meta_conditions) . ')';
+
+        if (!empty($search)) {
+            $trimmed_search = rtrim($search);
+            if (substr($trimmed_search, -1) === ')') {
+                return substr($trimmed_search, 0, -1) . " OR {$meta_search_sql})";
+            }
+            return $trimmed_search . " OR {$meta_search_sql}";
+        }
+
+        return " AND {$meta_search_sql} ";
     }
 
     /**
@@ -60,7 +113,7 @@ class BitStream_Post_Type
      */
     public function search_distinct($distinct, $query)
     {
-        if ($query->is_search() && ($query->get('post_type') === 'bit' || (is_array($query->get('post_type')) && in_array('bit', $query->get('post_type'))))) {
+        if ($this->is_bit_search_query($query)) {
             return "DISTINCT";
         }
         return $distinct;

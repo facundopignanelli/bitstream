@@ -33,6 +33,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Restored native WordPress comment submission flow in `bitstream.php`:
   - Removed custom `comment_form()` action/redirect overrides that used `$_SERVER['REQUEST_URI']`.
   - Reverted to default `comment_form()` behavior and native `wp-comments-post.php` handling.
+- Hardened Bit search query extension in `class-post-type.php`:
+  - Removed brittle regex-based SQL WHERE mutation (`preg_replace`) from search filtering.
+  - Replaced raw SQL string manipulation with native `posts_search` hook logic using prepared SQL conditions.
+  - Preserved search coverage for Bit content/title and relevant ReBit metadata fields while avoiding query-fragile patterns.
 
 ## [3.0.0] - 2026-02-23
 
