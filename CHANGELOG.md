@@ -61,10 +61,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed ReBit mappings delete persistence in `admin-rebit-mappings-interface.php`:
   - Corrected remove-flag input name structure to `bitstream_rebit_mappings[existing][i][remove]` so it matches backend parser expectations.
   - Restored successful save-time deletion of existing mappings from the admin UI.
-- Reduced `class-ajax-handlers.php` interaction footprint via service extraction:
-  - Added new `class-interaction-service.php` with `Bitstream_Interaction_Service` to own like/unlike AJAX handling.
-  - Moved `wp_ajax_bitstream_like` and `wp_ajax_nopriv_bitstream_like` registrations into the new service constructor.
-  - Moved `handle_like()` logic out of `class-ajax-handlers.php` while preserving `check_ajax_referer('bitstream_like_nonce', 'nonce')` security behavior.
 
 ## [3.0.0] - 2026-02-23
 
