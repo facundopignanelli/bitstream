@@ -2323,18 +2323,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         }
                         window.location.href = feedUrl.toString();
                         return;
-
-                        form.reset();
-                        form.querySelectorAll('.bitstream-media-preview').forEach(previewEl => {
-                            previewEl.innerHTML = '';
-                        });
-
-                        if ((form.dataset.posterType || '') === 'rebit') {
-                            const livePreviewRoot = posterRoot.querySelector('#bitstream-rebit-live-preview');
-                            if (livePreviewRoot) {
-                                livePreviewRoot.hidden = false;
-                            }
-                        }
                     })
                     .catch(error => {
                         setStatus(error.message || 'Could not publish.', true);

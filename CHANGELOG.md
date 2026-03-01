@@ -55,6 +55,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Removed unhooked obsolete methods `schedule_og_fetch()` and `process_og_data()`.
   - Removed stale commented-out constructor hook registrations referencing those methods.
   - Kept active synchronous/AJAX OG fetching logic unchanged.
+- Reduced dead frontend poster publish-path surface in `assets/js/bitstream.js`:
+  - Removed unreachable UI-reset code that executed after publish redirect/`return` in the submit success handler.
+  - Kept existing successful publish redirect behavior intact.
 
 ## [3.0.0] - 2026-02-23
 
