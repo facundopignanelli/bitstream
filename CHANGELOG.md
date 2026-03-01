@@ -44,6 +44,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hardened RSS feed item content sanitization in `class-rss-feeds.php`:
   - Sanitized feed description/content HTML with `wp_kses_post()` before outputting `<description>` and `<content:encoded>` CDATA payloads.
   - Preserved standard allowed markup (e.g., paragraphs, links, images) while preventing unsafe HTML/script injection.
+- Reduced dead/unreachable admin surface in `class-admin-interface.php`:
+  - Removed obsolete unhooked methods (`handle_post_rebit_redirect`, `feed_intro_page`, `rss_feeds_page`, `reset_bitstream_page`, `media_cleanup_page`).
+  - Kept active admin pages/menu callbacks intact (`bitstream-new-bit`, `bitstream-settings`) to preserve current UI behavior.
 
 ## [3.0.0] - 2026-02-23
 
