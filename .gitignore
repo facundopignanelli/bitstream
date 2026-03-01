@@ -1,0 +1,9 @@
+# Local editor settings
+.vscode/
+.agents/
+
+# Composer + local dev dependencies
+vendor/
+composer.json
+composer.lock
+phpcs.xml.dist

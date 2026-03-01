@@ -22,6 +22,22 @@ class BitStream_PWA_Manager {
         add_filter('query_vars', [$this, 'add_query_vars']);
         add_action('template_redirect', [$this, 'handle_debug_requests']);
     }
+
+    /**
+     * Resolve poster page URL
+     */
+    private function get_poster_url($query_args = []) {
+        if (class_exists('BitStream_Shortcodes')) {
+            return BitStream_Shortcodes::get_poster_page_url($query_args);
+        }
+
+        $fallback = home_url('/bitstream/');
+        if (!empty($query_args)) {
+            return add_query_arg($query_args, $fallback);
+        }
+
+        return $fallback;
+    }
     
     /**
      * Add PWA assets for BitStream pages
@@ -32,8 +48,9 @@ class BitStream_PWA_Manager {
         // Load on archive pages or pages with [bitstream] shortcode
         $is_bit_archive = is_post_type_archive('bit');
         $has_feed_shortcode = is_a($post, 'WP_Post') && 
-                             (has_shortcode($post->post_content, 'bitstream') || 
-                              has_shortcode($post->post_content, 'bitstream_latest'));
+                     (has_shortcode($post->post_content, 'bitstream') || 
+                      has_shortcode($post->post_content, 'bitstream_latest') ||
+                      has_shortcode($post->post_content, 'bitstream_poster'));
         $is_bitstream_page = isset($_SERVER['REQUEST_URI']) && 
                             strpos($_SERVER['REQUEST_URI'], '/bitstream/') !== false;
         
@@ -53,6 +70,29 @@ class BitStream_PWA_Manager {
             echo '<script>
             if("serviceWorker" in navigator) {
                 window.addEventListener("load", function() {
+                    const isLocalhost = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+                    if (!window.isSecureContext && !isLocalhost) {
+                        console.warn("BitStream SW skipped: service workers require HTTPS (or localhost).");
+                        return;
+                    }
+
+                    const swUrl = "'.esc_url($sw_url).'";
+                    let resolvedSwUrl;
+                    try {
+                        resolvedSwUrl = new URL(swUrl, window.location.href);
+                    } catch (error) {
+                        console.warn("BitStream SW skipped: invalid service worker URL.", error);
+                        return;
+                    }
+
+                    if (resolvedSwUrl.origin !== window.location.origin) {
+                        console.warn("BitStream SW skipped: service worker URL origin mismatch.", {
+                            currentOrigin: window.location.origin,
+                            serviceWorkerOrigin: resolvedSwUrl.origin
+                        });
+                        return;
+                    }
+
                     // First, unregister any existing service workers with broader scope
                     navigator.serviceWorker.getRegistrations().then(function(registrations) {
                         registrations.forEach(function(registration) {
@@ -64,7 +104,7 @@ class BitStream_PWA_Manager {
                     });
                     
                     // Then register the new service worker with correct scope
-                    navigator.serviceWorker.register("'.esc_url($sw_url).'", {
+                    navigator.serviceWorker.register(resolvedSwUrl.pathname + resolvedSwUrl.search, {
                         scope: "/bitstream/",
                         updateViaCache: "none"
                     }).then(function(registration) {
@@ -100,8 +140,9 @@ class BitStream_PWA_Manager {
         // Only show on BitStream-related pages
         $is_bit_archive = is_post_type_archive('bit');
         $has_feed_shortcode = is_a($post, 'WP_Post') && 
-                             (has_shortcode($post->post_content, 'bitstream') || 
-                              has_shortcode($post->post_content, 'bitstream_latest'));
+                     (has_shortcode($post->post_content, 'bitstream') || 
+                      has_shortcode($post->post_content, 'bitstream_latest') ||
+                      has_shortcode($post->post_content, 'bitstream_poster'));
         $is_bitstream_page = isset($_SERVER['REQUEST_URI']) && 
                             strpos($_SERVER['REQUEST_URI'], '/bitstream/') !== false;
         
@@ -110,13 +151,23 @@ class BitStream_PWA_Manager {
             return;
         }
 
-        $new_bit_url = admin_url('post-new.php?post_type=bit');
-        $rebit_url = admin_url('post-new.php?post_type=bit&rebit=1');
-        $rss_feeds_url = admin_url('edit.php?post_type=bit&page=bitstream-rss-feeds');
-        $rebit_mappings_url = admin_url('edit.php?post_type=bit&page=bitstream-rebit-mappings');
+        $quick_actions_html = '';
+        if (class_exists('BitStream_Shortcodes')) {
+            $quick_actions_html = BitStream_Shortcodes::render_quick_action_links('bitstream-dropdown-link');
+        }
+
+        if (empty($quick_actions_html)) {
+            return;
+        }
         ?>
         <style>
         /* Mobile-specific fixes for floating BitStream menu */
+        @media (min-width: 1024px) {
+            #bitstream-floating-menu {
+                display: none !important;
+            }
+        }
+
         @media (max-width: 768px) {
             #bitstream-floating-menu {
                 bottom: 20px !important;
@@ -141,6 +192,25 @@ class BitStream_PWA_Manager {
                 -webkit-touch-callout: none !important;
             }
         }
+
+        .bitstream-dropdown-link {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            text-decoration: none;
+            color: #333;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .bitstream-dropdown-link + .bitstream-dropdown-link {
+            border-top: 1px solid #eee;
+        }
+
+        .bitstream-dropdown-link i {
+            margin-right: 8px;
+            color: #2c6e49;
+            pointer-events: none;
+        }
         
         /* Force proper touch behavior */
         .bitstream-toggle {
@@ -154,37 +224,14 @@ class BitStream_PWA_Manager {
         <div id="bitstream-floating-menu" style="position: fixed; bottom: 30px; right: 30px; z-index: 9999;">
             <div class="bitstream-menu">
                 <button class="bitstream-toggle" 
-                        style="display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; background: #2c6e49; color: white; border-radius: 50%; border: none; box-shadow: 0 4px 12px rgba(44,110,73,0.25); transition: all 0.3s ease; font-size: 24px; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; touch-action: manipulation;"
+                    style="display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; background: #2c6e49; color: white; border-radius: 15px; border: none; box-shadow: 0 4px 12px rgba(44,110,73,0.25); transition: all 0.3s ease; font-size: 24px; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; touch-action: manipulation;"
                         title="Quick Actions"
                         type="button"
                         aria-label="Open BitStream quick actions menu">
                     <i class="fa-solid fa-plus" style="margin: 0; pointer-events: none;"></i>
                 </button>
                 <div class="bitstream-dropdown" style="position: absolute; bottom: 70px; right: 0; background: white; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.15); min-width: 180px; opacity: 0; visibility: hidden; transform: translateY(10px); transition: all 0.3s ease; pointer-events: none;">
-                    <a href="<?php echo esc_url($new_bit_url); ?>" 
-                       style="display: flex; align-items: center; padding: 12px 16px; text-decoration: none; color: #333; border-bottom: 1px solid #eee; -webkit-tap-highlight-color: transparent;"
-                       class="bitstream-dropdown-link">
-                        <i class="fa-solid fa-comment" style="margin-right: 8px; color: #2c6e49; pointer-events: none;"></i>
-                        Add New Bit
-                    </a>
-                    <a href="<?php echo esc_url($rebit_url); ?>" 
-                       style="display: flex; align-items: center; padding: 12px 16px; text-decoration: none; color: #333; border-bottom: 1px solid #eee; -webkit-tap-highlight-color: transparent;"
-                       class="bitstream-dropdown-link">
-                        <i class="fa-solid fa-link" style="margin-right: 8px; color: #2c6e49; pointer-events: none;"></i>
-                        Add New ReBit
-                    </a>
-                    <a href="<?php echo esc_url($rss_feeds_url); ?>" 
-                       style="display: flex; align-items: center; padding: 12px 16px; text-decoration: none; color: #333; border-bottom: 1px solid #eee; -webkit-tap-highlight-color: transparent;"
-                       class="bitstream-dropdown-link">
-                        <i class="fa-solid fa-rss" style="margin-right: 8px; color: #2c6e49; pointer-events: none;"></i>
-                        RSS Feeds
-                    </a>
-                    <a href="<?php echo esc_url($rebit_mappings_url); ?>" 
-                       style="display: flex; align-items: center; padding: 12px 16px; text-decoration: none; color: #333; -webkit-tap-highlight-color: transparent;"
-                       class="bitstream-dropdown-link">
-                        <i class="fa-solid fa-sitemap" style="margin-right: 8px; color: #2c6e49; pointer-events: none;"></i>
-                        ReBit Mappings
-                    </a>
+                    <?php echo wp_kses_post($quick_actions_html); ?>
                 </div>
             </div>
         </div>
@@ -240,10 +287,9 @@ class BitStream_PWA_Manager {
     }
 
     /**
-     * Add rewrite rules for Service Worker files
+     * Add rewrite rules for Service Worker file
      */
     public function add_service_worker_rewrite() {
-        add_rewrite_rule('^sw-feed\.js$', 'index.php?bitstream_sw=feed', 'top');
         add_rewrite_rule('^sw\.js$', 'index.php?bitstream_sw=main', 'top');
         
         // Flush rewrite rules if they haven't been flushed for this version
@@ -251,7 +297,9 @@ class BitStream_PWA_Manager {
             flush_rewrite_rules(false);
             update_option('bitstream_sw_rewrite_flushed_v2', true);
             delete_option('bitstream_sw_rewrite_flushed'); // Remove old flag
-            error_log('BitStream: Service Worker rewrite rules flushed (v2)');
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('BitStream: Service Worker rewrite rules flushed (v2)');
+            }
         }
     }
 
@@ -266,7 +314,9 @@ class BitStream_PWA_Manager {
         if (!get_option('bitstream_rewrite_flushed_v2.3.0')) {
             flush_rewrite_rules(false);
             update_option('bitstream_rewrite_flushed_v2.3.0', true);
-            error_log('BitStream: Rewrite rules flushed for v2.3.0 (share target support)');
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('BitStream: Rewrite rules flushed for v2.3.0 (share target support)');
+            }
         }
     }
 
@@ -284,17 +334,21 @@ class BitStream_PWA_Manager {
      */
     public function serve_service_worker() {
         $sw_type = get_query_var('bitstream_sw');
-        
-        error_log('BitStream: serve_service_worker called, sw_type: ' . $sw_type);
-        error_log('BitStream: REQUEST_URI: ' . $_SERVER['REQUEST_URI']);
-        error_log('BitStream: Query vars: ' . print_r($_GET, true));
-        
-        if (!$sw_type) {
-            error_log('BitStream: No sw_type found, returning');
-            return;
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('BitStream: serve_service_worker called');
         }
         
-        error_log('BitStream: Serving Service Worker type: ' . $sw_type);
+        if (!$sw_type) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('BitStream: no service worker type found');
+            }
+            return;
+        }
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('BitStream: serving service worker response');
+        }
         
         // Set proper headers for Service Worker with no caching and CORS
         status_header(200);
@@ -307,20 +361,22 @@ class BitStream_PWA_Manager {
         header('Access-Control-Allow-Methods: GET');
         header('Access-Control-Allow-Headers: Content-Type');
         
-        // Serve the appropriate Service Worker file
+        // Serve the main Service Worker file
         $file_path = '';
-        if ($sw_type === 'feed') {
-            $file_path = BITSTREAM_PLUGIN_PATH . 'sw-feed.js';
-        } elseif ($sw_type === 'main') {
+        if ($sw_type === 'main') {
             $file_path = BITSTREAM_PLUGIN_PATH . 'sw.js';
         }
         
         if ($file_path && file_exists($file_path)) {
-            error_log('BitStream: Serving SW file: ' . $file_path);
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('BitStream: service worker file found');
+            }
             readfile($file_path);
             exit;
         } else {
-            error_log('BitStream: SW file not found: ' . $file_path);
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('BitStream: service worker file not found');
+            }
             status_header(404);
             echo '// Service Worker file not found';
             exit;
@@ -330,56 +386,110 @@ class BitStream_PWA_Manager {
     /**
      * Handle media sharing from PWA (photos/videos)
      */
+    private function extract_share_url($shared_url, $shared_text, $shared_title) {
+        $normalized_url = sanitize_url((string) $shared_url);
+        $normalized_text = sanitize_text_field((string) $shared_text);
+        $normalized_title = sanitize_text_field((string) $shared_title);
+
+        if (!empty($normalized_url) && filter_var($normalized_url, FILTER_VALIDATE_URL)) {
+            return $normalized_url;
+        }
+
+        if (!empty($normalized_text) && filter_var($normalized_text, FILTER_VALIDATE_URL)) {
+            return $normalized_text;
+        }
+
+        $all_content = trim($normalized_url . ' ' . $normalized_text . ' ' . $normalized_title);
+        if (preg_match('/https?:\/\/[^\s]+/', $all_content, $matches) && !empty($matches[0])) {
+            $candidate = sanitize_url($matches[0]);
+            if (!empty($candidate) && filter_var($candidate, FILTER_VALIDATE_URL)) {
+                return $candidate;
+            }
+        }
+
+        return '';
+    }
+
+    private function clean_share_text($shared_text, $final_url) {
+        $normalized_text = sanitize_textarea_field((string) $shared_text);
+
+        if (empty($normalized_text)) {
+            return '';
+        }
+
+        if (!empty($final_url)) {
+            $normalized_text = trim(str_replace($final_url, '', $normalized_text));
+        }
+
+        return sanitize_textarea_field(preg_replace('/\s+/', ' ', $normalized_text));
+    }
+
     private function handle_media_share() {
-        error_log('BitStream: handle_media_share called');
-        error_log('BitStream: REQUEST_METHOD: ' . $_SERVER['REQUEST_METHOD']);
-        error_log('BitStream: REQUEST_URI: ' . $_SERVER['REQUEST_URI']);
-        error_log('BitStream: POST data: ' . print_r($_POST, true));
-        error_log('BitStream: FILES data: ' . print_r($_FILES, true));
-        error_log('BitStream: GET data: ' . print_r($_GET, true));
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('BitStream: handle_media_share called');
+        }
         
         // Check if user is logged in
         if (!is_user_logged_in()) {
-            error_log('BitStream: User not logged in, redirecting to login');
-            // Store shared content in session and redirect to login
-            session_start();
-            $_SESSION['bitstream_pending_share'] = [
-                'files' => $_FILES,
-                'text' => isset($_POST['text']) ? $_POST['text'] : '',
-                'title' => isset($_POST['title']) ? $_POST['title'] : '',
-                'url' => isset($_POST['url']) ? $_POST['url'] : '',
-                'timestamp' => time()
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('BitStream: user not logged in, storing transient handoff for share payload');
+            }
+
+            $pending_share = [
+                'text' => isset($_POST['text']) ? sanitize_textarea_field(wp_unslash($_POST['text'])) : '',
+                'title' => isset($_POST['title']) ? sanitize_text_field(wp_unslash($_POST['title'])) : '',
+                'url' => isset($_POST['url']) ? esc_url_raw(wp_unslash($_POST['url'])) : '',
+                'timestamp' => time(),
             ];
-            
-            $login_url = wp_login_url(admin_url('post-new.php?post_type=bit&restore_share=1'));
-            error_log('BitStream: Redirecting to login: ' . $login_url);
+
+            $transient_key = 'bitstream_shared_' . wp_generate_password(16, false);
+            set_transient($transient_key, $pending_share, 15 * MINUTE_IN_SECONDS);
+
+            $login_url = wp_login_url($this->get_poster_url([
+                'poster_tab' => 'bit',
+                'shared_key' => $transient_key,
+            ]));
+
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('BitStream: redirecting to login with transient token');
+            }
             wp_redirect($login_url);
             exit;
         }
-        
-        error_log('BitStream: User is logged in');
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('BitStream: user is logged in, processing media share');
+        }
         
         // Check permissions
         if (!current_user_can('upload_files') || !current_user_can('edit_posts')) {
-            error_log('BitStream: User lacks permissions');
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('BitStream: user lacks permissions for media share');
+            }
             wp_die('You do not have permission to upload media or create posts.');
         }
-        
-        error_log('BitStream: User has permissions');
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('BitStream: user permission check passed for media share');
+        }
         
         // Handle file uploads
         $attachment_ids = [];
         $shared_text = isset($_POST['text']) ? sanitize_textarea_field($_POST['text']) : '';
         $shared_title = isset($_POST['title']) ? sanitize_text_field($_POST['title']) : '';
         $shared_url = isset($_POST['url']) ? esc_url_raw($_POST['url']) : '';
-        
-        error_log('BitStream: Shared text: ' . $shared_text);
-        error_log('BitStream: Shared title: ' . $shared_title);
-        error_log('BitStream: Shared URL: ' . $shared_url);
+        $final_url = $this->extract_share_url($shared_url, $shared_text, $shared_title);
+        $clean_text = $this->clean_share_text($shared_text, $final_url);
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('BitStream: share payload parsed');
+        }
         
         // Process uploaded files
         if (!empty($_FILES['media'])) {
-            error_log('BitStream: Processing files...');
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('BitStream: processing uploaded media files');
+            }
             require_once(ABSPATH . 'wp-admin/includes/file.php');
             require_once(ABSPATH . 'wp-admin/includes/media.php');
             require_once(ABSPATH . 'wp-admin/includes/image.php');
@@ -394,7 +504,9 @@ class BitStream_PWA_Manager {
             if (is_array($files['name'])) {
                 // Multiple files
                 $file_count = count($files['name']);
-                error_log('BitStream: Found ' . $file_count . ' files');
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log('BitStream: multiple files detected for media share');
+                }
                 for ($i = 0; $i < $file_count; $i++) {
                     if ($files['error'][$i] === UPLOAD_ERR_OK) {
                         // Create a single file array for this file
@@ -411,187 +523,76 @@ class BitStream_PWA_Manager {
                             $attachment_ids[] = $attachment_id;
                         }
                     } else {
-                        error_log('BitStream: File ' . $i . ' has upload error: ' . $files['error'][$i]);
+                        if (defined('WP_DEBUG') && WP_DEBUG) {
+                            error_log('BitStream: one shared file had upload error');
+                        }
                     }
                 }
             } else {
                 // Single file
-                error_log('BitStream: Found single file');
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log('BitStream: single file detected for media share');
+                }
                 if ($files['error'] === UPLOAD_ERR_OK) {
                     $attachment_id = $this->handle_single_file_upload($files, $shared_title);
                     if ($attachment_id) {
                         $attachment_ids[] = $attachment_id;
                     }
                 } else {
-                    error_log('BitStream: File has upload error: ' . $files['error']);
+                    if (defined('WP_DEBUG') && WP_DEBUG) {
+                        error_log('BitStream: shared file upload error encountered');
+                    }
                 }
             }
         } else {
-            error_log('BitStream: No files in $_FILES[\'media\']');
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('BitStream: no media files included in share payload');
+            }
+        }
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('BitStream: media upload processing complete');
         }
         
-        error_log('BitStream: Uploaded attachment IDs: ' . print_r($attachment_ids, true));
-        
         // If no files were uploaded successfully but we have shared text/url, just redirect
-        if (empty($attachment_ids) && (empty($shared_text) && empty($shared_url))) {
-            error_log('BitStream: No media uploaded and no shared content, redirecting to plain new bit page');
-            wp_redirect(admin_url('post-new.php?post_type=bit'));
+        if (empty($attachment_ids) && empty($clean_text) && empty($final_url)) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('BitStream: empty share payload, redirecting to new bit page');
+            }
+            wp_redirect($this->get_poster_url(['poster_tab' => 'bit']));
             exit;
         }
         
-        // Build redirect URL to new bit page with uploaded media
-        $redirect_url = admin_url('post-new.php?post_type=bit');
+        // Build redirect URL to frontend poster page
+        $redirect_url = $this->get_poster_url(['poster_tab' => empty($final_url) ? 'bit' : 'rebit']);
         
         if (!empty($attachment_ids)) {
             $redirect_url = add_query_arg('media_ids', implode(',', $attachment_ids), $redirect_url);
         }
         
-        if (!empty($shared_text)) {
-            $redirect_url = add_query_arg('shared_text', urlencode($shared_text), $redirect_url);
+        if (!empty($clean_text)) {
+            $redirect_url = add_query_arg('shared_text', urlencode($clean_text), $redirect_url);
         }
         
-        if (!empty($shared_url)) {
-            $redirect_url = add_query_arg('shared_url', urlencode($shared_url), $redirect_url);
-            $redirect_url = add_query_arg('rebit', '1', $redirect_url);
+        if (!empty($final_url)) {
+            $redirect_url = add_query_arg('shared_url', urlencode($final_url), $redirect_url);
+            $redirect_url = add_query_arg('poster_tab', 'rebit', $redirect_url);
         }
-        
-        error_log('BitStream: Redirecting to: ' . $redirect_url);
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('BitStream: redirecting to poster after media share');
+        }
         wp_redirect($redirect_url);
         exit;
     }
     
     /**
-     * Show upload progress page while uploading
-     */
-    private function show_upload_progress_page() {
-        // Only show this for actual file uploads
-        if (empty($_FILES['media'])) {
-            return;
-        }
-        
-        // Calculate total file size and count
-        $totalSize = 0;
-        $fileCount = 0;
-        
-        if (isset($_FILES['media']['name'])) {
-            // Check if it's multiple files (array) or single file
-            if (is_array($_FILES['media']['name'])) {
-                // Multiple files
-                $fileCount = count($_FILES['media']['name']);
-                foreach ($_FILES['media']['size'] as $size) {
-                    $totalSize += $size;
-                }
-            } else {
-                // Single file
-                $fileCount = 1;
-                $totalSize = $_FILES['media']['size'];
-            }
-        }
-        
-        $totalSizeMB = round($totalSize / (1024 * 1024), 2);
-        
-        // Output the progress page with auto-redirect meta tag
-        echo '<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uploading - BitStream</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: linear-gradient(135deg, #2c6e49 0%, #4caf50 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            color: #fff;
-        }
-        .container {
-            text-align: center;
-            padding: 40px;
-            max-width: 500px;
-            width: 90%;
-        }
-        .logo {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 30px;
-            animation: pulse 2s ease-in-out infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.1); opacity: 0.8; }
-        }
-        h1 { font-size: 28px; margin-bottom: 15px; font-weight: 600; }
-        .status { font-size: 16px; margin-bottom: 30px; opacity: 0.9; }
-        .spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: #fff;
-            animation: spin 1s ease-in-out infinite;
-            margin-right: 10px;
-            vertical-align: middle;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .file-info { font-size: 14px; opacity: 0.8; margin-top: 15px; }
-    </style>
-    <script>
-        // Poll for completion - check if upload is done
-        let checkCount = 0;
-        const maxChecks = 60; // 30 seconds max
-        
-        function checkUploadStatus() {
-            checkCount++;
-            
-            // Update status
-            const statusEl = document.getElementById("status-text");
-            if (statusEl) {
-                const dots = ".".repeat((checkCount % 4));
-                statusEl.textContent = "Processing ' . $fileCount . ' file(s)" + dots;
-            }
-            
-            // After reasonable time, redirect to editor
-            if (checkCount < maxChecks) {
-                setTimeout(checkUploadStatus, 500);
-            }
-        }
-        
-        // Start checking after page loads
-        setTimeout(checkUploadStatus, 500);
-    </script>
-</head>
-<body>
-    <div class="container">
-        <div class="logo">
-            <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="100" cy="100" r="90" fill="white" opacity="0.3"/>
-                <path d="M100 40 L100 140 M70 110 L100 140 L130 110" stroke="white" stroke-width="15" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-            </svg>
-        </div>
-        <h1>Uploading Media</h1>
-        <p class="status"><span class="spinner"></span><span id="status-text">Processing ' . $fileCount . ' file(s)...</span></p>
-        <p class="file-info">Total size: ' . $totalSizeMB . ' MB</p>
-        <p class="file-info" style="margin-top: 20px; font-size: 12px;">Please wait, this may take a moment...</p>
-    </div>
-    
-    <!-- Hidden iframe to handle the actual upload without blocking the UI -->
-    <iframe id="upload-frame" name="upload-frame" style="display:none;"></iframe>
-</body>
-</html>';
-        
-        // DON'T flush - let WordPress handle the redirect after upload completes
-    }
-
-    /**
      * Handle a single file upload and return attachment ID
      */
     private function handle_single_file_upload($file, $title = '') {
-        error_log('BitStream: Processing file: ' . $file['name']);
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('BitStream: processing shared file upload');
+        }
         
         // Use wp_handle_upload to process the file
         $upload_overrides = [
@@ -602,11 +603,15 @@ class BitStream_PWA_Manager {
         $uploaded_file = wp_handle_upload($file, $upload_overrides);
         
         if (isset($uploaded_file['error'])) {
-            error_log('BitStream: Upload error: ' . $uploaded_file['error']);
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('BitStream: upload error during shared file processing');
+            }
             return false;
         }
-        
-        error_log('BitStream: File uploaded successfully: ' . $uploaded_file['file']);
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('BitStream: shared file uploaded successfully');
+        }
         
         // Prepare attachment data
         $file_type = wp_check_filetype(basename($uploaded_file['file']), null);
@@ -623,7 +628,9 @@ class BitStream_PWA_Manager {
         $attachment_id = wp_insert_attachment($attachment, $uploaded_file['file']);
         
         if (is_wp_error($attachment_id)) {
-            error_log('BitStream: Error creating attachment: ' . $attachment_id->get_error_message());
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('BitStream: failed creating attachment for shared file');
+            }
             return false;
         }
         
@@ -631,7 +638,9 @@ class BitStream_PWA_Manager {
         $attachment_data = wp_generate_attachment_metadata($attachment_id, $uploaded_file['file']);
         wp_update_attachment_metadata($attachment_id, $attachment_data);
         
-        error_log('BitStream: Attachment created with ID: ' . $attachment_id);
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('BitStream: attachment created for shared file');
+        }
         return $attachment_id;
     }
 
@@ -643,7 +652,9 @@ class BitStream_PWA_Manager {
         
         // Check for POST share request (media files)
         if ($action === 'new-bit' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-            error_log('BitStream: Detected POST share request to new-bit');
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('BitStream: detected POST share request to new-bit');
+            }
             $this->handle_media_share();
             return;
         }
@@ -666,7 +677,7 @@ class BitStream_PWA_Manager {
             // Redirect to appropriate admin page
             switch ($action) {
                 case 'new-bit':
-                    wp_redirect(admin_url('post-new.php?post_type=bit'));
+                    wp_redirect($this->get_poster_url(['poster_tab' => 'bit']));
                     break;
                 case 'new-rebit':
                     // Handle shared content from Android share sheet
@@ -674,35 +685,21 @@ class BitStream_PWA_Manager {
                     // Check for debug mode (restored normal mode)
                     $debug_mode = isset($_GET['debug']) || isset($_GET['test']);
                     
-                    // Log all incoming parameters for debugging
-                    error_log('BitStream Share Debug: All GET parameters: ' . print_r($_GET, true));
-                    
                     // Capture shared content parameters
                     $shared_url = isset($_GET['url']) ? sanitize_url($_GET['url']) : '';
                     $shared_title = isset($_GET['title']) ? sanitize_text_field($_GET['title']) : '';
                     $shared_text = isset($_GET['text']) ? sanitize_text_field($_GET['text']) : '';
-                    
-                    error_log('BitStream Share Debug: Extracted parameters - URL: ' . $shared_url . ', Title: ' . $shared_title . ', Text: ' . $shared_text);
-                    
-                    // Smart URL extraction - YouTube puts URL in 'text' parameter
-                    $final_url = '';
-                    if (!empty($shared_url) && filter_var($shared_url, FILTER_VALIDATE_URL)) {
-                        $final_url = $shared_url;
-                        error_log('BitStream Share Debug: Using URL from url parameter');
-                    } elseif (!empty($shared_text) && filter_var($shared_text, FILTER_VALIDATE_URL)) {
-                        $final_url = $shared_text;
-                        error_log('BitStream Share Debug: Using URL from text parameter (YouTube format)');
-                    } else {
-                        // Fallback: extract URL from any parameter content
-                        $all_content = $shared_url . ' ' . $shared_text . ' ' . $shared_title;
-                        preg_match('/https?:\/\/[^\s]+/', $all_content, $matches);
-                        if (!empty($matches[0])) {
-                            $final_url = $matches[0];
-                            error_log('BitStream Share Debug: Extracted URL from content: ' . $final_url);
-                        }
+
+                    if (defined('WP_DEBUG') && WP_DEBUG) {
+                        error_log('BitStream Share Debug: share query parameters detected');
                     }
                     
-                    error_log('BitStream Share Debug: Final extracted URL: ' . $final_url);
+                    $final_url = $this->extract_share_url($shared_url, $shared_text, $shared_title);
+                    $clean_text = $this->clean_share_text($shared_text, $final_url);
+
+                    if (defined('WP_DEBUG') && WP_DEBUG) {
+                        error_log('BitStream Share Debug: share URL extraction complete');
+                    }
                     
                     // Show debug page if requested or if we're testing
                     if ($debug_mode) {
@@ -717,7 +714,7 @@ class BitStream_PWA_Manager {
                             $shared_data = array(
                                 'url' => $final_url, // Use the extracted URL
                                 'title' => $shared_title,
-                                'text' => $shared_text,
+                                'text' => $clean_text,
                                 'timestamp' => time()
                             );
                             // Use a transient that expires in 10 minutes
@@ -725,35 +722,47 @@ class BitStream_PWA_Manager {
                             set_transient($transient_key, $shared_data, 10 * MINUTE_IN_SECONDS);
                             
                             // Redirect to login with the shared data key
-                            $login_url = wp_login_url(admin_url('post-new.php?post_type=bit&rebit=1&shared_key=' . $transient_key));
-                            error_log('BitStream Share Debug: User not logged in, redirecting to login with shared data key: ' . $transient_key);
+                            $login_url = wp_login_url($this->get_poster_url(['poster_tab' => 'rebit', 'shared_key' => $transient_key]));
+                            if (defined('WP_DEBUG') && WP_DEBUG) {
+                                error_log('BitStream Share Debug: user not logged in, redirecting with transient key');
+                            }
                         } else {
                             // No shared data, just redirect to login
-                            $login_url = wp_login_url(admin_url('post-new.php?post_type=bit&rebit=1'));
-                            error_log('BitStream Share Debug: User not logged in, redirecting to login');
+                            $login_url = wp_login_url($this->get_poster_url(['poster_tab' => 'rebit']));
+                            if (defined('WP_DEBUG') && WP_DEBUG) {
+                                error_log('BitStream Share Debug: user not logged in, redirecting to login');
+                            }
                         }
                         wp_redirect($login_url);
                         exit;
                     }
                     
-                    $redirect_url = admin_url('post-new.php?post_type=bit&rebit=1');
+                    $redirect_url = $this->get_poster_url(['poster_tab' => 'rebit']);
                     
                     // Add shared content to redirect URL if available
                     if ($final_url) {
                         $redirect_url = add_query_arg('shared_url', urlencode($final_url), $redirect_url);
-                        error_log('BitStream Share Debug: Added final_url to redirect: ' . $final_url);
+                        if (defined('WP_DEBUG') && WP_DEBUG) {
+                            error_log('BitStream Share Debug: added shared_url to redirect');
+                        }
                     }
                     if ($shared_title) {
                         $redirect_url = add_query_arg('shared_title', urlencode($shared_title), $redirect_url);
-                        error_log('BitStream Share Debug: Added shared_title to redirect');
+                        if (defined('WP_DEBUG') && WP_DEBUG) {
+                            error_log('BitStream Share Debug: added shared_title to redirect');
+                        }
                     }
                     // Note: We use final_url instead of shared_text since shared_text might be the URL
-                    if ($shared_text && $shared_text !== $final_url) {
-                        $redirect_url = add_query_arg('shared_text', urlencode($shared_text), $redirect_url);
-                        error_log('BitStream Share Debug: Added shared_text to redirect');
+                    if (!empty($clean_text)) {
+                        $redirect_url = add_query_arg('shared_text', urlencode($clean_text), $redirect_url);
+                        if (defined('WP_DEBUG') && WP_DEBUG) {
+                            error_log('BitStream Share Debug: added shared_text to redirect');
+                        }
                     }
-                    
-                    error_log('BitStream Share Debug: Final redirect URL: ' . $redirect_url);
+
+                    if (defined('WP_DEBUG') && WP_DEBUG) {
+                        error_log('BitStream Share Debug: redirect URL assembled');
+                    }
                     wp_redirect($redirect_url);
                     break;
                 default:
@@ -837,7 +846,7 @@ class BitStream_PWA_Manager {
                 echo '      if (redirectUrl) {';
                 echo '        window.location.href = redirectUrl;';
                 echo '      } else {';
-                echo '        window.location.href = "/wp-admin/post-new.php?post_type=bit";';
+                echo '        window.location.href = "/bitstream/?poster_tab=bit";';
                 echo '      }';
                 echo '    }';
                 echo '  });';
@@ -872,11 +881,11 @@ class BitStream_PWA_Manager {
         
         // Log to file
         $log_entry = date('Y-m-d H:i:s') . " - Share Target Debug:\n";
-        $log_entry .= "URL: " . $shared_url . "\n";
-        $log_entry .= "Title: " . $shared_title . "\n";
-        $log_entry .= "Text: " . $shared_text . "\n";
-        $log_entry .= "Found URLs: " . implode(', ', $found_urls) . "\n";
-        $log_entry .= "All Params: " . print_r($all_params, true) . "\n";
+        $log_entry .= "Has URL: " . (!empty($shared_url) ? 'yes' : 'no') . "\n";
+        $log_entry .= "Has Title: " . (!empty($shared_title) ? 'yes' : 'no') . "\n";
+        $log_entry .= "Has Text: " . (!empty($shared_text) ? 'yes' : 'no') . "\n";
+        $log_entry .= "Found URL Count: " . count($found_urls) . "\n";
+        $log_entry .= "Param Keys: " . implode(', ', array_keys($all_params)) . "\n";
         $log_entry .= "---\n\n";
         
         $log_file = dirname(__FILE__) . '/../debug-share.log';

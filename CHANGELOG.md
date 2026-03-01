@@ -1,9 +1,163 @@
 # Changelog
 
-All notable changes to the BitStream WordPress plugin will be documented in this file.
-
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [3.1.0] - 2026-03-01
+
+### Changed
+- Updated quote action navigation in `assets/js/bitstream.js`:
+  - Changed feed card Quote button behavior to navigate in the current tab (matching other card actions) instead of opening a new tab.
+- Unified Quick Bit publish redirect behavior in `assets/js/bitstream.js`:
+  - Quick Bit/ReBit sidebar posts now redirect to feed URL with `highlight_bit` after publish.
+  - Aligns sidebar quick-post flow with poster shortcode publish/highlight behavior.
+- Improved hashtag sidebar wrapping in `assets/css/bitstream.css`:
+  - Long hashtags now line-wrap inside each row instead of forcing horizontal scrolling on the hashtags container.
+  - Preserved count alignment while allowing tag text to wrap.
+- Hardened quoted Bit meta saving flow in `class-admin-interface.php`:
+  - Added nonce field output in quoted preview UI.
+  - Added nonce verification in `save_quoted_meta()`.
+  - Added autosave/revision bailouts.
+  - Added `current_user_can('edit_post', $post_id)` capability check before write/delete.
+- Standardized AJAX nonce validation in `class-ajax-handlers.php`:
+  - Replaced raw `wp_verify_nonce()` checks with `check_ajax_referer()` for like, delete, load more, OG fetch, ReBit preview render, and quoted-bit fetch handlers.
+- Reduced data-leak risk from debug logging in `class-ajax-handlers.php`:
+  - Removed raw request payload dumps.
+  - Gated remaining debug logs behind `if ( defined('WP_DEBUG') && WP_DEBUG )` with redacted/minimal messages.
+- Hardened `class-pwa-manager.php` request logging:
+  - Removed logging of raw `$_GET`, `$_POST`, and `$_FILES` arrays.
+  - Switched to minimal, redacted debug messages behind `WP_DEBUG` gate.
+- Removed PHP session usage from PWA share flow in `class-pwa-manager.php`:
+  - Removed `session_start()` and `$_SESSION` usage.
+  - Replaced temporary share handoff with tokenized transient storage (`set_transient`, `get_transient`, `delete_transient`).
+  - Preserved existing `shared_key` handoff behavior for poster prefill after login.
+- Hardened inline editor script injection in `class-block-editor.php`:
+  - Replaced direct `<script>` echo interpolation for shared/media query data with safe `wp_add_inline_script()` payloads.
+  - Sanitized request-derived values with `sanitize_text_field()`/`absint()` (plus `wp_unslash()` where applicable) before JavaScript use.
+  - Switched to encoded payload passing (`wp_json_encode`) instead of manual string concatenation.
+- Reduced production log exposure in `class-block-editor.php`:
+  - Added strict `WP_DEBUG` gating for PHP debug logging.
+  - Removed high-volume/raw payload log patterns from runtime paths.
+- Restored native WordPress comment submission flow in `bitstream.php`:
+  - Removed custom `comment_form()` action/redirect overrides that used `$_SERVER['REQUEST_URI']`.
+  - Reverted to default `comment_form()` behavior and native `wp-comments-post.php` handling.
+- Hardened Bit search query extension in `class-post-type.php`:
+  - Removed brittle regex-based SQL WHERE mutation (`preg_replace`) from search filtering.
+  - Replaced raw SQL string manipulation with native `posts_search` hook logic using prepared SQL conditions.
+  - Preserved search coverage for Bit content/title and relevant ReBit metadata fields while avoiding query-fragile patterns.
+- Modernized log-clearing AJAX security/response handling in `class-error-logger.php`:
+  - Replaced `check_admin_referer()` with `check_ajax_referer('bitstream_clear_logs', 'nonce')` in `clear_logs()`.
+  - Replaced non-JSON unauthorized path with `wp_send_json_error(..., 403)`.
+  - Standardized success payload via `wp_send_json_success(...)` for AJAX consumers.
+- Hardened RSS feed item content sanitization in `class-rss-feeds.php`:
+  - Sanitized feed description/content HTML with `wp_kses_post()` before outputting `<description>` and `<content:encoded>` CDATA payloads.
+  - Preserved standard allowed markup (e.g., paragraphs, links, images) while preventing unsafe HTML/script injection.
+- Reduced dead/unreachable admin surface in `class-admin-interface.php`:
+  - Removed obsolete unhooked methods (`handle_post_rebit_redirect`, `feed_intro_page`, `rss_feeds_page`, `reset_bitstream_page`, `media_cleanup_page`).
+  - Kept active admin pages/menu callbacks intact (`bitstream-new-bit`, `bitstream-settings`) to preserve current UI behavior.
+- Reduced dead/phantom PWA routing surface in `class-pwa-manager.php`:
+  - Removed rewrite/serving logic for missing `sw-feed.js` file.
+  - Removed unused `show_upload_progress_page()` method after confirming no active call sites.
+  - Kept main `sw.js`, `manifest.json`, and share-target transient handoff logic intact.
+- Reduced dead OG background-processing surface in `class-og-fetcher.php`:
+  - Removed unhooked obsolete methods `schedule_og_fetch()` and `process_og_data()`.
+  - Removed stale commented-out constructor hook registrations referencing those methods.
+  - Kept active synchronous/AJAX OG fetching logic unchanged.
+- Reduced dead frontend poster publish-path surface in `assets/js/bitstream.js`:
+  - Removed unreachable UI-reset code that executed after publish redirect/`return` in the submit success handler.
+  - Kept existing successful publish redirect behavior intact.
+- Fixed ReBit mappings delete persistence in `admin-rebit-mappings-interface.php`:
+  - Corrected remove-flag input name structure to `bitstream_rebit_mappings[existing][i][remove]` so it matches backend parser expectations.
+  - Restored successful save-time deletion of existing mappings from the admin UI.
+
+## [3.0.0] - 2026-02-23
+
+### Added
+- New frontend tabbed poster shortcode: `[bitstream_poster]`
+- Dedicated posting tabs for:
+  - Post a Bit
+  - Post a Rebit
+  - Scheduled (review upcoming posts)
+  - Drafts (save and manage draft posts)
+- **Draft Support** - Save posts as drafts for later editing and publishing
+  - "Save to Drafts" button in both Bit and Rebit poster forms (white with grey border styling)
+  - New "Drafts" tab in the poster interface alongside Scheduled
+  - Draft list with filter by type (All / Bits / Rebits), matching Scheduled tab UI
+  - Edit, preview, and delete actions for each draft (same UI as scheduled posts)
+  - Automatic save-to-draft when closing the browser tab (via `navigator.sendBeacon`)
+  - Draft editing support with "Update Draft" button label when editing an existing draft
+  - Highlight draft after save with `highlight_draft` query parameter
+- Native WordPress Media Library support in poster forms (`wp.media`) for Bit/Rebit attachments
+- Rebit metadata fetch action in poster UI with OG preview population and manual overrides
+- In-window publish result panel showing the exact frontend-rendered card preview
+- Post-publish quick actions in poster result panel:
+  - Copy permalink
+  - Edit post
+  - Open/Preview post
+- Scheduling controls in Post options for both Bit and Rebit
+- Schedule UI with radio buttons: "Post now" (default) and "Schedule for later"
+- Native datetime picker with calendar and clock selection for scheduling
+- Scheduled posts tab filter controls (All / Bits / Rebits)
+- Drag-and-drop media upload areas for Bit and Rebit poster forms
+- Audio file support in Bit posts (MP3, M4A, OGG, WAV, FLAC)
+- Custom image cropper with free-form selection and live size readout
+- In-feed Delete Bit action (trash icon) for logged-in users with `delete_post` capability
+- Improved PWA share parsing: automatically separates text and URL when they arrive combined from Android share targets
+- Weekly media cleanup cron event (`bitstream_weekly_media_cleanup_event`) to automatically prune unattached orphaned files from poster uploads
+- Support for visually rich nested quoted cards rendering to display quoted content with better context
+- **Enhanced Open Graph Fetcher:**
+  - Added 24-hour transient caching to reduce external requests
+  - Prioritized WordPress oEmbed registry for enhanced support of standard providers
+  - Implemented strict SSRF protection via `wp_safe_remote_get`
+  - Added network timeout retries, User-Agent rotation, and charset decoding
+  - Added JSON-LD parsing and meta description fallbacks
+  - Implemented relative-to-absolute URL resolution for OG images
+  - Optimized HTML parser to stop reading after the closing `</head>` tag
+- In-feed right sidebar improvements:
+  - Added a "Quick Bit" inline posting box for logged-in users
+  - **Auto-ReBit Detection:** Quick Bit automatically detects when only a URL is pasted and posts it as a ReBit instead of a standard Bit
+  - Added dedicated RSS Feeds section visible to all users
+  - **Dynamic Quick Actions Menu:** Right rail and mobile floating menu now feature dynamic drafts/scheduled counts and section dividers
+- **Unified Settings Page:**
+  - Consolidated Personalisation, ReBit Mappings, RSS Feeds, and Advanced settings into a single tabbed interface (`[bitstream_settings]`)
+  - Redesigned ReBit Mappings UI for responsive card-based layout (2-column on desktop, stacked on mobile)
+  - Simplified WordPress Admin menu down to a single "Settings" entry
+- **Hashtag Functionality:**
+  - Auto-link `#hashtags` in Bit content to filter feeds by tag
+  - New "Hashtags" section in the left sidebar showing dynamically counted, trending tags
+  - Intercepts `#tag` queries in the search bar and converts them to hashtag filters
+  - Support for hashtags in mobile tab navigation and infinite scroll pagination
+- **Homepage Preview Mode:** New `mode="preview"` attribute on `[bitstream]` renders a compact 3-column responsive grid (1→2→3 columns) of the latest N bits without sidebars, filters, or pagination — ideal for homepage embeds
+
+### Changed
+- Unified posting workflow around the custom poster interface instead of Gutenberg new-post flow
+- Schedule section now uses radio buttons with "Post now" as default (was checkbox)
+- Admin new post creation (`post-new.php?post_type=bit`) now redirects to the poster page
+- Admin “Add New ReBit” route now redirects to the poster page Rebit tab
+- Admin quote action now routes to the poster page with quote prefill context
+- Floating quick action menu now links to poster tabs (Bit/Rebit) instead of editor creation screens
+- PWA shortcut/share routing now resolves the page containing `[bitstream_poster]` and forwards payload
+- Poster now supports shared payload prefill (`shared_url`, `shared_title`, `shared_text`, `media_ids`, `shared_key`)
+- Poster submit handler now supports `publish` and `future` statuses based on schedule options
+- Schedule validation added (requires valid future datetime when scheduling is enabled)
+- Schedule-aware preview links returned for future posts
+- Unified UI corner radius to 15px across cards, controls, and avatars
+- Replaced Masonry feed layout with a new layout for a  clearer social-app style timeline
+- Refined feed shell layout to keep intro and filters as separate boxes while stacking naturally in the same sidebar column
+- Reworked filter controls on mobile/tablet into two side-by-side collapsible panels (`Search` and `Filters`)
+- Updated filter panel labeling from `Filters & Archive` to `Filters`
+- Set filter panel open-state behavior to be responsive and user-toggle aware across breakpoints
+- Removed redundant `Clear filters` link from the Content filter box (active filter chips already provide clear actions)
+- Redesigned Archive filters to group entries by year with nested month links for better long-term scalability
+- Added collapsible year groups in Archive with visual chevrons and responsive default-collapse behavior on mobile/tablet
+- Added desktop right-rail `Quick Actions` panel using the same visual styling primitives as left-side filter links
+- Unified quick action options into a shared renderer so floating menu and desktop right rail stay in sync
+- Changed quick actions visibility by breakpoint: floating button is now mobile/tablet only, right rail is desktop only
+- Improved mobile feed/card width containment to prevent horizontal clipping/overflow on small screens
+- Refactored right sidebar structural CSS to visually mirror the modular layout gaps of the left sidebar filters
+- Removed empty right sidebar artifacts appearing for logged-out users
+- Improved Open Graph card layout, capping profile picture dimensions and enforcing inline sizing for emojis in usernames
+- Updated the Rebit modal to populate real input values (rather than placeholders) and persist them after live previews
 
 ## [2.0.1] - 2025-10-22
 
@@ -355,7 +509,6 @@ BitStream 2.0 is a complete rewrite and modernization of the plugin, transformin
 - Real-time updates via WebSockets
 - Multiple media attachments
 - Polls and voting
-- Hashtag support
 - Mention system
 - Direct messages
 - User profiles

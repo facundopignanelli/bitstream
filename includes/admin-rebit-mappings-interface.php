@@ -349,7 +349,7 @@ if (!defined('ABSPATH')) exit;
                         <label><strong>Website:</strong></label><br>
                         <select name="preset_selection" style="width: 100%; box-sizing: border-box;">
                             <option value="">Select a website...</option>
-                            <?php foreach ($this->get_rebit_presets() as $key => $preset): ?>
+                            <?php foreach (BitStream_ReBit_Mappings::get_rebit_presets() as $key => $preset): ?>
                                 <option value="<?php echo esc_attr($key); ?>">
                                     <?php echo esc_html($preset['label']); ?> (<?php echo esc_html($preset['domain']); ?>)
                                 </option>
@@ -466,7 +466,7 @@ if (!defined('ABSPATH')) exit;
                             <div class="mapping-field actions-field">
                                 <label><strong>&nbsp;</strong></label><br>
                                 <button type="button" class="button button-link-delete" onclick="removeMapping(this)" style="color: #a00;">Remove</button>
-                                <input type="hidden" name="bitstream_rebit_mappings[<?php echo $i; ?>][remove]" value="0" class="remove-flag" />
+                                <input type="hidden" name="bitstream_rebit_mappings[existing][<?php echo $i; ?>][remove]" value="0" class="remove-flag" />
                             </div>
                         </div>
                     <?php endforeach; ?>

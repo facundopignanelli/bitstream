@@ -1,17 +1,101 @@
 /* Consolidated responsive image rules for all BitStream content */
+.bitstream-feed-layout,
+.bitstream-feed-layout button,
+.bitstream-feed-layout input,
+.bitstream-feed-layout textarea,
+.bitstream-feed-layout select,
+.bitstream-feed-layout summary,
+.bitstream-feed-layout label,
+.bitstream-feed-layout a,
+.bitstream-feed-layout p,
+.bitstream-feed-layout span,
+.bitstream-feed-layout h1,
+.bitstream-feed-layout h2,
+.bitstream-feed-layout h3,
+.bitstream-feed-layout h4,
+.bitstream-feed-layout h5,
+.bitstream-feed-layout h6,
+.bitstream-feed-layout small,
+.bitstream-feed-layout strong,
+.bitstream-poster,
+.bitstream-poster button,
+.bitstream-poster input,
+.bitstream-poster textarea,
+.bitstream-poster select,
+.bitstream-poster summary,
+.bitstream-poster label,
+.bitstream-poster a,
+.bitstream-poster p,
+.bitstream-poster span,
+.bitstream-poster h1,
+.bitstream-poster h2,
+.bitstream-poster h3,
+.bitstream-poster h4,
+.bitstream-poster h5,
+.bitstream-poster h6,
+.bitstream-poster small,
+.bitstream-poster strong {
+    font-family: inherit;
+}
+
 .bit-card-content img,
 .bit-rebit-preview img,
 .bitstream-quoted-preview img,
 .bitstream-og-card img {
     max-width: 100% !important;
+    max-height: 560px;
     height: auto !important;
     width: auto !important;
+    object-fit: contain;
     display: block;
     margin: 0.5em auto;
-    border-radius: 10px;
-    box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+    border-radius: 15px;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.07);
     /* Prevent layout shift while images load */
     min-height: 100px;
+}
+
+/* WordPress emoji images must stay inline text-size — our !important rules above would otherwise blow them up */
+.bit-card-content img.emoji,
+.bit-rebit-preview img.emoji,
+.bitstream-quoted-preview img.emoji,
+.bitstream-og-card img.emoji {
+    display: inline !important;
+    width: 1em !important;
+    height: 1em !important;
+    max-width: 1em !important;
+    max-height: 1em !important;
+    min-height: unset !important;
+    margin: 0 0.05em !important;
+    vertical-align: -0.1em !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    object-fit: unset !important;
+}
+
+/* Constrain video/mediaelement output inside cards */
+.bit-card-content video,
+.bit-rebit-preview video,
+.bitstream-quoted-preview video,
+.bitstream-og-card video,
+.bit-card-content .wp-video,
+.bit-rebit-preview .wp-video,
+.bitstream-quoted-preview .wp-video,
+.bitstream-og-card .wp-video,
+.bit-card-content .wp-video-shortcode,
+.bit-rebit-preview .wp-video-shortcode,
+.bitstream-quoted-preview .wp-video-shortcode,
+.bitstream-og-card .wp-video-shortcode,
+.bit-card-content .mejs-container,
+.bit-rebit-preview .mejs-container,
+.bitstream-quoted-preview .mejs-container,
+.bitstream-og-card .mejs-container {
+    max-width: 100% !important;
+    width: 100% !important;
+    height: auto !important;
+    display: block;
+    border-radius: 15px;
+    overflow: hidden;
 }
 
 /* Remove min-height once image is loaded */
@@ -22,17 +106,363 @@
     min-height: auto;
 }
 
-/* JavaScript-based Masonry Layout for BitStream Feed */
+.bit-rebit-preview,
+.bitstream-og-card,
+.bitstream-og-meta,
+.bitstream-og-url {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.bit-rebit-preview a,
+.bitstream-og-card a,
+.bitstream-og-url a {
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+}
+
+/* Feed grid layout */
+.bitstream-feed-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+        "left"
+        "main"
+        "right";
+    gap: 1rem;
+    max-width: 1320px;
+    width: 100%;
+    margin: 0 auto;
+    box-sizing: border-box;
+    min-width: 0;
+}
+
+.bitstream-feed-main {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+}
+
+.bitstream-feed-sidebar-column {
+    grid-area: left;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    align-content: start;
+}
+
+.bitstream-feed-sidebar-column .bitstream-feed-sidebar-intro,
+.bitstream-feed-sidebar-column .bitstream-feed-sidebar-left {
+    grid-area: auto;
+}
+
+.bitstream-feed-sidebar-left {
+    grid-area: left;
+}
+
+.bitstream-feed-sidebar-intro {
+    grid-area: intro;
+}
+
+.bitstream-feed-sidebar-right {
+    grid-area: right;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.bitstream-right-rail-reserved {
+    min-height: 1px;
+}
+
+.bitstream-feed-main {
+    grid-area: main;
+}
+
+.bitstream-active-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin: 0 0 0.65rem;
+    border: 1px solid #ddd;
+    border-radius: 15px;
+    background: #fff;
+    padding: 0.55rem;
+}
+
+.bitstream-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid #d5e1da;
+    border-radius: 999px;
+    padding: 0.26rem 0.6rem;
+    font-size: 0.8rem;
+    color: #2f3b34;
+    background: #f7faf8;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+a.bitstream-filter-chip:hover {
+    background: #eef6f1;
+    border-color: #c6d1cb;
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+}
+
+.bitstream-filter-chip-clear {
+    border-style: dashed;
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+}
+
+.bitstream-feed-sidebar {
+    border: 1px solid #ddd;
+    border-radius: 15px;
+    background: #fff;
+    padding: 0.75rem;
+    height: fit-content;
+}
+
+.bitstream-intro-text {
+    margin: 0;
+    color: #3d4a43;
+    line-height: 1.45;
+    font-size: 0.9rem;
+}
+
+.bitstream-filter-box {
+    border: 1px solid #e2e6e3;
+    border-radius: 12px;
+    background: #fff;
+    padding: 0.6rem;
+}
+
+.bitstream-filter-box+.bitstream-filter-box {
+    margin-top: 0.75rem;
+}
+
+.bitstream-feed-sidebar-title {
+    margin: 0 0 0.55rem;
+    font-size: 0.95rem;
+}
+
+.bitstream-feed-sidebar-panel {
+    display: none;
+}
+
+.bitstream-mobile-tabs-nav {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+    gap: 0.65rem;
+    margin-top: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.bitstream-mobile-tabs-nav button {
+    width: 100%;
+}
+
+.bitstream-feed-sidebar-tabs {
+    display: block;
+}
+
+
+
+.bitstream-mobile-quick-post-container {
+    display: block;
+}
+
+.bitstream-feed-sidebar-panel {
+    min-width: 0;
+}
+
+.bitstream-feed-sidebar-panel[open] {
+    grid-column: 1 / -1;
+}
+
+
+.bitstream-feed-sidebar-summary {
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #fff;
+    margin-bottom: 0;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--wp--preset--color--accent-1, #2c6e49);
+    padding: 0;
+    height: 2.5rem;
+    border-radius: 8px;
+    border: none;
+    transition: background 0.2s ease;
+}
+
+.hide-on-mobile {
+    display: none !important;
+}
+
+.bitstream-feed-sidebar-summary:hover {
+    opacity: 0.9;
+}
+
+.bitstream-feed-sidebar-summary i {
+    font-size: 1.15rem;
+}
+
+.bitstream-feed-sidebar-summary::-webkit-details-marker {
+    display: none;
+}
+
+.bitstream-filter-search {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+    margin-bottom: 0;
+}
+
+.bitstream-filter-search input[type="search"] {
+    width: 100%;
+    border: 1px solid #ccc;
+    border-radius: 12px;
+    padding: 0.5rem 0.65rem;
+    box-sizing: border-box;
+    font-family: inherit;
+    font-size: 0.88rem;
+}
+
+.bitstream-filter-search button {
+    border: none;
+    border-radius: 12px;
+    padding: 0.45rem 0.7rem;
+    margin-top: 0.1rem;
+    background: var(--wp--preset--color--accent-1, #2c6e49);
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.bitstream-filter-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.55rem;
+    text-decoration: none;
+    color: #2f3b34;
+    font-size: 0.88rem;
+    padding: 0.4rem 0.5rem;
+    border-radius: 10px;
+}
+
+.bitstream-filter-link:hover {
+    background: #f4f7f5;
+}
+
+.bitstream-filter-link.is-active {
+    background: #eef6f1;
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    font-weight: 600;
+}
+
+.bitstream-filter-link.bitstream-filter-clear {
+    margin-top: 0.55rem;
+    border: 1px dashed #c6d1cb;
+    color: #4f5d55;
+}
+
+.bitstream-quick-action-link {
+    justify-content: flex-start;
+    gap: 0.5rem;
+}
+
+.bitstream-quick-action-link i {
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    width: 1rem;
+    text-align: center;
+}
+
+.bitstream-archive-label {
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    font-weight: 700;
+}
+
+.bitstream-archive-count {
+    color: #8a938e;
+    font-weight: 500;
+}
+
+.bitstream-archive-year {
+    margin-top: 0.45rem;
+    border: 1px solid #e2e8e4;
+    border-radius: 10px;
+    background: #fbfdfc;
+    overflow: hidden;
+}
+
+.bitstream-archive-year-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.38rem 0.5rem;
+    cursor: pointer;
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    font-size: 0.87rem;
+    font-weight: 700;
+}
+
+.bitstream-archive-year-summary::after {
+    content: "▾";
+    color: #7b8780;
+    font-size: 0.78rem;
+    line-height: 1;
+    transition: transform 0.2s ease;
+}
+
+.bitstream-archive-year[open] .bitstream-archive-year-summary::after {
+    transform: rotate(180deg);
+}
+
+.bitstream-archive-year-summary::-webkit-details-marker {
+    display: none;
+}
+
+.bitstream-archive-year-label {
+    color: inherit;
+}
+
+.bitstream-archive-year-count {
+    color: #8a938e;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.bitstream-archive-months {
+    padding: 0.15rem 0.35rem 0.35rem;
+}
+
+.bitstream-archive-months .bitstream-filter-link {
+    font-size: 0.84rem;
+    padding: 0.34rem 0.45rem;
+}
+
 .bitstream-feed {
-    position: relative;
-    max-width: 1200px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+    align-items: start;
+    max-width: 100%;
     margin: 0 auto;
     width: 100%;
-    padding: 1rem;
+    padding: 0 0 1rem;
     box-sizing: border-box;
-    z-index: 1; /* Establish stacking context */
-    overflow: hidden; /* Prevent content from spilling outside container */
-    isolation: isolate; /* Create new stacking context to prevent z-index issues */
+    z-index: 1;
+    overflow: visible;
+}
+
+.bitstream-feed .bit-card {
+    margin: 0 !important;
 }
 
 /* Ensure the feed doesn't interfere with other page elements */
@@ -40,268 +470,351 @@
     content: "";
     display: block;
     clear: both;
-    height: 2rem; /* Add some spacing after the feed */
+    height: 2rem;
+    /* Add some spacing after the feed */
 }
 
-/* Grid sizer elements for consistent column widths */
-.bitstream-grid-sizer {
+/* Preview grid: compact homepage layout without sidebars */
+.bitstream-preview-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    max-width: 1320px;
     width: 100%;
+    margin: 0 auto;
+    box-sizing: border-box;
+    align-items: stretch;
+}
+
+.bitstream-preview-grid .bit-card {
+    margin: 0 !important;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.bitstream-preview-grid .bitstream-quoted-preview,
+.bitstream-preview-grid .bit-rebit-preview {
+    margin-top: auto;
+    margin-bottom: auto;
+}
+
+.bitstream-preview-grid .bit-card-footer,
+.bitstream-preview-grid .bit-card>hr {
+    display: none !important;
 }
 
 @media (min-width: 768px) {
-    .bitstream-grid-sizer {
-        width: calc(50% - 1rem);
-    }
-    
-    .bitstream-feed {
-        padding: 1.5rem;
+    .bitstream-preview-grid {
+        grid-template-columns: repeat(2, 1fr);
     }
 }
 
 @media (min-width: 1024px) {
-    .bitstream-grid-sizer {
-        width: calc(33.333% - 1.34rem);
-    }
-    
-    .bitstream-feed {
-        padding: 2rem;
+    .bitstream-preview-grid {
+        grid-template-columns: repeat(3, 1fr);
     }
 }
 
-/* Card styling adjustments for JavaScript masonry layout */
+@media (min-width: 768px) {
+    .bitstream-feed-layout {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "left"
+            "main"
+            "right";
+        gap: 1rem;
+        align-items: start;
+    }
+
+    .bitstream-feed-sidebar {
+        position: static;
+    }
+
+    .bitstream-feed-sidebar-panel {
+        margin: 0;
+    }
+
+    .bitstream-feed {
+        padding: 0 0 1.25rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .bitstream-feed-layout {
+        grid-template-columns: minmax(190px, 240px) minmax(0, 1fr) minmax(170px, 210px);
+        grid-template-areas:
+            "left main right";
+        gap: 1rem;
+        align-items: start;
+    }
+
+    .bitstream-feed-sidebar {
+        position: static;
+    }
+
+    .bitstream-feed-sidebar-tabs {
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+    }
+
+    .bitstream-feed-sidebar-column,
+    .bitstream-feed-sidebar-right {
+        position: sticky;
+        top: 1rem;
+    }
+
+    .bitstream-feed-sidebar-summary {
+        display: none;
+    }
+
+    .bitstream-feed-sidebar-right {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        align-content: start;
+    }
+
+    .mobile-rss-panel {
+        display: none !important;
+    }
+
+    .bitstream-mobile-quick-post-container {
+        display: none !important;
+    }
+
+    .hide-on-mobile {
+        display: block !important;
+    }
+
+    .bitstream-feed-sidebar-panel {
+        display: block;
+    }
+
+    .hide-on-desktop {
+        display: none !important;
+    }
+
+    .bitstream-feed-sidebar-tabs .bitstream-feed-sidebar-panel+.bitstream-feed-sidebar-panel {
+        margin-top: 1rem;
+    }
+
+    .bitstream-feed {
+        padding: 0 0 2rem;
+    }
+}
+
+/* Card styling for grid layout */
 .bit-card {
-    position: absolute;
+    position: relative;
     width: 100%;
-    margin: 0 !important;
+    margin: 0;
+    height: auto;
+    align-self: start;
+    border: 1px solid #ddd !important;
     max-width: none !important;
     box-sizing: border-box;
-    transition: left 0.3s ease, top 0.3s ease;
-    z-index: 2; /* Ensure cards stay within their container context */
-    will-change: transform; /* Optimize positioning performance */
+    z-index: 2;
+}
+
+.bit-card.bit-card-delete-pending {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    overflow: hidden;
+    transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.bit-card.bit-card-delete-fade {
+    opacity: 0;
+    transform: scale(0.98);
+}
+
+.bit-delete-toast {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-weight: 600;
+    color: #2c6e49;
+    border: none;
+    border-radius: 0;
+    padding: 0.9rem 1rem;
 }
 
 /* Boost z-index when comments are open to prevent visual layering issues */
 .bit-card:has(.bit-comments.open),
 .bit-card.comments-open {
-    z-index: 10; /* Significantly higher than normal cards when comments are open */
+    z-index: 10;
+    /* Significantly higher than normal cards when comments are open */
 }
 
 @media (min-width: 768px) {
     .bit-card {
-        width: calc(50% - 1rem);
-    }
-}
-
-@media (min-width: 1024px) {
-    .bit-card {
-        width: calc(33.333% - 1.34rem);
+        width: 100%;
     }
 }
 
 /* Date and Edit link: italic, secondary color, clickable, smaller */
 .bit-comment-meta a {
-  color: var(--wp--preset--color--accent-2, #044389) !important;
-  font-style: italic !important;
-  font-size: 0.8em !important;
-  text-decoration: none !important;
+    color: var(--wp--preset--color--accent-2, #044389) !important;
+    font-style: italic !important;
+    font-size: 0.8em !important;
+    text-decoration: none !important;
 }
 
 /* Nested replies separator: top border on nested comments */
 .comment .children .bit-comment {
-  border-top: 1px solid var(--wp--preset--color--accent-3, #ccc) !important;
-  padding-top: 1em !important;
-  margin-top: 0.5em !important;
+    border-top: 1px solid var(--wp--preset--color--accent-3, #ccc) !important;
+    padding-top: 1em !important;
+    margin-top: 0.5em !important;
 }
 
 /* Reduce poster name size */
 .bit-comment-header .bit-comment-author-name {
-  font-size: 0.85em !important;
+    font-size: 0.85em !important;
 }
 
 
-/* Hide duplicated 'says:' */
-.bit-comments .says {
-  display: none !important;
-}
-
-/* Author name styling */
-.bit-comments-list .comment-author .fn {
-  font-size: 0.9em;
-  color: var(--wp--preset--color--accent-1,#2c6e49) !important;
-  font-style: normal;
-}
-
-/* Date/time link styling (disable link) */
-.bit-comments-list .comment-metadata a:first-child {
-  pointer-events: none !important;
-  color: var(--wp--preset--color--accent-2,#044389) !important;
-  font-style: italic !important;
-  text-decoration: none !important;
-}
-
-/* Preserve edit link */
-.bit-comments-list .comment-edit-link {
-  pointer-events: auto !important;
-  font-style: normal !important;
-}
-
-/* Indent nested replies */
-.bit-comments-list .children {
-  margin-left: 1.5em !important;
-  margin-top: 0.75em !important; /* Add top margin to separate from Reply button */
-  border-left: 1px solid var(--wp--preset--color--accent-3,#ccc) !important;
-  padding-left: 1em !important;
-}
-
-/* Divider lines between comments */
-.bit-comments-list .comment {
-  border-bottom: 1px solid var(--wp--preset--color--accent-3,#ccc);
-  padding-bottom: 0.5em;
-  margin-bottom: 0.5em;
-}
 
 
 /* BitStream Action Icons Styling */
+.bit-card-footer-main-actions,
+.bit-card-footer-admin-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.bit-card-footer-spacer {
+    display: inline-block;
+    width: 1px;
+    height: 1.1rem;
+    margin: 0 0.25rem;
+    background: rgba(0, 0, 0, 0.18);
+}
+
 .bit-action i {
     color: var(--wp--preset--color--accent-1, #2c6e49);
     transition: color 0.2s ease;
 }
+
 .bit-action:hover i {
     color: var(--wp--preset--color--accent-2, #044389);
 }
+
 .bit-like .bit-like-count {
     color: var(--wp--preset--color--accent-1, #2c6e49);
 }
+
+.bit-delete i {
+    color: #c0392b;
+}
+
+.bit-delete:hover i,
+.bit-delete:focus i,
+.bit-delete.is-active i {
+    color: #e74c3c;
+}
+
+.bit-edit i {
+    color: #044389;
+}
+
+.bit-edit:hover i,
+.bit-edit:focus i {
+    color: #044389;
+}
+
+.bit-quote i {
+    color: #044389;
+}
+
+.bit-quote:hover i,
+.bit-quote:focus i {
+    color: #044389;
+}
+
 /* Liked state */
 .bit-like.liked i {
     color: var(--wp--preset--color--accent-2, #044389);
 }
+
 /* Pulse animation - single definition */
 @keyframes bitstream-pulse {
-  0%   { transform: scale(1); }
-  50%  { transform: scale(1.3); }
-  100% { transform: scale(1); }
-}
-.bit-like.pulse,
-.bit-permalink i.pulse {
-  animation: bitstream-pulse 0.3s ease-in-out;
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.3);
+    }
+
+    100% {
+        transform: scale(1);
+    }
 }
 
-/* Comments Layout Tweaks */
-.bit-comments-list .bit-comment {
-    border-bottom: 1px solid #eee;
-    padding-bottom: 1rem;
-    margin-bottom: 1rem;
+.bit-like.pulse,
+.bit-permalink i.pulse,
+.bit-edit i.pulse {
+    animation: bitstream-pulse 0.3s ease-in-out;
 }
-.bit-comment .comment-author.vcard {
-    display: flex;
-    align-items: center;
-    font-size: 0.875rem;
-}
-.bit-comment .comment-author.vcard img.avatar {
-    width: 32px;
-    height: 32px;
-    margin-right: 0.5rem;
-    border-radius: 50%;
-}
-.bit-comment .comment-author.vcard b.fn {
-    margin-right: 0.25rem;
-}
-.bit-comment .comment-author.vcard .says {
-    margin-left: 0.25rem;
-}
-.bit-comment .commentmetadata a,
-.bit-comment .commentmetadata a:visited {
-    font-style: italic;
-    color: var(--wp--preset--color--accent-2, #044389);
-    text-decoration: none;
-    pointer-events: none;
+
+
+
+.bit-timestamp {
+    position: relative;
     cursor: default;
 }
-.bit-comment .children .bit-comment {
-    margin-left: 20px;
-    border-left: 2px solid #eee;
-    padding-left: 1rem;
-}
 
-
-
-
-/* BitStream Comment Form Styling */
-
-.bit-comment-form {
-    max-width: 720px;
-    margin: 0 auto;
-}
-
-.bit-comment-form textarea {
-    width: 100%;
-    min-width: 100%;
-    max-width: 100%;
-    height: 140px;
-    padding: 0.75rem;
-    border: 1px solid #ccc;
-    border-radius: 12px;
-    font-size: 1rem;
-    font-family: inherit;
-    resize: vertical;
-    box-sizing: border-box;
-}
-
-.bit-comment-form input[type="submit"] {
-    background-color: var(--wp--preset--color--accent-1, #2c6e49);
-    color: white;
-    border: none;
-    padding: 0.6rem 1.2rem;
-    font-size: 1rem;
-    border-radius: 12px;
-    cursor: pointer;
-    font-family: inherit;
-    transition: background-color 0.2s ease;
-}
-
-.bit-comment-form input[type="submit"]:hover {
-    background-color: var(--wp--preset--color--accent-2, #044389);
-}
-
-.bit-comments-list .comment {
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #eee;
-}
-
-.bit-comments-list .comment-author {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 0.25rem;
-}
-
-.bit-comments-list .comment-author .avatar {
-    border-radius: 9999px;
-    width: 40px;
-    height: 40px;
-}
-
-.bit-comments-list .comment-author b {
-    font-size: 1rem;
+.bit-timestamp[data-timestamp-tooltip]::after {
+    content: attr(data-timestamp-tooltip);
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 10px);
+    transform: translateX(-50%);
+    background: #111;
+    color: #fff;
+    padding: 0.4rem 0.55rem;
+    border-radius: 8px;
+    font-size: 0.78rem;
     font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    z-index: 25;
+    transition: opacity 0.16s ease, visibility 0.16s ease;
 }
 
-.bit-comments-list .comment-metadata {
-    font-size: 0.85rem;
-    color: #666;
+.bit-timestamp[data-timestamp-tooltip]::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 4px);
+    transform: translateX(-50%);
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 6px solid #111;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    z-index: 24;
+    transition: opacity 0.16s ease, visibility 0.16s ease;
 }
 
-.bit-comments-list .comment-content {
-    font-size: 0.95rem;
-    line-height: 1.6;
-    margin-top: 0.25rem;
-}
-
-.bit-comments-list .reply {
-    font-size: 0.85rem;
-    margin-top: 0.5rem;
+.bit-timestamp[data-timestamp-tooltip]:hover::after,
+.bit-timestamp[data-timestamp-tooltip]:hover::before,
+.bit-timestamp[data-timestamp-tooltip]:focus::after,
+.bit-timestamp[data-timestamp-tooltip]:focus::before {
+    opacity: 1;
+    visibility: visible;
 }
 
 
@@ -336,20 +849,225 @@
     border: none;
     padding: 0.6rem 1.2rem;
     font-size: 1rem;
-    border-radius: 12px;
+    border-radius: 15px;
     cursor: pointer;
     font-family: inherit;
     transition: background-color 0.2s ease;
     width: 100%;
     max-width: 300px;
     position: relative;
-    z-index: 10; /* Ensure button appears above masonry content */
+    z-index: 10;
     clear: both;
 }
 
 .bitstream-load-more:hover,
-.bitstream-load-more:focus {
+.bit-comment-form input[type="submit"]:hover {
     background-color: var(--wp--preset--color--accent-2, #044389);
+}
+
+.bit-comment-form input[type="submit"],
+#respond input[type="submit"] {
+    background-color: var(--wp--preset--color--accent-1, #2c6e49);
+    color: white;
+    border: none;
+    padding: 0.4rem 1rem;
+    font-size: 0.9rem;
+    border-radius: 15px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background-color 0.2s ease;
+}
+
+.bit-comment-form input[type="text"],
+.bit-comment-form input[type="email"],
+.bit-comment-form input[type="url"],
+#respond input[type="text"],
+#respond input[type="email"],
+#respond input[type="url"],
+.bit-comment-form textarea,
+#respond textarea {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    border-radius: 10px;
+    padding: 0.8rem;
+    border: 1px solid #ccc;
+    font-family: inherit;
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.bit-comment-form textarea,
+#respond textarea {
+    resize: vertical;
+    min-height: 120px;
+}
+
+#respond .comment-reply-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+#cancel-comment-reply-link {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #444;
+    text-decoration: none;
+    padding: 0.3rem 0.8rem;
+    border: 1px solid #ccc;
+    border-radius: 15px;
+    background-color: #f8f9fa;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    display: inline-block;
+}
+
+#cancel-comment-reply-link:hover {
+    background-color: #eee;
+    color: #000;
+}
+
+.akismet_comment_form_privacy_notice {
+    font-size: 0.75rem !important;
+    color: #888 !important;
+    margin-top: 1rem;
+}
+
+.akismet_comment_form_privacy_notice a {
+    color: #888 !important;
+    text-decoration: underline;
+}
+
+.comment-list,
+.comment-list ul,
+.comment-list ol {
+    list-style: none;
+    padding-left: 0;
+    margin-left: 0;
+}
+
+/* Modern Comment Styling */
+.comment-list .children {
+    margin-left: 15px;
+    border-left: 1px solid #ccc;
+    padding-left: 15px;
+}
+
+@media (min-width: 768px) {
+    .comment-list .children {
+        margin-left: 63px;
+    }
+}
+
+.bit-modern-comment {
+    display: flex;
+    gap: 15px;
+}
+
+/* Thread layout (top-level comment wrappers) */
+.comment-list>li {
+    padding-bottom: 25px;
+    margin-bottom: 25px;
+    border-bottom: 1px solid #eee;
+}
+
+.comment-list>li:last-child {
+    padding-bottom: 0;
+    margin-bottom: 0;
+    border-bottom: none;
+}
+
+/* Spacing between parent and replies */
+.comment-list .children {
+    margin-top: 20px;
+}
+
+/* Spacing between sibling replies */
+.comment-list .children>li {
+    margin-top: 20px;
+}
+
+.comment-list .children>li:first-child {
+    margin-top: 0;
+}
+
+.bit-modern-comment-avatar img.avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 15px;
+    display: block;
+}
+
+.bit-modern-comment-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.bit-modern-comment-header {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.bit-modern-comment-author,
+.bit-modern-comment-author a {
+    font-weight: 700;
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    font-size: 1.05rem;
+    font-style: normal;
+    text-decoration: none;
+}
+
+.bit-modern-comment-author a:hover {
+    text-decoration: underline;
+}
+
+.bit-modern-comment-date,
+.bit-modern-comment-date a {
+    color: var(--wp--preset--color--accent-2, #044389);
+    font-size: 0.9rem;
+    text-decoration: none;
+}
+
+.bit-modern-comment-date a:hover {
+    text-decoration: underline;
+}
+
+.bit-modern-comment-text {
+    font-size: 1rem;
+    line-height: 1.5;
+    color: #222;
+    margin-bottom: 12px;
+}
+
+.bit-modern-comment-text p {
+    margin: 0 0 8px 0;
+}
+
+.bit-modern-comment-text p:last-child {
+    margin-bottom: 0;
+}
+
+.bit-modern-comment-actions {
+    display: flex;
+    gap: 12px;
+    font-size: 0.85rem;
+}
+
+.bit-modern-comment-actions a {
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    text-decoration: underline;
+}
+
+.bit-modern-comment-actions a:hover {
+    color: var(--wp--preset--color--accent-2, #044389);
 }
 
 /* Infinite scroll trigger styling */
@@ -357,7 +1075,7 @@
     width: 100%;
     clear: both;
     position: relative;
-    z-index: 10; /* Ensure trigger is above masonry content */
+    z-index: 10;
 }
 
 /* Enhanced comment animation */
@@ -368,59 +1086,1882 @@
     transition: max-height 0.4s ease-out, opacity 0.3s ease-out 0.15s, margin-top 0.4s ease-out;
     margin-top: 0;
     position: relative;
-    z-index: 1; /* Ensure comments appear above other content */
-    visibility: hidden; /* Initially hidden to prevent layout flash */
+    z-index: 1;
+    /* Ensure comments appear above other content */
+    visibility: hidden;
+    /* Initially hidden to prevent layout flash */
 }
 
 .bit-comments.open {
-    max-height: 2000px; /* Increased for longer comment threads */
+    max-height: 2000px;
     opacity: 1;
     margin-top: 1rem;
-    background: #f8f9fa; /* Subtle background to distinguish comments */
-    border-radius: 8px; /* Match card styling */
-    padding: 1rem; /* Add some padding for better spacing */
-    border-left: 3px solid #2c6e49; /* Green accent border */
-    z-index: 15; /* Very high z-index when open to ensure visibility above everything */
-    visibility: visible; /* Make visible when open */
+    background: #fff;
+    border-radius: 15px;
+    border: 1px solid #ddd;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    padding: 1.5rem;
+    z-index: 15;
+    visibility: visible;
 }
 
-/* Responsive adjustments for JavaScript masonry layout */
+/* Responsive feed adjustments */
 @media (max-width: 767px) {
+    .bitstream-feed-layout {
+        grid-template-columns: minmax(0, 1fr) !important;
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+    }
+
+    .bitstream-feed-layout,
+    .bitstream-feed-main,
+    .bitstream-feed {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    .bitstream-feed-layout>*,
+    .bitstream-feed-main>*,
+    .bitstream-feed>* {
+        min-width: 0 !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .bitstream-feed-layout,
+    .bitstream-feed-main {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+
     .bit-card {
         margin: 0 0 1rem 0 !important;
         padding: 1rem !important;
         width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
         position: relative !important;
         left: 0 !important;
+        right: auto !important;
         top: 0 !important;
+        transform: none !important;
         z-index: auto !important;
     }
-    
+
     .bitstream-feed {
-        padding: 0.5rem;
+        padding: 0 !important;
+        margin: 0 !important;
         height: auto !important;
         overflow: visible !important;
     }
-    
+
+    .bit-card,
+    .bit-card-content,
+    .bit-card-header,
+    .bit-author-info,
+    .bit-rebit-preview,
+    .bitstream-quoted-preview,
+    .bitstream-og-card {
+        min-width: 0 !important;
+        max-width: 100% !important;
+    }
+
+    .bit-card-content,
+    .bit-card-content * {
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
     .bitstream-feed::after {
-        height: 1rem; /* Reduce spacing on mobile */
+        height: 1rem;
+        /* Reduce spacing on mobile */
     }
 }
 
-/* Ensure embedded content works properly in masonry layout */
+/* Ensure embedded content works properly in feed cards */
 .bit-rebit-embed {
     width: 100% !important;
     max-width: 100% !important;
 }
 
 /* Responsive iframe and embed handling */
-iframe, embed, object, video {
+iframe,
+embed,
+object,
+video {
     max-width: 100% !important;
     height: auto !important;
 }
 
+/* Frontend tabbed poster */
+.bitstream-poster {
+    max-width: 760px;
+    margin: 1.5rem auto;
+    padding: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 15px;
+    background: #fff;
+}
+
+.bitstream-poster-tabs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.bitstream-poster-tab {
+    border: 1px solid #ccc;
+    border-radius: 15px;
+    background: #fff;
+    color: #222;
+    padding: 0.7rem 0.9rem;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.bitstream-poster-tab.is-active {
+    border-color: var(--wp--preset--color--accent-1, #2c6e49);
+    background: var(--wp--preset--color--accent-1, #2c6e49);
+    color: #fff;
+}
+
+.bitstream-poster-panel {
+    display: none;
+}
+
+.bitstream-poster-panel.is-active {
+    display: block;
+}
+
+/* Settings Tabs */
+.bitstream-settings {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 1.5rem;
+    border: 1px solid #ddd;
+    border-radius: 15px;
+    background: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: #333;
+    box-sizing: border-box;
+}
+
+.bitstream-settings *,
+.bitstream-settings *::before,
+.bitstream-settings *::after {
+    box-sizing: border-box;
+}
+
+.bitstream-settings h1,
+.bitstream-settings h2,
+.bitstream-settings h3 {
+    font-weight: 600;
+    color: #222;
+    line-height: 1.3;
+}
+
+.bitstream-settings h2 {
+    font-size: 1.25rem;
+    margin: 0 0 0.75rem;
+}
+
+.bitstream-settings p {
+    font-weight: 400;
+    color: #555;
+}
+
+.bitstream-settings-tabs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    align-items: stretch;
+}
+
+.bitstream-settings-tab {
+    border: 1px solid #ccc;
+    border-radius: 15px;
+    background: #fff;
+    color: #222;
+    padding: 0.7rem 0.9rem;
+    cursor: pointer;
+    font-weight: 600;
+    text-align: center;
+    font-size: 0.95rem;
+    transition: all 0.15s ease;
+    font-family: inherit;
+    line-height: 1.4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+}
+
+.bitstream-settings-tab:hover {
+    border-color: var(--wp--preset--color--accent-1, #2c6e49);
+    background: rgba(44, 110, 73, 0.06);
+}
+
+.bitstream-settings-tab.is-active {
+    border-color: var(--wp--preset--color--accent-1, #2c6e49);
+    background: var(--wp--preset--color--accent-1, #2c6e49);
+    color: #fff;
+}
+
+.bitstream-settings-panel {
+    display: none;
+}
+
+.bitstream-settings-panel.is-active {
+    display: block;
+}
+
+.bitstream-settings-section {
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid #eee;
+}
+
+.bitstream-settings-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.bitstream-settings-section h3 {
+    margin: 0 0 0.75rem;
+    font-size: 1.15rem;
+}
+
+.bitstream-settings-section p {
+    margin: 0 0 1rem;
+    color: #555;
+    font-size: 0.95rem;
+}
+
+/* Frontend-compatible form controls inside settings */
+.bitstream-settings input[type="text"],
+.bitstream-settings input[type="url"],
+.bitstream-settings input[type="email"],
+.bitstream-settings textarea,
+.bitstream-settings select {
+    width: 100%;
+    padding: 0.5rem 0.7rem;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    line-height: 1.5;
+    background: #fff;
+    color: #333;
+    box-sizing: border-box;
+    transition: border-color 0.15s ease;
+}
+
+.bitstream-settings input[type="text"]:focus,
+.bitstream-settings input[type="url"]:focus,
+.bitstream-settings textarea:focus,
+.bitstream-settings select:focus {
+    border-color: var(--wp--preset--color--accent-1, #2c6e49);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(44, 110, 73, 0.15);
+}
+
+/* Override WP admin .wrap inside settings panels */
+.bitstream-settings .wrap {
+    margin: 0;
+    padding: 0;
+    max-width: none;
+    width: auto;
+}
+
+/* Hide redundant h1 headings from admin page includes (e.g. rebit mappings) */
+.bitstream-settings .wrap>h1:first-child {
+    display: none;
+}
+
+/* Hide redundant description after h1 in rebit mappings */
+.bitstream-settings .wrap>h1:first-child+p.description {
+    display: none;
+}
+
+/* Buttons inside settings */
+.bitstream-settings .button,
+.bitstream-settings .button-primary,
+.bitstream-settings .button-secondary,
+.bitstream-settings .button-small,
+.bitstream-settings .button-link-delete,
+.bitstream-settings button[type="submit"],
+.bitstream-settings input[type="submit"] {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    text-decoration: none;
+    line-height: 1.4;
+    transition: all 0.15s ease;
+    background: #f9f9f9;
+    color: #333;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.bitstream-settings .button-primary,
+.bitstream-settings input[type="submit"].button-primary {
+    background: var(--wp--preset--color--accent-1, #2c6e49);
+    color: #fff;
+    border-color: transparent;
+}
+
+.bitstream-settings .button-primary:hover,
+.bitstream-settings input[type="submit"].button-primary:hover {
+    opacity: 0.9;
+}
+
+.bitstream-settings .button-secondary {
+    background: #f9f9f9;
+    color: #333;
+}
+
+.bitstream-settings .button-secondary:hover,
+.bitstream-settings .button:hover {
+    background: #eee;
+    border-color: #aaa;
+}
+
+.bitstream-settings .button-small {
+    padding: 0.3rem 0.7rem;
+    font-size: 0.85rem;
+}
+
+.bitstream-settings .button-link-delete {
+    background: none;
+    border: none;
+    color: #dc3545 !important;
+    padding: 0.3rem 0.5rem;
+    font-weight: 600;
+}
+
+.bitstream-settings .button-link-delete:hover {
+    text-decoration: underline;
+    background: none;
+    border: none;
+}
+
+/* Cards inside settings (rebit mappings) */
+.bitstream-settings .card {
+    background: #f9f9f9;
+    border: 1px solid #eee;
+    border-radius: 10px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.bitstream-settings .card .title {
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+    font-size: 1.05rem;
+    font-weight: 600;
+}
+
+/* Flex containers in mappings */
+/* !important needed to override inline <style> from admin-rebit-mappings-interface.php */
+.bitstream-settings .flex-container {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 1rem !important;
+    margin-bottom: 1rem !important;
+}
+
+.bitstream-settings .flex-item {
+    flex: 1 !important;
+    min-width: 0 !important;
+}
+
+/* Force all inline min-width elements to fit */
+.bitstream-settings .card div[style*="min-width"] {
+    min-width: 0 !important;
+}
+
+.bitstream-settings .card div[style*="flex"] {
+    min-width: 0 !important;
+}
+
+/* Mapping rows — each is its own card */
+/* !important needed to override inline <style> from admin-rebit-mappings-interface.php */
+.bitstream-settings .mapping-row {
+    display: flex !important;
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    gap: 0.5rem !important;
+    padding: 1rem !important;
+    margin-bottom: 0 !important;
+    border: 1px solid #e0e0e0 !important;
+    border-radius: 12px !important;
+    background: #fafafa !important;
+    width: auto !important;
+}
+
+/* Kill the <br> tags after labels that create huge gaps */
+.bitstream-settings .mapping-row br,
+.bitstream-settings .mapping-field br {
+    display: none !important;
+}
+
+.bitstream-settings .mapping-field {
+    flex: none !important;
+    width: 100% !important;
+    min-width: 0 !important;
+}
+
+.bitstream-settings .mapping-field label {
+    display: block;
+    margin-bottom: 0.3rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.bitstream-settings .mapping-field.preview-field {
+    flex: none !important;
+    width: 100% !important;
+    min-width: 0 !important;
+}
+
+/* Hide the empty &nbsp; label in the actions field */
+.bitstream-settings .mapping-field.actions-field {
+    flex: none !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    display: flex;
+    align-items: center;
+}
+
+.bitstream-settings .mapping-field.actions-field>label {
+    display: none !important;
+}
+
+/* Remove button as an actual button */
+.bitstream-settings .mapping-field.actions-field .button-link-delete {
+    display: inline-block !important;
+    width: 100%;
+    padding: 0.45rem 1rem !important;
+    background: #dc3545 !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: 8px !important;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none !important;
+}
+
+/* Mapping preview */
+.bitstream-settings .mapping-preview {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 0.8rem;
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    margin-top: 0.25rem;
+    font-size: 0.9rem;
+}
+
+.bitstream-settings .mapping-preview i {
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+}
+
+/* Mappings container — 2-column grid on desktop */
+.bitstream-settings .mappings-container {
+    width: 100%;
+    max-width: none;
+}
+
+.bitstream-settings #mappings-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+}
+
+/* Submit buttons area */
+.bitstream-settings .submit {
+    margin-top: 1rem;
+}
+
+/* Tables inside settings (debug logs) */
+.bitstream-settings table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.bitstream-settings table th,
+.bitstream-settings table td {
+    padding: 0.5rem;
+    text-align: left;
+    border-bottom: 1px solid #f0f0f0;
+    font-weight: 400;
+}
+
+.bitstream-settings table th {
+    font-weight: 600;
+    background: #f9f9f9;
+    border-bottom-color: #ddd;
+}
+
+.bitstream-settings .widefat {
+    border: 1px solid #eee;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+/* Notices inside settings */
+.bitstream-settings .notice,
+.bitstream-settings .updated,
+.bitstream-settings .error {
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    border-radius: 8px;
+    border: none;
+    border-left: 4px solid #2c6e49;
+    background: #f0f9f4;
+}
+
+.bitstream-settings .notice-success,
+.bitstream-settings .updated {
+    border-left-color: #2c6e49;
+    background: #f0f9f4;
+}
+
+.bitstream-settings .notice-error,
+.bitstream-settings .error {
+    border-left-color: #dc3545;
+    background: #fff5f5;
+}
+
+.bitstream-settings .notice-info {
+    border-left-color: #0073aa;
+    background: #e7f3ff;
+}
+
+/* Description text */
+.bitstream-settings .description,
+.bitstream-settings small.description {
+    color: #888;
+    font-size: 0.85rem;
+    font-weight: 400;
+}
+
+/* Form table from WP admin */
+.bitstream-settings .form-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.bitstream-settings .form-table th {
+    text-align: left;
+    vertical-align: top;
+    padding: 0.75rem 0.5rem 0.75rem 0;
+    font-weight: 600;
+    width: 30%;
+}
+
+.bitstream-settings .form-table td {
+    padding: 0.75rem 0;
+}
+
+/* Icon input container */
+.bitstream-settings .icon-input-container {
+    position: relative;
+}
+
+.bitstream-settings .icon-picker-button {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #f0f0f1;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 4px 8px;
+    cursor: pointer;
+    height: 28px;
+    width: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .bitstream-settings {
+        padding: 1rem;
+        border-radius: 10px;
+    }
+
+    .bitstream-settings-tabs {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.5rem;
+    }
+
+    .bitstream-settings-tab {
+        font-size: 0;
+        padding: 0.7rem;
+        gap: 0;
+    }
+
+    .bitstream-settings-tab i {
+        font-size: 1.1rem;
+    }
+
+    .bitstream-settings .flex-container {
+        flex-direction: column !important;
+    }
+
+    .bitstream-settings #mappings-container {
+        grid-template-columns: 1fr;
+    }
+
+    /* Uniform button width on mobile */
+    .bitstream-settings .button,
+    .bitstream-settings .button-primary,
+    .bitstream-settings .button-secondary,
+    .bitstream-settings button[type="submit"],
+    .bitstream-settings input[type="submit"] {
+        width: 100%;
+        text-align: center;
+    }
+}
+
+.bitstream-poster-editing-banner {
+    margin: 0 0 0.75rem;
+    padding: 0.45rem 0.7rem;
+    border-radius: 10px;
+    background: rgba(4, 67, 137, 0.08);
+    border: 1px solid rgba(4, 67, 137, 0.35);
+    color: #044389;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.bitstream-poster-form {
+    display: grid;
+    gap: 0.65rem;
+}
+
+.bitstream-poster-form input[type="text"],
+.bitstream-poster-form input[type="url"],
+.bitstream-poster-form textarea {
+    width: 100%;
+    border: 1px solid #ccc;
+    border-radius: 15px;
+    padding: 0.65rem 0.8rem;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+.bitstream-rebit-url-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.65rem;
+}
+
+.bitstream-fetch-og,
+.bitstream-rebit-edit-preview,
+.bitstream-media-select,
+.bitstream-media-remove,
+.bitstream-poster-submit {
+    border: none;
+    border-radius: 15px;
+    padding: 0.6rem 0.9rem;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 600;
+}
+
+.bitstream-fetch-og.is-loading::before,
+.bitstream-rebit-editor-save.is-loading::before {
+    content: "\f110";
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    margin-right: 0.45rem;
+    display: inline-block;
+    animation: bitstream-fetch-spin 1s linear infinite;
+}
+
+@keyframes bitstream-fetch-spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.bitstream-fetch-og,
+.bitstream-rebit-edit-preview,
+.bitstream-media-select,
+.bitstream-poster-submit {
+    background: var(--wp--preset--color--accent-1, #2c6e49);
+    color: #fff;
+}
+
+.bitstream-rebit-preview-actions {
+    display: flex;
+    justify-content: flex-start;
+    gap: 0.6rem;
+    margin-top: 0.2rem;
+}
+
+.bitstream-rebit-preview-actions .bitstream-rebit-edit-preview,
+.bitstream-rebit-preview-actions .bitstream-rebit-refresh-preview {
+    font-size: 0.8rem;
+    padding: 0.35rem 0.6rem;
+    border-radius: 15px;
+}
+
+.bitstream-rebit-preview-actions .bitstream-rebit-refresh-preview {
+    border: none;
+    background: #044389;
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.bitstream-rebit-live-preview {
+    margin-top: 0.4rem;
+}
+
+.bitstream-rebit-live-preview-label {
+    margin: 0 0 0.55rem;
+}
+
+.bitstream-rebit-live-preview-loading {
+    margin: 0 0 0.55rem;
+    font-size: 0.88rem;
+    color: #5b5b5b;
+}
+
+.bitstream-rebit-live-preview-card {
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.bitstream-media-remove {
+    background: #ff9900;
+    color: #fff;
+}
+
+.bitstream-media-remove.is-hidden {
+    display: none;
+}
+
+.bitstream-media-crop {
+    border: none;
+    border-radius: 15px;
+    padding: 0.6rem 0.9rem;
+    background: #044389;
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+}
+
+.bitstream-media-crop.is-hidden {
+    display: none;
+}
+
+.bitstream-media-audio-tags {
+    border: none;
+    border-radius: 15px;
+    padding: 0.6rem 0.9rem;
+    background: #3d5a80;
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+}
+
+.bitstream-media-audio-tags.is-hidden {
+    display: none;
+}
+
+.bitstream-media-controls {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.6rem;
+}
+
+.bitstream-media-controls button,
+.bitstream-media-controls a {
+    font-size: 0.8rem;
+    padding: 0.35rem 0.6rem;
+    border-radius: 15px;
+}
+
+.bitstream-media-paste {
+    border: none;
+    border-radius: 15px;
+    padding: 0.35rem 0.6rem;
+    background: var(--wp--preset--color--accent-1, #2c6e49);
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.bitstream-media-dropzone {
+    border: 2px dashed #cbd5d1;
+    border-radius: 15px;
+    padding: 1rem;
+    text-align: center;
+    color: #51615a;
+    background: #f8faf9;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease;
+    margin-bottom: 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.bitstream-media-dropzone-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+}
+
+.bitstream-media-dropzone.has-media>span {
+    display: none;
+}
+
+.bitstream-media-dropzone.has-media>.bitstream-media-dropzone-icon {
+    display: none;
+}
+
+.bitstream-media-dropzone:not(.has-media) .bitstream-media-preview {
+    display: none;
+    margin-top: 0;
+}
+
+.bitstream-media-dropzone.is-dragover {
+    border-color: var(--wp--preset--color--accent-1, #2c6e49);
+    background: #eef6f1;
+}
+
+.bitstream-media-file {
+    display: none;
+}
+
+.bitstream-media-preview {
+    margin-top: 0.2rem;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.bitstream-media-preview img {
+    max-width: 100%;
+    max-height: 240px;
+    border-radius: 15px;
+    border: 1px solid #ddd;
+    object-fit: contain;
+}
+
+.bitstream-media-preview video,
+.bitstream-media-preview audio {
+    max-width: 100%;
+    border-radius: 15px;
+    border: 1px solid #ddd;
+}
+
+.bitstream-audio-embed {
+    display: grid;
+    grid-template-columns: fit-content(120px) minmax(0, 1fr);
+    grid-template-areas:
+        "art meta"
+        "player player";
+    column-gap: 0.75rem;
+    row-gap: 0.6rem;
+    align-items: start;
+    padding: 0.75rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 15px;
+    background: #fafafa;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.bitstream-audio-embed.no-artwork {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+        "meta"
+        "player";
+}
+
+.bitstream-audio-content {
+    display: contents;
+}
+
+.bitstream-audio-artwork-wrap {
+    grid-area: art;
+    align-self: start;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1 / 1;
+    width: 120px;
+    height: 120px;
+    border-radius: 15px;
+    overflow: hidden;
+    border: 1px solid #ddd;
+    background: #e9eceb;
+    box-sizing: border-box;
+}
+
+.bitstream-audio-embed>.bitstream-audio-artwork {
+    grid-area: art;
+    width: 120px;
+    height: 120px;
+    aspect-ratio: 1 / 1;
+    border-radius: 15px;
+    object-fit: cover;
+    object-position: center;
+    border: 1px solid #ddd;
+    background: #e9eceb;
+}
+
+.bitstream-audio-player audio {
+    width: 100%;
+    display: block;
+    color-scheme: light;
+    background: #fff;
+}
+
+.bitstream-audio-player audio::-webkit-media-controls-panel {
+    background: #fff;
+}
+
+.bitstream-audio-player audio::-webkit-media-controls-play-button,
+.bitstream-audio-player audio::-webkit-media-controls-mute-button,
+.bitstream-audio-player audio::-webkit-media-controls-timeline,
+.bitstream-audio-player audio::-webkit-media-controls-current-time-display,
+.bitstream-audio-player audio::-webkit-media-controls-time-remaining-display {
+    filter: none;
+}
+
+.bitstream-audio-player {
+    grid-area: player;
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.bitstream-audio-player,
+.bitstream-audio-player .wp-audio-shortcode,
+.bitstream-audio-player audio,
+.bitstream-audio-player .mejs-container {
+    width: 100% !important;
+    display: block !important;
+    border-radius: 15px;
+}
+
+.bitstream-audio-player .mejs-container,
+.bitstream-audio-player .mejs-container .mejs-controls {
+    background: #fff !important;
+}
+
+.bitstream-audio-player .mejs-container .mejs-time,
+.bitstream-audio-player .mejs-container .mejs-time span {
+    color: #111 !important;
+}
+
+.bitstream-audio-player .mejs-container .mejs-button>button {
+    filter: brightness(0) !important;
+}
+
+.bitstream-audio-player .mejs-container .mejs-time-rail .mejs-time-total {
+    background: #d8d8d8 !important;
+}
+
+.bitstream-audio-player .mejs-container .mejs-time-rail .mejs-time-current,
+.bitstream-audio-player .mejs-container .mejs-horizontal-volume-current {
+    background: #111 !important;
+}
+
+.bitstream-audio-meta {
+    grid-area: meta;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    text-align: left;
+    justify-content: center;
+    min-height: 72px;
+    min-width: 0;
+}
+
+.bitstream-audio-artwork {
+    border-radius: 15px;
+    border: 1px solid #ddd;
+    background: #e9eceb;
+}
+
+.bitstream-audio-artwork-wrap>.bitstream-audio-artwork,
+.bitstream-audio-embed>.bitstream-audio-artwork {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    object-fit: cover !important;
+    object-position: center !important;
+    border: 0;
+}
+
+.bitstream-audio-player,
+.bitstream-audio-player .mejs-container {
+    box-sizing: border-box;
+    margin: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden;
+}
+
+.bitstream-audio-title {
+    font-weight: 600;
+    color: #1f1f1f;
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: anywhere;
+}
+
+.bitstream-audio-artist,
+.bitstream-audio-album {
+    font-size: 0.9rem;
+    color: #5b5b5b;
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: anywhere;
+}
+
+.bitstream-media-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    width: 100%;
+    margin-bottom: 0.6rem;
+    max-height: 60px;
+    opacity: 1;
+    overflow: hidden;
+    transition: opacity 0.2s ease, max-height 0.2s ease, margin-bottom 0.2s ease;
+}
+
+.bitstream-media-progress.is-hidden {
+    opacity: 0;
+    max-height: 0;
+    margin-bottom: 0;
+    pointer-events: none;
+}
+
+.bitstream-media-progress-track {
+    width: 100%;
+    height: 8px;
+    background: #e3e6e5;
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.bitstream-media-progress-bar {
+    height: 100%;
+    width: 0%;
+    background: var(--wp--preset--color--accent-1, #2c6e49);
+    transition: width 0.2s ease;
+}
+
+.bitstream-media-progress-text {
+    font-size: 0.85rem;
+    color: #5b5b5b;
+}
+
+.bitstream-cropper-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10010;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bitstream-cropper-modal[hidden] {
+    display: none;
+}
+
+.bitstream-audio-tags-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bitstream-audio-tags-modal[hidden] {
+    display: none;
+}
+
+.bitstream-rebit-editor-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bitstream-rebit-editor-modal[hidden] {
+    display: none;
+}
+
+.bitstream-audio-tags-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 20, 0.6);
+}
+
+.bitstream-rebit-editor-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 20, 0.6);
+}
+
+.bitstream-audio-tags-dialog {
+    position: relative;
+    width: min(520px, 92vw);
+    max-height: 90vh;
+    background: #fff;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+    z-index: 1;
+}
+
+.bitstream-rebit-editor-dialog {
+    position: relative;
+    width: min(620px, 92vw);
+    max-height: 90vh;
+    background: #fff;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+    z-index: 1;
+}
+
+.bitstream-audio-tags-header,
+.bitstream-audio-tags-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid #e6e6e6;
+}
+
+.bitstream-rebit-editor-header,
+.bitstream-rebit-editor-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid #e6e6e6;
+}
+
+.bitstream-audio-tags-header {
+    justify-content: flex-start;
+}
+
+.bitstream-audio-tags-footer {
+    border-bottom: none;
+    border-top: 1px solid #e6e6e6;
+}
+
+.bitstream-rebit-editor-header {
+    justify-content: flex-start;
+}
+
+.bitstream-rebit-editor-footer {
+    border-bottom: none;
+    border-top: 1px solid #e6e6e6;
+}
+
+.bitstream-audio-tags-header h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.bitstream-rebit-editor-header h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.bitstream-audio-tags-body {
+    padding: 1rem;
+    display: grid;
+    gap: 0.75rem;
+}
+
+.bitstream-rebit-editor-body {
+    padding: 1rem;
+    display: grid;
+    gap: 0.75rem;
+    overflow: auto;
+}
+
+.bitstream-audio-tags-body label {
+    display: grid;
+    gap: 0.35rem;
+    font-weight: 600;
+}
+
+.bitstream-rebit-editor-body label {
+    display: grid;
+    gap: 0.35rem;
+    font-weight: 600;
+}
+
+.bitstream-audio-tags-body input {
+    border: 1px solid #ccc;
+    border-radius: 15px;
+    padding: 0.55rem 0.7rem;
+    font-family: inherit;
+    font-size: 0.95rem;
+}
+
+.bitstream-rebit-editor-body input,
+.bitstream-rebit-editor-body textarea {
+    border: 1px solid #ccc;
+    border-radius: 15px;
+    padding: 0.55rem 0.7rem;
+    font-family: inherit;
+    font-size: 0.95rem;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.bitstream-rebit-editor-body .bitstream-media-field {
+    margin-top: 0.25rem;
+}
+
+.bitstream-rebit-editor-image {
+    display: grid;
+    gap: 0.7rem;
+}
+
+.bitstream-rebit-editor-image-preview {
+    width: 100%;
+    max-height: 240px;
+    border-radius: 15px;
+    border: 1px solid #ddd;
+    object-fit: contain;
+    background: #fafafa;
+}
+
+.bitstream-rebit-editor-image-buttons {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.bitstream-rebit-editor-image-buttons button {
+    border: none;
+    border-radius: 15px;
+    padding: 0.35rem 0.6rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.bitstream-rebit-editor-image-select,
+.bitstream-rebit-editor-image-crop {
+    background: var(--wp--preset--color--accent-1, #2c6e49);
+    color: #fff;
+}
+
+.bitstream-rebit-editor-image-clear {
+    background: #ff9900;
+    color: #fff;
+}
+
+#bitstream-rebit-media-preview {
+    display: none;
+}
+
+.bitstream-audio-tags-artwork {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.bitstream-audio-tags-preview {
+    width: 72px;
+    height: 72px;
+    border-radius: 15px;
+    object-fit: cover;
+    border: 1px solid #ddd;
+}
+
+.bitstream-audio-tags-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.bitstream-audio-tags-select,
+.bitstream-audio-tags-clear,
+.bitstream-audio-tags-save {
+    border: none;
+    border-radius: 15px;
+    padding: 0.55rem 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.bitstream-audio-tags-select,
+.bitstream-audio-tags-save {
+    background: var(--wp--preset--color--accent-1, #2c6e49);
+    color: #fff;
+}
+
+.bitstream-audio-tags-clear {
+    background: #e8e8e8;
+    color: #333;
+}
+
+.bitstream-cropper-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 20, 0.6);
+}
+
+.bitstream-cropper-dialog {
+    position: relative;
+    width: min(620px, 92vw);
+    max-height: 90vh;
+    background: #fff;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+    z-index: 1;
+}
+
+.bitstream-cropper-header,
+.bitstream-cropper-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid #e6e6e6;
+}
+
+.bitstream-cropper-footer {
+    border-bottom: none;
+    border-top: 1px solid #e6e6e6;
+}
+
+.bitstream-cropper-header h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.bitstream-cropper-cancel,
+.bitstream-audio-tags-footer .bitstream-audio-tags-close,
+.bitstream-rebit-editor-footer .bitstream-rebit-editor-close {
+    background: #ff9900;
+    color: #fff;
+    border: none;
+    border-radius: 15px;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.85rem;
+    font-weight: 400;
+    cursor: pointer;
+}
+
+.bitstream-cropper-body {
+    padding: 1rem;
+    overflow: auto;
+    background: #fff;
+}
+
+.bitstream-cropper-stage {
+    position: relative;
+    background: #c7c7c7;
+    border-radius: 15px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: none;
+    overflow: hidden;
+}
+
+.bitstream-cropper-image {
+    max-width: 100%;
+    max-height: 60vh;
+    display: block;
+}
+
+.bitstream-cropper-selection {
+    position: absolute;
+    border: 2px solid #4c9ffe;
+    box-shadow: 0 0 0 200vmax rgba(0, 0, 0, 0.35);
+    cursor: move;
+    touch-action: none;
+}
+
+.bitstream-cropper-handle {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: #4c9ffe;
+    border-radius: 15px;
+}
+
+.bitstream-cropper-handle.handle-nw {
+    top: -6px;
+    left: -6px;
+    cursor: nwse-resize;
+}
+
+.bitstream-cropper-handle.handle-ne {
+    top: -6px;
+    right: -6px;
+    cursor: nesw-resize;
+}
+
+.bitstream-cropper-handle.handle-sw {
+    bottom: -6px;
+    left: -6px;
+    cursor: nesw-resize;
+}
+
+.bitstream-cropper-handle.handle-se {
+    bottom: -6px;
+    right: -6px;
+    cursor: nwse-resize;
+}
+
+.bitstream-cropper-handle.handle-n {
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    cursor: ns-resize;
+}
+
+.bitstream-cropper-handle.handle-s {
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    cursor: ns-resize;
+}
+
+.bitstream-cropper-handle.handle-e {
+    right: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: ew-resize;
+}
+
+.bitstream-cropper-handle.handle-w {
+    left: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: ew-resize;
+}
+
+.bitstream-cropper-modal.is-square-mode .bitstream-cropper-handle.handle-n,
+.bitstream-cropper-modal.is-square-mode .bitstream-cropper-handle.handle-e,
+.bitstream-cropper-modal.is-square-mode .bitstream-cropper-handle.handle-s,
+.bitstream-cropper-modal.is-square-mode .bitstream-cropper-handle.handle-w {
+    display: none;
+}
+
+.bitstream-cropper-size {
+    margin: 0.35rem 0 0;
+    font-size: 0.85rem;
+    color: #2f3c36;
+    font-weight: 600;
+}
+
+.bitstream-cropper-help {
+    margin: 0.75rem 0 0;
+    color: #2f3c36;
+    font-size: 0.85rem;
+}
+
+.bitstream-cropper-apply,
+.bitstream-audio-tags-footer .bitstream-audio-tags-save,
+.bitstream-rebit-editor-footer .bitstream-rebit-editor-save {
+    background: var(--wp--preset--color--accent-1, #2c6e49);
+    color: #fff;
+    border: none;
+    border-radius: 15px;
+    padding: 0.45rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 400;
+    cursor: pointer;
+}
+
+body.bitstream-cropper-open {
+    overflow: hidden;
+}
+
+.bitstream-rebit-preview-card {
+    border: 1px solid #ddd;
+    border-radius: 15px;
+    overflow: hidden;
+    background: #fafafa;
+}
+
+.bitstream-rebit-preview-image {
+    max-width: 100%;
+    max-height: 400px;
+    width: auto;
+    object-fit: contain;
+    display: block;
+    margin: 0 auto;
+}
+
+.bitstream-rebit-preview-embed {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%;
+    height: 0;
+    overflow: hidden;
+    background: #000;
+}
+
+.bitstream-rebit-preview-embed iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+.bitstream-rebit-preview-content {
+    padding: 0.75rem;
+}
+
+.bitstream-rebit-preview-title {
+    margin: 0 0 0.35rem;
+}
+
+.bitstream-rebit-preview-description {
+    margin: 0;
+    color: #555;
+}
+
+.bitstream-poster-status {
+    margin-top: 0.85rem;
+    font-size: 0.95rem;
+}
+
+.bitstream-poster-status.is-error {
+    color: #b42318;
+}
+
+.bitstream-poster-status.is-success {
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+}
+
+.bitstream-poster-quote-preview {
+    border: 1px solid #e0e0e0;
+    border-radius: 15px;
+    padding: 0.75rem;
+    background: #fafafa;
+    margin-top: 0.75rem;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.bitstream-poster-quote-preview>p {
+    margin: 0 0 0.7rem;
+}
+
+.bitstream-poster-quote-preview .bit-card-quoted-nested {
+    position: static !important;
+    width: 100% !important;
+    left: auto !important;
+    top: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.bitstream-post-options {
+    border: 1px solid #ddd;
+    border-radius: 15px;
+    padding: 0.65rem 0.8rem;
+    background: #fafafa;
+}
+
+.bitstream-post-options summary {
+    cursor: pointer;
+    font-weight: 600;
+    margin-bottom: 0.65rem;
+}
+
+.bitstream-post-options-section-title {
+    margin: 0 0 0.55rem;
+    font-size: 0.95rem;
+}
+
+.bitstream-schedule-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+@media (max-width: 600px) {
+    .bitstream-schedule-options {
+        grid-template-columns: 1fr;
+    }
+}
+
+.bitstream-schedule-radio {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    padding: 0.4rem 0.5rem;
+    border-radius: 15px;
+    transition: background 0.2s ease;
+}
+
+.bitstream-schedule-radio:hover {
+    background: #f0f0f0;
+}
+
+.bitstream-schedule-radio input[type="radio"] {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+}
+
+.bitstream-schedule-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.5rem;
+}
+
+.bitstream-schedule-datetime {
+    width: 100%;
+    border: 1px solid #ccc;
+    border-radius: 15px;
+    padding: 0.55rem 0.7rem;
+    box-sizing: border-box;
+    font-family: inherit;
+    font-size: 0.95rem;
+}
+
+.bitstream-schedule-datetime:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.bitstream-scheduled-filter {
+    display: flex;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.8rem;
+}
+
+.bitstream-scheduled-filter-btn {
+    border: 1px solid #ccc;
+    border-radius: 15px;
+    background: #fff;
+    color: #333;
+    padding: 0.45rem 0.7rem;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.bitstream-scheduled-filter-btn.is-active {
+    background: var(--wp--preset--color--accent-1, #2c6e49);
+    border-color: var(--wp--preset--color--accent-1, #2c6e49);
+    color: #fff;
+}
+
+.bitstream-scheduled-list {
+    display: grid;
+    gap: 0.6rem;
+}
+
+.bitstream-scheduled-item {
+    border: 1px solid #ddd;
+    border-radius: 15px;
+    background: #fff;
+    padding: 0.7rem;
+    display: flex;
+    justify-content: space-between;
+    gap: 0.8rem;
+    align-items: flex-start;
+}
+
+.bitstream-scheduled-item.is-filtered-out {
+    display: none;
+}
+
+.bitstream-scheduled-item.is-highlighted,
+.bitstream-highlight-target {
+    border-color: var(--wp--preset--color--accent-1, #2c6e49) !important;
+    box-shadow: 0 0 0 2px rgba(44, 110, 73, 0.2);
+    background: #f8fbf9;
+}
+
+.bitstream-scheduled-item p,
+.bitstream-scheduled-item small {
+    margin: 0.25rem 0 0;
+}
+
+.bitstream-scheduled-actions {
+    display: flex;
+    flex-direction: row;
+    gap: 0.55rem;
+    align-items: center;
+}
+
+.bitstream-scheduled-actions a,
+.bitstream-scheduled-delete {
+    text-decoration: none;
+    background: none;
+    color: inherit;
+    border: none;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.bitstream-scheduled-edit i,
+.bitstream-scheduled-preview i {
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+}
+
+.bitstream-scheduled-delete {
+    color: #ff9900;
+}
+
+.bitstream-scheduled-delete:disabled {
+    opacity: 0.7;
+    cursor: wait;
+}
+
+.bitstream-scheduled-actions i {
+    font-size: 0.95rem;
+    line-height: 1;
+}
+
+/* Poster action buttons row */
+.bitstream-poster-actions {
+    display: flex;
+    gap: 0.65rem;
+}
+
+.bitstream-poster-actions .bitstream-poster-submit,
+.bitstream-poster-actions .bitstream-poster-save-draft {
+    flex: 1;
+    text-align: center;
+}
+
+/* Save to Drafts button */
+.bitstream-poster-save-draft {
+    border: 1.5px solid #b0b8b4;
+    border-radius: 15px;
+    padding: 0.6rem 0.9rem;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 600;
+    background: #fff;
+    color: #444;
+    transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.bitstream-poster-save-draft:hover {
+    border-color: #7a8580;
+    background: #f5f7f6;
+    color: #222;
+}
+
+.bitstream-poster-save-draft:disabled {
+    opacity: 0.5;
+    cursor: wait;
+}
+
+/* Draft items reuse scheduled item styles */
+.bitstream-draft-item small {
+    color: #7a8580;
+}
+
+/* Filter empty-state message */
+.bitstream-filter-empty {
+    color: #7a8580;
+    font-size: 0.9rem;
+    margin: 0.5rem 0 0;
+}
+
+@media (max-width: 640px) {
+    .bitstream-rebit-url-row {
+        grid-template-columns: 1fr;
+    }
+
+    .bitstream-scheduled-item {
+        flex-direction: column;
+    }
+
+    .bitstream-poster-actions {
+        flex-direction: column;
+    }
+
+    .bitstream-poster-actions .bitstream-poster-submit,
+    .bitstream-poster-actions .bitstream-poster-save-draft {
+        flex: 1 1 100%;
+        text-align: center;
+    }
+}
+
 /* Specific YouTube embed fixes */
-iframe[src*="youtube.com"], 
+iframe[src*="youtube.com"],
 iframe[src*="youtu.be"] {
     width: 100% !important;
     max-width: 100% !important;
@@ -431,7 +2972,8 @@ iframe[src*="youtu.be"] {
 /* Generic responsive embed container */
 .embed-container {
     position: relative;
-    padding-bottom: 56.25%; /* 16:9 aspect ratio */
+    padding-bottom: 56.25%;
+    /* 16:9 aspect ratio */
     height: 0;
     overflow: hidden;
     max-width: 100%;
@@ -449,18 +2991,22 @@ iframe[src*="youtu.be"] {
 
 /* Mobile-specific embed fixes */
 @media (max-width: 768px) {
-    iframe, embed, object, video {
+
+    iframe,
+    embed,
+    object,
+    video {
         max-width: calc(100vw - 40px) !important;
         width: 100% !important;
     }
-    
-    iframe[src*="youtube.com"], 
+
+    iframe[src*="youtube.com"],
     iframe[src*="youtu.be"] {
         max-width: calc(100vw - 40px) !important;
         width: 100% !important;
         height: auto !important;
     }
-    
+
     /* WordPress embed containers */
     .wp-embedded-content,
     .wp-block-embed,
@@ -468,7 +3014,7 @@ iframe[src*="youtu.be"] {
         max-width: 100% !important;
         width: 100% !important;
     }
-    
+
     /* BitStream specific containers */
     .bit-content,
     .bit-rebit-content {
@@ -477,41 +3023,58 @@ iframe[src*="youtu.be"] {
     }
 }
 
-/* Adjust quoted preview for masonry cells */
+/* Quoted preview styles */
 .bitstream-quoted-preview {
-    margin-top: 15px !important;
-    padding: 12px !important;
-    overflow: hidden !important;
-    word-wrap: break-word !important;
-}
-.bitstream-quoted-preview {
-    border-radius: 13px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.10);
-    padding: 16px;
+    margin-top: 0.9rem;
+    padding: 0.75rem;
+    border-radius: 15px;
     background: #fafafa;
-    margin-top: 20px; /* Changed from margin-bottom to margin-top since quotes now appear after content */
-    overflow: hidden; /* Prevent content overflow */
-    word-wrap: break-word; /* Break long words */
-    box-sizing: border-box; /* Include padding in width calculation */
-    border-left: 3px solid var(--wp--preset--color--accent-1, #2c6e49); /* Add visual indicator for quoted content */
+    border: 1px solid #e0e0e0;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
-/* Ensure all content within quoted preview stays contained */
+.bitstream-quoted-preview .bit-card-quoted-nested {
+    position: static !important;
+    width: 100% !important;
+    left: auto !important;
+    top: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.bitstream-quoted-preview .bit-card-quoted-nested .bit-card-content {
+    margin-bottom: 0 !important;
+}
+
+.bitstream-quoted-preview .bit-card-quoted-nested .bit-card-header,
+.bitstream-poster-quote-preview .bit-card-quoted-nested .bit-card-header {
+    margin-bottom: 0.45rem !important;
+}
+
+.bitstream-quoted-preview .bit-card-quoted-nested .bit-card-footer,
+.bitstream-quoted-preview .bit-card-quoted-nested .bit-comments,
+.bitstream-quoted-preview .bit-card-quoted-nested hr {
+    display: none !important;
+}
+
 .bitstream-quoted-preview * {
-    max-width: 100% !important;
+    max-width: 100%;
     box-sizing: border-box;
 }
 
-/* Handle images in quoted previews */
 .bitstream-quoted-preview img {
-    max-width: 100% !important;
-    height: auto !important;
+    max-width: 100%;
+    height: auto;
     display: block;
-    margin: 0.5em auto;
-    border-radius: 8px;
+    margin: 0.5em 0;
+    border-radius: 15px;
 }
 
-/* Handle links and text in quoted previews */
 .bitstream-quoted-preview a,
 .bitstream-quoted-preview p,
 .bitstream-quoted-preview div {
@@ -535,17 +3098,11 @@ iframe[src*="youtu.be"] {
 
 /* Responsive typography adjustments */
 @media (max-width: 767px) {
-    .bit-card-header {
-        flex-direction: column !important;
-        align-items: flex-start !important;
-        gap: 0.5rem !important;
-    }
-    
     .bit-card-footer {
         flex-wrap: wrap !important;
         gap: 0.75rem !important;
     }
-    
+
     .bit-meta {
         font-size: 0.8rem !important;
     }
@@ -557,10 +3114,10 @@ iframe[src*="youtu.be"] {
         padding: 0.25rem;
         height: auto !important;
     }
-    
+
     .bit-card {
         padding: 0.75rem !important;
-        border-radius: 12px !important;
+        border-radius: 15px !important;
         margin: 0 0 0.75rem 0 !important;
         width: 100% !important;
         position: relative !important;
@@ -589,7 +3146,7 @@ iframe[src*="youtu.be"] {
     height: 60px;
     background: #2c6e49;
     color: white;
-    border-radius: 50%;
+    border-radius: 15px;
     border: none;
     box-shadow: 0 4px 12px rgba(44, 110, 73, 0.25);
     transition: all 0.3s ease;
@@ -613,7 +3170,7 @@ iframe[src*="youtu.be"] {
     bottom: 70px;
     right: 0;
     background: white;
-    border-radius: 8px;
+    border-radius: 15px;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
     min-width: 160px;
     opacity: 0;
@@ -656,18 +3213,18 @@ iframe[src*="youtu.be"] {
         bottom: 20px;
         right: 20px;
     }
-    
+
     .quickbit-toggle {
         width: 50px;
         height: 50px;
         font-size: 20px;
     }
-    
+
     .quickbit-dropdown {
         bottom: 60px;
         min-width: 140px;
     }
-    
+
     .quickbit-dropdown a {
         padding: 10px 12px;
         font-size: 13px;
@@ -676,11 +3233,53 @@ iframe[src*="youtu.be"] {
 
 /* Ensure it doesn't interfere with admin bar */
 .admin-bar #bitstream-floating-quickbit {
-    bottom: 62px; /* Account for WordPress admin bar height */
+    bottom: 62px;
+    /* Account for WordPress admin bar height */
 }
 
 @media screen and (max-width: 782px) {
     .admin-bar #bitstream-floating-quickbit {
-        bottom: 76px; /* Adjust for mobile admin bar */
+        bottom: 76px;
+        /* Adjust for mobile admin bar */
     }
+}
+
+/* Hashtag link styling in bit content */
+.bitstream-hashtag-link {
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 0.15s ease, opacity 0.15s ease;
+}
+
+.bitstream-hashtag-link:hover {
+    color: var(--wp--preset--color--accent-2, #044389);
+    text-decoration: underline;
+}
+
+/* Sidebar hashtag list */
+.bitstream-hashtag-list {
+    max-height: 260px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.bitstream-hashtag-sidebar-link {
+    min-width: 0;
+    gap: 0.35rem;
+}
+
+.bitstream-hashtag-sidebar-tag {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    font-weight: 600;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.bitstream-hashtag-sidebar-link .bitstream-archive-count {
+    flex-shrink: 0;
+    white-space: nowrap;
 }
