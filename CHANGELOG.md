@@ -58,6 +58,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reduced dead frontend poster publish-path surface in `assets/js/bitstream.js`:
   - Removed unreachable UI-reset code that executed after publish redirect/`return` in the submit success handler.
   - Kept existing successful publish redirect behavior intact.
+- Fixed ReBit mappings delete persistence in `admin-rebit-mappings-interface.php`:
+  - Corrected remove-flag input name structure to `bitstream_rebit_mappings[existing][i][remove]` so it matches backend parser expectations.
+  - Restored successful save-time deletion of existing mappings from the admin UI.
 
 ## [3.0.0] - 2026-02-23
 
