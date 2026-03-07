@@ -3,6 +3,19 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.2] - 2026-03-07
+
+### Fixed
+- Fixed mobile image upload preview reliability in `assets/js/bitstream.js` and `includes/class-ajax-handlers.php`:
+  - Added a server-provided browser-safe `preview_url` for uploaded images.
+  - Updated poster preview rendering to prefer `preview_url`, improving compatibility for formats like HEIC where the original file URL may not render in-browser.
+- Fixed mobile like registration consistency in `assets/js/bitstream.js`:
+  - Replaced per-element like listeners with delegated click handling.
+  - Added robust in-flight guarding and like-state syncing so likes register and counters update reliably, including on cards loaded dynamically.
+- Fixed mobile/PWA like persistence edge cases in `includes/class-ajax-handlers.php` and `sw.js`:
+  - Removed an over-restrictive capability gate in `handle_like()` that conflicted with guest (`nopriv`) like handling.
+  - Updated service worker fetch strategy to use network-first for BitStream page navigations and avoid stale cached HTML/nonces that could cause mobile AJAX likes to fail.
+
 ## [3.1.1] - 2026-03-01
 
 ### Fixed

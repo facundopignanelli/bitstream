@@ -376,7 +376,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             const mimeType = attachment.mime || '';
-            const previewUrl = (attachment.sizes && attachment.sizes.medium && attachment.sizes.medium.url) || attachment.url || '';
+            const previewUrl = attachment.preview_url || (attachment.sizes && attachment.sizes.medium && attachment.sizes.medium.url) || attachment.url || '';
 
             if (attachment.id) {
                 previewEl.dataset.attachmentId = attachment.id;
@@ -1078,10 +1078,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     handleMediaSelection(targetInputId, targetPreviewId, {
                         id: media.id,
                         url: media.url,
+                        preview_url: media.preview_url || media.url,
                         mime: media.mime,
                         audio_meta: media.audio_meta || null,
                         sizes: {
-                            medium: { url: media.url }
+                            medium: { url: media.preview_url || media.url }
                         }
                     });
 
@@ -2344,56 +2345,82 @@ document.addEventListener('DOMContentLoaded', function () {
     highlightFromQueryParams();
     applyMediaDeterrents(document);
 
-    // Performance optimized like button with debouncing
-    document.querySelectorAll('.bit-like').forEach(button => {
-        const postId = button.dataset.postId;
-        const storageKey = 'bitstream-liked-' + postId;
-        let isProcessing = false;
+    function syncLikeButtonState(scope = document) {
+        scope.querySelectorAll('.bit-like').forEach(button => {
+            const postId = button.dataset.postId;
+            if (!postId) {
+                return;
+            }
 
-        if (localStorage.getItem(storageKey)) {
-            button.classList.add('liked');
+            const storageKey = 'bitstream-liked-' + postId;
+            button.classList.toggle('liked', !!localStorage.getItem(storageKey));
+        });
+    }
+
+    syncLikeButtonState();
+
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest('.bit-like');
+        if (!button) {
+            return;
         }
 
-        button.addEventListener('click', () => {
-            if (isProcessing) return; // Prevent spam clicks
-            isProcessing = true;
+        event.preventDefault();
 
-            const likeCountSpan = button.querySelector('.bit-like-count');
-            const isLiked = !!localStorage.getItem(storageKey);
-            const type = isLiked ? 'unlike' : 'like';
+        if (!window.bitstream_ajax || !bitstream_ajax.ajax_url || !bitstream_ajax.like_nonce) {
+            console.warn('BitStream like error: AJAX config unavailable');
+            return;
+        }
 
-            const formData = new FormData();
-            formData.append('action', 'bitstream_like');
-            formData.append('post_id', postId);
-            formData.append('type', type);
-            formData.append('nonce', bitstream_ajax.like_nonce);
+        const postId = button.dataset.postId;
+        if (!postId || button.dataset.likeProcessing === '1') {
+            return;
+        }
 
-            fetch(bitstream_ajax.ajax_url, {
-                method: 'POST',
-                credentials: 'same-origin',
-                body: formData
+        button.dataset.likeProcessing = '1';
+
+        const storageKey = 'bitstream-liked-' + postId;
+        const likeCountSpan = button.querySelector('.bit-like-count');
+        const isLiked = !!localStorage.getItem(storageKey);
+        const type = isLiked ? 'unlike' : 'like';
+
+        const formData = new FormData();
+        formData.append('action', 'bitstream_like');
+        formData.append('post_id', postId);
+        formData.append('type', type);
+        formData.append('nonce', bitstream_ajax.like_nonce);
+
+        fetch(bitstream_ajax.ajax_url, {
+            method: 'POST',
+            credentials: 'same-origin',
+            body: formData
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) {
+                    throw new Error((data && data.data) || 'Like request failed.');
+                }
+
+                if (type === 'like') {
+                    localStorage.setItem(storageKey, true);
+                    button.classList.add('liked', 'pulse');
+                    setTimeout(() => button.classList.remove('pulse'), 300);
+                } else {
+                    localStorage.removeItem(storageKey);
+                    button.classList.remove('liked');
+                }
+
+                if (likeCountSpan && data.data && typeof data.data.likes !== 'undefined') {
+                    likeCountSpan.textContent = data.data.likes;
+                }
             })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        if (type === 'like') {
-                            localStorage.setItem(storageKey, true);
-                            button.classList.add('liked', 'pulse');
-                            setTimeout(() => button.classList.remove('pulse'), 300);
-                        } else {
-                            localStorage.removeItem(storageKey);
-                            button.classList.remove('liked');
-                        }
-                        if (likeCountSpan) {
-                            likeCountSpan.textContent = data.data.likes;
-                        }
-                    }
-                })
-                .catch(error => console.warn('BitStream like error:', error))
-                .finally(() => {
-                    isProcessing = false;
-                });
-        });
+            .catch(error => {
+                console.warn('BitStream like error:', error);
+                syncLikeButtonState(document);
+            })
+            .finally(() => {
+                button.dataset.likeProcessing = '0';
+            });
     });
 
     // Copy Link button
@@ -3040,6 +3067,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 newCards.forEach(card => {
                     feed.appendChild(card);
                 });
+
+                syncLikeButtonState(feed);
 
                 feed.dataset.page = nextPage;
                 loading = false;

@@ -958,9 +958,21 @@ class BitStream_Ajax_Handlers
                 $audio_meta = $this->get_audio_meta($attachment_id, $file_path);
             }
 
+            $preview_url = $file_url;
+            if (strpos($file_type['type'], 'image/') === 0) {
+                $preview_url = wp_get_attachment_image_url($attachment_id, 'medium');
+                if (!$preview_url) {
+                    $preview_url = wp_get_attachment_image_url($attachment_id, 'full');
+                }
+                if (!$preview_url) {
+                    $preview_url = $file_url;
+                }
+            }
+
             wp_send_json_success([
                 'id' => $attachment_id,
                 'url' => $file_url,
+                'preview_url' => $preview_url,
                 'mime' => $file_type['type'],
                 'audio_meta' => $audio_meta,
                 'edit_url' => get_edit_post_link($attachment_id, ''),
@@ -1352,11 +1364,6 @@ class BitStream_Ajax_Handlers
     {
         try {
             check_ajax_referer('bitstream_like_nonce', 'nonce');
-
-            // Check permissions
-            if (!current_user_can('read')) {
-                wp_send_json_error('Insufficient permissions.');
-            }
 
             if (empty($_POST['post_id']) || !is_numeric($_POST['post_id'])) {
                 wp_send_json_error('Invalid post ID.');
