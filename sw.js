@@ -55,6 +55,24 @@ self.addEventListener('fetch', event => {
     console.log('BitStream SW: Allowing POST request to pass through:', event.request.url);
     return;
   }
+
+  // Network-first for BitStream page navigations to avoid serving stale HTML with expired nonces
+  if (event.request.mode === 'navigate' && event.request.url.includes('/bitstream/')) {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          if (response && response.status === 200 && response.type === 'basic') {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then(cache => {
+              cache.put('/bitstream/', responseToCache);
+            });
+          }
+          return response;
+        })
+        .catch(() => caches.match('/bitstream/'))
+    );
+    return;
+  }
   
   // Handle BitStream requests specifically - avoid other plugin conflicts
   if ((event.request.url.includes('/bitstream/') || 
@@ -86,9 +104,8 @@ self.addEventListener('fetch', event => {
               const responseToCache = response.clone();
               caches.open(CACHE_NAME)
                 .then(cache => {
-                  // Cache feed pages and assets
-                  if (event.request.url.includes('/bitstream/') || 
-                      event.request.url.includes('/wp-content/plugins/bitstream/')) {
+                  // Cache plugin assets only (avoid caching dynamic HTML with nonces)
+                  if (event.request.url.includes('/wp-content/plugins/bitstream/')) {
                     cache.put(event.request, responseToCache);
                   }
                 });

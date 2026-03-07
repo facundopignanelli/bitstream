@@ -1365,11 +1365,6 @@ class BitStream_Ajax_Handlers
         try {
             check_ajax_referer('bitstream_like_nonce', 'nonce');
 
-            // Check permissions
-            if (!current_user_can('read')) {
-                wp_send_json_error('Insufficient permissions.');
-            }
-
             if (empty($_POST['post_id']) || !is_numeric($_POST['post_id'])) {
                 wp_send_json_error('Invalid post ID.');
             }
