@@ -345,7 +345,8 @@ class BitStream_Shortcodes
         $atts = shortcode_atts([
             'posts_per_page' => 10,
             'paged' => get_query_var('paged') ?: 1,
-            'limit' => '', // Limit total number of posts (e.g., "3" for latest 3)
+            'limit' => '', // Preview mode: maximum number of posts to render
+            'exact_limit' => '', // Preview mode: display exactly this many posts
             'infinite_scroll' => 'false', // Enable infinite scroll instead of load more button
             'show_load_more' => 'true', // Control whether to show load more button
             'mode' => '' // 'preview' = compact grid without sidebars/filters
@@ -764,25 +765,27 @@ class BitStream_Shortcodes
 
     /**
      * Render a compact preview grid of the latest N bits.
-     * Used via [bitstream mode="preview" limit="6"].
+     * Used via [bitstream mode="preview" limit="6"] or [bitstream mode="preview" exact_limit="6"].
      * No sidebars, filters, search, or pagination are rendered.
      */
     private function render_feed_preview($atts)
     {
-        $has_explicit_limit = !empty($atts['limit']);
-        $limit = $has_explicit_limit ? absint($atts['limit']) : 10;
+        $exact_limit = !empty($atts['exact_limit']) ? absint($atts['exact_limit']) : 0;
+        $has_exact_limit = $exact_limit > 0;
+        $cap_limit = (!$has_exact_limit && !empty($atts['limit'])) ? absint($atts['limit']) : 0;
+        $batch_size = $has_exact_limit ? $exact_limit : ($cap_limit > 0 ? min(10, $cap_limit) : 10);
 
         $q = new WP_Query([
             'post_type' => 'bit',
             'post_status' => 'publish',
-            'posts_per_page' => $limit,
+            'posts_per_page' => $batch_size,
             'paged' => 1,
             'orderby' => 'date',
             'order' => 'DESC',
         ]);
 
         ob_start();
-        echo '<div class="bitstream-preview-grid" data-preview-auto-fill="' . ($has_explicit_limit ? 'false' : 'true') . '" data-preview-page="1" data-preview-max-page="' . esc_attr($q->max_num_pages) . '">';
+        echo '<div class="bitstream-preview-grid" data-preview-auto-fill="' . ($has_exact_limit ? 'false' : 'true') . '" data-preview-page="1" data-preview-max-page="' . esc_attr($q->max_num_pages) . '" data-preview-loaded-count="' . esc_attr($q->post_count) . '" data-preview-max-posts="' . esc_attr($cap_limit) . '">';
 
         if ($q->have_posts()) {
             while ($q->have_posts()) {

@@ -3347,11 +3347,17 @@ jQuery(document).ready(function ($) {
         (async () => {
             const maxPage = parseInt(previewGrid.dataset.previewMaxPage || '1', 10);
             let currentPage = parseInt(previewGrid.dataset.previewPage || '1', 10);
+            let loadedCount = parseInt(previewGrid.dataset.previewLoadedCount || previewGrid.querySelectorAll('.bit-card').length || '0', 10);
+            const maxPosts = parseInt(previewGrid.dataset.previewMaxPosts || '0', 10);
             let loadingPreview = false;
             const targetHeight = Math.max(window.innerHeight * 1.35, window.innerHeight + 240);
 
             const loadPreviewPage = async () => {
                 if (loadingPreview || currentPage >= maxPage) {
+                    return false;
+                }
+
+                if (maxPosts > 0 && loadedCount >= maxPosts) {
                     return false;
                 }
 
@@ -3373,7 +3379,19 @@ jQuery(document).ready(function ($) {
                     const html = await response.text();
                     const temp = document.createElement('div');
                     temp.innerHTML = html;
-                    const newCards = temp.querySelectorAll('.bit-card');
+                    let newCards = Array.from(temp.querySelectorAll('.bit-card'));
+
+                    if (maxPosts > 0) {
+                        const remaining = maxPosts - loadedCount;
+                        if (remaining <= 0) {
+                            currentPage = maxPage;
+                            previewGrid.dataset.previewPage = String(currentPage);
+                            return false;
+                        }
+                        if (newCards.length > remaining) {
+                            newCards = newCards.slice(0, remaining);
+                        }
+                    }
 
                     if (!newCards.length) {
                         currentPage = maxPage;
@@ -3382,6 +3400,8 @@ jQuery(document).ready(function ($) {
                     }
 
                     newCards.forEach(card => previewGrid.appendChild(card));
+                    loadedCount += newCards.length;
+                    previewGrid.dataset.previewLoadedCount = String(loadedCount);
                     syncLikeButtonState(previewGrid);
                     currentPage = nextPage;
                     previewGrid.dataset.previewPage = String(currentPage);
@@ -3396,6 +3416,9 @@ jQuery(document).ready(function ($) {
             };
 
             while (previewGrid.scrollHeight < targetHeight && currentPage < maxPage) {
+                if (maxPosts > 0 && loadedCount >= maxPosts) {
+                    break;
+                }
                 const loaded = await loadPreviewPage();
                 if (!loaded) {
                     break;

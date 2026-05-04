@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Kept the full BitStream page's normal inline comment toggle behavior intact for regular feed cards.
 - Preview mode now auto-loads additional posts through the existing AJAX load-more endpoint until the masonry preview reaches a more balanced viewport-height target.
 - Preview-loaded cards keep the preview-specific comment link behavior, and permalink/quote actions now work on dynamically appended cards too.
+- Changed preview `limit` semantics so it now acts as a maximum cap while still auto-filling enough posts to make the masonry preview look balanced.
+- Added a new `exact_limit` preview attribute for cases where you want to render exactly N posts instead of filling up to a cap.
 
 ## [3.1.2] - 2026-03-07
 
