@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Reworked the desktop BitStream shell to add a new top rail with Quick Actions on the left and Quick Bit on the right.
+- Aligned the top rail so Quick Actions uses the same fixed width as the left sidebar while Quick Bit expands to fill the remaining space.
 - Moved the desktop side rail widgets so the right rail now shows Content Filter, Archive, RSS Feeds, and the Version box in that order.
 - Added a compact media picker to the Quick Bit box so desktop users can attach media without opening the full poster.
 - Kept the mobile and tablet layout unchanged while letting the floating quick actions button remain visible on tablet touch devices.

@@ -510,19 +510,19 @@ class BitStream_Shortcodes
         if (!empty($desktop_quick_actions) || !empty($desktop_quick_post)) {
             echo '<div class="bitstream-feed-top-rail hide-on-mobile">';
 
-            if (!empty($desktop_quick_post)) {
-                echo '<div class="bitstream-feed-top-rail-column">';
-                echo '<aside class="bitstream-feed-sidebar">';
-                echo $desktop_quick_post;
-                echo '</aside>';
-                echo '</div>';
-            }
-
             if (!empty($desktop_quick_actions)) {
                 echo '<div class="bitstream-feed-top-rail-column">';
                 echo '<aside class="bitstream-feed-sidebar">';
                 echo '<h3 class="bitstream-feed-sidebar-title">Quick Actions</h3>';
                 echo $desktop_quick_actions;
+                echo '</aside>';
+                echo '</div>';
+            }
+
+            if (!empty($desktop_quick_post)) {
+                echo '<div class="bitstream-feed-top-rail-column">';
+                echo '<aside class="bitstream-feed-sidebar">';
+                echo $desktop_quick_post;
                 echo '</aside>';
                 echo '</div>';
             }
