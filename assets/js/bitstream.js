@@ -66,184 +66,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function highlightFromQueryParams() {
         const params = new URLSearchParams(window.location.search);
-        const highlightBit = parseInt(params.get('highlight_bit') || '0', 10);
-        const highlightScheduled = parseInt(params.get('highlight_scheduled') || '0', 10);
-        const openComments = parseInt(params.get('open_comments') || '0', 10);
-
-        if (highlightBit > 0) {
-            const bitCard = document.getElementById('bit-' + highlightBit);
-            if (bitCard) {
-                bitCard.classList.add('bitstream-highlight-target');
-            }
-        }
-
-        if (openComments > 0) {
-            const targetSection = document.getElementById('comments-' + openComments);
-            if (targetSection) {
-                const bitCard = targetSection.closest('.bit-card');
-                if (bitCard) {
-                    bitCard.classList.add('comments-open');
-                }
-                targetSection.classList.add('open');
-                setTimeout(() => {
-                    targetSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }, 150);
-            }
-        }
-
-        if (highlightBit > 0 && openComments <= 0) {
-            const bitCard = document.getElementById('bit-' + highlightBit);
-            if (bitCard) {
-                bitCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        }
-
-        if (highlightScheduled > 0) {
-            const scheduledRow = document.querySelector('.bitstream-scheduled-item[data-post-id="' + highlightScheduled + '"]');
-            if (scheduledRow) {
-                scheduledRow.classList.add('is-highlighted');
-                scheduledRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        }
-    }
-
-    // Continue with the rest of the initialization...
-    function initBitstreamPoster() {
-        const posterRoot = document.querySelector('.bitstream-poster');
-        if (!posterRoot) {
-            return;
-        }
-
-        const statusEl = posterRoot.querySelector('.bitstream-poster-status');
-        const submitNonce = posterRoot.dataset.submitNonce || '';
-        let refreshRebitPreview = () => { };
-        let refreshRebitEditorImagePreview = () => { };
-
-        function setStatus(message, isError = false) {
-            if (!statusEl) {
-                return;
-            }
-
-            statusEl.textContent = message;
-            statusEl.classList.toggle('is-error', isError);
-            statusEl.classList.toggle('is-success', !isError && !!message);
-        }
-
-        function sanitizeInlinePreviewMarkup(markup) {
-            const html = (markup || '').trim();
-            if (!html) {
-                return '';
-            }
-
-            const parser = new DOMParser();
-            const doc = parser.parseFromString('<div id="bitstream-inline-preview-root">' + html + '</div>', 'text/html');
-            const root = doc.getElementById('bitstream-inline-preview-root');
-            if (!root) {
-                return html;
-            }
-
-            root.querySelectorAll('.bit-card-footer, .bit-comments, form, hr').forEach(node => {
-                node.remove();
-            });
-
-            return root.innerHTML;
-        }
-
-        function setInlinePublishedPreview(form, data) {
-            if (!form) {
-                return;
-            }
-
-            const renderedHtml = sanitizeInlinePreviewMarkup(data.rendered_html || '');
-            if (!renderedHtml) {
-                return;
-            }
-
-            const posterType = form.dataset.posterType || 'bit';
-            let previewRoot = null;
-            let previewCard = null;
-
-            if (posterType === 'rebit') {
-                previewRoot = posterRoot.querySelector('#bitstream-rebit-live-preview');
-                previewCard = previewRoot ? previewRoot.querySelector('.bitstream-rebit-live-preview-card') : null;
-            } else {
-                previewRoot = form.querySelector('.bitstream-bit-live-preview');
-                if (!previewRoot) {
-                    previewRoot = document.createElement('div');
-                    previewRoot.className = 'bitstream-rebit-live-preview bitstream-bit-live-preview';
-                    previewRoot.innerHTML = '<p class="bitstream-rebit-live-preview-label"><strong>Preview</strong></p><div class="bitstream-rebit-live-preview-card"></div>';
-                    const submitButton = form.querySelector('.bitstream-poster-submit');
-                    if (submitButton && submitButton.parentNode) {
-                        submitButton.parentNode.insertBefore(previewRoot, submitButton);
-                    } else {
-                        form.appendChild(previewRoot);
-                    }
-                }
-                previewCard = previewRoot.querySelector('.bitstream-rebit-live-preview-card');
-            }
-
-            if (!previewRoot || !previewCard) {
-                return;
-            }
-
-            previewCard.innerHTML = renderedHtml;
-            previewRoot.hidden = false;
-            applyMediaDeterrents(previewCard);
-        }
-
-        const tabButtons = posterRoot.querySelectorAll('.bitstream-poster-tab');
-        const tabPanels = posterRoot.querySelectorAll('.bitstream-poster-panel');
-
-        tabButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                const selectedTab = button.dataset.tab;
-
-                // Skip if already on this tab
-                if (button.classList.contains('is-active')) {
-                    return;
-                }
-
-                // Navigate to the tab via URL so the page reloads with
-                // fresh server-rendered content (up-to-date drafts, scheduled, etc.)
-                const url = new URL(window.location.href);
-                url.searchParams.set('poster_tab', selectedTab);
-                // Strip any stale highlight params when switching tabs
-                url.searchParams.delete('highlight_draft');
-                url.searchParams.delete('highlight_scheduled');
-                window.location.href = url.toString();
-            });
-        });
-
-        const scheduleToggles = posterRoot.querySelectorAll('[data-schedule-toggle]');
-        scheduleToggles.forEach(toggle => {
-            const key = toggle.dataset.scheduleToggle;
-            const datetimeInput = posterRoot.querySelector('[data-schedule-input="' + key + '"]');
-            const hiddenInput = posterRoot.querySelector('[data-schedule-hidden="' + key + '"]');
-
-            if (!datetimeInput) {
-                return;
-            }
-
-            toggle.addEventListener('change', () => {
-                const enabled = toggle.value === 'later' && toggle.checked;
-                datetimeInput.disabled = !enabled;
-                if (hiddenInput) {
-                    hiddenInput.value = enabled ? '1' : '0';
-                }
-                if (!enabled) {
-                    datetimeInput.value = '';
-                }
-            });
-        });
-
-        // Helper: update "no results" placeholder for a list container + its rows
-        function updateFilterEmpty(listEl, rows, filterLabel) {
-            const visibleCount = Array.from(rows).filter(r => !r.classList.contains('is-filtered-out')).length;
-            let emptyEl = listEl.querySelector('.bitstream-filter-empty');
-            if (visibleCount === 0) {
-                if (!emptyEl) {
-                    emptyEl = document.createElement('p');
-                    emptyEl.className = 'bitstream-filter-empty';
                     listEl.appendChild(emptyEl);
                 }
                 emptyEl.textContent = 'No ' + filterLabel + ' found.';
@@ -2265,6 +2087,16 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         const forms = posterRoot.querySelectorAll('.bitstream-poster-form');
+        function isUrlOnly(text) {
+            const trimmed = (text || '').trim();
+            try {
+                const url = new URL(trimmed);
+                return url.protocol === 'http:' || url.protocol === 'https:';
+            } catch {
+                return false;
+            }
+        }
+
         forms.forEach(form => {
             form.addEventListener('submit', (event) => {
                 event.preventDefault();
@@ -2287,7 +2119,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 const payload = new FormData(form);
                 payload.append('action', 'bitstream_submit_poster');
                 payload.append('nonce', submitNonce);
-                payload.append('poster_type', form.dataset.posterType || 'bit');
+
+                const posterType = form.dataset.posterType || 'bit';
+                const quickBitRoot = form.closest('.bitstream-quick-post-poster');
+                const bitContentInput = form.querySelector('textarea[name="bit_content"]');
+                const bitAttachmentInput = form.querySelector('input[name="bit_attachment_id"]');
+                const hasQuickBitMedia = bitAttachmentInput && parseInt(bitAttachmentInput.value || '0', 10) > 0;
+                const isQuickBitUrl = quickBitRoot && posterType === 'bit' && !hasQuickBitMedia && bitContentInput && isUrlOnly(bitContentInput.value);
+
+                payload.append('poster_type', isQuickBitUrl ? 'rebit' : posterType);
+                if (isQuickBitUrl) {
+                    payload.append('rebit_url', (bitContentInput ? bitContentInput.value : '').trim());
+                    payload.delete('bit_content');
+                }
                 const editPostInput = form.querySelector('input[name="edit_post_id"]');
                 payload.set('edit_post_id', editPostInput ? (editPostInput.value || '0') : '0');
 
@@ -2357,7 +2201,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     });
             });
         });
-
         bindMediaButtons();
         initRebitPreview();
     }

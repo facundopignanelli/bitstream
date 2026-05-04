@@ -253,6 +253,115 @@ class BitStream_Shortcodes
     }
 
     /**
+     * Render the shared media field used by the poster and quick bit cards.
+     */
+    private function render_media_field($attachment_input_id, $preview_id, $edit_post_id = 0)
+    {
+        ob_start();
+        ?>
+        <div class="bitstream-media-field">
+            <?php if ($edit_post_id > 0): ?>
+                <input type="hidden" name="edit_post_id" value="<?php echo esc_attr($edit_post_id); ?>">
+            <?php endif; ?>
+            <input type="hidden" id="<?php echo esc_attr($attachment_input_id); ?>" name="bit_attachment_id" value="">
+            <div class="bitstream-media-dropzone" data-target-input="<?php echo esc_attr($attachment_input_id); ?>" data-target-preview="<?php echo esc_attr($preview_id); ?>" data-accept="image/*,video/*,audio/*">
+                <i class="fa-solid fa-photo-film bitstream-media-dropzone-icon" aria-hidden="true"></i>
+                <span>Drag and drop media here, or click to upload</span>
+                <div class="bitstream-media-preview" id="<?php echo esc_attr($preview_id); ?>"></div>
+                <input type="file" class="bitstream-media-file" accept="image/*,video/*,audio/*">
+            </div>
+            <div class="bitstream-media-progress is-hidden" data-progress-bar="<?php echo esc_attr($attachment_input_id); ?>">
+                <div class="bitstream-media-progress-track">
+                    <div class="bitstream-media-progress-bar"></div>
+                </div>
+                <span class="bitstream-media-progress-text">Uploading...</span>
+            </div>
+            <div class="bitstream-media-controls">
+                <button type="button" class="bitstream-media-remove is-hidden" data-target-input="<?php echo esc_attr($attachment_input_id); ?>" data-target-preview="<?php echo esc_attr($preview_id); ?>">Remove media</button>
+                <a class="bitstream-media-crop is-hidden" data-target-input="<?php echo esc_attr($attachment_input_id); ?>" href="#" target="_blank" rel="noopener">Crop image</a>
+                <a class="bitstream-media-audio-tags is-hidden" data-target-input="<?php echo esc_attr($attachment_input_id); ?>" data-target-preview="<?php echo esc_attr($preview_id); ?>" href="#">Edit audio tags</a>
+                <button type="button" class="bitstream-media-paste" data-target-input="<?php echo esc_attr($attachment_input_id); ?>" data-target-preview="<?php echo esc_attr($preview_id); ?>">Paste from clipboard</button>
+            </div>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * Render the shared cropper and audio-tag dialogs used by poster-style media controls.
+     */
+    private function render_media_modals()
+    {
+        ob_start();
+        ?>
+        <div class="bitstream-audio-tags-modal" hidden>
+            <div class="bitstream-audio-tags-backdrop" data-audio-tags-close="true"></div>
+            <div class="bitstream-audio-tags-dialog" role="dialog" aria-modal="true" aria-labelledby="bitstream-audio-tags-title">
+                <header class="bitstream-audio-tags-header">
+                    <h3 id="bitstream-audio-tags-title">Edit audio tags</h3>
+                </header>
+                <div class="bitstream-audio-tags-body">
+                    <div class="bitstream-audio-tags-artwork">
+                        <img class="bitstream-audio-tags-preview" src="" alt="" hidden>
+                        <div class="bitstream-audio-tags-buttons">
+                            <button type="button" class="bitstream-audio-tags-select">Choose artwork</button>
+                            <button type="button" class="bitstream-audio-tags-clear">Remove artwork</button>
+                        </div>
+                    </div>
+                    <label>
+                        <span>Title</span>
+                        <input type="text" class="bitstream-audio-tags-input" data-audio-tags-field="title" placeholder="Track title">
+                    </label>
+                    <label>
+                        <span>Artist</span>
+                        <input type="text" class="bitstream-audio-tags-input" data-audio-tags-field="artist" placeholder="Artist name">
+                    </label>
+                    <label>
+                        <span>Album</span>
+                        <input type="text" class="bitstream-audio-tags-input" data-audio-tags-field="album" placeholder="Album name">
+                    </label>
+                </div>
+                <footer class="bitstream-audio-tags-footer">
+                    <button type="button" class="bitstream-audio-tags-close" data-audio-tags-close="true">Close</button>
+                    <button type="button" class="bitstream-audio-tags-save">Save tags</button>
+                </footer>
+            </div>
+        </div>
+
+        <div class="bitstream-cropper-modal" hidden>
+            <div class="bitstream-cropper-backdrop" data-cropper-close="true"></div>
+            <div class="bitstream-cropper-dialog" role="dialog" aria-modal="true" aria-label="Crop Image">
+                <div class="bitstream-cropper-header">
+                    <h3>Crop Image</h3>
+                </div>
+                <div class="bitstream-cropper-body">
+                    <div class="bitstream-cropper-stage">
+                        <img class="bitstream-cropper-image" src="" alt="">
+                        <div class="bitstream-cropper-selection" aria-hidden="true">
+                            <span class="bitstream-cropper-handle handle-nw" data-handle="nw"></span>
+                            <span class="bitstream-cropper-handle handle-ne" data-handle="ne"></span>
+                            <span class="bitstream-cropper-handle handle-n" data-handle="n"></span>
+                            <span class="bitstream-cropper-handle handle-e" data-handle="e"></span>
+                            <span class="bitstream-cropper-handle handle-s" data-handle="s"></span>
+                            <span class="bitstream-cropper-handle handle-w" data-handle="w"></span>
+                            <span class="bitstream-cropper-handle handle-sw" data-handle="sw"></span>
+                            <span class="bitstream-cropper-handle handle-se" data-handle="se"></span>
+                        </div>
+                    </div>
+                    <p class="bitstream-cropper-help">Drag to select.</p>
+                    <p class="bitstream-cropper-size" aria-live="polite">Size: --</p>
+                </div>
+                <div class="bitstream-cropper-footer">
+                    <button type="button" class="bitstream-cropper-cancel" data-cropper-close="true">Cancel</button>
+                    <button type="button" class="bitstream-cropper-apply">Crop &amp; Use</button>
+                </div>
+            </div>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
+
+    /**
      * Render the Quick Post sidebar box
      */
     public static function render_quick_post_form()
@@ -267,29 +376,22 @@ class BitStream_Shortcodes
 
         ob_start();
 ?>
-        <div class="bitstream-sidebar-quick-post" style="box-sizing: border-box;">
+        <section class="bitstream-poster bitstream-quick-post-poster" data-submit-nonce="<?php echo esc_attr($submit_nonce); ?>">
             <h3 class="bitstream-feed-sidebar-title">Quick Bit</h3>
-            <form class="bitstream-sidebar-quick-post-form" data-submit-nonce="<?php echo esc_attr($submit_nonce); ?>" style="display: flex; flex-direction: column; height: 100%;">
-                <input type="hidden" name="bit_attachment_id" value="">
+            <form class="bitstream-sidebar-quick-post-form bitstream-poster-form" data-poster-type="bit" style="display: flex; flex-direction: column; height: 100%;">
                 <div class="bitstream-sidebar-quick-post-body">
                     <div class="bitstream-sidebar-quick-post-content-row">
-                        <textarea name="bit_content" rows="3" placeholder="What's on your mind?" required class="bitstream-poster-field" style="width: 100%; box-sizing: border-box;"></textarea>
-                        <div class="bitstream-sidebar-quick-post-media">
-                            <div class="bitstream-sidebar-quick-post-media-preview" hidden></div>
-                            <div class="bitstream-sidebar-quick-post-media-actions">
-                                <button type="button" class="bitstream-sidebar-quick-post-media-button" title="Add media" aria-label="Add media"><i class="fa-solid fa-image" aria-hidden="true"></i></button>
-                                <button type="button" class="bitstream-sidebar-quick-post-media-replace is-hidden" title="Replace media" aria-label="Replace media"><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i></button>
-                                <button type="button" class="bitstream-sidebar-quick-post-media-remove is-hidden" title="Remove media" aria-label="Remove media"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>
-                            </div>
-                        </div>
+                        <textarea id="bitstream-quick-bit-content" name="bit_content" rows="3" placeholder="What's on your mind?" required class="bitstream-poster-field" style="width: 100%; box-sizing: border-box;"></textarea>
+                        <?php echo $this->render_media_field('bitstream-quick-bit-attachment-id', 'bitstream-quick-bit-media-preview'); ?>
                     </div>
                 </div>
                 <div class="bitstream-sidebar-quick-post-footer">
                     <button type="submit" class="bitstream-poster-submit" style="width: 100%; padding: 0.4rem 0.8rem; font-size: 0.9rem;">Post Bit</button>
-                    <div class="bitstream-sidebar-quick-post-status" style="margin-top: 5px; font-size: 0.85rem;" aria-live="polite"></div>
                 </div>
             </form>
-        </div>
+            <div class="bitstream-poster-status bitstream-sidebar-quick-post-status" aria-live="polite"></div>
+            <?php echo $this->render_media_modals(); ?>
+        </section>
         <?php
         return ob_get_clean();
     }
@@ -515,19 +617,17 @@ class BitStream_Shortcodes
         if (!empty($desktop_quick_actions) || !empty($desktop_quick_post)) {
             echo '<div class="bitstream-feed-top-rail hide-on-mobile">';
 
+            if (!empty($desktop_quick_post)) {
+                echo '<div class="bitstream-feed-top-rail-column">';
+                echo $desktop_quick_post;
+                echo '</div>';
+            }
+
             if (!empty($desktop_quick_actions)) {
                 echo '<div class="bitstream-feed-top-rail-column">';
                 echo '<aside class="bitstream-feed-sidebar">';
                 echo '<h3 class="bitstream-feed-sidebar-title">Quick Actions</h3>';
                 echo $desktop_quick_actions;
-                echo '</aside>';
-                echo '</div>';
-            }
-
-            if (!empty($desktop_quick_post)) {
-                echo '<div class="bitstream-feed-top-rail-column">';
-                echo '<aside class="bitstream-feed-sidebar">';
-                echo $desktop_quick_post;
                 echo '</aside>';
                 echo '</div>';
             }
@@ -675,9 +775,7 @@ class BitStream_Shortcodes
 
         if (!empty($desktop_quick_post)) {
             echo '<div class="bitstream-mobile-quick-post-container" style="margin-bottom: 1rem;">';
-            echo '<aside class="bitstream-feed-sidebar">';
             echo $desktop_quick_post;
-            echo '</aside>';
             echo '</div>';
         }
 
@@ -1394,28 +1492,7 @@ class BitStream_Shortcodes
 
                     <input type="hidden" name="quote_post_id" value="<?php echo esc_attr($quote_post_id); ?>">
 
-                    <div class="bitstream-media-field">
-                        <input type="hidden" name="edit_post_id" value="<?php echo esc_attr($bit_edit_post_id); ?>">
-                        <input type="hidden" id="bitstream-bit-attachment-id" name="bit_attachment_id" value="<?php echo esc_attr($bit_attachment_id_prefill); ?>">
-                        <div class="bitstream-media-dropzone" data-target-input="bitstream-bit-attachment-id" data-target-preview="bitstream-bit-media-preview" data-accept="image/*,video/*,audio/*">
-                            <i class="fa-solid fa-photo-film bitstream-media-dropzone-icon" aria-hidden="true"></i>
-                            <span>Drag and drop media here, or click to upload</span>
-                            <div class="bitstream-media-preview" id="bitstream-bit-media-preview"></div>
-                            <input type="file" class="bitstream-media-file" accept="image/*,video/*,audio/*">
-                        </div>
-                        <div class="bitstream-media-progress is-hidden" data-progress-bar="bitstream-bit-attachment-id">
-                            <div class="bitstream-media-progress-track">
-                                <div class="bitstream-media-progress-bar"></div>
-                            </div>
-                            <span class="bitstream-media-progress-text">Uploading...</span>
-                        </div>
-                        <div class="bitstream-media-controls">
-                            <button type="button" class="bitstream-media-remove is-hidden" data-target-input="bitstream-bit-attachment-id" data-target-preview="bitstream-bit-media-preview">Remove media</button>
-                            <a class="bitstream-media-crop is-hidden" data-target-input="bitstream-bit-attachment-id" href="#" target="_blank" rel="noopener">Crop image</a>
-                            <a class="bitstream-media-audio-tags is-hidden" data-target-input="bitstream-bit-attachment-id" data-target-preview="bitstream-bit-media-preview" href="#">Edit audio tags</a>
-                            <button type="button" class="bitstream-media-paste" data-target-input="bitstream-bit-attachment-id" data-target-preview="bitstream-bit-media-preview">Paste from clipboard</button>
-                        </div>
-                    </div>
+                    <?php echo $this->render_media_field('bitstream-bit-attachment-id', 'bitstream-bit-media-preview', $bit_edit_post_id); ?>
 
                     <?php if (!empty($quote_preview)): ?>
                         <div class="bitstream-poster-quote-preview">
@@ -1607,40 +1684,6 @@ class BitStream_Shortcodes
 
             <div class="bitstream-poster-status" aria-live="polite"></div>
 
-            <div class="bitstream-audio-tags-modal" hidden>
-                <div class="bitstream-audio-tags-backdrop" data-audio-tags-close="true"></div>
-                <div class="bitstream-audio-tags-dialog" role="dialog" aria-modal="true" aria-labelledby="bitstream-audio-tags-title">
-                    <header class="bitstream-audio-tags-header">
-                        <h3 id="bitstream-audio-tags-title">Edit audio tags</h3>
-                    </header>
-                    <div class="bitstream-audio-tags-body">
-                        <div class="bitstream-audio-tags-artwork">
-                            <img class="bitstream-audio-tags-preview" src="" alt="" hidden>
-                            <div class="bitstream-audio-tags-buttons">
-                                <button type="button" class="bitstream-audio-tags-select">Choose artwork</button>
-                                <button type="button" class="bitstream-audio-tags-clear">Remove artwork</button>
-                            </div>
-                        </div>
-                        <label>
-                            <span>Title</span>
-                            <input type="text" class="bitstream-audio-tags-input" data-audio-tags-field="title" placeholder="Track title">
-                        </label>
-                        <label>
-                            <span>Artist</span>
-                            <input type="text" class="bitstream-audio-tags-input" data-audio-tags-field="artist" placeholder="Artist name">
-                        </label>
-                        <label>
-                            <span>Album</span>
-                            <input type="text" class="bitstream-audio-tags-input" data-audio-tags-field="album" placeholder="Album name">
-                        </label>
-                    </div>
-                    <footer class="bitstream-audio-tags-footer">
-                        <button type="button" class="bitstream-audio-tags-close" data-audio-tags-close="true">Close</button>
-                        <button type="button" class="bitstream-audio-tags-save">Save tags</button>
-                    </footer>
-                </div>
-            </div>
-
             <div class="bitstream-rebit-editor-modal" hidden>
                 <div class="bitstream-rebit-editor-backdrop" data-rebit-editor-close="true"></div>
                 <div class="bitstream-rebit-editor-dialog" role="dialog" aria-modal="true" aria-labelledby="bitstream-rebit-editor-title">
@@ -1675,35 +1718,7 @@ class BitStream_Shortcodes
                 </div>
             </div>
 
-            <div class="bitstream-cropper-modal" hidden>
-                <div class="bitstream-cropper-backdrop" data-cropper-close="true"></div>
-                <div class="bitstream-cropper-dialog" role="dialog" aria-modal="true" aria-label="Crop Image">
-                    <div class="bitstream-cropper-header">
-                        <h3>Crop Image</h3>
-                    </div>
-                    <div class="bitstream-cropper-body">
-                        <div class="bitstream-cropper-stage">
-                            <img class="bitstream-cropper-image" src="" alt="">
-                            <div class="bitstream-cropper-selection" aria-hidden="true">
-                                <span class="bitstream-cropper-handle handle-nw" data-handle="nw"></span>
-                                <span class="bitstream-cropper-handle handle-ne" data-handle="ne"></span>
-                                <span class="bitstream-cropper-handle handle-n" data-handle="n"></span>
-                                <span class="bitstream-cropper-handle handle-e" data-handle="e"></span>
-                                <span class="bitstream-cropper-handle handle-s" data-handle="s"></span>
-                                <span class="bitstream-cropper-handle handle-w" data-handle="w"></span>
-                                <span class="bitstream-cropper-handle handle-sw" data-handle="sw"></span>
-                                <span class="bitstream-cropper-handle handle-se" data-handle="se"></span>
-                            </div>
-                        </div>
-                        <p class="bitstream-cropper-help">Drag to select.</p>
-                        <p class="bitstream-cropper-size" aria-live="polite">Size: --</p>
-                    </div>
-                    <div class="bitstream-cropper-footer">
-                        <button type="button" class="bitstream-cropper-cancel" data-cropper-close="true">Cancel</button>
-                        <button type="button" class="bitstream-cropper-apply">Crop &amp; Use</button>
-                    </div>
-                </div>
-            </div>
+            <?php echo $this->render_media_modals(); ?>
         </section>
         <?php
 
