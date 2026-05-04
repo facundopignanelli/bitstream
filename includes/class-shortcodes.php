@@ -769,7 +769,8 @@ class BitStream_Shortcodes
      */
     private function render_feed_preview($atts)
     {
-        $limit = !empty($atts['limit']) ? absint($atts['limit']) : 6;
+        $has_explicit_limit = !empty($atts['limit']);
+        $limit = $has_explicit_limit ? absint($atts['limit']) : 10;
 
         $q = new WP_Query([
             'post_type' => 'bit',
@@ -781,7 +782,7 @@ class BitStream_Shortcodes
         ]);
 
         ob_start();
-        echo '<div class="bitstream-preview-grid">';
+        echo '<div class="bitstream-preview-grid" data-preview-auto-fill="' . ($has_explicit_limit ? 'false' : 'true') . '" data-preview-page="1" data-preview-max-page="' . esc_attr($q->max_num_pages) . '">';
 
         if ($q->have_posts()) {
             while ($q->have_posts()) {

@@ -1442,6 +1442,7 @@ class BitStream_Ajax_Handlers
         check_ajax_referer('bitstream_load_more_nonce', 'nonce');
 
         $page = isset($_POST['page']) ? intval($_POST['page']) : 1;
+        $is_preview_mode = isset($_POST['preview_mode']) && $_POST['preview_mode'] === '1';
 
         $requested_type = isset($_POST['filter_type']) ? sanitize_key(wp_unslash($_POST['filter_type'])) : 'all';
         $selected_type = in_array($requested_type, ['all', 'bits', 'rebits'], true) ? $requested_type : 'all';
@@ -1519,7 +1520,7 @@ class BitStream_Ajax_Handlers
         if ($q->have_posts()) {
             while ($q->have_posts()) {
                 $q->the_post();
-                echo bitstream_render_card(get_the_ID());
+                echo bitstream_render_card(get_the_ID(), false, ['comment_action' => $is_preview_mode ? 'link' : 'toggle']);
             }
         }
 

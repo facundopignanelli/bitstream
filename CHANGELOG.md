@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated preview card actions so `[bitstream mode="preview"]` now shows the standard comment, like, and permalink controls again.
 - Changed the preview comment action to deep-link into the main BitStream feed with the target bit highlighted and its comments opened, instead of expanding comments inline inside the preview grid.
 - Kept the full BitStream page's normal inline comment toggle behavior intact for regular feed cards.
+- Preview mode now auto-loads additional posts through the existing AJAX load-more endpoint until the masonry preview reaches a more balanced viewport-height target.
+- Preview-loaded cards keep the preview-specific comment link behavior, and permalink/quote actions now work on dynamically appended cards too.
 
 ## [3.1.2] - 2026-03-07
 
