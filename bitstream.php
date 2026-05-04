@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BitStream
  * Description: A lightweight microblogging platform for WordPress with PWA support, masonry layout, and social sharing.
- * Version: 3.1.2
+ * Version: 3.1.3
  * Author: Facundo Pignanelli
  * Text Domain: bitstream
  * Requires at least: 5.8
@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('BITSTREAM_VERSION', '3.1.2');
+define('BITSTREAM_VERSION', '3.1.3');
 define('BITSTREAM_PLUGIN_PATH', plugin_dir_path(__FILE__));
 define('BITSTREAM_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -349,8 +349,12 @@ if (!function_exists('bitstream_comment_callback')) {
 }
 
 if (!function_exists('bitstream_render_card')) {
-    function bitstream_render_card($post_id, $skip_content_filter = false)
+    function bitstream_render_card($post_id, $skip_content_filter = false, $options = [])
     {
+        $options = wp_parse_args($options, [
+            'comment_action' => 'toggle',
+        ]);
+
         // Avoid infinite loop by skipping content filter when rendering in single bit context
         if ($skip_content_filter) {
             $content = get_post_field('post_content', $post_id);
@@ -411,9 +415,18 @@ if (!function_exists('bitstream_render_card')) {
 ?>
         <footer class="bit-card-footer" style="display:flex;gap:0.75rem;font-size:0.875rem;align-items:center;">
             <div class="bit-card-footer-main-actions">
+                <?php if ($options['comment_action'] === 'link'): ?>
+                    <a class="bit-comment-preview-link bit-action" href="<?php echo esc_url(add_query_arg([
+                        'highlight_bit' => $post_id,
+                        'open_comments' => $post_id,
+                    ], home_url('/bitstream/'))); ?>" style="background:none;border:none;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:0.25rem;" title="View comments">
+                        <i class="fas fa-comment-dots"></i> <?php echo esc_html($comments); ?>
+                    </a>
+                <?php else: ?>
                 <button class="bit-comment-toggle bit-action" data-target="comments-<?php echo esc_attr($post_id); ?>" style="background:none;border:none;cursor:pointer;">
                     <i class="fas fa-comment-dots"></i> <?php echo esc_html($comments); ?>
                 </button>
+                <?php endif; ?>
                 <button class="bit-like bit-action" data-post-id="<?php echo esc_attr($post_id); ?>" style="background:none;border:none;cursor:pointer;">
                     <i class="fas fa-heart"></i> <span class="bit-like-count"><?php echo esc_html($likes); ?></span>
                 </button>

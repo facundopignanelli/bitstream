@@ -68,11 +68,32 @@ document.addEventListener('DOMContentLoaded', function () {
         const params = new URLSearchParams(window.location.search);
         const highlightBit = parseInt(params.get('highlight_bit') || '0', 10);
         const highlightScheduled = parseInt(params.get('highlight_scheduled') || '0', 10);
+        const openComments = parseInt(params.get('open_comments') || '0', 10);
 
         if (highlightBit > 0) {
             const bitCard = document.getElementById('bit-' + highlightBit);
             if (bitCard) {
                 bitCard.classList.add('bitstream-highlight-target');
+            }
+        }
+
+        if (openComments > 0) {
+            const targetSection = document.getElementById('comments-' + openComments);
+            if (targetSection) {
+                const bitCard = targetSection.closest('.bit-card');
+                if (bitCard) {
+                    bitCard.classList.add('comments-open');
+                }
+                targetSection.classList.add('open');
+                setTimeout(() => {
+                    targetSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 150);
+            }
+        }
+
+        if (highlightBit > 0 && openComments <= 0) {
+            const bitCard = document.getElementById('bit-' + highlightBit);
+            if (bitCard) {
                 bitCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         }
@@ -2423,27 +2444,27 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     });
 
-    // Copy Link button
-    document.querySelectorAll('.bit-permalink').forEach(button => {
-        button.addEventListener('click', (e) => {
-            e.preventDefault();
-            const url = button.dataset.url;
+    // Copy Link and Quote buttons use delegated handling so dynamically loaded cards work too.
+    document.addEventListener('click', (event) => {
+        const permalinkButton = event.target.closest('.bit-permalink');
+        if (permalinkButton) {
+            event.preventDefault();
+            const url = permalinkButton.dataset.url;
             navigator.clipboard.writeText(url);
-            const icon = button.querySelector('i');
+            const icon = permalinkButton.querySelector('i');
             if (icon) {
                 icon.classList.remove('pulse');
                 void icon.offsetWidth;
                 icon.classList.add('pulse');
                 setTimeout(() => icon.classList.remove('pulse'), 300);
             }
-        });
-    });
+            return;
+        }
 
-    // Quote button functionality
-    document.querySelectorAll('.bit-quote').forEach(button => {
-        button.addEventListener('click', (e) => {
-            e.preventDefault();
-            const postId = button.dataset.postId;
+        const quoteButton = event.target.closest('.bit-quote');
+        if (quoteButton) {
+            event.preventDefault();
+            const postId = quoteButton.dataset.postId;
             const basePosterUrl = (window.bitstream_ajax && bitstream_ajax.poster_url) ? bitstream_ajax.poster_url : (window.location.origin + '/bitstream/');
             const quoteUrl = new URL(basePosterUrl, window.location.origin);
             quoteUrl.searchParams.set('poster_tab', 'bit');
@@ -2451,15 +2472,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
             window.location.href = quoteUrl.toString();
 
-            // Add visual feedback
-            const icon = button.querySelector('i');
+            const icon = quoteButton.querySelector('i');
             if (icon) {
                 icon.classList.remove('pulse');
                 void icon.offsetWidth;
                 icon.classList.add('pulse');
                 setTimeout(() => icon.classList.remove('pulse'), 300);
             }
-        });
+        }
     });
 
     // Edit button functionality
@@ -3309,6 +3329,10 @@ jQuery(document).ready(function ($) {
     if (openCommentsId) {
         const targetSection = document.getElementById(openCommentsId);
         if (targetSection) {
+            const bitCard = targetSection.closest('.bit-card');
+            if (bitCard) {
+                bitCard.classList.add('comments-open');
+            }
             targetSection.classList.add('open');
             // Scroll to the section smoothly
             setTimeout(() => {
@@ -3316,6 +3340,91 @@ jQuery(document).ready(function ($) {
             }, 500);
         }
         sessionStorage.removeItem('bitstream_open_comments');
+    }
+
+    const previewGrid = document.querySelector('.bitstream-preview-grid[data-preview-auto-fill="true"]');
+    if (previewGrid && window.bitstream_ajax && bitstream_ajax.ajax_url && bitstream_ajax.load_more_nonce) {
+        (async () => {
+            const maxPage = parseInt(previewGrid.dataset.previewMaxPage || '1', 10);
+            let currentPage = parseInt(previewGrid.dataset.previewPage || '1', 10);
+            let loadedCount = parseInt(previewGrid.dataset.previewLoadedCount || previewGrid.querySelectorAll('.bit-card').length || '0', 10);
+            const maxPosts = parseInt(previewGrid.dataset.previewMaxPosts || '0', 10);
+            let loadingPreview = false;
+            const targetHeight = Math.max(window.innerHeight * 1.35, window.innerHeight + 240);
+
+            const loadPreviewPage = async () => {
+                if (loadingPreview || currentPage >= maxPage) {
+                    return false;
+                }
+
+                if (maxPosts > 0 && loadedCount >= maxPosts) {
+                    return false;
+                }
+
+                loadingPreview = true;
+                const nextPage = currentPage + 1;
+                const formData = new FormData();
+                formData.append('action', 'bitstream_load_more');
+                formData.append('page', String(nextPage));
+                formData.append('nonce', bitstream_ajax.load_more_nonce);
+                formData.append('preview_mode', '1');
+
+                try {
+                    const response = await fetch(bitstream_ajax.ajax_url, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        body: formData
+                    });
+
+                    const html = await response.text();
+                    const temp = document.createElement('div');
+                    temp.innerHTML = html;
+                    let newCards = Array.from(temp.querySelectorAll('.bit-card'));
+
+                    if (maxPosts > 0) {
+                        const remaining = maxPosts - loadedCount;
+                        if (remaining <= 0) {
+                            currentPage = maxPage;
+                            previewGrid.dataset.previewPage = String(currentPage);
+                            return false;
+                        }
+                        if (newCards.length > remaining) {
+                            newCards = newCards.slice(0, remaining);
+                        }
+                    }
+
+                    if (!newCards.length) {
+                        currentPage = maxPage;
+                        previewGrid.dataset.previewPage = String(currentPage);
+                        return false;
+                    }
+
+                    newCards.forEach(card => previewGrid.appendChild(card));
+                    loadedCount += newCards.length;
+                    previewGrid.dataset.previewLoadedCount = String(loadedCount);
+                    syncLikeButtonState(previewGrid);
+                    currentPage = nextPage;
+                    previewGrid.dataset.previewPage = String(currentPage);
+                    initCommentToggles();
+                    return true;
+                } catch (error) {
+                    console.warn('BitStream preview auto-fill failed:', error);
+                    return false;
+                } finally {
+                    loadingPreview = false;
+                }
+            };
+
+            while (previewGrid.scrollHeight < targetHeight && currentPage < maxPage) {
+                if (maxPosts > 0 && loadedCount >= maxPosts) {
+                    break;
+                }
+                const loaded = await loadPreviewPage();
+                if (!loaded) {
+                    break;
+                }
+            }
+        })();
     }
 
     // ── Settings Tab Switching ──────────────────────────────────────────

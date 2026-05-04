@@ -3,6 +3,17 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.3] - 2026-05-04
+
+### Changed
+- Updated preview card actions so `[bitstream mode="preview"]` now shows the standard comment, like, and permalink controls again.
+- Changed the preview comment action to deep-link into the main BitStream feed with the target bit highlighted and its comments opened, instead of expanding comments inline inside the preview grid.
+- Kept the full BitStream page's normal inline comment toggle behavior intact for regular feed cards.
+- Preview mode now auto-loads additional posts through the existing AJAX load-more endpoint until the masonry preview reaches a more balanced viewport-height target.
+- Preview-loaded cards keep the preview-specific comment link behavior, and permalink/quote actions now work on dynamically appended cards too.
+- Changed preview `limit` semantics so it now acts as a maximum cap while still auto-filling enough posts to make the masonry preview look balanced.
+- Added a new `exact_limit` preview attribute for cases where you want to render exactly N posts instead of filling up to a cap.
+
 ## [3.1.2] - 2026-03-07
 
 ### Fixed
