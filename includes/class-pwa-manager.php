@@ -162,7 +162,7 @@ class BitStream_PWA_Manager {
         ?>
         <style>
         /* Mobile-specific fixes for floating BitStream menu */
-        @media (min-width: 1024px) {
+        @media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
             #bitstream-floating-menu {
                 display: none !important;
             }

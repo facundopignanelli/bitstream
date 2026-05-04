@@ -3,6 +3,14 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.4] - 2026-05-04
+
+### Changed
+- Reworked the desktop BitStream shell to add a new top rail with Quick Actions on the left and Quick Bit on the right.
+- Moved the desktop side rail widgets so the right rail now shows Content Filter, Archive, RSS Feeds, and the Version box in that order.
+- Kept the mobile and tablet layout unchanged while letting the floating quick actions button remain visible on tablet touch devices.
+- Let the Hashtags sidebar grow naturally as new tags are added instead of forcing an internal scroll container.
+
 ## [3.1.3] - 2026-05-04
 
 ### Changed
