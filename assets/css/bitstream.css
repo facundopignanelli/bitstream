@@ -639,7 +639,7 @@ a.bitstream-filter-chip:hover {
     .bitstream-feed-top-rail {
         display: grid;
         grid-area: top;
-        grid-template-columns: minmax(0, 3fr) minmax(240px, 1fr);
+        grid-template-columns: minmax(0, 1fr) minmax(190px, 240px);
         gap: 1rem;
         align-items: start;
         align-content: stretch;
