@@ -255,7 +255,7 @@ class BitStream_Shortcodes
     /**
      * Render the shared media field used by the poster and quick bit cards.
      */
-    private function render_media_field($attachment_input_id, $preview_id, $edit_post_id = 0)
+    private static function render_media_field($attachment_input_id, $preview_id, $edit_post_id = 0)
     {
         ob_start();
         ?>
@@ -290,7 +290,7 @@ class BitStream_Shortcodes
     /**
      * Render the shared cropper and audio-tag dialogs used by poster-style media controls.
      */
-    private function render_media_modals()
+    private static function render_media_modals()
     {
         ob_start();
         ?>
@@ -382,7 +382,7 @@ class BitStream_Shortcodes
                 <div class="bitstream-sidebar-quick-post-body">
                     <div class="bitstream-sidebar-quick-post-content-row">
                         <textarea id="bitstream-quick-bit-content" name="bit_content" rows="3" placeholder="What's on your mind?" required class="bitstream-poster-field" style="width: 100%; box-sizing: border-box;"></textarea>
-                        <?php echo $this->render_media_field('bitstream-quick-bit-attachment-id', 'bitstream-quick-bit-media-preview'); ?>
+                        <?php echo self::render_media_field('bitstream-quick-bit-attachment-id', 'bitstream-quick-bit-media-preview'); ?>
                     </div>
                 </div>
                 <div class="bitstream-sidebar-quick-post-footer">
@@ -390,7 +390,7 @@ class BitStream_Shortcodes
                 </div>
             </form>
             <div class="bitstream-poster-status bitstream-sidebar-quick-post-status" aria-live="polite"></div>
-            <?php echo $this->render_media_modals(); ?>
+            <?php echo self::render_media_modals(); ?>
         </section>
         <?php
         return ob_get_clean();
@@ -1492,7 +1492,7 @@ class BitStream_Shortcodes
 
                     <input type="hidden" name="quote_post_id" value="<?php echo esc_attr($quote_post_id); ?>">
 
-                    <?php echo $this->render_media_field('bitstream-bit-attachment-id', 'bitstream-bit-media-preview', $bit_edit_post_id); ?>
+                    <?php echo self::render_media_field('bitstream-bit-attachment-id', 'bitstream-bit-media-preview', $bit_edit_post_id); ?>
 
                     <?php if (!empty($quote_preview)): ?>
                         <div class="bitstream-poster-quote-preview">
@@ -1718,7 +1718,7 @@ class BitStream_Shortcodes
                 </div>
             </div>
 
-            <?php echo $this->render_media_modals(); ?>
+            <?php echo self::render_media_modals(); ?>
         </section>
         <?php
 
