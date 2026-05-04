@@ -493,10 +493,14 @@ a.bitstream-filter-chip:hover {
     flex-direction: column;
 }
 
+.bitstream-preview-grid .bit-card-content {
+    flex: 1 1 auto;
+}
+
 .bitstream-preview-grid .bitstream-quoted-preview,
 .bitstream-preview-grid .bit-rebit-preview {
-    margin-top: auto;
-    margin-bottom: auto;
+    margin-top: 0;
+    margin-bottom: 1rem;
 }
 
 .bitstream-preview-grid .bit-card-footer {
