@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a compact media picker to the Quick Bit box so desktop users can attach media without opening the full poster.
 - Redesigned the Quick Bit media area into a two-column layout with icon-only add/replace/remove controls and a right-side preview pane.
 - Reused the full poster media dropzone, crop, audio-tag, and paste controls inside the Quick Bit card so both interfaces share the same media UI.
+- Matched the top-right Quick Actions widget styling to the sidebar rail pattern, aligned its width with the right rail, and rebalanced the Quick Bit card so the submit button only spans the text column while the media pane stays centered.
 - Kept the mobile and tablet layout unchanged while letting the floating quick actions button remain visible on tablet touch devices.
 - Let the Hashtags sidebar grow naturally as new tags are added instead of forcing an internal scroll container.
 

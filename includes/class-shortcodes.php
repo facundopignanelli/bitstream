@@ -380,13 +380,15 @@ class BitStream_Shortcodes
             <h3 class="bitstream-feed-sidebar-title">Quick Bit</h3>
             <form class="bitstream-sidebar-quick-post-form bitstream-poster-form" data-poster-type="bit" style="display: flex; flex-direction: column; height: 100%;">
                 <div class="bitstream-sidebar-quick-post-body">
-                    <div class="bitstream-sidebar-quick-post-content-row">
+                    <div class="bitstream-sidebar-quick-post-main-col">
                         <textarea id="bitstream-quick-bit-content" name="bit_content" rows="3" placeholder="What's on your mind?" required class="bitstream-poster-field" style="width: 100%; box-sizing: border-box;"></textarea>
+                        <div class="bitstream-sidebar-quick-post-footer">
+                            <button type="submit" class="bitstream-poster-submit" style="width: 100%; padding: 0.4rem 0.8rem; font-size: 0.9rem;">Post Bit</button>
+                        </div>
+                    </div>
+                    <div class="bitstream-sidebar-quick-post-media-col">
                         <?php echo self::render_media_field('bitstream-quick-bit-attachment-id', 'bitstream-quick-bit-media-preview'); ?>
                     </div>
-                </div>
-                <div class="bitstream-sidebar-quick-post-footer">
-                    <button type="submit" class="bitstream-poster-submit" style="width: 100%; padding: 0.4rem 0.8rem; font-size: 0.9rem;">Post Bit</button>
                 </div>
             </form>
             <div class="bitstream-poster-status bitstream-sidebar-quick-post-status" aria-live="polite"></div>
@@ -625,10 +627,10 @@ class BitStream_Shortcodes
 
             if (!empty($desktop_quick_actions)) {
                 echo '<div class="bitstream-feed-top-rail-column">';
-                echo '<aside class="bitstream-feed-sidebar">';
                 echo '<h3 class="bitstream-feed-sidebar-title">Quick Actions</h3>';
+                echo '<div class="bitstream-feed-sidebar">';
                 echo $desktop_quick_actions;
-                echo '</aside>';
+                echo '</div>';
                 echo '</div>';
             }
 

@@ -189,23 +189,45 @@
     margin-top: 0.25rem;
 }
 
-.bitstream-quick-post-poster .bitstream-sidebar-quick-post-content-row {
+.bitstream-quick-post-poster .bitstream-sidebar-quick-post-body {
+    display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1rem;
     align-items: stretch;
+    flex: 1 1 auto;
 }
 
-.bitstream-quick-post-poster .bitstream-sidebar-quick-post-content-row textarea {
+.bitstream-quick-post-poster .bitstream-sidebar-quick-post-main-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-width: 0;
+}
+
+.bitstream-quick-post-poster .bitstream-sidebar-quick-post-main-col textarea {
     min-height: 220px;
+    flex: 1 1 auto;
+}
+
+.bitstream-quick-post-poster .bitstream-sidebar-quick-post-media-col {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
 }
 
 .bitstream-quick-post-poster .bitstream-media-field {
     display: flex;
     flex-direction: column;
+    flex: 1 1 auto;
     min-height: 0;
+    height: 100%;
 }
 
 .bitstream-quick-post-poster .bitstream-media-dropzone {
     flex: 1 1 auto;
+    min-height: 220px;
+    margin-bottom: 0;
 }
 
 .bitstream-quick-post-poster .bitstream-media-preview {
@@ -216,8 +238,14 @@
     margin-top: 0.75rem;
 }
 
+.bitstream-quick-post-poster .bitstream-sidebar-quick-post-footer {
+    margin-top: 0;
+    width: 100%;
+    padding-top: 0;
+}
+
 .bitstream-quick-post-poster .bitstream-poster-status {
-    margin-top: 0.5rem;
+    margin-top: 0.6rem;
 }
 
 .bitstream-sidebar-quick-post-body {
@@ -730,7 +758,7 @@ a.bitstream-filter-chip:hover {
     .bitstream-feed-top-rail {
         display: grid;
         grid-area: top;
-        grid-template-columns: minmax(0, 1fr) minmax(190px, 240px);
+        grid-template-columns: minmax(0, 1fr) minmax(170px, 210px);
         gap: 1rem;
         align-items: start;
         align-content: stretch;
