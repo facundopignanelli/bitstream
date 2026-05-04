@@ -261,18 +261,28 @@ class BitStream_Shortcodes
             return '';
         }
 
+        wp_enqueue_media();
+
         $submit_nonce = wp_create_nonce('bitstream_poster_submit_nonce');
 
         ob_start();
 ?>
         <div class="bitstream-sidebar-quick-post" style="box-sizing: border-box;">
             <h3 class="bitstream-feed-sidebar-title">Quick Bit</h3>
-            <form class="bitstream-sidebar-quick-post-form" data-submit-nonce="<?php echo esc_attr($submit_nonce); ?>" style="display: flex; flex-direction: column;">
-                <textarea name="bit_content" rows="3" placeholder="What's on your mind?" required class="bitstream-poster-field" style="width: 100%; box-sizing: border-box; resize: vertical; min-height: 80px;"></textarea>
-                <div style="margin-top: 10px;">
-                    <button type="submit" class="bitstream-poster-submit" style="width: 100%; padding: 0.4rem 0.8rem; font-size: 0.9rem;">Post Bit</button>
+            <form class="bitstream-sidebar-quick-post-form" data-submit-nonce="<?php echo esc_attr($submit_nonce); ?>" style="display: flex; flex-direction: column; height: 100%;">
+                <input type="hidden" name="bit_attachment_id" value="">
+                <div class="bitstream-sidebar-quick-post-body">
+                    <textarea name="bit_content" rows="3" placeholder="What's on your mind?" required class="bitstream-poster-field" style="width: 100%; box-sizing: border-box;"></textarea>
+                    <div class="bitstream-sidebar-quick-post-media">
+                        <button type="button" class="bitstream-sidebar-quick-post-media-button">Add media</button>
+                        <div class="bitstream-sidebar-quick-post-media-preview" hidden></div>
+                        <button type="button" class="bitstream-sidebar-quick-post-media-remove is-hidden">Remove media</button>
+                    </div>
                 </div>
-                <div class="bitstream-sidebar-quick-post-status" style="margin-top: 5px; font-size: 0.85rem;" aria-live="polite"></div>
+                <div class="bitstream-sidebar-quick-post-footer">
+                    <button type="submit" class="bitstream-poster-submit" style="width: 100%; padding: 0.4rem 0.8rem; font-size: 0.9rem;">Post Bit</button>
+                    <div class="bitstream-sidebar-quick-post-status" style="margin-top: 5px; font-size: 0.85rem;" aria-live="polite"></div>
+                </div>
             </form>
         </div>
         <?php

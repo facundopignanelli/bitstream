@@ -3203,11 +3203,92 @@ jQuery(document).ready(function ($) {
     quickPostForms.forEach(form => {
         const statusEl = form.querySelector('.bitstream-sidebar-quick-post-status');
         const submitBtn = form.querySelector('[type="submit"]');
+        const textarea = form.querySelector('textarea[name="bit_content"]');
+        const attachmentInput = form.querySelector('input[name="bit_attachment_id"]');
+        const mediaButton = form.querySelector('.bitstream-sidebar-quick-post-media-button');
+        const mediaPreview = form.querySelector('.bitstream-sidebar-quick-post-media-preview');
+        const mediaRemoveButton = form.querySelector('.bitstream-sidebar-quick-post-media-remove');
+        let quickPostMediaFrame = null;
 
         function setStatus(msg, isError = false) {
             if (!statusEl) return;
             statusEl.textContent = msg;
             statusEl.style.color = isError ? '#cc0000' : '#2c6e49';
+        }
+
+        function clearMediaSelection() {
+            if (attachmentInput) {
+                attachmentInput.value = '';
+            }
+            if (mediaPreview) {
+                mediaPreview.innerHTML = '';
+                mediaPreview.hidden = true;
+            }
+            if (mediaRemoveButton) {
+                mediaRemoveButton.classList.add('is-hidden');
+            }
+            if (mediaButton) {
+                mediaButton.textContent = 'Add media';
+            }
+        }
+
+        function renderMediaSelection(attachment) {
+            if (!mediaPreview) {
+                return;
+            }
+
+            mediaPreview.hidden = false;
+            mediaPreview.innerHTML = '';
+
+            if (attachment && attachment.mime && attachment.mime.indexOf('image/') === 0 && attachment.url) {
+                const img = document.createElement('img');
+                img.src = attachment.url;
+                img.alt = '';
+                mediaPreview.appendChild(img);
+            }
+
+            const label = document.createElement('span');
+            label.textContent = attachment && (attachment.filename || attachment.title) ? (attachment.filename || attachment.title) : 'Selected media';
+            mediaPreview.appendChild(label);
+
+            if (mediaRemoveButton) {
+                mediaRemoveButton.classList.remove('is-hidden');
+            }
+
+            if (mediaButton) {
+                mediaButton.textContent = 'Change media';
+            }
+        }
+
+        if (mediaButton && attachmentInput && window.wp && wp.media) {
+            mediaButton.addEventListener('click', () => {
+                if (!quickPostMediaFrame) {
+                    quickPostMediaFrame = wp.media({
+                        title: 'Select media',
+                        button: { text: 'Use media' },
+                        multiple: false
+                    });
+
+                    quickPostMediaFrame.on('select', () => {
+                        const selection = quickPostMediaFrame.state().get('selection').first();
+                        if (!selection) {
+                            return;
+                        }
+
+                        const data = selection.toJSON();
+                        attachmentInput.value = data.id || '';
+                        renderMediaSelection(data);
+                    });
+                }
+
+                quickPostMediaFrame.open();
+            });
+        }
+
+        if (mediaRemoveButton) {
+            mediaRemoveButton.addEventListener('click', () => {
+                clearMediaSelection();
+            });
         }
 
         // Detect if content is just a URL (with optional whitespace)
@@ -3224,9 +3305,9 @@ jQuery(document).ready(function ($) {
         form.addEventListener('submit', (e) => {
             e.preventDefault();
 
-            const textarea = form.querySelector('textarea[name="bit_content"]');
             const content = textarea ? textarea.value : '';
-            const isRebit = isUrlOnly(content);
+            const hasMedia = attachmentInput && parseInt(attachmentInput.value || '0', 10) > 0;
+            const isRebit = !hasMedia && isUrlOnly(content);
 
             setStatus(isRebit ? 'Posting ReBit...' : 'Posting...');
             if (submitBtn) submitBtn.disabled = true;
@@ -3252,6 +3333,7 @@ jQuery(document).ready(function ($) {
                     if (data.success) {
                         setStatus(isRebit ? 'ReBit posted!' : 'Posted!');
                         form.reset();
+                        clearMediaSelection();
                         const responseData = data.data || {};
                         const createdPostId = parseInt(responseData.post_id || '0', 10);
                         const feedBaseUrl = (window.bitstream_ajax && bitstream_ajax.feed_url)
