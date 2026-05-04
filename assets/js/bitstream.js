@@ -68,11 +68,32 @@ document.addEventListener('DOMContentLoaded', function () {
         const params = new URLSearchParams(window.location.search);
         const highlightBit = parseInt(params.get('highlight_bit') || '0', 10);
         const highlightScheduled = parseInt(params.get('highlight_scheduled') || '0', 10);
+        const openComments = parseInt(params.get('open_comments') || '0', 10);
 
         if (highlightBit > 0) {
             const bitCard = document.getElementById('bit-' + highlightBit);
             if (bitCard) {
                 bitCard.classList.add('bitstream-highlight-target');
+            }
+        }
+
+        if (openComments > 0) {
+            const targetSection = document.getElementById('comments-' + openComments);
+            if (targetSection) {
+                const bitCard = targetSection.closest('.bit-card');
+                if (bitCard) {
+                    bitCard.classList.add('comments-open');
+                }
+                targetSection.classList.add('open');
+                setTimeout(() => {
+                    targetSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 150);
+            }
+        }
+
+        if (highlightBit > 0 && openComments <= 0) {
+            const bitCard = document.getElementById('bit-' + highlightBit);
+            if (bitCard) {
                 bitCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         }
@@ -3309,6 +3330,10 @@ jQuery(document).ready(function ($) {
     if (openCommentsId) {
         const targetSection = document.getElementById(openCommentsId);
         if (targetSection) {
+            const bitCard = targetSection.closest('.bit-card');
+            if (bitCard) {
+                bitCard.classList.add('comments-open');
+            }
             targetSection.classList.add('open');
             // Scroll to the section smoothly
             setTimeout(() => {

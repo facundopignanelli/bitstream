@@ -499,9 +499,8 @@ a.bitstream-filter-chip:hover {
     margin-bottom: auto;
 }
 
-.bitstream-preview-grid .bit-card-footer,
-.bitstream-preview-grid .bit-card>hr {
-    display: none !important;
+.bitstream-preview-grid .bit-card-footer {
+    margin-top: 0;
 }
 
 @media (min-width: 768px) {

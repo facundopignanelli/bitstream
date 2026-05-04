@@ -786,7 +786,7 @@ class BitStream_Shortcodes
         if ($q->have_posts()) {
             while ($q->have_posts()) {
                 $q->the_post();
-                echo bitstream_render_card(get_the_ID());
+                echo bitstream_render_card(get_the_ID(), false, ['comment_action' => 'link']);
             }
         }
         else {
