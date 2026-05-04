@@ -272,11 +272,16 @@ class BitStream_Shortcodes
             <form class="bitstream-sidebar-quick-post-form" data-submit-nonce="<?php echo esc_attr($submit_nonce); ?>" style="display: flex; flex-direction: column; height: 100%;">
                 <input type="hidden" name="bit_attachment_id" value="">
                 <div class="bitstream-sidebar-quick-post-body">
-                    <textarea name="bit_content" rows="3" placeholder="What's on your mind?" required class="bitstream-poster-field" style="width: 100%; box-sizing: border-box;"></textarea>
-                    <div class="bitstream-sidebar-quick-post-media">
-                        <button type="button" class="bitstream-sidebar-quick-post-media-button">Add media</button>
-                        <div class="bitstream-sidebar-quick-post-media-preview" hidden></div>
-                        <button type="button" class="bitstream-sidebar-quick-post-media-remove is-hidden">Remove media</button>
+                    <div class="bitstream-sidebar-quick-post-content-row">
+                        <textarea name="bit_content" rows="3" placeholder="What's on your mind?" required class="bitstream-poster-field" style="width: 100%; box-sizing: border-box;"></textarea>
+                        <div class="bitstream-sidebar-quick-post-media">
+                            <div class="bitstream-sidebar-quick-post-media-preview" hidden></div>
+                            <div class="bitstream-sidebar-quick-post-media-actions">
+                                <button type="button" class="bitstream-sidebar-quick-post-media-button" title="Add media" aria-label="Add media"><i class="fa-solid fa-image" aria-hidden="true"></i></button>
+                                <button type="button" class="bitstream-sidebar-quick-post-media-replace is-hidden" title="Replace media" aria-label="Replace media"><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i></button>
+                                <button type="button" class="bitstream-sidebar-quick-post-media-remove is-hidden" title="Remove media" aria-label="Remove media"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="bitstream-sidebar-quick-post-footer">

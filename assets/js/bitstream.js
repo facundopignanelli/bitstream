@@ -3206,6 +3206,7 @@ jQuery(document).ready(function ($) {
         const textarea = form.querySelector('textarea[name="bit_content"]');
         const attachmentInput = form.querySelector('input[name="bit_attachment_id"]');
         const mediaButton = form.querySelector('.bitstream-sidebar-quick-post-media-button');
+        const mediaReplaceButton = form.querySelector('.bitstream-sidebar-quick-post-media-replace');
         const mediaPreview = form.querySelector('.bitstream-sidebar-quick-post-media-preview');
         const mediaRemoveButton = form.querySelector('.bitstream-sidebar-quick-post-media-remove');
         let quickPostMediaFrame = null;
@@ -3228,7 +3229,10 @@ jQuery(document).ready(function ($) {
                 mediaRemoveButton.classList.add('is-hidden');
             }
             if (mediaButton) {
-                mediaButton.textContent = 'Add media';
+                mediaButton.classList.remove('is-hidden');
+            }
+            if (mediaReplaceButton) {
+                mediaReplaceButton.classList.add('is-hidden');
             }
         }
 
@@ -3321,35 +3325,48 @@ jQuery(document).ready(function ($) {
                 fd.append('rebit_url', content.trim());
                 fd.delete('bit_content');
             } else {
-                fd.append('poster_type', 'bit');
+                mediaButton.classList.add('is-hidden');
+            }
+
+            if (mediaReplaceButton) {
+                mediaReplaceButton.classList.remove('is-hidden');
             }
 
             fetch(bitstream_ajax.ajax_url, {
-                method: 'POST',
-                body: fd
-            })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        setStatus(isRebit ? 'ReBit posted!' : 'Posted!');
-                        form.reset();
-                        clearMediaSelection();
-                        const responseData = data.data || {};
-                        const createdPostId = parseInt(responseData.post_id || '0', 10);
-                        const feedBaseUrl = (window.bitstream_ajax && bitstream_ajax.feed_url)
-                            ? bitstream_ajax.feed_url
-                            : (window.location.origin + '/bitstream/');
-                        const feedUrl = new URL(feedBaseUrl, window.location.origin);
-                        if (createdPostId > 0) {
-                            feedUrl.searchParams.set('highlight_bit', String(createdPostId));
-                        }
-                        setTimeout(() => {
-                            window.location.href = feedUrl.toString();
-                        }, 500);
-                    } else {
-                        setStatus(data.data || 'Failed to post.', true);
-                        if (submitBtn) submitBtn.disabled = false;
+        function openMediaPicker() {
+            if (!attachmentInput || !window.wp || !wp.media) {
+                return;
+            }
+
+            if (!quickPostMediaFrame) {
+                quickPostMediaFrame = wp.media({
+                    title: 'Select media',
+                    button: { text: 'Use media' },
+                    multiple: false
+                });
+
+                quickPostMediaFrame.on('select', () => {
+                    const selection = quickPostMediaFrame.state().get('selection').first();
+                    if (!selection) {
+                        return;
                     }
+
+                    const data = selection.toJSON();
+                    attachmentInput.value = data.id || '';
+                    renderMediaSelection(data);
+                });
+            }
+
+            quickPostMediaFrame.open();
+        }
+
+        if (mediaButton && attachmentInput && window.wp && wp.media) {
+            mediaButton.addEventListener('click', openMediaPicker);
+        }
+
+        if (mediaReplaceButton && attachmentInput && window.wp && wp.media) {
+            mediaReplaceButton.addEventListener('click', openMediaPicker);
+        }
                 })
                 .catch(err => {
                     setStatus('Network error.', true);
