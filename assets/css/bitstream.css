@@ -491,6 +491,7 @@ a.bitstream-filter-chip:hover {
     height: 100%;
     display: flex;
     flex-direction: column;
+    align-self: stretch;
 }
 
 .bitstream-preview-grid .bit-card-content {
