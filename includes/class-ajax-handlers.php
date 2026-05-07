@@ -277,6 +277,7 @@ class BitStream_Ajax_Handlers
         add_action('wp_ajax_bitstream_get_audio_meta', [$this, 'handle_get_audio_meta']);
         add_action('wp_ajax_bitstream_update_audio_meta', [$this, 'handle_update_audio_meta']);
         add_action('wp_ajax_bitstream_delete_post', [$this, 'handle_delete_post']);
+        add_action('wp_ajax_bitstream_get_draft_data', [$this, 'handle_get_draft_data']);
         add_action('before_delete_post', [$this, 'handle_before_delete_post']);
     }
 
@@ -595,7 +596,16 @@ class BitStream_Ajax_Handlers
         }
 
         if (wp_attachment_is('image', $attachment_id)) {
-            return wp_get_attachment_image($attachment_id, 'large');
+            $url = wp_get_attachment_image_url($attachment_id, 'large');
+            $alt = get_post_meta($attachment_id, '_wp_attachment_image_alt', true);
+            $buster = get_post_modified_time('U', false, $attachment_id);
+            return sprintf(
+                '<img src="%s?t=%s" alt="%s" class="wp-image-%d" />',
+                esc_url($url),
+                $buster,
+                esc_attr($alt),
+                $attachment_id
+            );
         }
 
         if (wp_attachment_is('video', $attachment_id)) {
@@ -1249,7 +1259,7 @@ class BitStream_Ajax_Handlers
                 wp_send_json_error('A valid URL is required for Rebit.');
             }
 
-            $commentary = wp_kses_post(wp_unslash($_POST['rebit_commentary'] ?? ''));
+            $commentary = wp_kses_post(wp_unslash($_POST['rebit_commentary'] ?? $_POST['bit_content'] ?? ''));
             $manual_title = sanitize_text_field(wp_unslash($_POST['rebit_og_title'] ?? ''));
             $manual_desc = sanitize_textarea_field(wp_unslash($_POST['rebit_og_desc'] ?? ''));
             $manual_image = esc_url_raw(wp_unslash($_POST['rebit_og_image'] ?? ''));
@@ -1680,7 +1690,7 @@ class BitStream_Ajax_Handlers
             update_post_meta($preview_post_id, '_bitstream_og_desc', sanitize_text_field($og_desc));
             update_post_meta($preview_post_id, '_bitstream_og_image', esc_url_raw($og_image));
 
-            $rendered_html = $this->sanitize_live_preview_markup(bitstream_render_card($preview_post_id));
+            $rendered_html = $this->sanitize_live_preview_markup(bitstream_render_rebit_section($preview_post_id));
             wp_delete_post($preview_post_id, true);
 
             wp_send_json_success([
@@ -1755,6 +1765,58 @@ class BitStream_Ajax_Handlers
         }
         catch (Exception $e) {
             wp_send_json_error('An error occurred while fetching quoted bit.');
+        }
+    }
+
+    /**
+     * Return draft post data for loading into the quick poster.
+     */
+    public function handle_get_draft_data()
+    {
+        try {
+            check_ajax_referer('bitstream_poster_submit_nonce', 'nonce');
+
+            if (!current_user_can('edit_posts')) {
+                wp_send_json_error('Insufficient permissions.');
+            }
+
+            $post_id = intval($_POST['post_id'] ?? 0);
+            if ($post_id <= 0) {
+                wp_send_json_error('Invalid post ID.');
+            }
+
+            $post = get_post($post_id);
+            if (!$post || $post->post_type !== 'bit' || $post->post_status !== 'draft') {
+                wp_send_json_error('Draft not found.');
+            }
+
+            if ((int) $post->post_author !== get_current_user_id()) {
+                wp_send_json_error('You do not own this draft.');
+            }
+
+            $rebit_url = get_post_meta($post_id, 'bitstream_rebit_url', true);
+            $is_rebit = !empty($rebit_url);
+
+            $attachment_id = intval(get_post_meta($post_id, '_bitstream_attachment_id', true));
+            if ($attachment_id <= 0) {
+                $attachment_id = intval(get_post_thumbnail_id($post_id));
+            }
+
+            $data = [
+                'post_id'       => $post_id,
+                'content'       => $post->post_content,
+                'is_rebit'      => $is_rebit,
+                'rebit_url'     => $is_rebit ? $rebit_url : '',
+                'og_title'      => $is_rebit ? get_post_meta($post_id, 'bitstream_rebit_og_title', true) : '',
+                'og_desc'       => $is_rebit ? get_post_meta($post_id, 'bitstream_rebit_og_desc', true) : '',
+                'og_image'      => $is_rebit ? get_post_meta($post_id, 'bitstream_rebit_og_image', true) : '',
+                'attachment_id' => $attachment_id > 0 ? $attachment_id : '',
+            ];
+
+            wp_send_json_success($data);
+        }
+        catch (Exception $e) {
+            wp_send_json_error($e->getMessage() ?: 'Could not load draft.');
         }
     }
 }

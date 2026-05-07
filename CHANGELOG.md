@@ -3,18 +3,21 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.1.4] - 2026-05-04
+## [3.2.0] - 2026-05-07
 
 ### Changed
 - Reworked the desktop BitStream shell to add a new top rail with Quick Actions on the left and Quick Bit on the right.
 - Aligned the top rail so Quick Actions uses the same fixed width as the left sidebar while Quick Bit expands to fill the remaining space.
 - Moved the desktop side rail widgets so the right rail now shows Content Filter, Archive, RSS Feeds, and the Version box in that order.
 - Added a compact media picker to the Quick Bit box so desktop users can attach media without opening the full poster.
-- Redesigned the Quick Bit media area into a two-column layout with icon-only add/replace/remove controls and a right-side preview pane.
-- Reused the full poster media dropzone, crop, audio-tag, and paste controls inside the Quick Bit card so both interfaces share the same media UI.
+- Redesigned the Quick Bit media area into a more responsive, modal-driven layout with icon-only add, replace, and remove controls plus a preview pane.
+- Reused the full poster media field, crop, audio-tag, paste, and modal flows inside Quick Bit so both interfaces share the same media workflow.
+- Added shared ReBit, media, drafts, and schedule modals to the Quick Bit poster flow, including draft loading, deletion, and schedule handling.
+- Improved Quick Bit posting so URL-only content is automatically treated as a ReBit when no attachment is selected.
 - Matched the top-right Quick Actions widget styling to the sidebar rail pattern, aligned its width with the right rail, and rebalanced the Quick Bit card so the submit button only spans the text column while the media pane stays centered.
 - Kept the mobile and tablet layout unchanged while letting the floating quick actions button remain visible on tablet touch devices.
 - Let the Hashtags sidebar grow naturally as new tags are added instead of forcing an internal scroll container.
+- Refactored the shared media helpers in `BitStream_Shortcodes` to keep the Quick Bit and poster media code paths aligned.
 
 ## [3.1.3] - 2026-05-04
 
