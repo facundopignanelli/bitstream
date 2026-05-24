@@ -107,6 +107,134 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    function renderMediaPreview(previewEl, attachment) {
+        if (!previewEl) {
+            return;
+        }
+
+        const dropzone = previewEl.closest('.bitstream-media-dropzone');
+        if (dropzone) {
+            dropzone.classList.toggle('has-media', !!attachment);
+        }
+
+        if (!attachment) {
+            previewEl.innerHTML = '';
+            previewEl.removeAttribute('data-attachment-id');
+            previewEl.removeAttribute('data-attachment-url');
+            previewEl.removeAttribute('data-attachment-mime');
+            return;
+        }
+
+        const mimeType = attachment.mime || '';
+        const previewUrl = attachment.preview_url || (attachment.sizes && attachment.sizes.medium && attachment.sizes.medium.url) || attachment.url || '';
+
+        if (attachment.id) {
+            previewEl.dataset.attachmentId = attachment.id;
+        }
+        if (previewUrl) {
+            previewEl.dataset.attachmentUrl = previewUrl;
+        }
+        if (mimeType) {
+            previewEl.dataset.attachmentMime = mimeType;
+        }
+
+        const buildAudioMetaBlock = (item) => {
+            const meta = item.audio_meta || item.meta || (item.media_details && item.media_details.meta) || {};
+            const title = meta.title || item.title || item.filename || 'Audio';
+            const artist = meta.artist || '';
+            const album = meta.album || '';
+
+            if (!title && !artist && !album) {
+                return null;
+            }
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'bitstream-audio-meta';
+
+            if (title) {
+                const titleEl = document.createElement('div');
+                titleEl.className = 'bitstream-audio-title';
+                titleEl.textContent = title;
+                wrapper.appendChild(titleEl);
+            }
+
+            if (artist) {
+                const artistEl = document.createElement('div');
+                artistEl.className = 'bitstream-audio-artist';
+                artistEl.textContent = artist;
+                wrapper.appendChild(artistEl);
+            }
+
+            if (album) {
+                const albumEl = document.createElement('div');
+                albumEl.className = 'bitstream-audio-album';
+                albumEl.textContent = album;
+                wrapper.appendChild(albumEl);
+            }
+
+            return wrapper;
+        };
+
+        if (mimeType.startsWith('image/')) {
+            previewEl.innerHTML = '<img src="' + previewUrl + '" alt="">';
+            return;
+        }
+
+        if (mimeType.startsWith('video/')) {
+            const video = document.createElement('video');
+            video.src = previewUrl;
+            video.controls = true;
+            video.setAttribute('controlsList', 'nodownload noplaybackrate');
+            video.setAttribute('disablepictureinpicture', '');
+            video.disablePictureInPicture = true;
+            previewEl.innerHTML = '';
+            previewEl.appendChild(video);
+            return;
+        }
+
+        if (mimeType.startsWith('audio/')) {
+            const audio = document.createElement('audio');
+            audio.src = previewUrl;
+            audio.controls = true;
+            audio.setAttribute('controlsList', 'nodownload noplaybackrate');
+            const meta = attachment.audio_meta || attachment.meta || (attachment.media_details && attachment.media_details.meta) || {};
+            const artwork = meta.artwork || '';
+            const embed = document.createElement('div');
+            embed.className = 'bitstream-audio-embed';
+
+            if (artwork) {
+                const artworkWrap = document.createElement('div');
+                artworkWrap.className = 'bitstream-audio-artwork-wrap';
+                const img = document.createElement('img');
+                img.className = 'bitstream-audio-artwork';
+                img.src = artwork;
+                img.alt = '';
+                artworkWrap.appendChild(img);
+                embed.appendChild(artworkWrap);
+            } else {
+                embed.classList.add('no-artwork');
+            }
+
+            const player = document.createElement('div');
+            player.className = 'bitstream-audio-player';
+            player.appendChild(audio);
+
+            const metaBlock = buildAudioMetaBlock(attachment);
+            if (metaBlock) {
+                embed.appendChild(metaBlock);
+            }
+
+            embed.appendChild(player);
+
+            previewEl.innerHTML = '';
+            previewEl.appendChild(embed);
+            applyMediaDeterrents(previewEl);
+            return;
+        }
+
+        previewEl.innerHTML = '<p>Selected: ' + (attachment.filename || attachment.title || 'media') + '</p>';
+    }
+
     // Continue with the rest of the initialization...
     function initBitstreamPoster() {
         const posterRoot = document.querySelector('.bitstream-poster');
@@ -406,136 +534,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     deleteButton.disabled = false;
                 });
         });
-
-
-
-        function renderMediaPreview(previewEl, attachment) {
-            if (!previewEl) {
-                return;
-            }
-
-            const dropzone = previewEl.closest('.bitstream-media-dropzone');
-            if (dropzone) {
-                dropzone.classList.toggle('has-media', !!attachment);
-            }
-
-            if (!attachment) {
-                previewEl.innerHTML = '';
-                previewEl.removeAttribute('data-attachment-id');
-                previewEl.removeAttribute('data-attachment-url');
-                previewEl.removeAttribute('data-attachment-mime');
-                return;
-            }
-
-            const mimeType = attachment.mime || '';
-            const previewUrl = attachment.preview_url || (attachment.sizes && attachment.sizes.medium && attachment.sizes.medium.url) || attachment.url || '';
-
-            if (attachment.id) {
-                previewEl.dataset.attachmentId = attachment.id;
-            }
-            if (previewUrl) {
-                previewEl.dataset.attachmentUrl = previewUrl;
-            }
-            if (mimeType) {
-                previewEl.dataset.attachmentMime = mimeType;
-            }
-
-            const buildAudioMetaBlock = (item) => {
-                const meta = item.audio_meta || item.meta || (item.media_details && item.media_details.meta) || {};
-                const title = meta.title || item.title || item.filename || 'Audio';
-                const artist = meta.artist || '';
-                const album = meta.album || '';
-
-                if (!title && !artist && !album) {
-                    return null;
-                }
-
-                const wrapper = document.createElement('div');
-                wrapper.className = 'bitstream-audio-meta';
-
-                if (title) {
-                    const titleEl = document.createElement('div');
-                    titleEl.className = 'bitstream-audio-title';
-                    titleEl.textContent = title;
-                    wrapper.appendChild(titleEl);
-                }
-
-                if (artist) {
-                    const artistEl = document.createElement('div');
-                    artistEl.className = 'bitstream-audio-artist';
-                    artistEl.textContent = artist;
-                    wrapper.appendChild(artistEl);
-                }
-
-                if (album) {
-                    const albumEl = document.createElement('div');
-                    albumEl.className = 'bitstream-audio-album';
-                    albumEl.textContent = album;
-                    wrapper.appendChild(albumEl);
-                }
-
-                return wrapper;
-            };
-
-            if (mimeType.startsWith('image/')) {
-                previewEl.innerHTML = '<img src="' + previewUrl + '" alt="">';
-                return;
-            }
-
-            if (mimeType.startsWith('video/')) {
-                const video = document.createElement('video');
-                video.src = previewUrl;
-                video.controls = true;
-                video.setAttribute('controlsList', 'nodownload noplaybackrate');
-                video.setAttribute('disablepictureinpicture', '');
-                video.disablePictureInPicture = true;
-                previewEl.innerHTML = '';
-                previewEl.appendChild(video);
-                return;
-            }
-
-            if (mimeType.startsWith('audio/')) {
-                const audio = document.createElement('audio');
-                audio.src = previewUrl;
-                audio.controls = true;
-                audio.setAttribute('controlsList', 'nodownload noplaybackrate');
-                const meta = attachment.audio_meta || attachment.meta || (attachment.media_details && attachment.media_details.meta) || {};
-                const artwork = meta.artwork || '';
-                const embed = document.createElement('div');
-                embed.className = 'bitstream-audio-embed';
-
-                if (artwork) {
-                    const artworkWrap = document.createElement('div');
-                    artworkWrap.className = 'bitstream-audio-artwork-wrap';
-                    const img = document.createElement('img');
-                    img.className = 'bitstream-audio-artwork';
-                    img.src = artwork;
-                    img.alt = '';
-                    artworkWrap.appendChild(img);
-                    embed.appendChild(artworkWrap);
-                } else {
-                    embed.classList.add('no-artwork');
-                }
-
-                const player = document.createElement('div');
-                player.className = 'bitstream-audio-player';
-                player.appendChild(audio);
-
-                const metaBlock = buildAudioMetaBlock(attachment);
-                if (metaBlock) {
-                    embed.appendChild(metaBlock);
-                }
-
-                embed.appendChild(player);
-
-                previewEl.innerHTML = '';
-                previewEl.appendChild(embed);
-                applyMediaDeterrents(previewEl);
-                return;
-            }
-
-            previewEl.innerHTML = '<p>Selected: ' + (attachment.filename || attachment.title || 'media') + '</p>';
-        }
 
         function bindMediaButtons() {
             const removeButtons = posterRoot.querySelectorAll('.bitstream-media-remove');
@@ -2570,44 +2568,42 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            const attachmentInput = form.querySelector('.bs-edit-attachment-id');
-            const previewWrap = form.querySelector('.bs-edit-media-preview');
-            const previewInner = form.querySelector('.bs-edit-media-preview-inner');
-            const removeButton = form.querySelector('.bs-edit-media-remove');
-
-            if (attachmentInput) {
-                attachmentInput.value = attachmentId > 0 ? String(attachmentId) : '';
+            const targetInput = form.querySelector('.bs-edit-attachment-id');
+            if (targetInput) {
+                targetInput.value = attachmentId > 0 ? String(attachmentId) : '';
             }
 
-            if (!previewWrap || !previewInner) {
+            const previewEl = form.querySelector('.bitstream-media-preview');
+            if (!previewEl) {
                 return;
             }
 
-            previewInner.innerHTML = '';
+            const removeButton = form.querySelector('.bitstream-media-remove');
+            const cropButton = form.querySelector('.bitstream-media-crop');
 
-            if (!attachmentId || !attachmentUrl) {
-                previewWrap.hidden = true;
+            if (attachmentId > 0 && attachmentUrl) {
+                const attachment = {
+                    id: attachmentId,
+                    url: attachmentUrl,
+                    preview_url: attachmentUrl,
+                    mime: attachmentMime
+                };
+                renderMediaPreview(previewEl, attachment);
+                if (removeButton) {
+                    removeButton.classList.remove('is-hidden');
+                }
+                if (cropButton) {
+                    const isImage = attachmentMime && attachmentMime.startsWith('image/');
+                    cropButton.classList.toggle('is-hidden', !isImage);
+                }
+            } else {
+                renderMediaPreview(previewEl, null);
                 if (removeButton) {
                     removeButton.classList.add('is-hidden');
                 }
-                return;
-            }
-
-            if (attachmentMime && attachmentMime.indexOf('video/') === 0) {
-                const mediaLabel = document.createElement('div');
-                mediaLabel.className = 'bs-edit-media-video-label';
-                mediaLabel.innerHTML = '<i class="fa-solid fa-video" aria-hidden="true"></i> Video attached';
-                previewInner.appendChild(mediaLabel);
-            } else {
-                const image = document.createElement('img');
-                image.src = attachmentUrl;
-                image.alt = '';
-                previewInner.appendChild(image);
-            }
-
-            previewWrap.hidden = false;
-            if (removeButton) {
-                removeButton.classList.remove('is-hidden');
+                if (cropButton) {
+                    cropButton.classList.add('is-hidden');
+                }
             }
         }
 
@@ -2778,41 +2774,266 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         function bindMediaControls(form) {
-            const replaceButton = form.querySelector('.bs-edit-media-replace');
-            const removeButton = form.querySelector('.bs-edit-media-remove');
+            const dropzone = form.querySelector('.bitstream-media-dropzone');
+            const fileInput = form.querySelector('.bitstream-media-file');
+            const removeButton = form.querySelector('.bitstream-media-remove');
+            const cropButton = form.querySelector('.bitstream-media-crop');
+            const libraryButton = form.querySelector('.bitstream-media-library');
+            const pasteButton = form.querySelector('.bitstream-media-paste');
+            const targetInput = form.querySelector('.bs-edit-attachment-id');
+            const previewEl = form.querySelector('.bitstream-media-preview');
 
-            if (replaceButton) {
-                replaceButton.addEventListener('click', () => {
+            if (!targetInput || !previewEl) {
+                return;
+            }
+
+            const targetInputId = targetInput.id || 'bs-edit-bit-attachment-id';
+            const targetPreviewId = previewEl.id || 'bs-edit-bit-media-preview';
+
+            // Helper to upload media file via AJAX
+            const uploadFile = (file) => {
+                if (!bitstream_ajax || !bitstream_ajax.ajax_url || !bitstream_ajax.media_upload_nonce) {
+                    setErrorState('Media upload is unavailable.');
+                    return;
+                }
+
+                const mimeType = file.type || '';
+                if (!mimeType.startsWith('image/') && !mimeType.startsWith('video/')) {
+                    setErrorState('Unsupported file format. Only images and videos are allowed.');
+                    return;
+                }
+
+                const progressContainer = form.querySelector(`[data-progress-bar="${targetInputId}"]`);
+                const progressBar = progressContainer ? progressContainer.querySelector('.bitstream-media-progress-bar') : null;
+                const progressText = progressContainer ? progressContainer.querySelector('.bitstream-media-progress-text') : null;
+
+                const showProgress = () => {
+                    if (progressContainer) progressContainer.classList.remove('is-hidden');
+                    if (progressBar) progressBar.style.width = '0%';
+                    if (progressText) progressText.textContent = 'Uploading...';
+                };
+
+                const updateProgress = (percent, text) => {
+                    if (progressBar) progressBar.style.width = percent + '%';
+                    if (progressText && text) progressText.textContent = text;
+                };
+
+                const hideProgress = () => {
+                    if (progressContainer) progressContainer.classList.add('is-hidden');
+                };
+
+                showProgress();
+
+                const formData = new FormData();
+                formData.append('action', 'bitstream_upload_media');
+                formData.append('nonce', bitstream_ajax.media_upload_nonce);
+                formData.append('media', file);
+
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', bitstream_ajax.ajax_url, true);
+                xhr.withCredentials = true;
+
+                xhr.upload.addEventListener('progress', (event) => {
+                    if (event.lengthComputable) {
+                        const percent = Math.max(1, Math.round((event.loaded / event.total) * 100));
+                        updateProgress(percent, 'Uploading... ' + percent + '%');
+                    } else {
+                        updateProgress(50, 'Uploading...');
+                    }
+                });
+
+                xhr.onreadystatechange = () => {
+                    if (xhr.readyState !== 4) return;
+
+                    if (xhr.status < 200 || xhr.status >= 300) {
+                        hideProgress();
+                        setErrorState('Upload failed.');
+                        return;
+                    }
+
+                    let response;
+                    try {
+                        response = JSON.parse(xhr.responseText || '{}');
+                    } catch (error) {
+                        hideProgress();
+                        setErrorState('Upload failed.');
+                        return;
+                    }
+
+                    if (!response.success) {
+                        hideProgress();
+                        setErrorState(response.data || 'Upload failed.');
+                        return;
+                    }
+
+                    updateProgress(100, 'Upload complete!');
+
+                    const media = response.data || {};
+                    setAttachmentPreview(form, media.id, media.url, media.mime);
+
+                    setTimeout(() => {
+                        hideProgress();
+                    }, 1000);
+                };
+
+                xhr.onerror = () => {
+                    hideProgress();
+                    setErrorState('Upload failed.');
+                };
+
+                xhr.send(formData);
+            };
+
+            // Clipboard paste
+            const pasteImage = () => {
+                if (!navigator.clipboard || typeof navigator.clipboard.read !== 'function') {
+                    setErrorState('Clipboard paste is unavailable in this browser.');
+                    return;
+                }
+
+                navigator.clipboard.read()
+                    .then(items => {
+                        if (!items || !items.length) {
+                            throw new Error('Clipboard is empty.');
+                        }
+
+                        const imageItem = items.find(item => item.types && item.types.some(type => type.indexOf('image/') === 0));
+                        if (!imageItem) {
+                            throw new Error('Clipboard does not contain an image.');
+                        }
+
+                        const imageType = imageItem.types.find(type => type.indexOf('image/') === 0) || 'image/png';
+                        return imageItem.getType(imageType).then(blob => {
+                            const extension = imageType.indexOf('jpeg') !== -1 ? 'jpg' : (imageType.split('/')[1] || 'png');
+                            const filename = 'pasted-image-' + Date.now() + '.' + extension;
+                            const file = new File([blob], filename, { type: imageType });
+                            uploadFile(file);
+                        });
+                    })
+                    .catch(error => {
+                        setErrorState(error.message || 'Clipboard permission denied.');
+                    });
+            };
+
+            // Drag and drop events
+            if (dropzone && fileInput) {
+                dropzone.addEventListener('click', (event) => {
+                    if (event.target !== fileInput && !event.target.closest('.bitstream-media-preview')) {
+                        fileInput.click();
+                    }
+                });
+
+                dropzone.addEventListener('dragover', (event) => {
+                    event.preventDefault();
+                    dropzone.classList.add('is-dragover');
+                });
+
+                dropzone.addEventListener('dragleave', () => {
+                    dropzone.classList.remove('is-dragover');
+                });
+
+                dropzone.addEventListener('drop', (event) => {
+                    event.preventDefault();
+                    dropzone.classList.remove('is-dragover');
+
+                    const file = event.dataTransfer.files && event.dataTransfer.files[0];
+                    if (file) {
+                        uploadFile(file);
+                    }
+                });
+
+                fileInput.addEventListener('change', () => {
+                    const file = fileInput.files && fileInput.files[0];
+                    if (file) {
+                        uploadFile(file);
+                    }
+                    fileInput.value = '';
+                });
+            }
+
+            // Remove button
+            if (removeButton) {
+                removeButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    setAttachmentPreview(form, 0, '', '');
+                });
+            }
+
+            // Crop button
+            if (cropButton) {
+                cropButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (cropButton.classList.contains('is-hidden')) return;
+
+                    const openCropperFn = window.bitstreamOpenCropper;
+                    if (openCropperFn) {
+                        openCropperFn(targetInputId, targetPreviewId, {
+                            onComplete: (croppedMedia) => {
+                                setAttachmentPreview(form, croppedMedia.id, croppedMedia.url, croppedMedia.mime);
+                            }
+                        });
+                    } else {
+                        setErrorState('Image cropper is unavailable.');
+                    }
+                });
+            }
+
+            // Media library button
+            if (libraryButton) {
+                libraryButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
                     if (!window.wp || !wp.media) {
                         setErrorState('The media library is unavailable.');
                         return;
                     }
 
-                    activeMediaForm = form;
-                    if (!mediaFrame) {
-                        mediaFrame = wp.media({
-                            title: 'Select media',
-                            button: { text: 'Use this media' },
-                            multiple: false
-                        });
+                    const frame = wp.media({
+                        title: 'Select media',
+                        button: { text: 'Use media' },
+                        multiple: false,
+                        library: { type: ['image', 'video'] }
+                    });
 
-                        mediaFrame.on('select', () => {
-                            if (!activeMediaForm) {
-                                return;
-                            }
+                    frame.on('select', () => {
+                        const selection = frame.state().get('selection').first();
+                        if (!selection) return;
 
-                            const attachment = mediaFrame.state().get('selection').first().toJSON();
-                            setAttachmentPreview(activeMediaForm, attachment.id || 0, attachment.url || '', attachment.mime || '');
-                        });
-                    }
+                        const data = selection.toJSON();
+                        const mime = data.mime || data.type || '';
+                        if (!mime.startsWith('image/') && !mime.startsWith('video/')) {
+                            setErrorState('Only image and video files are supported.');
+                            return;
+                        }
 
-                    mediaFrame.open();
+                        setAttachmentPreview(form, data.id, data.url, mime);
+                    });
+
+                    frame.open();
                 });
             }
 
-            if (removeButton) {
-                removeButton.addEventListener('click', () => {
-                    setAttachmentPreview(form, 0, '', '');
+            // Paste button
+            if (pasteButton) {
+                pasteButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    pasteImage();
+                });
+            }
+
+            // Textarea paste event
+            const textarea = form.querySelector('.bs-edit-textarea');
+            if (textarea) {
+                textarea.addEventListener('paste', (event) => {
+                    const clipboardData = event.clipboardData || window.clipboardData;
+                    if (!clipboardData || !clipboardData.files || !clipboardData.files.length) {
+                        return;
+                    }
+
+                    const file = clipboardData.files[0];
+                    if (file && (file.type.startsWith('image/') || file.type.startsWith('video/'))) {
+                        event.preventDefault();
+                        uploadFile(file);
+                    }
                 });
             }
         }
@@ -4340,6 +4561,57 @@ jQuery(document).ready(function ($) {
     });
 
     // ── Quick Poster (modal-based) ────────────────────────────────────
+    // Intercept clicks on quick action triggers
+    document.addEventListener('click', (e) => {
+        const trigger = e.target.closest('[data-qp-modal-trigger]');
+        if (!trigger) return;
+
+        const modalName = trigger.dataset.qpModalTrigger;
+        const qp = document.querySelector('.bitstream-quick-post-poster');
+        const feedBaseUrl = (window.bitstream_ajax && bitstream_ajax.feed_url)
+            ? bitstream_ajax.feed_url
+            : (window.location.origin + '/bitstream/');
+        const feedUrl = new URL(feedBaseUrl, window.location.origin);
+
+        if (qp) {
+            e.preventDefault();
+            if (modalName === 'new-bit') {
+                const textarea = qp.querySelector('#bitstream-quick-bit-content');
+                if (textarea) {
+                    textarea.focus();
+                    textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            } else if (modalName === 'new-rebit') {
+                const rebitBtn = qp.querySelector('[data-qp-modal="rebit"]');
+                if (rebitBtn) {
+                    rebitBtn.click();
+                    rebitBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            } else {
+                // Close any open modals first
+                qp.querySelectorAll('.bitstream-qp-modal').forEach(m => m.hidden = true);
+                const modal = qp.querySelector('.bitstream-qp-modal-' + modalName);
+                if (modal) {
+                    modal.hidden = false;
+                    const statusEl = qp.querySelector('.bitstream-sidebar-quick-post-status');
+                    if (statusEl) statusEl.textContent = '';
+                }
+            }
+        } else {
+            e.preventDefault();
+            if (modalName === 'new-bit') {
+                feedUrl.searchParams.set('poster_tab', 'bit');
+            } else if (modalName === 'new-rebit') {
+                feedUrl.searchParams.set('poster_tab', 'rebit');
+            } else if (modalName === 'drafts') {
+                feedUrl.searchParams.set('show_drafts', '1');
+            } else if (modalName === 'scheduled-list') {
+                feedUrl.searchParams.set('show_scheduled', '1');
+            }
+            window.location.href = feedUrl.toString();
+        }
+    });
+
     document.querySelectorAll('.bitstream-quick-post-poster').forEach(qpRoot => {
         const form = qpRoot.querySelector('.bitstream-sidebar-quick-post-form');
         if (!form) return;
@@ -4369,8 +4641,12 @@ jQuery(document).ready(function ($) {
         const previewMediaThumb = form.querySelector('.bitstream-qp-preview-media-thumb');
         const previewSchedule = form.querySelector('.bitstream-qp-preview-schedule');
         const previewScheduleDate = form.querySelector('.bitstream-qp-preview-schedule-date');
-        const previewDraft = form.querySelector('.bitstream-qp-preview-draft');
-        const previewDraftLabel = form.querySelector('.bitstream-qp-preview-draft-label');
+        const previewDraft = null;
+        const previewDraftLabel = null;
+
+        // Save Draft Button
+        const qpSaveDraftBtn = null;
+        const qpSaveDraftActionBtn = form.querySelector('.bitstream-qp-save-draft-action');
 
         function setStatus(msg, isError = false) {
             if (!statusEl) return;
@@ -4469,14 +4745,101 @@ jQuery(document).ready(function ($) {
                     if (hScheduleEnabled) hScheduleEnabled.value = '0';
                     if (hScheduleDatetime) hScheduleDatetime.value = '';
                     if (previewSchedule) previewSchedule.hidden = true;
+                    if (submitBtn) {
+                        const isEdit = hEditPostId && hEditPostId.value !== '0';
+                        if (isEdit) {
+                            submitBtn.textContent = 'Publish Draft';
+                        } else {
+                            const isRebit = form.dataset.posterType === 'rebit';
+                            submitBtn.textContent = isRebit ? 'Publish Rebit' : 'Post Bit';
+                        }
+                    }
                 }
                 if (type === 'draft') {
                     if (hEditPostId) hEditPostId.value = '0';
                     if (previewDraft) previewDraft.hidden = true;
+                    if (qpSaveDraftBtn) qpSaveDraftBtn.style.display = 'none';
+                    if (submitBtn) {
+                        const isRebit = form.dataset.posterType === 'rebit';
+                        submitBtn.textContent = isRebit ? 'Publish Rebit' : 'Post Bit';
+                    }
                 }
                 syncPreviewArea();
             });
         });
+
+        // DRY Helper: Load draft or scheduled post into poster
+        function loadPostIntoQuickPoster(postId) {
+            if (!window.bitstream_ajax) return;
+
+            setStatus('Loading post...');
+            if (submitBtn) submitBtn.disabled = true;
+
+            const fd = new FormData();
+            fd.append('action', 'bitstream_get_post_data');
+            fd.append('nonce', submitNonce);
+            fd.append('post_id', String(postId));
+
+            fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success) throw new Error(data.data || 'Could not load post data.');
+                    const d = data.data || {};
+
+                    if (textarea) textarea.value = d.content || '';
+                    if (hEditPostId) hEditPostId.value = String(postId);
+
+                    if (d.is_rebit && d.rebit_url) {
+                        if (hRebitUrl) hRebitUrl.value = d.rebit_url;
+                        if (hRebitOgTitle) hRebitOgTitle.value = d.og_title || '';
+                        if (hRebitOgDesc) hRebitOgDesc.value = d.og_desc || '';
+                        if (hRebitOgImage) hRebitOgImage.value = d.og_image || '';
+                        form.dataset.posterType = 'rebit';
+                        if (textarea) textarea.required = false;
+                        if (previewRebitCard) previewRebitCard.innerHTML = d.media_preview_html || '<p style="font-size:0.85rem;color:#555;">Rebit: ' + d.rebit_url + '</p>';
+                        if (previewRebit) previewRebit.hidden = false;
+                    } else {
+                        form.dataset.posterType = 'bit';
+                        if (textarea) textarea.required = true;
+                    }
+
+                    if (d.attachment_id && parseInt(d.attachment_id, 10) > 0) {
+                        if (hAttachmentId) hAttachmentId.value = String(d.attachment_id);
+                        if (previewMediaThumb) previewMediaThumb.innerHTML = d.media_preview_html || '<span>Media attached (ID: ' + d.attachment_id + ')</span>';
+                        if (previewMedia) previewMedia.hidden = false;
+                    }
+
+                    if (d.schedule_enabled === '1' && d.schedule_datetime) {
+                        if (hScheduleEnabled) hScheduleEnabled.value = '1';
+                        if (hScheduleDatetime) hScheduleDatetime.value = d.schedule_datetime;
+                        if (previewScheduleDate) previewScheduleDate.textContent = new Date(d.schedule_datetime).toLocaleString();
+                        if (previewSchedule) previewSchedule.hidden = false;
+                    } else {
+                        if (hScheduleEnabled) hScheduleEnabled.value = '0';
+                        if (hScheduleDatetime) hScheduleDatetime.value = '';
+                        if (previewSchedule) previewSchedule.hidden = true;
+                    }
+
+                    const isScheduled = d.schedule_enabled === '1';
+                    if (previewDraftLabel) {
+                        previewDraftLabel.textContent = isScheduled ? 'Editing Scheduled #' + postId : 'Editing Draft #' + postId;
+                    }
+                    if (previewDraft) previewDraft.hidden = false;
+
+                    if (submitBtn) {
+                        submitBtn.textContent = isScheduled ? 'Update Scheduled Post' : 'Publish Draft';
+                    }
+
+                    if (qpSaveDraftBtn) {
+                        qpSaveDraftBtn.style.display = isScheduled ? 'none' : 'block';
+                    }
+
+                    syncPreviewArea();
+                    setStatus('Post loaded.');
+                })
+                .catch(err => setStatus(err.message || 'Could not load post.', true))
+                .finally(() => { if (submitBtn) submitBtn.disabled = false; });
+        }
 
         // ── REBIT MODAL ──
         const rebitModal = qpRoot.querySelector('.bitstream-qp-modal-rebit');
@@ -4669,52 +5032,10 @@ jQuery(document).ready(function ($) {
             draftsModal.querySelectorAll('.bitstream-qp-draft-load').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const postId = btn.dataset.postId;
-                    if (!postId || !window.bitstream_ajax) return;
-
-                    btn.disabled = true;
-                    const fd = new FormData();
-                    fd.append('action', 'bitstream_get_draft_data');
-                    fd.append('nonce', submitNonce);
-                    fd.append('post_id', postId);
-
-                    fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
-                        .then(r => r.json())
-                        .then(data => {
-                            if (!data.success) throw new Error(data.data || 'Could not load draft.');
-                            const d = data.data || {};
-
-                            if (textarea) textarea.value = d.content || '';
-                            if (hEditPostId) hEditPostId.value = postId;
-
-                            if (d.is_rebit && d.rebit_url) {
-                                if (hRebitUrl) hRebitUrl.value = d.rebit_url;
-                                if (hRebitOgTitle) hRebitOgTitle.value = d.og_title || '';
-                                if (hRebitOgDesc) hRebitOgDesc.value = d.og_desc || '';
-                                if (hRebitOgImage) hRebitOgImage.value = d.og_image || '';
-                                form.dataset.posterType = 'rebit';
-                                if (textarea) textarea.required = false;
-                                if (previewRebitCard) previewRebitCard.innerHTML = '<p style="font-size:0.85rem;color:#555;">Rebit: ' + d.rebit_url + '</p>';
-                                if (previewRebit) previewRebit.hidden = false;
-                            } else {
-                                form.dataset.posterType = 'bit';
-                                if (textarea) textarea.required = true;
-                            }
-
-                            if (d.attachment_id && parseInt(d.attachment_id, 10) > 0) {
-                                if (hAttachmentId) hAttachmentId.value = d.attachment_id;
-                                if (previewMediaThumb) previewMediaThumb.innerHTML = '<span>Media attached (ID: ' + d.attachment_id + ')</span>';
-                                if (previewMedia) previewMedia.hidden = false;
-                            }
-
-                            if (previewDraftLabel) previewDraftLabel.textContent = 'Draft #' + postId;
-                            if (previewDraft) previewDraft.hidden = false;
-                            if (submitBtn) submitBtn.textContent = 'Update Draft';
-                            syncPreviewArea();
-                            closeModal('drafts');
-                            setStatus('Draft loaded.');
-                        })
-                        .catch(err => setStatus(err.message || 'Could not load draft.', true))
-                        .finally(() => { btn.disabled = false; });
+                    if (postId) {
+                        loadPostIntoQuickPoster(postId);
+                        closeModal('drafts');
+                    }
                 });
             });
 
@@ -4726,8 +5047,8 @@ jQuery(document).ready(function ($) {
 
                     btn.disabled = true;
                     const fd = new FormData();
-                    fd.append('action', 'bitstream_delete_scheduled');
-                    fd.append('nonce', bitstream_ajax.delete_nonce || submitNonce);
+                    fd.append('action', 'bitstream_delete_post');
+                    fd.append('nonce', bitstream_ajax.delete_post_nonce);
                     fd.append('post_id', postId);
 
                     fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
@@ -4736,42 +5057,67 @@ jQuery(document).ready(function ($) {
                             if (!data.success) throw new Error(data.data || 'Delete failed.');
                             const item = btn.closest('.bitstream-qp-draft-item');
                             if (item) item.remove();
+                            
+                            // Check if empty
+                            const list = draftsModal.querySelector('.bitstream-qp-drafts-list');
+                            const remaining = list ? list.querySelectorAll('.bitstream-qp-draft-item') : [];
+                            if (list && remaining.length === 0) {
+                                list.innerHTML = '<p class="bitstream-qp-drafts-empty">No drafts yet.</p>';
+                            }
                             setStatus('Draft deleted.');
                         })
                         .catch(err => { setStatus(err.message || 'Delete failed.', true); btn.disabled = false; });
                 });
             });
 
-            const saveDraftBtn = draftsModal.querySelector('.bitstream-qp-save-draft-btn');
-            if (saveDraftBtn) {
-                saveDraftBtn.addEventListener('click', () => {
-                    if (!window.bitstream_ajax || !submitNonce) { setStatus('Cannot save draft.', true); return; }
 
-                    const content = textarea ? textarea.value.trim() : '';
-                    const hasRebit = hRebitUrl && hRebitUrl.value.trim();
-                    if (!content && !hasRebit) { setStatus('Nothing to save.', true); return; }
+        }
 
-                    saveDraftBtn.disabled = true;
-                    saveDraftBtn.textContent = 'Saving...';
+        // ── SAVE CURRENT BIT TO DRAFTS ACTION BUTTON ──
+        if (qpSaveDraftActionBtn) {
+            qpSaveDraftActionBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (!window.bitstream_ajax || !submitNonce) { setStatus('Cannot save draft.', true); return; }
 
-                    const fd = new FormData(form);
-                    fd.append('action', 'bitstream_submit_poster');
-                    fd.append('nonce', submitNonce);
-                    fd.append('poster_type', form.dataset.posterType || 'bit');
-                    fd.append('save_as_draft', '1');
+                const content = textarea ? textarea.value.trim() : '';
+                const hasRebit = hRebitUrl && hRebitUrl.value.trim();
+                const hasMedia = hAttachmentId && parseInt(hAttachmentId.value || '0', 10) > 0;
+                if (!content && !hasRebit && !hasMedia) { setStatus('Nothing to save.', true); return; }
 
-                    fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
-                        .then(r => r.json())
-                        .then(data => {
-                            if (!data.success) throw new Error(data.data || 'Save failed.');
-                            setStatus(data.data?.message || 'Saved as draft.');
-                            closeModal('drafts');
-                            setTimeout(() => window.location.reload(), 800);
-                        })
-                        .catch(err => setStatus(err.message || 'Save failed.', true))
-                        .finally(() => { saveDraftBtn.disabled = false; saveDraftBtn.innerHTML = '<i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Save current to Drafts'; });
-                });
-            }
+                qpSaveDraftActionBtn.disabled = true;
+                const originalHtml = qpSaveDraftActionBtn.innerHTML;
+                qpSaveDraftActionBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>';
+                setStatus('Saving draft...');
+
+                const fd = new FormData(form);
+                fd.append('action', 'bitstream_submit_poster');
+                fd.append('nonce', submitNonce);
+                fd.append('poster_type', form.dataset.posterType || 'bit');
+                fd.append('save_as_draft', '1');
+
+                fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (!data.success) throw new Error(data.data || 'Save failed.');
+                        setStatus(data.data?.message || 'Saved as draft.');
+                        
+                        const feedBaseUrl = (window.bitstream_ajax && bitstream_ajax.feed_url)
+                            ? bitstream_ajax.feed_url
+                            : (window.location.origin + '/bitstream/');
+                        const redirectUrl = new URL(feedBaseUrl, window.location.origin);
+                        redirectUrl.searchParams.set('show_drafts', '1');
+                        const createdPostId = parseInt(data.data?.post_id || '0', 10);
+                        if (createdPostId > 0) {
+                            redirectUrl.searchParams.set('highlight_draft', String(createdPostId));
+                        }
+                        window.location.href = redirectUrl.toString();
+                    })
+                    .catch(err => {
+                        setStatus(err.message || 'Save failed.', true);
+                        qpSaveDraftActionBtn.disabled = false;
+                        qpSaveDraftActionBtn.innerHTML = originalHtml;
+                    });
+            });
         }
 
         // ── SCHEDULE MODAL ──
@@ -4797,17 +5143,177 @@ jQuery(document).ready(function ($) {
                         if (hScheduleDatetime) hScheduleDatetime.value = dt;
                         if (previewScheduleDate) previewScheduleDate.textContent = new Date(dt).toLocaleString();
                         if (previewSchedule) previewSchedule.hidden = false;
-                        if (submitBtn) submitBtn.textContent = 'Schedule Bit';
+                        if (submitBtn) {
+                            const isEdit = hEditPostId && hEditPostId.value !== '0';
+                            submitBtn.textContent = isEdit ? 'Update Scheduled Post' : 'Schedule Bit';
+                        }
                     } else {
                         if (hScheduleEnabled) hScheduleEnabled.value = '0';
                         if (hScheduleDatetime) hScheduleDatetime.value = '';
                         if (previewSchedule) previewSchedule.hidden = true;
-                        if (submitBtn) submitBtn.textContent = 'Post Bit';
+                        if (submitBtn) {
+                            const isEdit = hEditPostId && hEditPostId.value !== '0';
+                            submitBtn.textContent = isEdit ? 'Publish Draft' : 'Post Bit';
+                        }
                     }
                     syncPreviewArea();
                     closeModal('schedule');
                 });
             }
+        }
+
+        // ── SCHEDULED LIST MODAL ──
+        const scheduledListModal = qpRoot.querySelector('.bitstream-qp-modal-scheduled-list');
+        if (scheduledListModal) {
+            const schedFilterBtns = scheduledListModal.querySelectorAll('.bitstream-qp-scheduled-filter-btn');
+            const schedItems = scheduledListModal.querySelectorAll('.bitstream-qp-scheduled-item');
+            schedFilterBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const filter = btn.dataset.filter || 'all';
+                    schedFilterBtns.forEach(b => b.classList.toggle('is-active', b === btn));
+                    schedItems.forEach(item => {
+                        const type = item.dataset.type || 'bit';
+                        item.style.display = (filter === 'all' || filter === type) ? '' : 'none';
+                    });
+                });
+            });
+
+            scheduledListModal.querySelectorAll('.bitstream-qp-scheduled-load').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const postId = btn.dataset.postId;
+                    if (postId) {
+                        loadPostIntoQuickPoster(postId);
+                        closeModal('scheduled-list');
+                    }
+                });
+            });
+
+            scheduledListModal.querySelectorAll('.bitstream-qp-scheduled-delete').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const postId = btn.dataset.postId;
+                    if (!postId || !window.bitstream_ajax) return;
+                    if (!confirm('Delete this scheduled post?')) return;
+
+                    btn.disabled = true;
+                    const fd = new FormData();
+                    fd.append('action', 'bitstream_delete_post');
+                    fd.append('nonce', bitstream_ajax.delete_post_nonce);
+                    fd.append('post_id', postId);
+
+                    fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
+                        .then(r => r.json())
+                        .then(data => {
+                            if (!data.success) throw new Error(data.data || 'Delete failed.');
+                            const item = btn.closest('.bitstream-qp-scheduled-item');
+                            if (item) item.remove();
+                            
+                            // Check if empty
+                            const list = scheduledListModal.querySelector('.bitstream-qp-scheduled-list');
+                            const remaining = list ? list.querySelectorAll('.bitstream-qp-scheduled-item') : [];
+                            if (list && remaining.length === 0) {
+                                list.innerHTML = '<p class="bitstream-qp-scheduled-empty">No scheduled Bits or Rebits yet.</p>';
+                            }
+                            setStatus('Scheduled post deleted.');
+                        })
+                        .catch(err => { setStatus(err.message || 'Delete failed.', true); btn.disabled = false; });
+                });
+            });
+        }
+
+        // ── QUICK POSTER SAVE DRAFT BUTTON ──
+        if (qpSaveDraftBtn) {
+            qpSaveDraftBtn.addEventListener('click', () => {
+                if (!window.bitstream_ajax || !submitNonce) { setStatus('Cannot save draft.', true); return; }
+
+                const content = textarea ? textarea.value.trim() : '';
+                const hasRebit = hRebitUrl && hRebitUrl.value.trim();
+                if (!content && !hasRebit) { setStatus('Nothing to save.', true); return; }
+
+                qpSaveDraftBtn.disabled = true;
+                qpSaveDraftBtn.textContent = 'Saving...';
+                setStatus('Saving draft...');
+
+                const fd = new FormData(form);
+                fd.append('action', 'bitstream_submit_poster');
+                fd.append('nonce', submitNonce);
+                fd.append('poster_type', form.dataset.posterType || 'bit');
+                fd.append('save_as_draft', '1');
+
+                fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (!data.success) throw new Error(data.data || 'Save failed.');
+                        setStatus(data.data?.message || 'Saved as draft.');
+                        
+                        const feedBaseUrl = (window.bitstream_ajax && bitstream_ajax.feed_url)
+                            ? bitstream_ajax.feed_url
+                            : (window.location.origin + '/bitstream/');
+                        const redirectUrl = new URL(feedBaseUrl, window.location.origin);
+                        redirectUrl.searchParams.set('show_drafts', '1');
+                        const createdPostId = parseInt(data.data?.post_id || '0', 10);
+                        if (createdPostId > 0) {
+                            redirectUrl.searchParams.set('highlight_draft', String(createdPostId));
+                        }
+                        window.location.href = redirectUrl.toString();
+                    })
+                    .catch(err => {
+                        setStatus(err.message || 'Save failed.', true);
+                        qpSaveDraftBtn.disabled = false;
+                        qpSaveDraftBtn.textContent = 'Save Draft';
+                    });
+            });
+        }
+
+        // Check page load URL parameters to open modals or focus poster elements
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('show_drafts') || urlParams.get('poster_tab') === 'drafts') {
+            openModal('drafts');
+        }
+        if (urlParams.has('show_scheduled') || urlParams.get('poster_tab') === 'scheduled') {
+            openModal('scheduled-list');
+        }
+        if (urlParams.has('show_rebit') || urlParams.get('poster_tab') === 'rebit') {
+            const rebitBtn = qpRoot.querySelector('[data-qp-modal="rebit"]');
+            if (rebitBtn) {
+                setTimeout(() => {
+                    rebitBtn.click();
+                    rebitBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 100);
+            }
+        }
+        if (urlParams.has('focus_qp') || urlParams.get('poster_tab') === 'bit') {
+            if (textarea) {
+                setTimeout(() => {
+                    textarea.focus();
+                    textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 100);
+            }
+        }
+
+        // Prefill / load checks on page load
+        const initialRebitUrl = hRebitUrl ? hRebitUrl.value.trim() : '';
+        if (initialRebitUrl) {
+            if (previewRebitCard) {
+                previewRebitCard.innerHTML = '<p style="font-size:0.85rem;color:#555;">Rebit: ' + initialRebitUrl + '</p>';
+            }
+            if (previewRebit) previewRebit.hidden = false;
+            form.dataset.posterType = 'rebit';
+            if (textarea) textarea.required = false;
+            syncPreviewArea();
+        }
+
+        const initialAttachmentId = hAttachmentId ? hAttachmentId.value.trim() : '';
+        if (initialAttachmentId && initialAttachmentId !== '0') {
+            if (previewMediaThumb) {
+                previewMediaThumb.innerHTML = '<span>Media attached (ID: ' + initialAttachmentId + ')</span>';
+            }
+            if (previewMedia) previewMedia.hidden = false;
+            syncPreviewArea();
+        }
+
+        const initialEditPostId = hEditPostId ? parseInt(hEditPostId.value || '0', 10) : 0;
+        if (initialEditPostId > 0) {
+            loadPostIntoQuickPoster(initialEditPostId);
         }
 
         // ── FORM SUBMIT ──
@@ -4857,9 +5363,9 @@ jQuery(document).ready(function ($) {
                     if (isScheduled) {
                         const posterBaseUrl = (window.bitstream_ajax && bitstream_ajax.poster_url)
                             ? bitstream_ajax.poster_url
-                            : window.location.href;
+                            : (window.location.origin + '/bitstream/');
                         const redirectUrl = new URL(posterBaseUrl, window.location.origin);
-                        redirectUrl.searchParams.set('poster_tab', 'scheduled');
+                        redirectUrl.searchParams.set('show_scheduled', '1');
                         if (createdPostId > 0) {
                             redirectUrl.searchParams.set('highlight_scheduled', String(createdPostId));
                         }

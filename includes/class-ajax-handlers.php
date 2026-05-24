@@ -91,7 +91,7 @@ class BitStream_Ajax_Handlers
             'delete_post_nonce'  => wp_create_nonce('bitstream_delete_post_nonce'),
             'poster_submit_nonce'=> wp_create_nonce('bitstream_poster_submit_nonce'),
             'feed_url'           => home_url('/bitstream/'),
-            'poster_url'         => class_exists('BitStream_Shortcodes') ? BitStream_Shortcodes::get_poster_page_url() : home_url('/bitstream/')
+            'poster_url'         => class_exists('BitStream_Shortcodes') ? BitStream_Shortcodes::get_feed_page_url() : home_url('/bitstream/')
         ];
     }
 

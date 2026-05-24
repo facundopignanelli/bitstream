@@ -87,6 +87,14 @@ class BitStream_Shortcodes
      */
     public static function get_poster_page_url($query_args = [])
     {
+        return self::get_feed_page_url($query_args);
+    }
+
+    /**
+     * Resolve the frontend feed page URL
+     */
+    public static function get_feed_page_url($query_args = [])
+    {
         static $cached_url = null;
 
         if ($cached_url === null) {
@@ -102,7 +110,7 @@ class BitStream_Shortcodes
 
             foreach ($candidates as $candidate_id) {
                 $content = get_post_field('post_content', $candidate_id);
-                if ($content && has_shortcode($content, 'bitstream_poster')) {
+                if ($content && has_shortcode($content, 'bitstream')) {
                     $cached_url = get_permalink($candidate_id);
                     break;
                 }
@@ -119,6 +127,7 @@ class BitStream_Shortcodes
 
         return $cached_url;
     }
+
 
     /**
      * Shared quick actions used by both right rail and floating menu
@@ -155,12 +164,14 @@ class BitStream_Shortcodes
                 'icon' => 'fa-solid fa-comment',
                 'label' => 'New Bit',
                 'type' => 'link',
+                'modal' => 'new-bit',
             ],
             [
                 'url' => self::get_poster_page_url(['poster_tab' => 'rebit']),
-                'icon' => 'fa-solid fa-retweet',
+                'icon' => 'fa-solid fa-link',
                 'label' => 'New Rebit',
                 'type' => 'link',
+                'modal' => 'new-rebit',
             ],
             [
                 'type' => 'divider',
@@ -170,12 +181,14 @@ class BitStream_Shortcodes
                 'icon' => 'fa-solid fa-file-lines',
                 'label' => 'Drafts (' . $draft_count . ')',
                 'type' => 'link',
+                'modal' => 'drafts',
             ],
             [
                 'url' => self::get_poster_page_url(['poster_tab' => 'scheduled']),
                 'icon' => 'fa-solid fa-clock',
                 'label' => 'Scheduled (' . $future_count . ')',
                 'type' => 'link',
+                'modal' => 'scheduled-list',
             ],
             [
                 'type' => 'divider',
@@ -205,7 +218,8 @@ class BitStream_Shortcodes
                 $html .= '<hr class="bitstream-quick-action-divider" style="margin: 0.5rem 0; border: 0; border-top: 1px solid #e0e0e0;">';
             }
             else {
-                $html .= '<a class="' . esc_attr(trim($link_class . ' bitstream-quick-action-link')) . '" href="' . esc_url($action['url']) . '">';
+                $modal_attr = isset($action['modal']) ? ' data-qp-modal-trigger="' . esc_attr($action['modal']) . '"' : '';
+                $html .= '<a class="' . esc_attr(trim($link_class . ' bitstream-quick-action-link')) . '" href="' . esc_url($action['url']) . '"' . $modal_attr . '>';
                 $html .= '<i class="' . esc_attr($action['icon']) . '" aria-hidden="true"></i>';
                 $html .= '<span>' . esc_html($action['label']) . '</span>';
                 $html .= '</a>';
@@ -283,7 +297,7 @@ class BitStream_Shortcodes
             <?php if ($edit_post_id > 0): ?>
                 <input type="hidden" name="edit_post_id" value="<?php echo esc_attr($edit_post_id); ?>">
             <?php endif; ?>
-            <input type="hidden" id="<?php echo esc_attr($attachment_input_id); ?>" name="bit_attachment_id" value="<?php echo $attachment_id > 0 ? esc_attr($attachment_id) : ''; ?>">
+            <input type="hidden" id="<?php echo esc_attr($attachment_input_id); ?>" class="bs-edit-attachment-id" name="bit_attachment_id" value="<?php echo $attachment_id > 0 ? esc_attr($attachment_id) : ''; ?>">
             <div class="bitstream-media-dropzone" data-target-input="<?php echo esc_attr($attachment_input_id); ?>" data-target-preview="<?php echo esc_attr($preview_id); ?>" data-accept="image/*,video/*">
                 <i class="fa-solid fa-photo-film bitstream-media-dropzone-icon" aria-hidden="true"></i>
                 <span>Drag and drop media here, or click to upload</span>
@@ -363,6 +377,40 @@ class BitStream_Shortcodes
         $submit_nonce = wp_create_nonce('bitstream_poster_submit_nonce');
         $author_id = get_current_user_id();
 
+        // Prefill values
+        $shared_url = isset($_GET['shared_url']) ? esc_url_raw(wp_unslash($_GET['shared_url'])) : '';
+        $shared_title = isset($_GET['shared_title']) ? sanitize_text_field(wp_unslash($_GET['shared_title'])) : '';
+        $shared_text = isset($_GET['shared_text']) ? sanitize_textarea_field(wp_unslash($_GET['shared_text'])) : '';
+        $edit_post_id = isset($_GET['edit_post_id']) ? intval($_GET['edit_post_id']) : 0;
+
+        if (!empty($_GET['shared_key'])) {
+            $shared_key = sanitize_text_field(wp_unslash($_GET['shared_key']));
+            $shared_data = get_transient($shared_key);
+            if (is_array($shared_data)) {
+                delete_transient($shared_key);
+                $shared_url = !empty($shared_data['url']) ? esc_url_raw($shared_data['url']) : $shared_url;
+                $shared_title = !empty($shared_data['title']) ? sanitize_text_field($shared_data['title']) : $shared_title;
+                $shared_text = !empty($shared_data['text']) ? sanitize_textarea_field($shared_data['text']) : $shared_text;
+            }
+        }
+
+        $bit_attachment_id_prefill = 0;
+        if (!empty($_GET['media_ids'])) {
+            $media_ids_raw = sanitize_text_field(wp_unslash($_GET['media_ids']));
+            $media_ids = array_filter(array_map('intval', explode(',', $media_ids_raw)));
+            if (!empty($media_ids)) {
+                $bit_attachment_id_prefill = intval(reset($media_ids));
+            }
+        }
+
+        $bit_content_prefill = '';
+        $poster_type_prefill = 'bit';
+        if (!empty($shared_url)) {
+            $poster_type_prefill = 'rebit';
+        } elseif (!empty($shared_text)) {
+            $bit_content_prefill = $shared_text;
+        }
+
         // Query drafts for the modal
         $drafts_query = new WP_Query([
             'post_type' => 'bit',
@@ -374,35 +422,49 @@ class BitStream_Shortcodes
             'no_found_rows' => true,
         ]);
 
+        // Query scheduled for the modal
+        $scheduled_query = new WP_Query([
+            'post_type' => 'bit',
+            'post_status' => 'future',
+            'posts_per_page' => 50,
+            'orderby' => 'date',
+            'order' => 'ASC',
+            'author' => $author_id,
+            'no_found_rows' => true,
+        ]);
+
+        $highlight_scheduled_id = isset($_GET['highlight_scheduled']) ? intval($_GET['highlight_scheduled']) : 0;
+        $highlight_draft_id = isset($_GET['highlight_draft']) ? intval($_GET['highlight_draft']) : 0;
+
         ob_start();
 ?>
         <section class="bitstream-poster bitstream-quick-post-poster" data-submit-nonce="<?php echo esc_attr($submit_nonce); ?>">
             <h3 class="bitstream-feed-sidebar-title" style="color: var(--wp--preset--color--accent-1, #2c6e49); margin-bottom: 0.65rem;">Post a Bit</h3>
-            <form class="bitstream-sidebar-quick-post-form bitstream-poster-form" data-poster-type="bit">
-                <textarea id="bitstream-quick-bit-content" name="bit_content" rows="3" placeholder="What's on your mind?" required class="bitstream-poster-field bitstream-qp-textarea"></textarea>
+            <form class="bitstream-sidebar-quick-post-form bitstream-poster-form" data-poster-type="<?php echo esc_attr($poster_type_prefill); ?>">
+                <textarea id="bitstream-quick-bit-content" name="bit_content" rows="3" placeholder="What's on your mind?" required class="bitstream-poster-field bitstream-qp-textarea"><?php echo esc_textarea($bit_content_prefill); ?></textarea>
 
                 <!-- Hidden inputs for rebit / schedule / edit -->
-                <input type="hidden" id="bitstream-qp-attachment-id" name="bit_attachment_id" value="">
-                <input type="hidden" id="bitstream-qp-rebit-url" name="rebit_url" value="">
-                <input type="hidden" id="bitstream-qp-rebit-og-title" name="rebit_og_title" value="">
+                <input type="hidden" id="bitstream-qp-attachment-id" name="bit_attachment_id" value="<?php echo $bit_attachment_id_prefill > 0 ? esc_attr($bit_attachment_id_prefill) : ''; ?>">
+                <input type="hidden" id="bitstream-qp-rebit-url" name="rebit_url" value="<?php echo esc_url($shared_url); ?>">
+                <input type="hidden" id="bitstream-qp-rebit-og-title" name="rebit_og_title" value="<?php echo esc_attr($shared_title); ?>">
                 <input type="hidden" id="bitstream-qp-rebit-og-desc" name="rebit_og_desc" value="">
                 <input type="hidden" id="bitstream-qp-rebit-og-image" name="rebit_og_image" value="">
                 <input type="hidden" id="bitstream-qp-rebit-og-image-removed" name="rebit_og_image_removed" value="0">
                 <input type="hidden" id="bitstream-qp-rebit-attachment-id" name="rebit_attachment_id" value="">
                 <input type="hidden" id="bitstream-qp-schedule-enabled" name="bit_schedule_enabled" value="0">
                 <input type="hidden" id="bitstream-qp-schedule-datetime" name="bit_schedule_datetime" value="">
-                <input type="hidden" id="bitstream-qp-edit-post-id" name="edit_post_id" value="0">
+                <input type="hidden" id="bitstream-qp-edit-post-id" name="edit_post_id" value="<?php echo esc_attr($edit_post_id); ?>">
                 <input type="hidden" id="bitstream-qp-quote-post-id" name="quote_post_id" value="0">
 
                 <!-- Action buttons row -->
                 <div class="bitstream-qp-actions-row">
                     <button type="button" class="bitstream-qp-action-btn" data-qp-modal="rebit" title="Rebit" aria-label="Rebit">
-                        <i class="fa-solid fa-retweet" aria-hidden="true"></i>
+                        <i class="fa-solid fa-link" aria-hidden="true"></i>
                     </button>
                     <button type="button" class="bitstream-qp-action-btn" data-qp-modal="media" title="Media" aria-label="Media">
                         <i class="fa-solid fa-photo-film" aria-hidden="true"></i>
                     </button>
-                    <button type="button" class="bitstream-qp-action-btn" data-qp-modal="drafts" title="Drafts" aria-label="Drafts">
+                    <button type="button" class="bitstream-qp-action-btn bitstream-qp-save-draft-action" title="Save to Drafts" aria-label="Save to Drafts">
                         <i class="fa-solid fa-file-lines" aria-hidden="true"></i>
                     </button>
                     <button type="button" class="bitstream-qp-action-btn" data-qp-modal="schedule" title="Schedule" aria-label="Schedule">
@@ -415,7 +477,7 @@ class BitStream_Shortcodes
                     <!-- Rebit preview card -->
                     <div class="bitstream-qp-preview-rebit" hidden>
                         <div class="bitstream-qp-preview-header">
-                            <span class="bitstream-qp-preview-label"><i class="fa-solid fa-retweet" aria-hidden="true"></i> Rebit</span>
+                            <span class="bitstream-qp-preview-label"><i class="fa-solid fa-link" aria-hidden="true"></i> Rebit</span>
                             <div class="bitstream-qp-preview-actions">
                                 <button type="button" class="bitstream-qp-preview-edit" data-qp-edit="rebit" title="Edit rebit" aria-label="Edit rebit"><i class="fa-solid fa-pencil" aria-hidden="true"></i></button>
                                 <button type="button" class="bitstream-qp-preview-remove" data-qp-remove="rebit" title="Remove rebit" aria-label="Remove rebit"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
@@ -445,21 +507,12 @@ class BitStream_Shortcodes
                         </div>
                         <span class="bitstream-qp-preview-schedule-date"></span>
                     </div>
-                    <!-- Draft editing badge -->
-                    <div class="bitstream-qp-preview-draft" hidden>
-                        <div class="bitstream-qp-preview-header">
-                            <span class="bitstream-qp-preview-label"><i class="fa-solid fa-file-lines" aria-hidden="true"></i> Editing draft</span>
-                            <div class="bitstream-qp-preview-actions">
-                                <button type="button" class="bitstream-qp-preview-edit" data-qp-edit="draft" title="Edit draft" aria-label="Edit draft"><i class="fa-solid fa-pencil" aria-hidden="true"></i></button>
-                                <button type="button" class="bitstream-qp-preview-remove" data-qp-remove="draft" title="Clear draft" aria-label="Clear draft"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-                            </div>
-                        </div>
-                        <span class="bitstream-qp-preview-draft-label"></span>
-                    </div>
                 </div>
 
-                <!-- Submit -->
-                <button type="submit" class="bitstream-poster-submit bitstream-qp-submit">Post Bit</button>
+                <!-- Submit Row -->
+                <div class="bitstream-qp-submit-row" style="width: 100%;">
+                    <button type="submit" class="bitstream-poster-submit bitstream-qp-submit" style="width: 100%;">Post Bit</button>
+                </div>
             </form>
 
             <div class="bitstream-poster-status bitstream-sidebar-quick-post-status" aria-live="polite"></div>
@@ -528,9 +581,6 @@ class BitStream_Shortcodes
                         <button type="button" class="bitstream-qp-modal-close" data-qp-modal-close="drafts" aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
                     </header>
                     <div class="bitstream-qp-modal-body">
-                        <div class="bitstream-qp-drafts-actions">
-                            <button type="button" class="bitstream-qp-save-draft-btn"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Save current to Drafts</button>
-                        </div>
                         <div class="bitstream-scheduled-filter bitstream-qp-drafts-filter">
                             <button type="button" class="bitstream-scheduled-filter-btn bitstream-qp-drafts-filter-btn is-active" data-filter="all">All</button>
                             <button type="button" class="bitstream-scheduled-filter-btn bitstream-qp-drafts-filter-btn" data-filter="bit">Bits</button>
@@ -543,18 +593,19 @@ class BitStream_Shortcodes
                                         $draft_id = get_the_ID();
                                         $is_rebit = !empty(get_post_meta($draft_id, 'bitstream_rebit_url', true));
                                         $row_type = $is_rebit ? 'rebit' : 'bit';
+                                        $is_highlighted = ($highlight_draft_id > 0 && $highlight_draft_id === $draft_id);
                                     ?>
-                                    <article class="bitstream-scheduled-item bitstream-qp-draft-item" data-type="<?php echo esc_attr($row_type); ?>" data-post-id="<?php echo esc_attr($draft_id); ?>">
+                                    <article class="bitstream-scheduled-item bitstream-qp-draft-item <?php echo $is_highlighted ? 'is-highlighted' : ''; ?>" data-type="<?php echo esc_attr($row_type); ?>" data-post-id="<?php echo esc_attr($draft_id); ?>">
                                         <div class="bitstream-qp-draft-info">
                                             <strong><?php echo $is_rebit ? 'Rebit' : 'Bit'; ?></strong>
                                             <p><?php echo esc_html(wp_trim_words(get_post_field('post_content', $draft_id), 16)); ?></p>
                                             <small>Last modified <?php echo esc_html(get_the_modified_date('Y-m-d H:i', $draft_id)); ?></small>
                                         </div>
                                         <div class="bitstream-qp-draft-actions">
-                                            <button type="button" class="bitstream-qp-draft-load bit-action" data-post-id="<?php echo esc_attr($draft_id); ?>" title="Load draft" aria-label="Load draft">
-                                                <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+                                            <button type="button" class="bitstream-qp-draft-load bitstream-qp-action-btn" data-post-id="<?php echo esc_attr($draft_id); ?>" title="Edit draft" aria-label="Edit draft">
+                                                <i class="fa-solid fa-pencil" aria-hidden="true"></i>
                                             </button>
-                                            <button type="button" class="bitstream-qp-draft-delete bit-action" data-post-id="<?php echo esc_attr($draft_id); ?>" title="Delete draft" aria-label="Delete draft">
+                                            <button type="button" class="bitstream-qp-draft-delete bitstream-qp-action-btn is-danger" data-post-id="<?php echo esc_attr($draft_id); ?>" title="Delete draft" aria-label="Delete draft">
                                                 <i class="fa-solid fa-trash" aria-hidden="true"></i>
                                             </button>
                                         </div>
@@ -592,6 +643,57 @@ class BitStream_Shortcodes
                         <button type="button" class="bitstream-qp-modal-cancel" data-qp-modal-close="schedule">Cancel</button>
                         <button type="button" class="bitstream-qp-modal-confirm bitstream-qp-schedule-done">Confirm</button>
                     </footer>
+                </div>
+            </div>
+
+            <!-- ═══ SCHEDULED POSTS LIST MODAL ═══ -->
+            <div class="bitstream-qp-modal bitstream-qp-modal-scheduled-list" hidden>
+                <div class="bitstream-qp-modal-backdrop" data-qp-modal-close="scheduled-list"></div>
+                <div class="bitstream-qp-modal-dialog bitstream-qp-modal-dialog-wide" role="dialog" aria-modal="true" aria-label="Scheduled Posts">
+                    <header class="bitstream-qp-modal-header">
+                        <h3>Scheduled Posts</h3>
+                        <button type="button" class="bitstream-qp-modal-close" data-qp-modal-close="scheduled-list" aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+                    </header>
+                    <div class="bitstream-qp-modal-body">
+                        <div class="bitstream-scheduled-filter bitstream-qp-scheduled-filter">
+                            <button type="button" class="bitstream-scheduled-filter-btn bitstream-qp-scheduled-filter-btn is-active" data-filter="all">All</button>
+                            <button type="button" class="bitstream-scheduled-filter-btn bitstream-qp-scheduled-filter-btn" data-filter="bit">Bits</button>
+                            <button type="button" class="bitstream-scheduled-filter-btn bitstream-qp-scheduled-filter-btn" data-filter="rebit">Rebits</button>
+                        </div>
+                        <div class="bitstream-scheduled-list bitstream-qp-scheduled-list">
+                            <?php if ($scheduled_query->have_posts()): ?>
+                                <?php while ($scheduled_query->have_posts()): $scheduled_query->the_post(); ?>
+                                    <?php
+                                        $scheduled_id = get_the_ID();
+                                        $is_rebit = !empty(get_post_meta($scheduled_id, 'bitstream_rebit_url', true));
+                                        $row_type = $is_rebit ? 'rebit' : 'bit';
+                                        $is_highlighted = ($highlight_scheduled_id > 0 && $highlight_scheduled_id === $scheduled_id);
+                                    ?>
+                                    <article class="bitstream-scheduled-item bitstream-qp-scheduled-item <?php echo $is_highlighted ? 'is-highlighted' : ''; ?>" data-type="<?php echo esc_attr($row_type); ?>" data-post-id="<?php echo esc_attr($scheduled_id); ?>">
+                                        <div class="bitstream-qp-scheduled-info">
+                                            <strong><?php echo $is_rebit ? 'Rebit' : 'Bit'; ?></strong>
+                                            <p><?php echo esc_html(wp_trim_words(get_post_field('post_content', $scheduled_id), 16)); ?></p>
+                                            <small>Scheduled for <?php echo esc_html(get_the_date('Y-m-d H:i', $scheduled_id)); ?></small>
+                                        </div>
+                                        <div class="bitstream-qp-scheduled-actions">
+                                            <a class="bitstream-scheduled-action bitstream-scheduled-preview bit-action" href="<?php echo esc_url(get_preview_post_link($scheduled_id)); ?>" target="_blank" rel="noopener" aria-label="Preview scheduled bit" title="Preview scheduled bit">
+                                                <i class="fa-solid fa-up-right-from-square" aria-hidden="true"></i>
+                                            </a>
+                                            <button type="button" class="bitstream-qp-scheduled-load bit-action" data-post-id="<?php echo esc_attr($scheduled_id); ?>" title="Edit scheduled bit" aria-label="Edit scheduled bit">
+                                                <i class="fa-solid fa-pencil" aria-hidden="true"></i>
+                                            </button>
+                                            <button type="button" class="bitstream-qp-scheduled-delete bit-action" data-post-id="<?php echo esc_attr($scheduled_id); ?>" title="Delete scheduled bit" aria-label="Delete scheduled bit">
+                                                <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                                            </button>
+                                        </div>
+                                    </article>
+                                <?php endwhile; ?>
+                                <?php wp_reset_postdata(); ?>
+                            <?php else: ?>
+                                <p class="bitstream-qp-scheduled-empty">No scheduled Bits or Rebits yet.</p>
+                            <?php endif; ?>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1950,7 +2052,6 @@ class BitStream_Shortcodes
                         <input type="hidden" name="edit_post_id" value="">
                         <input type="hidden" name="poster_type" value="bit">
                         <input type="hidden" name="nonce" value="<?php echo esc_attr($submit_nonce); ?>">
-                        <input type="hidden" name="bit_attachment_id" class="bs-edit-attachment-id" value="">
                         <input type="hidden" name="quote_post_id" class="bs-edit-quote-post-id" value="0">
 
                         <div class="bs-edit-field">
@@ -1960,52 +2061,12 @@ class BitStream_Shortcodes
                                       placeholder="What's happening?"></textarea>
                         </div>
 
-                        <div class="bs-edit-quote-preview" hidden>
-                            <div class="bs-edit-field">
-                                <label class="bs-edit-label">Quoted Bit</label>
-                            </div>
-                            <div class="bs-edit-quote-preview-card"></div>
-                        </div>
-
                         <div class="bs-edit-media">
-                            <div class="bs-edit-media-preview" hidden>
-                                <div class="bs-edit-media-preview-inner"></div>
-                            </div>
-                            <div class="bs-edit-media-controls">
-                                <button type="button" class="bs-edit-media-btn bs-edit-media-replace" title="Add / Replace media" aria-label="Add or replace media">
-                                    <i class="fa-solid fa-arrow-right-arrow-left" aria-hidden="true"></i>
-                                </button>
-                                <button type="button" class="bs-edit-media-btn bs-edit-media-remove is-hidden" title="Remove media" aria-label="Remove media">
-                                    <i class="fa-solid fa-trash" aria-hidden="true"></i>
-                                </button>
-                            </div>
+                            <?php echo self::render_media_field('bs-edit-bit-attachment-id', 'bs-edit-bit-media-preview'); ?>
                         </div>
-
-                        <details class="bitstream-post-options">
-                            <summary>Advanced</summary>
-                            <div class="bitstream-post-options-section">
-                                <h4 class="bitstream-post-options-section-title">Schedule</h4>
-                                <div class="bitstream-schedule-options">
-                                    <label class="bitstream-schedule-radio">
-                                        <input type="radio" name="bit_schedule_mode" value="now" data-schedule-toggle="bit" checked>
-                                        Post now
-                                    </label>
-                                    <label class="bitstream-schedule-radio">
-                                        <input type="radio" name="bit_schedule_mode" value="later" data-schedule-toggle="bit">
-                                        Schedule for later
-                                    </label>
-                                </div>
-                                <input type="datetime-local" name="bit_schedule_datetime" class="bitstream-schedule-datetime" data-schedule-input="bit" value="" disabled>
-                                <input type="hidden" name="bit_schedule_enabled" value="0" data-schedule-hidden="bit">
-                            </div>
-                        </details>
 
                         <footer class="bs-edit-modal-footer bitstream-qp-modal-footer">
-                            <button type="button" class="bitstream-qp-modal-cancel" data-bs-edit-modal-close="true">Cancel</button>
-                            <div class="bs-edit-actions">
-                                <button type="button" class="bitstream-poster-save-draft bs-edit-save-draft">Save to Drafts</button>
-                                <button type="submit" class="bitstream-poster-submit bs-edit-submit">Update Bit</button>
-                            </div>
+                            <button type="submit" class="bitstream-poster-submit bs-edit-submit">Update Bit</button>
                         </footer>
                     </form>
 

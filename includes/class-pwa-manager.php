@@ -28,7 +28,7 @@ class BitStream_PWA_Manager {
      */
     private function get_poster_url($query_args = []) {
         if (class_exists('BitStream_Shortcodes')) {
-            return BitStream_Shortcodes::get_poster_page_url($query_args);
+            return BitStream_Shortcodes::get_feed_page_url($query_args);
         }
 
         $fallback = home_url('/bitstream/');
@@ -232,7 +232,7 @@ class BitStream_PWA_Manager {
                     <i class="fa-solid fa-plus" style="margin: 0; pointer-events: none;"></i>
                 </button>
                 <div class="bitstream-dropdown" style="position: absolute; bottom: 70px; right: 0; background: white; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.15); min-width: 180px; opacity: 0; visibility: hidden; transform: translateY(10px); transition: all 0.3s ease; pointer-events: none;">
-                    <?php echo wp_kses_post($quick_actions_html); ?>
+                    <?php echo $quick_actions_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
                 </div>
             </div>
         </div>

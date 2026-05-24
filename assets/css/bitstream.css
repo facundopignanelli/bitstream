@@ -223,6 +223,19 @@
     color: #1e4d33;
 }
 
+.bitstream-qp-action-btn.is-danger {
+    color: #c81e1e;
+}
+
+.bitstream-qp-action-btn.is-danger:hover {
+    background: rgba(200, 30, 30, 0.08);
+    color: #a81818;
+}
+
+.bitstream-qp-action-btn.is-danger:active {
+    background: rgba(200, 30, 30, 0.15);
+}
+
 /* Preview area */
 .bitstream-qp-preview-area {
     display: flex;
@@ -638,6 +651,48 @@
 }
 
 .bitstream-qp-drafts-empty {
+    text-align: center;
+    color: #888;
+    font-size: 0.88rem;
+    padding: 1rem 0;
+}
+
+/* Scheduled posts list modal */
+.bitstream-qp-scheduled-filter {
+    margin-bottom: 0.5rem;
+}
+
+.bitstream-qp-scheduled-item {
+    cursor: default;
+}
+
+.bitstream-qp-scheduled-info {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.bitstream-qp-scheduled-info p {
+    margin: 0.15rem 0;
+    font-size: 0.85rem;
+    color: #444;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bitstream-qp-scheduled-info small {
+    font-size: 0.78rem;
+    color: #888;
+}
+
+.bitstream-qp-scheduled-actions {
+    display: flex;
+    gap: 0.35rem;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.bitstream-qp-scheduled-empty {
     text-align: center;
     color: #888;
     font-size: 0.88rem;
@@ -3112,7 +3167,7 @@ body.bitstream-cropper-open {
     padding: 0.75rem;
     background: #fafafa;
     margin-top: 0.75rem;
-    overflow: hidden;
+    overflow: visible;
     box-sizing: border-box;
 }
 
@@ -3450,7 +3505,7 @@ iframe[src*="youtu.be"] {
     background: #fafafa;
     border: 1px solid #e0e0e0;
     box-sizing: border-box;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .bitstream-quoted-preview .bit-card-quoted-nested {
@@ -4099,103 +4154,7 @@ iframe[src*="youtu.be"] {
     gap: 0.5rem;
 }
 
-.bs-edit-media-preview {
-    border-radius: 12px;
-    overflow: hidden;
-    background: #f1f5f9;
-}
 
-.bs-edit-media-preview-inner img,
-.bs-edit-media-preview-inner video,
-.bs-edit-media-preview-inner audio {
-    display: block;
-    max-width: 100%;
-    max-height: 220px;
-    width: auto;
-    margin: 0 auto;
-    border-radius: 12px;
-}
-
-.bs-edit-media-controls {
-    display: flex;
-    gap: 0.4rem;
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-.bs-edit-media-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.1rem;
-    height: 2.1rem;
-    border-radius: 50%;
-    border: none;
-    background: #f0f2f4;
-    color: var(--wp--preset--color--accent-1, #2c6e49);
-    font-size: 0.85rem;
-    cursor: pointer;
-    transition: background 0.15s ease, transform 0.15s ease;
-    text-decoration: none;
-}
-
-.bs-edit-media-btn:hover {
-    background: #e2e8f0;
-    transform: scale(1.08);
-}
-
-/* The upload label wraps a hidden file input */
-.bs-edit-media-upload {
-    cursor: pointer;
-}
-
-.bs-edit-file-input {
-    display: none !important;
-}
-
-.bs-edit-media-remove {
-    background: rgba(200, 30, 30, 0.1);
-    color: #c81e1e;
-}
-
-.bs-edit-media-remove:hover {
-    background: rgba(200, 30, 30, 0.2);
-}
-
-.bs-edit-media-remove.is-hidden {
-    display: none !important;
-}
-
-/* Upload progress */
-.bs-edit-upload-progress {
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-}
-
-.bs-edit-upload-progress.is-hidden {
-    display: none !important;
-}
-
-.bs-edit-progress-track {
-    height: 4px;
-    background: #e2e8f0;
-    border-radius: 4px;
-    overflow: hidden;
-}
-
-.bs-edit-progress-bar {
-    height: 100%;
-    background: var(--wp--preset--color--accent-1, #2c6e49);
-    border-radius: 4px;
-    width: 0%;
-    transition: width 0.2s ease;
-}
-
-.bs-edit-progress-label {
-    font-size: 0.78rem;
-    color: #666;
-}
 
 /* Actions row (inside footer) */
 .bs-edit-modal-footer {
