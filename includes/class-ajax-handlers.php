@@ -89,6 +89,7 @@ class BitStream_Ajax_Handlers
             'media_upload_nonce' => wp_create_nonce('bitstream_media_upload_nonce'),
             'media_crop_nonce'   => wp_create_nonce('bitstream_media_crop_nonce'),
             'delete_post_nonce'  => wp_create_nonce('bitstream_delete_post_nonce'),
+            'poster_submit_nonce'=> wp_create_nonce('bitstream_poster_submit_nonce'),
             'feed_url'           => home_url('/bitstream/'),
             'poster_url'         => class_exists('BitStream_Shortcodes') ? BitStream_Shortcodes::get_poster_page_url() : home_url('/bitstream/')
         ];
@@ -111,6 +112,7 @@ class BitStream_Ajax_Handlers
         add_action('wp_ajax_bitstream_get_draft_data', [$this, 'handle_get_draft_data']);
         add_action('wp_ajax_bitstream_get_post_data', [$this, 'handle_get_post_data']);
         add_action('wp_ajax_bitstream_get_post_edit_data', [$this, 'handle_get_post_edit_data']);
+        add_action('wp_ajax_bitstream_get_quote_preview', [$this, 'handle_get_quote_preview']);
         add_action('before_delete_post', [$this, 'handle_before_delete_post']);
     }
 
@@ -1569,6 +1571,13 @@ class BitStream_Ajax_Handlers
             $attachment_url  = $attachment_id > 0 ? wp_get_attachment_url($attachment_id) : '';
             $attachment_mime = $attachment_id > 0 ? get_post_mime_type($attachment_id) : '';
 
+            $schedule_enabled = '0';
+            $schedule_datetime = '';
+            if ($post->post_status === 'future') {
+                $schedule_enabled = '1';
+                $schedule_datetime = mysql2date('Y-m-d\TH:i', $post->post_date, false);
+            }
+
             // Strip raw media embeds so only the text is returned for editing
             $editable_content = preg_replace(
                 '#<(audio|video)[^>]*>[\s\S]*?</\1>#i',
@@ -1580,10 +1589,13 @@ class BitStream_Ajax_Handlers
             $data = [
                 'post_id'         => $post_id,
                 'post_type'       => $is_rebit ? 'rebit' : 'bit',
+                'post_status'     => $post->post_status,
                 'content'         => $editable_content,
                 'attachment_id'   => $attachment_id,
                 'attachment_url'  => $attachment_url ?: '',
                 'attachment_mime' => $attachment_mime ?: '',
+                'schedule_enabled' => $schedule_enabled,
+                'schedule_datetime'=> $schedule_datetime,
             ];
 
             if ($is_rebit) {
@@ -1591,12 +1603,61 @@ class BitStream_Ajax_Handlers
                 $data['og_title']  = get_post_meta($post_id, '_bitstream_og_title', true);
                 $data['og_desc']   = get_post_meta($post_id, '_bitstream_og_desc', true);
                 $data['og_image']  = get_post_meta($post_id, '_bitstream_og_image', true);
+                $data['quote_post_id'] = 0;
+            }
+            else {
+                $quote_post_id = intval(get_post_meta($post_id, '_bitstream_quoted_bit', true));
+                $data['quote_post_id'] = $quote_post_id > 0 ? $quote_post_id : 0;
+                if ($quote_post_id > 0 && function_exists('bitstream_render_nested_quoted_card')) {
+                    $data['quote_preview_html'] = bitstream_render_nested_quoted_card($quote_post_id);
+                }
             }
 
             wp_send_json_success($data);
         }
         catch (Exception $e) {
             wp_send_json_error($e->getMessage() ?: 'Could not load post data.');
+        }
+    }
+
+    /**
+     * Return quote preview markup for the timeline modal.
+     */
+    public function handle_get_quote_preview()
+    {
+        try {
+            check_ajax_referer('bitstream_poster_submit_nonce', 'nonce');
+
+            if (!current_user_can('edit_posts')) {
+                wp_send_json_error('Insufficient permissions.');
+            }
+
+            $post_id = intval($_POST['post_id'] ?? 0);
+            if ($post_id <= 0) {
+                wp_send_json_error('Invalid post ID.');
+            }
+
+            $post = get_post($post_id);
+            if (!$post || $post->post_type !== 'bit' || $post->post_status !== 'publish') {
+                wp_send_json_error('Post not found.');
+            }
+
+            $quote_preview_html = function_exists('bitstream_render_nested_quoted_card')
+                ? bitstream_render_nested_quoted_card($post_id)
+                : '';
+
+            if ($quote_preview_html === '') {
+                wp_send_json_error('Could not build quote preview.');
+            }
+
+            wp_send_json_success([
+                'post_id' => $post_id,
+                'post_title' => get_the_title($post_id),
+                'quote_preview_html' => $quote_preview_html,
+            ]);
+        }
+        catch (Exception $e) {
+            wp_send_json_error($e->getMessage() ?: 'Could not load quote preview.');
         }
     }
 }

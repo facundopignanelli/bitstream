@@ -813,6 +813,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
             }
 
+            // Allow other UI modules (e.g. timeline edit modal) to reuse the shared cropper.
+            window.bitstreamOpenCropper = openCropper;
+
             function openMediaLibrary(targetInputId, targetPreviewId) {
                 if (!window.wp || !wp.media) {
                     setStatus('Media library is unavailable.', true);
@@ -2489,6 +2492,996 @@ document.addEventListener('DOMContentLoaded', function () {
         initRebitPreview();
     }
 
+    let openTimelineEditModal = () => false;
+    let openTimelineQuoteModal = () => false;
+
+    function initTimelineEditModal() {
+        const modal = document.getElementById('bs-edit-modal');
+        if (!modal) {
+            return;
+        }
+
+        const modalTitle = modal.querySelector('#bs-edit-modal-title');
+        const loadingState = modal.querySelector('.bs-edit-modal-loading');
+        const loadingMessage = loadingState ? loadingState.querySelector('p') : null;
+        const errorState = modal.querySelector('.bs-edit-modal-error');
+        const errorMessage = modal.querySelector('.bs-edit-modal-error-msg');
+        const bitForm = modal.querySelector('.bs-edit-form-bit');
+        const rebitForm = modal.querySelector('.bs-edit-form-rebit');
+        const linkMetaModal = modal.querySelector('.bs-edit-link-meta-modal');
+        const closeButtons = modal.querySelectorAll('[data-bs-edit-modal-close="true"]');
+        const submitNonce = modal.dataset.submitNonce || (window.bitstream_ajax && bitstream_ajax.poster_submit_nonce) || '';
+        let mediaFrame = null;
+        let activeMediaForm = null;
+        let ogImageFrame = null;
+
+        function setModalVisible(isVisible) {
+            modal.hidden = !isVisible;
+            document.body.style.overflow = isVisible ? 'hidden' : '';
+        }
+
+        function setLoadingState(isLoading, message) {
+            if (loadingState) {
+                loadingState.hidden = !isLoading;
+            }
+            if (loadingMessage) {
+                loadingMessage.textContent = message || 'Loading post…';
+            }
+            if (errorState) {
+                errorState.hidden = true;
+            }
+        }
+
+        function setErrorState(message) {
+            if (loadingState) {
+                loadingState.hidden = true;
+            }
+            if (errorState) {
+                errorState.hidden = false;
+            }
+            if (errorMessage) {
+                errorMessage.textContent = message || 'Could not load post.';
+            }
+        }
+
+        function clearFormFeedback() {
+            if (loadingState) {
+                loadingState.hidden = true;
+            }
+            if (errorState) {
+                errorState.hidden = true;
+            }
+            if (errorMessage) {
+                errorMessage.textContent = '';
+            }
+        }
+
+        function showForm(form) {
+            if (bitForm) {
+                bitForm.hidden = form !== bitForm;
+            }
+            if (rebitForm) {
+                rebitForm.hidden = form !== rebitForm;
+            }
+        }
+
+        function setAttachmentPreview(form, attachmentId, attachmentUrl, attachmentMime) {
+            if (!form) {
+                return;
+            }
+
+            const attachmentInput = form.querySelector('.bs-edit-attachment-id');
+            const previewWrap = form.querySelector('.bs-edit-media-preview');
+            const previewInner = form.querySelector('.bs-edit-media-preview-inner');
+            const removeButton = form.querySelector('.bs-edit-media-remove');
+
+            if (attachmentInput) {
+                attachmentInput.value = attachmentId > 0 ? String(attachmentId) : '';
+            }
+
+            if (!previewWrap || !previewInner) {
+                return;
+            }
+
+            previewInner.innerHTML = '';
+
+            if (!attachmentId || !attachmentUrl) {
+                previewWrap.hidden = true;
+                if (removeButton) {
+                    removeButton.classList.add('is-hidden');
+                }
+                return;
+            }
+
+            if (attachmentMime && attachmentMime.indexOf('video/') === 0) {
+                const mediaLabel = document.createElement('div');
+                mediaLabel.className = 'bs-edit-media-video-label';
+                mediaLabel.innerHTML = '<i class="fa-solid fa-video" aria-hidden="true"></i> Video attached';
+                previewInner.appendChild(mediaLabel);
+            } else {
+                const image = document.createElement('img');
+                image.src = attachmentUrl;
+                image.alt = '';
+                previewInner.appendChild(image);
+            }
+
+            previewWrap.hidden = false;
+            if (removeButton) {
+                removeButton.classList.remove('is-hidden');
+            }
+        }
+
+        function setLinkMetaPreview() {
+            if (!rebitForm || !linkMetaModal) {
+                return;
+            }
+
+            const urlInput = rebitForm.querySelector('#bs-edit-rebit-url');
+            const attachmentInput = rebitForm.querySelector('input[name="rebit_attachment_id"]');
+            const titleInput = rebitForm.querySelector('input[name="rebit_og_title"]');
+            const descInput = rebitForm.querySelector('textarea[name="rebit_og_desc"]');
+            const imageInput = rebitForm.querySelector('input[name="rebit_og_image"]');
+            const imageRemovedInput = rebitForm.querySelector('input[name="rebit_og_image_removed"]');
+
+            const modalUrlInput = linkMetaModal.querySelector('#bs-edit-link-meta-url-input');
+            const visibleTitleInput = linkMetaModal.querySelector('#bs-edit-link-meta-title-input');
+            const visibleDescInput = linkMetaModal.querySelector('#bs-edit-link-meta-desc-input');
+            const previewImage = linkMetaModal.querySelector('.bs-edit-og-preview-img');
+            const previewTitle = linkMetaModal.querySelector('.bs-edit-og-preview-title');
+            const previewUrl = linkMetaModal.querySelector('.bs-edit-og-preview-url');
+            const cropImageButton = linkMetaModal.querySelector('.bs-edit-og-image-crop');
+
+            if (modalUrlInput && urlInput) {
+                modalUrlInput.value = urlInput.value || '';
+            }
+            if (visibleTitleInput && titleInput) {
+                visibleTitleInput.value = titleInput.value || '';
+            }
+            if (visibleDescInput && descInput) {
+                visibleDescInput.value = descInput.value || '';
+            }
+
+            const imageUrl = imageInput ? (imageInput.value || '') : '';
+            if (previewImage) {
+                if (imageUrl) {
+                    previewImage.src = imageUrl;
+                    previewImage.hidden = false;
+                } else {
+                    previewImage.src = '';
+                    previewImage.hidden = true;
+                }
+            }
+            if (previewTitle) {
+                previewTitle.textContent = (titleInput && titleInput.value) ? titleInput.value : 'No title yet';
+            }
+            if (previewUrl) {
+                previewUrl.textContent = (urlInput && urlInput.value) ? urlInput.value : '';
+            }
+            if (cropImageButton) {
+                const hasImage = !!imageUrl || (attachmentInput && parseInt(attachmentInput.value || '0', 10) > 0);
+                cropImageButton.classList.toggle('is-hidden', !hasImage);
+            }
+        }
+
+        function syncLinkMetaFields() {
+            if (!rebitForm || !linkMetaModal) {
+                return;
+            }
+
+            const titleInput = rebitForm.querySelector('input[name="rebit_og_title"]');
+            const descInput = rebitForm.querySelector('textarea[name="rebit_og_desc"]');
+            const imageInput = rebitForm.querySelector('input[name="rebit_og_image"]');
+            const imageRemovedInput = rebitForm.querySelector('input[name="rebit_og_image_removed"]');
+
+            const visibleTitleInput = linkMetaModal.querySelector('#bs-edit-link-meta-title-input');
+            const visibleDescInput = linkMetaModal.querySelector('#bs-edit-link-meta-desc-input');
+
+            if (titleInput && visibleTitleInput) {
+                titleInput.value = visibleTitleInput.value || '';
+            }
+            if (descInput && visibleDescInput) {
+                descInput.value = visibleDescInput.value || '';
+            }
+            if (imageInput && imageRemovedInput) {
+                imageRemovedInput.value = imageInput.value ? '0' : '1';
+            }
+
+            setLinkMetaPreview();
+        }
+
+        function openLinkMetaModal() {
+            if (!linkMetaModal || !rebitForm) {
+                return;
+            }
+
+            setLinkMetaPreview();
+            linkMetaModal.hidden = false;
+        }
+
+        function closeLinkMetaModal() {
+            if (linkMetaModal) {
+                linkMetaModal.hidden = true;
+            }
+        }
+
+        function setQuotePreview(form, quotePostId, quotePreviewHtml) {
+            if (!form) {
+                return;
+            }
+
+            const quoteInput = form.querySelector('.bs-edit-quote-post-id');
+            const quoteWrap = form.querySelector('.bs-edit-quote-preview');
+            const quoteCard = form.querySelector('.bs-edit-quote-preview-card');
+
+            if (quoteInput) {
+                quoteInput.value = quotePostId > 0 ? String(quotePostId) : '0';
+            }
+
+            if (!quoteWrap || !quoteCard) {
+                return;
+            }
+
+            quoteCard.innerHTML = quotePreviewHtml || '';
+            quoteWrap.hidden = !quotePreviewHtml;
+            if (quotePreviewHtml) {
+                applyMediaDeterrents(quoteCard);
+            }
+        }
+
+        function setScheduleState(form, scheduleKey, enabled, datetimeValue) {
+            if (!form) {
+                return;
+            }
+
+            const modeNow = form.querySelector('input[name="' + scheduleKey + '_schedule_mode"][value="now"]');
+            const modeLater = form.querySelector('input[name="' + scheduleKey + '_schedule_mode"][value="later"]');
+            const datetimeInput = form.querySelector('input[name="' + scheduleKey + '_schedule_datetime"]');
+            const enabledInput = form.querySelector('input[name="' + scheduleKey + '_schedule_enabled"]');
+
+            if (modeNow) {
+                modeNow.checked = !enabled;
+            }
+            if (modeLater) {
+                modeLater.checked = !!enabled;
+            }
+            if (datetimeInput) {
+                datetimeInput.disabled = !enabled;
+                datetimeInput.value = enabled ? (datetimeValue || '') : '';
+            }
+            if (enabledInput) {
+                enabledInput.value = enabled ? '1' : '0';
+            }
+        }
+
+        function bindScheduleControls(form) {
+            const posterType = form.dataset.posterType || 'bit';
+            const radios = form.querySelectorAll('input[name="' + posterType + '_schedule_mode"]');
+            const datetimeInput = form.querySelector('input[name="' + posterType + '_schedule_datetime"]');
+            const enabledInput = form.querySelector('input[name="' + posterType + '_schedule_enabled"]');
+
+            if (!radios.length || !datetimeInput) {
+                return;
+            }
+
+            radios.forEach(radio => {
+                radio.addEventListener('change', () => {
+                    const enabled = radio.value === 'later' && radio.checked;
+                    datetimeInput.disabled = !enabled;
+                    if (enabledInput) {
+                        enabledInput.value = enabled ? '1' : '0';
+                    }
+                    if (!enabled) {
+                        datetimeInput.value = '';
+                    }
+                });
+            });
+        }
+
+        function bindMediaControls(form) {
+            const replaceButton = form.querySelector('.bs-edit-media-replace');
+            const removeButton = form.querySelector('.bs-edit-media-remove');
+
+            if (replaceButton) {
+                replaceButton.addEventListener('click', () => {
+                    if (!window.wp || !wp.media) {
+                        setErrorState('The media library is unavailable.');
+                        return;
+                    }
+
+                    activeMediaForm = form;
+                    if (!mediaFrame) {
+                        mediaFrame = wp.media({
+                            title: 'Select media',
+                            button: { text: 'Use this media' },
+                            multiple: false
+                        });
+
+                        mediaFrame.on('select', () => {
+                            if (!activeMediaForm) {
+                                return;
+                            }
+
+                            const attachment = mediaFrame.state().get('selection').first().toJSON();
+                            setAttachmentPreview(activeMediaForm, attachment.id || 0, attachment.url || '', attachment.mime || '');
+                        });
+                    }
+
+                    mediaFrame.open();
+                });
+            }
+
+            if (removeButton) {
+                removeButton.addEventListener('click', () => {
+                    setAttachmentPreview(form, 0, '', '');
+                });
+            }
+        }
+
+        function bindLinkMetaControls() {
+            if (!rebitForm || !linkMetaModal || linkMetaModal.dataset.timelineMetaBound === '1') {
+                return;
+            }
+
+            linkMetaModal.dataset.timelineMetaBound = '1';
+
+            const openButton = rebitForm.querySelector('.bs-edit-link-meta-open');
+            const refetchButton = linkMetaModal.querySelector('.bs-edit-link-meta-refetch');
+            const closeButtons = linkMetaModal.querySelectorAll('[data-bs-edit-link-meta-close="true"]');
+            const saveButton = linkMetaModal.querySelector('.bs-edit-link-meta-save');
+            const modalUrlInput = linkMetaModal.querySelector('#bs-edit-link-meta-url-input');
+            const visibleTitleInput = linkMetaModal.querySelector('#bs-edit-link-meta-title-input');
+            const visibleDescInput = linkMetaModal.querySelector('#bs-edit-link-meta-desc-input');
+            const chooseImageButton = linkMetaModal.querySelector('.bs-edit-og-image-select');
+            const cropImageButton = linkMetaModal.querySelector('.bs-edit-og-image-crop');
+            const clearImageButton = linkMetaModal.querySelector('.bs-edit-og-image-clear');
+            const imageInput = rebitForm.querySelector('input[name="rebit_og_image"]');
+            const imageRemovedInput = rebitForm.querySelector('input[name="rebit_og_image_removed"]');
+            const attachmentInput = rebitForm.querySelector('input[name="rebit_attachment_id"]');
+            const mainUrlInput = rebitForm.querySelector('#bs-edit-rebit-url');
+
+            if (openButton) {
+                openButton.addEventListener('click', () => {
+                    if (modalUrlInput && mainUrlInput) {
+                        modalUrlInput.value = mainUrlInput.value || '';
+                    }
+                    openLinkMetaModal();
+                });
+            }
+
+            closeButtons.forEach(button => {
+                button.addEventListener('click', closeLinkMetaModal);
+            });
+
+            if (saveButton) {
+                saveButton.addEventListener('click', () => {
+                    syncLinkMetaFields();
+                    closeLinkMetaModal();
+                });
+            }
+
+            if (refetchButton) {
+                refetchButton.addEventListener('click', () => {
+                    const targetUrl = (mainUrlInput && mainUrlInput.value ? mainUrlInput.value : (modalUrlInput ? modalUrlInput.value : '')).trim();
+                    const editPostInput = rebitForm.querySelector('input[name="edit_post_id"]');
+
+                    if (!targetUrl) {
+                        setErrorState('Add a link URL first.');
+                        return;
+                    }
+
+                    if (!window.bitstream_ajax || !bitstream_ajax.ajax_url || !bitstream_ajax.og_fetch_nonce) {
+                        setErrorState('Metadata fetch is unavailable.');
+                        return;
+                    }
+
+                    refetchButton.disabled = true;
+                    setStatus('Fetching metadata...');
+
+                    const payload = new FormData();
+                    payload.append('action', 'bitstream_fetch_og_data');
+                    payload.append('nonce', bitstream_ajax.og_fetch_nonce);
+                    payload.append('url', targetUrl);
+                    payload.append('post_id', editPostInput ? (editPostInput.value || '0') : '0');
+
+                    fetch(bitstream_ajax.ajax_url, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        body: payload
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (!data.success) {
+                                throw new Error(data.data || 'Could not fetch metadata.');
+                            }
+
+                            const og = data.data || {};
+                            const titleInput = rebitForm.querySelector('input[name="rebit_og_title"]');
+                            const descInput = rebitForm.querySelector('textarea[name="rebit_og_desc"]');
+
+                            if (titleInput) {
+                                titleInput.value = og.title || '';
+                            }
+                            if (descInput) {
+                                descInput.value = og.description || '';
+                            }
+                            if (imageInput) {
+                                imageInput.value = og.image || '';
+                            }
+                            if (imageRemovedInput) {
+                                imageRemovedInput.value = og.image ? '0' : '1';
+                            }
+                            if (attachmentInput) {
+                                attachmentInput.value = '';
+                            }
+
+                            setLinkMetaPreview();
+                            setStatus(og.cached ? 'Metadata refreshed from cache.' : 'Metadata refreshed.');
+                        })
+                        .catch(error => {
+                            setErrorState(error.message || 'Could not fetch metadata.');
+                        })
+                        .finally(() => {
+                            refetchButton.disabled = false;
+                        });
+                });
+            }
+
+            if (visibleTitleInput) {
+                visibleTitleInput.addEventListener('input', syncLinkMetaFields);
+            }
+
+            if (visibleDescInput) {
+                visibleDescInput.addEventListener('input', syncLinkMetaFields);
+            }
+
+            if (chooseImageButton) {
+                chooseImageButton.addEventListener('click', () => {
+                    if (!window.wp || !wp.media) {
+                        setErrorState('The media library is unavailable.');
+                        return;
+                    }
+
+                    if (!ogImageFrame) {
+                        ogImageFrame = wp.media({
+                            title: 'Select link image',
+                            button: { text: 'Use this image' },
+                            multiple: false,
+                            library: { type: 'image' }
+                        });
+
+                        ogImageFrame.on('select', () => {
+                            const selection = ogImageFrame.state().get('selection').first();
+                            if (!selection) {
+                                return;
+                            }
+
+                            const attachment = selection.toJSON();
+                            const attachmentMime = attachment.mime || attachment.type || '';
+                            setAttachmentPreview(rebitForm, attachment.id || 0, attachment.url || '', attachmentMime);
+                            if (imageInput) {
+                                imageInput.value = attachment.url || '';
+                            }
+                            if (imageRemovedInput) {
+                                imageRemovedInput.value = '0';
+                            }
+                            setLinkMetaPreview();
+                        });
+                    }
+
+                    ogImageFrame.open();
+                });
+            }
+
+            if (cropImageButton) {
+                cropImageButton.addEventListener('click', () => {
+                    const attachmentId = attachmentInput ? parseInt(attachmentInput.value || '0', 10) : 0;
+                    const imageUrl = imageInput ? (imageInput.value || '').trim() : '';
+
+                    const openCropperForAttachment = (preparedAttachmentId) => {
+                        if (!preparedAttachmentId) {
+                            setErrorState('Select an image first.');
+                            return;
+                        }
+
+                        const cropperOpener = (typeof window.bitstreamOpenCropper === 'function')
+                            ? window.bitstreamOpenCropper
+                            : null;
+
+                        if (window.bitstream_ajax && bitstream_ajax.media_crop_nonce && cropperOpener) {
+                            cropperOpener('bitstream-rebit-attachment-id', '', {
+                                attachmentId: preparedAttachmentId,
+                                onComplete: (croppedMedia, croppedUrl) => {
+                                    if (croppedMedia && croppedMedia.id) {
+                                        setAttachmentPreview(rebitForm, croppedMedia.id, croppedUrl || croppedMedia.url || '', croppedMedia.mime || 'image/jpeg');
+                                    }
+                                    if (imageInput) {
+                                        imageInput.value = croppedUrl || (croppedMedia && croppedMedia.url) || '';
+                                    }
+                                    if (imageRemovedInput) {
+                                        imageRemovedInput.value = '0';
+                                    }
+                                    setLinkMetaPreview();
+                                }
+                            });
+                        } else {
+                            setErrorState('Image cropper is unavailable.');
+                        }
+                    };
+
+                    if (attachmentId > 0) {
+                        openCropperForAttachment(attachmentId);
+                        return;
+                    }
+
+                    if (!imageUrl) {
+                        setErrorState('Select an image first.');
+                        return;
+                    }
+
+                    if (!window.bitstream_ajax || !bitstream_ajax.ajax_url || !bitstream_ajax.media_upload_nonce) {
+                        setErrorState('Image cropper is unavailable.');
+                        return;
+                    }
+
+                    cropImageButton.disabled = true;
+                    setStatus('Preparing image for crop...');
+
+                    const payload = new FormData();
+                    payload.append('action', 'bitstream_prepare_rebit_image_for_crop');
+                    payload.append('nonce', bitstream_ajax.media_upload_nonce);
+                    payload.append('image_url', imageUrl);
+
+                    fetch(bitstream_ajax.ajax_url, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        body: payload
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (!data.success) {
+                                throw new Error(data.data || 'Could not prepare image for crop.');
+                            }
+
+                            const prepared = data.data || {};
+                            setAttachmentPreview(rebitForm, prepared.id || 0, prepared.url || imageUrl, prepared.mime || 'image/jpeg');
+                            if (imageInput) {
+                                imageInput.value = prepared.url || imageUrl;
+                            }
+                            if (imageRemovedInput) {
+                                imageRemovedInput.value = '0';
+                            }
+                            openCropperForAttachment(prepared.id || 0);
+                        })
+                        .catch(error => {
+                            setErrorState(error.message || 'Could not prepare image for crop.');
+                        })
+                        .finally(() => {
+                            cropImageButton.disabled = false;
+                        });
+                });
+            }
+
+            if (clearImageButton) {
+                const clearLinkImage = () => {
+                    setAttachmentPreview(rebitForm, 0, '', '');
+                    if (imageInput) {
+                        imageInput.value = '';
+                    }
+                    if (imageRemovedInput) {
+                        imageRemovedInput.value = '1';
+                    }
+                    setLinkMetaPreview();
+                };
+
+                clearImageButton.addEventListener('click', clearLinkImage);
+            }
+        }
+
+        function bindFormOnce(form) {
+            if (!form || form.dataset.timelineModalBound === '1') {
+                return;
+            }
+
+            form.dataset.timelineModalBound = '1';
+            bindScheduleControls(form);
+            bindMediaControls(form);
+            if (form === rebitForm) {
+                bindLinkMetaControls();
+            }
+        }
+
+        function populateBitForm(data, isQuoteMode) {
+            if (!bitForm) {
+                return;
+            }
+
+            bindFormOnce(bitForm);
+            showForm(bitForm);
+
+            const postId = parseInt(data.post_id || '0', 10);
+            const editPostInput = bitForm.querySelector('input[name="edit_post_id"]');
+            const contentInput = bitForm.querySelector('#bs-edit-bit-content');
+            const submitButton = bitForm.querySelector('.bs-edit-submit');
+            const draftButton = bitForm.querySelector('.bs-edit-save-draft');
+            const attachmentId = parseInt(data.attachment_id || '0', 10);
+            const attachmentUrl = data.attachment_url || '';
+            const attachmentMime = data.attachment_mime || '';
+            const quotePostId = parseInt(data.quote_post_id || (isQuoteMode ? postId : 0), 10);
+            const quotePreviewHtml = isQuoteMode ? (data.quote_preview_html || '') : (data.quote_preview_html || '');
+            const scheduleEnabled = (data.post_status === 'future' || data.schedule_enabled === '1');
+            const scheduleDatetime = data.schedule_datetime || '';
+
+            if (modalTitle) {
+                modalTitle.textContent = isQuoteMode ? 'Quote Bit' : 'Edit Bit';
+            }
+
+            if (editPostInput) {
+                editPostInput.value = isQuoteMode ? '0' : String(postId || 0);
+            }
+
+            if (contentInput) {
+                contentInput.value = isQuoteMode ? '' : (data.content || '');
+            }
+
+            setQuotePreview(bitForm, quotePostId, quotePreviewHtml);
+            setAttachmentPreview(bitForm, isQuoteMode ? 0 : attachmentId, isQuoteMode ? '' : attachmentUrl, isQuoteMode ? '' : attachmentMime);
+            setScheduleState(bitForm, 'bit', scheduleEnabled && !isQuoteMode, isQuoteMode ? '' : scheduleDatetime);
+
+            if (submitButton) {
+                submitButton.textContent = isQuoteMode ? 'Post Bit' : 'Update Bit';
+            }
+            if (draftButton) {
+                draftButton.textContent = data.post_status === 'draft' && !isQuoteMode ? 'Update Draft' : 'Save to Drafts';
+            }
+
+            setLoadingState(false);
+            clearFormFeedback();
+            setModalVisible(true);
+        }
+
+        function populateRebitForm(data) {
+            if (!rebitForm) {
+                return;
+            }
+
+            bindFormOnce(rebitForm);
+            showForm(rebitForm);
+
+            const postId = parseInt(data.post_id || '0', 10);
+            const editPostInput = rebitForm.querySelector('input[name="edit_post_id"]');
+            const urlInput = rebitForm.querySelector('#bs-edit-rebit-url');
+            const commentaryInput = rebitForm.querySelector('#bs-edit-rebit-commentary');
+            const ogTitleInput = rebitForm.querySelector('.bs-edit-og-title');
+            const ogDescInput = rebitForm.querySelector('.bs-edit-og-desc');
+            const ogImageInput = rebitForm.querySelector('.bs-edit-og-image');
+            const ogImageRemovedInput = rebitForm.querySelector('.bs-edit-og-image-removed');
+            const submitButton = rebitForm.querySelector('.bs-edit-submit');
+            const draftButton = rebitForm.querySelector('.bs-edit-save-draft');
+            const attachmentId = parseInt(data.attachment_id || '0', 10);
+            const attachmentUrl = data.attachment_url || '';
+            const attachmentMime = data.attachment_mime || '';
+            const scheduleEnabled = (data.post_status === 'future' || data.schedule_enabled === '1');
+            const scheduleDatetime = data.schedule_datetime || '';
+
+            if (modalTitle) {
+                modalTitle.textContent = 'Edit Rebit';
+            }
+
+            if (editPostInput) {
+                editPostInput.value = String(postId || 0);
+            }
+            if (urlInput) {
+                urlInput.value = data.rebit_url || '';
+            }
+            if (commentaryInput) {
+                commentaryInput.value = data.content || '';
+            }
+            if (ogTitleInput) {
+                ogTitleInput.value = data.og_title || '';
+            }
+            if (ogDescInput) {
+                ogDescInput.value = data.og_desc || '';
+            }
+            if (ogImageInput) {
+                ogImageInput.value = data.og_image || '';
+            }
+            if (ogImageRemovedInput) {
+                ogImageRemovedInput.value = '0';
+            }
+
+            setAttachmentPreview(rebitForm, attachmentId, attachmentUrl, attachmentMime);
+            setLinkMetaPreview();
+
+            if (submitButton) {
+                submitButton.textContent = 'Update Rebit';
+            }
+            if (draftButton) {
+                draftButton.textContent = data.post_status === 'draft' ? 'Update Draft' : 'Save to Drafts';
+            }
+
+            setLoadingState(false);
+            clearFormFeedback();
+            setModalVisible(true);
+        }
+
+        function submitModalForm(form, saveAsDraft) {
+            if (!form || !window.bitstream_ajax || !bitstream_ajax.ajax_url) {
+                setErrorState('Poster submit endpoint is unavailable.');
+                return;
+            }
+
+            if (!submitNonce) {
+                setErrorState('Security token missing. Refresh and try again.');
+                return;
+            }
+
+            const posterType = form.dataset.posterType || 'bit';
+            const editPostInput = form.querySelector('input[name="edit_post_id"]');
+            const submitButton = form.querySelector('.bs-edit-submit');
+            const draftButton = form.querySelector('.bs-edit-save-draft');
+            const scheduleEnabledInput = form.querySelector('input[name="' + posterType + '_schedule_enabled"]');
+            const scheduleDatetimeInput = form.querySelector('input[name="' + posterType + '_schedule_datetime"]');
+            const scheduleLater = form.querySelector('input[name="' + posterType + '_schedule_mode"][value="later"]');
+
+            if (scheduleLater && scheduleLater.checked && scheduleDatetimeInput && !scheduleDatetimeInput.value) {
+                setErrorState('Please choose a date and time for the schedule.');
+                return;
+            }
+
+            let effectiveType = posterType;
+            if (posterType === 'bit') {
+                const textarea = form.querySelector('#bs-edit-bit-content');
+                const attachmentInput = form.querySelector('.bs-edit-attachment-id');
+                const quoteInput = form.querySelector('.bs-edit-quote-post-id');
+                const content = textarea ? textarea.value.trim() : '';
+                const hasMedia = attachmentInput && parseInt(attachmentInput.value || '0', 10) > 0;
+                const hasQuote = quoteInput && parseInt(quoteInput.value || '0', 10) > 0;
+
+                if (!saveAsDraft && !content && !hasMedia && !hasQuote) {
+                    setErrorState('Write something or attach media.');
+                    return;
+                }
+
+                if (!saveAsDraft && !hasMedia && !hasQuote && content) {
+                    try {
+                        const url = new URL(content);
+                        if (url.protocol === 'http:' || url.protocol === 'https:') {
+                            effectiveType = 'rebit';
+                        }
+                    } catch {
+                        // Keep it as a Bit.
+                    }
+                }
+            } else {
+                const urlInput = form.querySelector('#bs-edit-rebit-url');
+                const rebitUrl = urlInput ? urlInput.value.trim() : '';
+                if (!saveAsDraft && !rebitUrl) {
+                    setErrorState('Add a link URL.');
+                    return;
+                }
+            }
+
+            if (submitButton) {
+                submitButton.disabled = true;
+            }
+            if (draftButton) {
+                draftButton.disabled = true;
+            }
+            setLoadingState(true, saveAsDraft ? 'Saving draft...' : 'Publishing...');
+
+            const payload = new FormData(form);
+            payload.append('action', 'bitstream_submit_poster');
+            payload.append('nonce', submitNonce);
+            payload.append('poster_type', effectiveType);
+            payload.set('edit_post_id', editPostInput ? (editPostInput.value || '0') : '0');
+
+            if (saveAsDraft) {
+                payload.append('save_as_draft', '1');
+            }
+
+            if (effectiveType === 'rebit' && posterType === 'bit') {
+                const textarea = form.querySelector('#bs-edit-bit-content');
+                const content = textarea ? textarea.value.trim() : '';
+                if (content) {
+                    payload.set('rebit_url', content);
+                    payload.delete('bit_content');
+                }
+            }
+
+            fetch(bitstream_ajax.ajax_url, {
+                method: 'POST',
+                credentials: 'same-origin',
+                body: payload
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) {
+                        throw new Error(data.data || 'Could not save post.');
+                    }
+
+                    const responseData = data.data || {};
+                    const createdPostId = parseInt(responseData.post_id || '0', 10);
+                    const isScheduled = !!responseData.is_scheduled;
+
+                    if (saveAsDraft) {
+                        const posterBaseUrl = (window.bitstream_ajax && bitstream_ajax.poster_url)
+                            ? bitstream_ajax.poster_url
+                            : window.location.href;
+                        const redirectUrl = new URL(posterBaseUrl, window.location.origin);
+                        redirectUrl.searchParams.set('poster_tab', 'drafts');
+                        if (createdPostId > 0) {
+                            redirectUrl.searchParams.set('highlight_draft', String(createdPostId));
+                        }
+                        window.location.href = redirectUrl.toString();
+                        return;
+                    }
+
+                    if (isScheduled) {
+                        const posterBaseUrl = (window.bitstream_ajax && bitstream_ajax.poster_url)
+                            ? bitstream_ajax.poster_url
+                            : window.location.href;
+                        const redirectUrl = new URL(posterBaseUrl, window.location.origin);
+                        redirectUrl.searchParams.set('poster_tab', 'scheduled');
+                        if (createdPostId > 0) {
+                            redirectUrl.searchParams.set('highlight_scheduled', String(createdPostId));
+                        }
+                        window.location.href = redirectUrl.toString();
+                        return;
+                    }
+
+                    const feedBaseUrl = (window.bitstream_ajax && bitstream_ajax.feed_url)
+                        ? bitstream_ajax.feed_url
+                        : (window.location.origin + '/bitstream/');
+                    const feedUrl = new URL(feedBaseUrl, window.location.origin);
+                    if (createdPostId > 0) {
+                        feedUrl.searchParams.set('highlight_bit', String(createdPostId));
+                    }
+                    window.location.href = feedUrl.toString();
+                })
+                .catch(error => {
+                    setErrorState(error.message || 'Could not save post.');
+                    setLoadingState(false);
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                    }
+                    if (draftButton) {
+                        draftButton.disabled = false;
+                    }
+                });
+        }
+
+        openTimelineEditModal = function (postId, postType) {
+            const numericPostId = parseInt(postId || '0', 10);
+            if (!numericPostId || !window.bitstream_ajax || !bitstream_ajax.ajax_url || !submitNonce) {
+                return false;
+            }
+
+            setModalVisible(true);
+            setLoadingState(true, 'Loading post…');
+            clearFormFeedback();
+            showForm(null);
+
+            const payload = new FormData();
+            payload.append('action', 'bitstream_get_post_edit_data');
+            payload.append('nonce', submitNonce);
+            payload.append('post_id', String(numericPostId));
+
+            fetch(bitstream_ajax.ajax_url, {
+                method: 'POST',
+                credentials: 'same-origin',
+                body: payload
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) {
+                        throw new Error(data.data || 'Could not load post data.');
+                    }
+
+                    const responseData = data.data || {};
+                    if (responseData.post_type === 'rebit' || postType === 'rebit') {
+                        populateRebitForm(responseData);
+                    } else {
+                        populateBitForm(responseData, false);
+                    }
+                })
+                .catch(error => {
+                    setErrorState(error.message || 'Could not load post data.');
+                });
+
+            return true;
+        };
+
+        openTimelineQuoteModal = function (postId) {
+            const numericPostId = parseInt(postId || '0', 10);
+            if (!numericPostId || !window.bitstream_ajax || !bitstream_ajax.ajax_url || !submitNonce) {
+                return false;
+            }
+
+            setModalVisible(true);
+            setLoadingState(true, 'Loading quote preview…');
+            clearFormFeedback();
+            showForm(null);
+
+            const payload = new FormData();
+            payload.append('action', 'bitstream_get_quote_preview');
+            payload.append('nonce', submitNonce);
+            payload.append('post_id', String(numericPostId));
+
+            fetch(bitstream_ajax.ajax_url, {
+                method: 'POST',
+                credentials: 'same-origin',
+                body: payload
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) {
+                        throw new Error(data.data || 'Could not load quote preview.');
+                    }
+
+                    const responseData = data.data || {};
+                    populateBitForm({
+                        post_id: numericPostId,
+                        content: '',
+                        quote_post_id: numericPostId,
+                        quote_preview_html: responseData.quote_preview_html || '',
+                        attachment_id: 0,
+                        attachment_url: '',
+                        attachment_mime: '',
+                        post_status: 'publish',
+                        schedule_enabled: '0',
+                        schedule_datetime: ''
+                    }, true);
+                })
+                .catch(error => {
+                    setErrorState(error.message || 'Could not load quote preview.');
+                });
+
+            return true;
+        };
+
+        closeButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                closeLinkMetaModal();
+                modal.hidden = true;
+                document.body.style.overflow = '';
+            });
+        });
+
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                closeLinkMetaModal();
+                modal.hidden = true;
+                document.body.style.overflow = '';
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !modal.hidden) {
+                closeLinkMetaModal();
+                modal.hidden = true;
+                document.body.style.overflow = '';
+            }
+        });
+
+        modal.querySelectorAll('.bs-edit-save-draft').forEach(button => {
+            button.addEventListener('click', () => {
+                const form = button.closest('.bs-edit-form');
+                if (form) {
+                    submitModalForm(form, true);
+                }
+            });
+        });
+
+        modal.querySelectorAll('.bs-edit-form').forEach(form => {
+            bindFormOnce(form);
+            form.addEventListener('submit', (event) => {
+                event.preventDefault();
+                submitModalForm(form, false);
+            });
+        });
+    }
+
+    initTimelineEditModal();
     initBitstreamPoster();
     highlightFromQueryParams();
     applyMediaDeterrents(document);
@@ -2592,7 +3585,20 @@ document.addEventListener('DOMContentLoaded', function () {
         if (quoteButton) {
             event.preventDefault();
             const postId = quoteButton.dataset.postId;
-            const basePosterUrl = (window.bitstream_ajax && bitstream_ajax.poster_url) ? bitstream_ajax.poster_url : (window.location.origin + '/bitstream/');
+            if (postId && typeof openTimelineQuoteModal === 'function' && openTimelineQuoteModal(postId)) {
+                const icon = quoteButton.querySelector('i');
+                if (icon) {
+                    icon.classList.remove('pulse');
+                    void icon.offsetWidth;
+                    icon.classList.add('pulse');
+                    setTimeout(() => icon.classList.remove('pulse'), 300);
+                }
+                return;
+            }
+
+            const basePosterUrl = (window.bitstream_ajax && bitstream_ajax.poster_url)
+                ? bitstream_ajax.poster_url
+                : (window.location.origin + '/bitstream/');
             const quoteUrl = new URL(basePosterUrl, window.location.origin);
             quoteUrl.searchParams.set('poster_tab', 'bit');
             quoteUrl.searchParams.set('quote_post_id', postId);
@@ -2618,12 +3624,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
         event.preventDefault();
 
-        const postId = parseInt(button.dataset.postId || '0', 10);
-        if (!postId) {
+        const postId = button.dataset.postId;
+        const postType = (button.dataset.postType === 'rebit') ? 'rebit' : 'bit';
+
+        if (typeof openTimelineEditModal === 'function' && openTimelineEditModal(postId, postType)) {
+            const icon = button.querySelector('i');
+            if (icon) {
+                icon.classList.remove('pulse');
+                void icon.offsetWidth;
+                icon.classList.add('pulse');
+                setTimeout(() => icon.classList.remove('pulse'), 300);
+            }
             return;
         }
 
-        const postType = (button.dataset.postType === 'rebit') ? 'rebit' : 'bit';
         const basePosterUrl = (window.bitstream_ajax && bitstream_ajax.poster_url)
             ? bitstream_ajax.poster_url
             : (window.location.origin + '/bitstream/');

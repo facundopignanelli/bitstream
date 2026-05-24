@@ -57,8 +57,8 @@ class BitStream_PWA_Manager {
         if ($is_bit_archive || $has_feed_shortcode || $is_bitstream_page) {
             $base = BITSTREAM_PLUGIN_URL;
             $manifest_url = $base . 'manifest.json';
-            // Use a root-relative path for the service worker so it resolves to the current origin
-            $sw_url = '/sw.js';
+            // Use a query-var endpoint to avoid redirect chains on /sw.js when rewrites are unavailable.
+            $sw_url = add_query_arg('bitstream_sw', 'main', home_url('/'));
             
             echo '<link rel="manifest" href="'.esc_url($manifest_url).'">';
             echo '<link rel="apple-touch-icon" href="'.esc_url($base . 'assets/images/logo_192.png').'">';

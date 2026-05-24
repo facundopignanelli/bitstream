@@ -1919,41 +1919,40 @@ class BitStream_Shortcodes
             return;
         }
 
+        wp_enqueue_media();
+
         $submit_nonce = wp_create_nonce('bitstream_poster_submit_nonce');
         ?>
-        <!-- Dedicated Timeline Edit Modal -->
-        <div class="bs-edit-modal" id="bs-edit-modal" hidden
+        <div class="bitstream-qp-modal bs-edit-modal bitstream-qp-modal-timeline-edit" id="bs-edit-modal" hidden
              role="dialog" aria-modal="true" aria-labelledby="bs-edit-modal-title"
              data-submit-nonce="<?php echo esc_attr($submit_nonce); ?>">
-            <div class="bs-edit-modal-backdrop"></div>
-            <div class="bs-edit-modal-dialog">
-                <header class="bs-edit-modal-header">
-                    <h3 id="bs-edit-modal-title" class="bs-edit-modal-title">Edit Post</h3>
-                    <button type="button" class="bs-edit-modal-close" aria-label="Close">
+            <div class="bitstream-qp-modal-backdrop" data-bs-edit-modal-close="true"></div>
+            <div class="bitstream-qp-modal-dialog bitstream-qp-modal-dialog-wide bs-edit-modal-dialog">
+                <header class="bitstream-qp-modal-header bs-edit-modal-header">
+                    <h3 id="bs-edit-modal-title" class="bs-edit-modal-title">Edit Bit</h3>
+                    <button type="button" class="bitstream-qp-modal-close bs-edit-modal-close" data-bs-edit-modal-close="true" aria-label="Close">
                         <i class="fa-solid fa-xmark" aria-hidden="true"></i>
                     </button>
                 </header>
 
-                <!-- Loading state (shown while fetching post data) -->
-                <div class="bs-edit-modal-loading" hidden>
-                    <i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i>
-                    <p>Loading post…</p>
-                </div>
+                <div class="bitstream-qp-modal-body bs-edit-modal-body">
+                    <div class="bs-edit-modal-loading" hidden>
+                        <i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i>
+                        <p>Loading post…</p>
+                    </div>
 
-                <!-- Error state -->
-                <div class="bs-edit-modal-error" hidden>
-                    <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
-                    <p class="bs-edit-modal-error-msg"></p>
-                </div>
+                    <div class="bs-edit-modal-error" hidden>
+                        <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+                        <p class="bs-edit-modal-error-msg"></p>
+                    </div>
 
-                <!-- Bit edit form (populated by JS) -->
-                <form class="bs-edit-form bs-edit-form-bit" data-poster-type="bit" hidden novalidate>
-                    <input type="hidden" name="edit_post_id" value="">
-                    <input type="hidden" name="poster_type" value="bit">
-                    <input type="hidden" name="nonce" value="<?php echo esc_attr($submit_nonce); ?>">
-                    <input type="hidden" name="bit_attachment_id" class="bs-edit-attachment-id" value="">
+                    <form class="bs-edit-form bs-edit-form-bit bitstream-poster-form" data-poster-type="bit" hidden novalidate>
+                        <input type="hidden" name="edit_post_id" value="">
+                        <input type="hidden" name="poster_type" value="bit">
+                        <input type="hidden" name="nonce" value="<?php echo esc_attr($submit_nonce); ?>">
+                        <input type="hidden" name="bit_attachment_id" class="bs-edit-attachment-id" value="">
+                        <input type="hidden" name="quote_post_id" class="bs-edit-quote-post-id" value="0">
 
-                    <div class="bs-edit-modal-body">
                         <div class="bs-edit-field">
                             <label class="bs-edit-label" for="bs-edit-bit-content">Content</label>
                             <textarea id="bs-edit-bit-content" name="bit_content"
@@ -1961,7 +1960,13 @@ class BitStream_Shortcodes
                                       placeholder="What's happening?"></textarea>
                         </div>
 
-                        <!-- Media area -->
+                        <div class="bs-edit-quote-preview" hidden>
+                            <div class="bs-edit-field">
+                                <label class="bs-edit-label">Quoted Bit</label>
+                            </div>
+                            <div class="bs-edit-quote-preview-card"></div>
+                        </div>
+
                         <div class="bs-edit-media">
                             <div class="bs-edit-media-preview" hidden>
                                 <div class="bs-edit-media-preview-inner"></div>
@@ -1975,48 +1980,52 @@ class BitStream_Shortcodes
                                 </button>
                             </div>
                         </div>
-                    </div><!-- /.bs-edit-modal-body -->
 
-                    <footer class="bs-edit-modal-footer">
-                        <div class="bs-edit-actions">
-                            <button type="submit" class="bs-edit-submit">Update Bit</button>
-                        </div>
-                    </footer>
-                </form>
+                        <details class="bitstream-post-options">
+                            <summary>Advanced</summary>
+                            <div class="bitstream-post-options-section">
+                                <h4 class="bitstream-post-options-section-title">Schedule</h4>
+                                <div class="bitstream-schedule-options">
+                                    <label class="bitstream-schedule-radio">
+                                        <input type="radio" name="bit_schedule_mode" value="now" data-schedule-toggle="bit" checked>
+                                        Post now
+                                    </label>
+                                    <label class="bitstream-schedule-radio">
+                                        <input type="radio" name="bit_schedule_mode" value="later" data-schedule-toggle="bit">
+                                        Schedule for later
+                                    </label>
+                                </div>
+                                <input type="datetime-local" name="bit_schedule_datetime" class="bitstream-schedule-datetime" data-schedule-input="bit" value="" disabled>
+                                <input type="hidden" name="bit_schedule_enabled" value="0" data-schedule-hidden="bit">
+                            </div>
+                        </details>
 
-                <!-- Rebit edit form (populated by JS) -->
-                <form class="bs-edit-form bs-edit-form-rebit" data-poster-type="rebit" hidden novalidate>
-                    <input type="hidden" name="edit_post_id" value="">
-                    <input type="hidden" name="poster_type" value="rebit">
-                    <input type="hidden" name="nonce" value="<?php echo esc_attr($submit_nonce); ?>">
-                    <input type="hidden" name="rebit_attachment_id" class="bs-edit-attachment-id" value="">
-                    <input type="hidden" name="rebit_og_title" class="bs-edit-og-title" value="">
-                    <input type="hidden" name="rebit_og_desc" class="bs-edit-og-desc" value="">
-                    <input type="hidden" name="rebit_og_image" class="bs-edit-og-image" value="">
-                    <input type="hidden" name="rebit_og_image_removed" class="bs-edit-og-image-removed" value="0">
+                        <footer class="bs-edit-modal-footer bitstream-qp-modal-footer">
+                            <button type="button" class="bitstream-qp-modal-cancel" data-bs-edit-modal-close="true">Cancel</button>
+                            <div class="bs-edit-actions">
+                                <button type="button" class="bitstream-poster-save-draft bs-edit-save-draft">Save to Drafts</button>
+                                <button type="submit" class="bitstream-poster-submit bs-edit-submit">Update Bit</button>
+                            </div>
+                        </footer>
+                    </form>
 
-                    <div class="bs-edit-modal-body">
+                    <form class="bs-edit-form bs-edit-form-rebit bitstream-poster-form" data-poster-type="rebit" hidden novalidate>
+                        <input type="hidden" name="edit_post_id" value="">
+                        <input type="hidden" name="poster_type" value="rebit">
+                        <input type="hidden" name="nonce" value="<?php echo esc_attr($submit_nonce); ?>">
+                        <input type="hidden" name="rebit_attachment_id" class="bs-edit-attachment-id" value="">
+                        <input type="hidden" name="rebit_og_title" class="bs-edit-og-title" value="">
+                        <input type="hidden" name="rebit_og_desc" class="bs-edit-og-desc" value="">
+                        <input type="hidden" name="rebit_og_image" class="bs-edit-og-image" value="">
+                        <input type="hidden" name="rebit_og_image_removed" class="bs-edit-og-image-removed" value="0">
+
                         <div class="bs-edit-field">
                             <label class="bs-edit-label" for="bs-edit-rebit-url">Link URL</label>
                             <div class="bs-edit-url-row">
                                 <input type="url" id="bs-edit-rebit-url" name="rebit_url"
                                        class="bs-edit-url-input"
                                        placeholder="https://example.com/post">
-                                <button type="button" class="bs-edit-refetch-btn">Re-fetch</button>
-                            </div>
-                        </div>
-
-                        <div class="bs-edit-og-preview" hidden>
-                            <div class="bs-edit-og-preview-image-wrap">
-                                <img class="bs-edit-og-preview-img" src="" alt="">
-                                <button type="button" class="bs-edit-og-remove-image"
-                                        title="Remove link image" aria-label="Remove link image">
-                                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-                                </button>
-                            </div>
-                            <div class="bs-edit-og-preview-meta">
-                                <strong class="bs-edit-og-preview-title"></strong>
-                                <span class="bs-edit-og-preview-url"></span>
+                                <button type="button" class="bs-edit-refetch-btn bs-edit-link-meta-open">Edit metadata</button>
                             </div>
                         </div>
 
@@ -2027,28 +2036,72 @@ class BitStream_Shortcodes
                                       placeholder="Add your thoughts…"></textarea>
                         </div>
 
-                        <!-- Media area (same structure as Bit) -->
-                        <div class="bs-edit-media">
-                            <div class="bs-edit-media-preview" hidden>
-                                <div class="bs-edit-media-preview-inner"></div>
-                            </div>
-                            <div class="bs-edit-media-controls">
-                                <button type="button" class="bs-edit-media-btn bs-edit-media-replace" title="Add / Replace media" aria-label="Add or replace media">
-                                    <i class="fa-solid fa-arrow-right-arrow-left" aria-hidden="true"></i>
-                                </button>
-                                <button type="button" class="bs-edit-media-btn bs-edit-media-remove is-hidden" title="Remove media" aria-label="Remove media">
-                                    <i class="fa-solid fa-trash" aria-hidden="true"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div><!-- /.bs-edit-modal-body -->
+                        <footer class="bs-edit-modal-footer bitstream-qp-modal-footer">
+                            <button type="submit" class="bitstream-poster-submit bs-edit-submit">Update Rebit</button>
+                        </footer>
+                    </form>
 
-                    <footer class="bs-edit-modal-footer">
-                        <div class="bs-edit-actions">
-                            <button type="submit" class="bs-edit-submit">Update Rebit</button>
+                    <div class="bitstream-qp-modal bs-edit-link-meta-modal" hidden>
+                        <div class="bitstream-qp-modal-backdrop" data-bs-edit-link-meta-close="true"></div>
+                        <div class="bitstream-qp-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="bs-edit-link-meta-title">
+                            <header class="bitstream-qp-modal-header">
+                                <h3 id="bs-edit-link-meta-title">Edit Metadata</h3>
+                                <button type="button" class="bitstream-qp-modal-close" data-bs-edit-link-meta-close="true" aria-label="Close">
+                                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                                </button>
+                            </header>
+
+                            <div class="bitstream-qp-modal-body">
+                                <div class="bs-edit-field">
+                                    <label class="bs-edit-label" for="bs-edit-link-meta-url-input">Current URL</label>
+                                    <div class="bs-edit-url-row">
+                                        <input type="url" id="bs-edit-link-meta-url-input" class="bs-edit-url-input" readonly>
+                                        <button type="button" class="bs-edit-refetch-btn bs-edit-link-meta-refetch">Re-fetch</button>
+                                    </div>
+                                </div>
+
+                                <div class="bs-edit-field">
+                                    <label class="bs-edit-label" for="bs-edit-link-meta-title-input">Link title</label>
+                                    <input type="text" id="bs-edit-link-meta-title-input" class="bs-edit-url-input bs-edit-og-title" placeholder="Preview title">
+                                </div>
+
+                                <div class="bs-edit-field">
+                                    <label class="bs-edit-label" for="bs-edit-link-meta-desc-input">Link description</label>
+                                    <textarea id="bs-edit-link-meta-desc-input" class="bs-edit-textarea bs-edit-og-desc" rows="4" placeholder="Preview description"></textarea>
+                                </div>
+
+                                <div class="bs-edit-field">
+                                    <label class="bs-edit-label">Link image</label>
+                                    <div class="bs-edit-og-preview">
+                                        <div class="bs-edit-og-preview-image-wrap">
+                                            <img class="bs-edit-og-preview-img" src="" alt="" hidden>
+                                        </div>
+                                        <div class="bs-edit-og-preview-meta">
+                                            <strong class="bs-edit-og-preview-title"></strong>
+                                            <span class="bs-edit-og-preview-url"></span>
+                                        </div>
+                                    </div>
+                                    <div class="bs-edit-og-image-actions">
+                                        <button type="button" class="bs-edit-og-image-icon-btn bs-edit-og-image-select" title="Choose image" aria-label="Choose image">
+                                            <i class="fa-solid fa-image" aria-hidden="true"></i>
+                                        </button>
+                                        <button type="button" class="bs-edit-og-image-icon-btn bs-edit-og-image-crop" title="Crop image" aria-label="Crop image">
+                                            <i class="fa-solid fa-crop-simple" aria-hidden="true"></i>
+                                        </button>
+                                        <button type="button" class="bs-edit-og-image-icon-btn bs-edit-og-image-clear" title="Remove image" aria-label="Remove image">
+                                            <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <footer class="bitstream-qp-modal-footer">
+                                <button type="button" class="bitstream-qp-modal-cancel" data-bs-edit-link-meta-close="true">Cancel</button>
+                                <button type="button" class="bitstream-qp-modal-confirm bs-edit-link-meta-save" data-bs-edit-link-meta-close="true">Done</button>
+                            </footer>
                         </div>
-                    </footer>
-                </form>
+                    </div>
+                </div>
             </div>
         </div>
         <?php
