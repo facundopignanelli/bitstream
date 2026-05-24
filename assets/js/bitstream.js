@@ -512,6 +512,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const cropLinks = posterRoot.querySelectorAll('.bitstream-media-crop');
             const audioTagLinks = posterRoot.querySelectorAll('.bitstream-media-audio-tags');
             const pasteButtons = posterRoot.querySelectorAll('.bitstream-media-paste');
+            const libraryButtons = posterRoot.querySelectorAll('.bitstream-media-library');
             const dropzones = posterRoot.querySelectorAll('.bitstream-media-dropzone');
             const cropperModal = posterRoot.querySelector('.bitstream-cropper-modal');
             const cropperImage = cropperModal ? cropperModal.querySelector('.bitstream-cropper-image') : null;
@@ -779,6 +780,52 @@ document.addEventListener('DOMContentLoaded', function () {
                     document.body.classList.add('bitstream-cropper-open');
                 });
             }
+
+            function openMediaLibrary(targetInputId, targetPreviewId) {
+                if (!window.wp || !wp.media) {
+                    setStatus('Media library is unavailable.', true);
+                    return;
+                }
+
+                const frame = wp.media({
+                    title: 'Select media',
+                    button: { text: 'Use media' },
+                    multiple: false
+                });
+
+                frame.on('select', () => {
+                    const selection = frame.state().get('selection').first();
+                    if (!selection) {
+                        return;
+                    }
+
+                    const data = selection.toJSON();
+                    handleMediaSelection(targetInputId, targetPreviewId, {
+                        id: data.id,
+                        url: data.url,
+                        preview_url: data.preview_url || (data.sizes && data.sizes.medium && data.sizes.medium.url) || data.url,
+                        mime: data.mime || data.type || '',
+                        filename: data.filename || data.title || '',
+                        title: data.title || '',
+                        sizes: data.sizes || { medium: { url: data.preview_url || (data.sizes && data.sizes.medium && data.sizes.medium.url) || data.url } }
+                    });
+                });
+
+                frame.open();
+            }
+
+            libraryButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetInputId = button.dataset.targetInput || '';
+                    const targetPreviewId = button.dataset.targetPreview || '';
+                    if (!targetInputId || !targetPreviewId) {
+                        setStatus('Media target is not configured.', true);
+                        return;
+                    }
+
+                    openMediaLibrary(targetInputId, targetPreviewId);
+                });
+            });
 
             function getPointerPosition(event) {
                 const point = (event.touches && event.touches[0])
@@ -2277,6 +2324,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         forms.forEach(form => {
+            if (form.closest('.bitstream-quick-post-poster')) {
+                return;
+            }
+
             form.addEventListener('submit', (event) => {
                 event.preventDefault();
 
@@ -2334,6 +2385,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         const createdPostId = parseInt(responseData.post_id || '0', 10);
                         const isScheduled = !!responseData.is_scheduled;
+
+                        if (hAttachmentId) hAttachmentId.value = '';
+                        if (previewMediaThumb) previewMediaThumb.innerHTML = '';
+                        if (previewMedia) previewMedia.hidden = true;
+                        if (hRebitUrl) hRebitUrl.value = '';
+                        if (hRebitOgTitle) hRebitOgTitle.value = '';
+                        if (hRebitOgDesc) hRebitOgDesc.value = '';
+                        if (hRebitOgImage) hRebitOgImage.value = '';
+                        if (hRebitOgImageRemoved) hRebitOgImageRemoved.value = '0';
+                        if (hRebitAttachmentId) hRebitAttachmentId.value = '';
+                        if (previewRebitCard) previewRebitCard.innerHTML = '';
+                        if (previewRebit) previewRebit.hidden = true;
+                        if (previewArea) previewArea.hidden = true;
+                        if (textarea) textarea.value = '';
+                        form.dataset.posterType = 'bit';
+                        if (submitBtn) submitBtn.textContent = 'Post Bit';
 
                         if (isScheduled) {
                             const posterBaseUrl = (window.bitstream_ajax && bitstream_ajax.poster_url)
@@ -3685,8 +3752,34 @@ jQuery(document).ready(function ($) {
                 .then(r => r.json())
                 .then(data => {
                     if (!data.success) throw new Error(data.data || 'Post failed.');
-                    setStatus(data.data?.message || 'Posted!');
-                    setTimeout(() => window.location.reload(), 800);
+
+                    const responseData = data.data || {};
+                    setStatus(responseData.message || 'Posted!');
+
+                    const createdPostId = parseInt(responseData.post_id || '0', 10);
+                    const isScheduled = !!responseData.is_scheduled;
+
+                    if (isScheduled) {
+                        const posterBaseUrl = (window.bitstream_ajax && bitstream_ajax.poster_url)
+                            ? bitstream_ajax.poster_url
+                            : window.location.href;
+                        const redirectUrl = new URL(posterBaseUrl, window.location.origin);
+                        redirectUrl.searchParams.set('poster_tab', 'scheduled');
+                        if (createdPostId > 0) {
+                            redirectUrl.searchParams.set('highlight_scheduled', String(createdPostId));
+                        }
+                        window.location.href = redirectUrl.toString();
+                        return;
+                    }
+
+                    const feedBaseUrl = (window.bitstream_ajax && bitstream_ajax.feed_url)
+                        ? bitstream_ajax.feed_url
+                        : (window.location.origin + '/bitstream/');
+                    const feedUrl = new URL(feedBaseUrl, window.location.origin);
+                    if (createdPostId > 0) {
+                        feedUrl.searchParams.set('highlight_bit', String(createdPostId));
+                    }
+                    window.location.href = feedUrl.toString();
                 })
                 .catch(err => {
                     setStatus(err.message || 'Network error.', true);
