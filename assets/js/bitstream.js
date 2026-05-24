@@ -127,6 +127,36 @@ document.addEventListener('DOMContentLoaded', function () {
             statusEl.textContent = message;
             statusEl.classList.toggle('is-error', isError);
             statusEl.classList.toggle('is-success', !isError && !!message);
+
+            // Locate active open modal
+            const activeModal = document.querySelector('.bitstream-qp-modal:not([hidden]), .bitstream-cropper-modal:not([hidden]), .bitstream-rebit-editor-modal:not([hidden])');
+            if (activeModal) {
+                const bodyEl = activeModal.querySelector('.bitstream-qp-modal-body, .bitstream-cropper-body, .bitstream-rebit-editor-body');
+                if (bodyEl) {
+                    let modalStatusEl = bodyEl.querySelector('.bitstream-modal-status');
+                    if (!modalStatusEl) {
+                        modalStatusEl = document.createElement('div');
+                        modalStatusEl.className = 'bitstream-modal-status bitstream-poster-status';
+                        modalStatusEl.setAttribute('aria-live', 'polite');
+                        bodyEl.insertBefore(modalStatusEl, bodyEl.firstChild);
+                    }
+                    modalStatusEl.textContent = message;
+                    modalStatusEl.classList.toggle('is-error', isError);
+                    modalStatusEl.classList.toggle('is-success', !isError && !!message);
+
+                    if (!message) {
+                        modalStatusEl.textContent = '';
+                        modalStatusEl.className = 'bitstream-modal-status bitstream-poster-status';
+                    }
+                }
+            }
+
+            if (!message) {
+                document.querySelectorAll('.bitstream-modal-status').forEach(el => {
+                    el.textContent = '';
+                    el.className = 'bitstream-modal-status bitstream-poster-status';
+                });
+            }
         }
 
         function sanitizeInlinePreviewMarkup(markup) {
@@ -669,6 +699,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
                 cropperModal.hidden = true;
+                setStatus('');
                 cropperModal.classList.remove('is-square-mode');
                 document.body.classList.remove('bitstream-cropper-open');
                 if (cropperImage) {
@@ -713,6 +744,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             function openCropper(targetInputId, targetPreviewId, options = {}) {
+                setStatus('');
                 if (!cropperModal || !cropperImage || !cropperStage) {
                     setStatus('Cropper is unavailable on this page.', true);
                     return;
@@ -790,7 +822,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 const frame = wp.media({
                     title: 'Select media',
                     button: { text: 'Use media' },
-                    multiple: false
+                    multiple: false,
+                    library: { type: ['image', 'video'] }
                 });
 
                 frame.on('select', () => {
@@ -800,11 +833,17 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
 
                     const data = selection.toJSON();
+                    const mime = data.mime || data.type || '';
+                    if (!mime.startsWith('image/') && !mime.startsWith('video/')) {
+                        setStatus('Only image and video files are supported.', true);
+                        return;
+                    }
+
                     handleMediaSelection(targetInputId, targetPreviewId, {
                         id: data.id,
                         url: data.url,
                         preview_url: data.preview_url || (data.sizes && data.sizes.medium && data.sizes.medium.url) || data.url,
-                        mime: data.mime || data.type || '',
+                        mime: mime,
                         filename: data.filename || data.title || '',
                         title: data.title || '',
                         sizes: data.sizes || { medium: { url: data.preview_url || (data.sizes && data.sizes.medium && data.sizes.medium.url) || data.url } }
@@ -1035,6 +1074,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             function handleMediaSelection(targetInputId, targetPreviewId, attachment) {
+                setStatus('');
                 const targetInput = document.getElementById(targetInputId);
                 const targetPreview = document.getElementById(targetPreviewId);
                 if (!targetInput) {
@@ -1062,8 +1102,15 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             function uploadMediaFile(file, targetInputId, targetPreviewId) {
+                setStatus('');
                 if (!bitstream_ajax || !bitstream_ajax.ajax_url || !bitstream_ajax.media_upload_nonce) {
                     setStatus('Media upload is unavailable.', true);
+                    return;
+                }
+
+                const mimeType = file.type || '';
+                if (!mimeType.startsWith('image/') && !mimeType.startsWith('video/')) {
+                    setStatus('Unsupported file format. Only images and videos are allowed.', true);
                     return;
                 }
 
@@ -1943,6 +1990,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
                 rebitModal.hidden = true;
+                setStatus('');
             }
 
             function renderLiveRebitPreview() {
@@ -2055,6 +2103,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (isRenderingLivePreview || !hasFetchedMetadata) {
                         return;
                     }
+                    setStatus('');
                     syncModalFromHidden();
                     if (rebitModal) {
                         rebitModal.hidden = false;
@@ -3313,6 +3362,36 @@ jQuery(document).ready(function ($) {
             if (!statusEl) return;
             statusEl.textContent = msg;
             statusEl.style.color = isError ? '#cc0000' : '#2c6e49';
+
+            // Locate active open modal
+            const activeModal = document.querySelector('.bitstream-qp-modal:not([hidden]), .bitstream-cropper-modal:not([hidden]), .bitstream-rebit-editor-modal:not([hidden])');
+            if (activeModal) {
+                const bodyEl = activeModal.querySelector('.bitstream-qp-modal-body, .bitstream-cropper-body, .bitstream-rebit-editor-body');
+                if (bodyEl) {
+                    let modalStatusEl = bodyEl.querySelector('.bitstream-modal-status');
+                    if (!modalStatusEl) {
+                        modalStatusEl = document.createElement('div');
+                        modalStatusEl.className = 'bitstream-modal-status bitstream-poster-status';
+                        modalStatusEl.setAttribute('aria-live', 'polite');
+                        bodyEl.insertBefore(modalStatusEl, bodyEl.firstChild);
+                    }
+                    modalStatusEl.textContent = msg;
+                    modalStatusEl.classList.toggle('is-error', isError);
+                    modalStatusEl.classList.toggle('is-success', !isError && !!msg);
+
+                    if (!msg) {
+                        modalStatusEl.textContent = '';
+                        modalStatusEl.className = 'bitstream-modal-status bitstream-poster-status';
+                    }
+                }
+            }
+
+            if (!msg) {
+                document.querySelectorAll('.bitstream-modal-status').forEach(el => {
+                    el.textContent = '';
+                    el.className = 'bitstream-modal-status bitstream-poster-status';
+                });
+            }
         }
 
         function syncPreviewArea() {
@@ -3326,10 +3405,12 @@ jQuery(document).ready(function ($) {
 
         // Modal open/close helpers
         function openModal(name) {
+            setStatus('');
             const modal = qpRoot.querySelector('.bitstream-qp-modal-' + name);
             if (modal) modal.hidden = false;
         }
         function closeModal(name) {
+            setStatus('');
             const modal = qpRoot.querySelector('.bitstream-qp-modal-' + name);
             if (modal) modal.hidden = true;
         }

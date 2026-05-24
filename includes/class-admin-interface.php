@@ -187,14 +187,12 @@ class BitStream_Admin_Interface
     public function enqueue_admin_poster_assets()
     {
         wp_enqueue_media();
-        wp_enqueue_style('bitstream-css', BITSTREAM_PLUGIN_URL . 'assets/css/bitstream.css', [], BITSTREAM_VERSION);
-        wp_enqueue_script('bitstream-js', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream.js', ['jquery'], BITSTREAM_VERSION, true);
+        wp_enqueue_style('bitstream-css', BITSTREAM_PLUGIN_URL . 'assets/css/bitstream.css', [], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/css/bitstream.css'));
+        wp_enqueue_script('bitstream-js', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream.js', ['jquery'], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/js/bitstream.js'), true);
 
-        wp_localize_script('bitstream-js', 'bitstream_ajax', [
-            'ajaxurl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('bitstream_nonce'),
+        wp_localize_script('bitstream-js', 'bitstream_ajax', array_merge(BitStream_Ajax_Handlers::get_localized_data(), [
             'admin_page_redirect' => admin_url('edit.php?post_type=bit')
-        ]);
+        ]));
     }
 
     /**
@@ -202,13 +200,10 @@ class BitStream_Admin_Interface
      */
     public function enqueue_admin_settings_assets()
     {
-        wp_enqueue_style('bitstream-css', BITSTREAM_PLUGIN_URL . 'assets/css/bitstream.css', [], BITSTREAM_VERSION);
-        wp_enqueue_script('bitstream-js', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream.js', ['jquery'], BITSTREAM_VERSION, true);
+        wp_enqueue_style('bitstream-css', BITSTREAM_PLUGIN_URL . 'assets/css/bitstream.css', [], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/css/bitstream.css'));
+        wp_enqueue_script('bitstream-js', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream.js', ['jquery'], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/js/bitstream.js'), true);
 
-        wp_localize_script('bitstream-js', 'bitstream_ajax', [
-            'ajaxurl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('bitstream_nonce'),
-        ]);
+        wp_localize_script('bitstream-js', 'bitstream_ajax', BitStream_Ajax_Handlers::get_localized_data());
     }
 
     /**
@@ -277,20 +272,6 @@ class BitStream_Admin_Interface
             return true;
         }
 
-        $audio_meta_like = '%"artwork_id";i:' . intval($attachment_id) . ';%';
-        $audio_meta_ref = $wpdb->get_var($wpdb->prepare(
-            "SELECT pm.post_id
-                         FROM {$wpdb->postmeta} pm
-                         INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
-                         WHERE pm.meta_key = '_bitstream_audio_meta'
-                             AND pm.meta_value LIKE %s
-                             AND p.post_status NOT IN ('trash','auto-draft')
-                         LIMIT 1",
-            $audio_meta_like
-        ));
-        if (!empty($audio_meta_ref)) {
-            return true;
-        }
 
         $attachment_url = wp_get_attachment_url($attachment_id);
         if ($attachment_url) {
@@ -466,12 +447,10 @@ class BitStream_Admin_Interface
 
         wp_reset_postdata();
 
-        // 3. Delete BitStream postmeta entries
         $meta_keys = [
             '_bitstream_uploaded_via_poster',
             '_bitstream_upload_created_at',
             '_bitstream_attachment_id',
-            '_bitstream_generated_artwork_id',
         ];
 
         foreach ($meta_keys as $meta_key) {

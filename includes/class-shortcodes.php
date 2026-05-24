@@ -257,18 +257,38 @@ class BitStream_Shortcodes
      */
     private static function render_media_field($attachment_input_id, $preview_id, $edit_post_id = 0)
     {
+        $attachment_id = 0;
+        if ($edit_post_id > 0) {
+            $attachment_id = intval(get_post_meta($edit_post_id, '_bitstream_attachment_id', true));
+            if ($attachment_id <= 0) {
+                $attachment_id = intval(get_post_thumbnail_id($edit_post_id));
+            }
+            if ($attachment_id <= 0) {
+                $children = get_children([
+                    'post_parent' => $edit_post_id,
+                    'post_type' => 'attachment',
+                    'post_status' => 'inherit',
+                    'fields' => 'ids',
+                    'numberposts' => 1,
+                ]);
+                if (!empty($children)) {
+                    $attachment_id = intval(reset($children));
+                }
+            }
+        }
+
         ob_start();
         ?>
         <div class="bitstream-media-field">
             <?php if ($edit_post_id > 0): ?>
                 <input type="hidden" name="edit_post_id" value="<?php echo esc_attr($edit_post_id); ?>">
             <?php endif; ?>
-            <input type="hidden" id="<?php echo esc_attr($attachment_input_id); ?>" name="bit_attachment_id" value="">
-            <div class="bitstream-media-dropzone" data-target-input="<?php echo esc_attr($attachment_input_id); ?>" data-target-preview="<?php echo esc_attr($preview_id); ?>" data-accept="image/*,video/*,audio/*">
+            <input type="hidden" id="<?php echo esc_attr($attachment_input_id); ?>" name="bit_attachment_id" value="<?php echo $attachment_id > 0 ? esc_attr($attachment_id) : ''; ?>">
+            <div class="bitstream-media-dropzone" data-target-input="<?php echo esc_attr($attachment_input_id); ?>" data-target-preview="<?php echo esc_attr($preview_id); ?>" data-accept="image/*,video/*">
                 <i class="fa-solid fa-photo-film bitstream-media-dropzone-icon" aria-hidden="true"></i>
                 <span>Drag and drop media here, or click to upload</span>
                 <div class="bitstream-media-preview" id="<?php echo esc_attr($preview_id); ?>"></div>
-                <input type="file" class="bitstream-media-file" accept="image/*,video/*,audio/*">
+                <input type="file" class="bitstream-media-file" accept="image/*,video/*">
             </div>
             <div class="bitstream-media-progress is-hidden" data-progress-bar="<?php echo esc_attr($attachment_input_id); ?>">
                 <div class="bitstream-media-progress-track">
@@ -277,10 +297,10 @@ class BitStream_Shortcodes
                 <span class="bitstream-media-progress-text">Uploading...</span>
             </div>
             <div class="bitstream-media-controls">
-                <button type="button" class="bitstream-media-remove is-hidden" data-target-input="<?php echo esc_attr($attachment_input_id); ?>" data-target-preview="<?php echo esc_attr($preview_id); ?>">Remove media</button>
-                <a class="bitstream-media-crop is-hidden" data-target-input="<?php echo esc_attr($attachment_input_id); ?>" data-target-preview="<?php echo esc_attr($preview_id); ?>" href="#" target="_blank" rel="noopener">Crop image</a>
-                <a class="bitstream-media-audio-tags is-hidden" data-target-input="<?php echo esc_attr($attachment_input_id); ?>" data-target-preview="<?php echo esc_attr($preview_id); ?>" href="#">Edit audio tags</a>
-                <button type="button" class="bitstream-media-paste" data-target-input="<?php echo esc_attr($attachment_input_id); ?>" data-target-preview="<?php echo esc_attr($preview_id); ?>">Paste from clipboard</button>
+                <button type="button" class="bitstream-media-control-icon bitstream-media-remove is-hidden" data-target-input="<?php echo esc_attr($attachment_input_id); ?>" data-target-preview="<?php echo esc_attr($preview_id); ?>" title="Remove media" aria-label="Remove media"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>
+                <a class="bitstream-media-control-icon bitstream-media-crop is-hidden" data-target-input="<?php echo esc_attr($attachment_input_id); ?>" data-target-preview="<?php echo esc_attr($preview_id); ?>" href="#" title="Crop image" aria-label="Crop image"><i class="fa-solid fa-crop-simple" aria-hidden="true"></i></a>
+                <button type="button" class="bitstream-media-control-icon bitstream-media-paste" data-target-input="<?php echo esc_attr($attachment_input_id); ?>" data-target-preview="<?php echo esc_attr($preview_id); ?>" title="Paste from clipboard" aria-label="Paste from clipboard"><i class="fa-solid fa-paste" aria-hidden="true"></i></button>
+                <button type="button" class="bitstream-media-control-icon bitstream-media-library" data-target-input="<?php echo esc_attr($attachment_input_id); ?>" data-target-preview="<?php echo esc_attr($preview_id); ?>" title="Media Library" aria-label="Media Library"><i class="fa-solid fa-images" aria-hidden="true"></i></button>
             </div>
         </div>
         <?php
@@ -288,51 +308,18 @@ class BitStream_Shortcodes
     }
 
     /**
-     * Render the shared cropper and audio-tag dialogs used by poster-style media controls.
+     * Render the shared cropper dialog used by poster-style media controls.
      */
     private static function render_media_modals()
     {
         ob_start();
         ?>
-        <div class="bitstream-audio-tags-modal" hidden>
-            <div class="bitstream-audio-tags-backdrop" data-audio-tags-close="true"></div>
-            <div class="bitstream-audio-tags-dialog" role="dialog" aria-modal="true" aria-labelledby="bitstream-audio-tags-title">
-                <header class="bitstream-audio-tags-header">
-                    <h3 id="bitstream-audio-tags-title">Edit audio tags</h3>
-                </header>
-                <div class="bitstream-audio-tags-body">
-                    <div class="bitstream-audio-tags-artwork">
-                        <img class="bitstream-audio-tags-preview" src="" alt="" hidden>
-                        <div class="bitstream-audio-tags-buttons">
-                            <button type="button" class="bitstream-audio-tags-select">Choose artwork</button>
-                            <button type="button" class="bitstream-audio-tags-clear">Remove artwork</button>
-                        </div>
-                    </div>
-                    <label>
-                        <span>Title</span>
-                        <input type="text" class="bitstream-audio-tags-input" data-audio-tags-field="title" placeholder="Track title">
-                    </label>
-                    <label>
-                        <span>Artist</span>
-                        <input type="text" class="bitstream-audio-tags-input" data-audio-tags-field="artist" placeholder="Artist name">
-                    </label>
-                    <label>
-                        <span>Album</span>
-                        <input type="text" class="bitstream-audio-tags-input" data-audio-tags-field="album" placeholder="Album name">
-                    </label>
-                </div>
-                <footer class="bitstream-audio-tags-footer">
-                    <button type="button" class="bitstream-audio-tags-close" data-audio-tags-close="true">Close</button>
-                    <button type="button" class="bitstream-audio-tags-save">Save tags</button>
-                </footer>
-            </div>
-        </div>
-
         <div class="bitstream-cropper-modal" hidden>
             <div class="bitstream-cropper-backdrop" data-cropper-close="true"></div>
             <div class="bitstream-cropper-dialog" role="dialog" aria-modal="true" aria-label="Crop Image">
                 <div class="bitstream-cropper-header">
                     <h3>Crop Image</h3>
+                    <button type="button" class="bitstream-cropper-close" data-cropper-close="true" aria-label="Close">&times;</button>
                 </div>
                 <div class="bitstream-cropper-body">
                     <div class="bitstream-cropper-stage">
@@ -348,12 +335,13 @@ class BitStream_Shortcodes
                             <span class="bitstream-cropper-handle handle-se" data-handle="se"></span>
                         </div>
                     </div>
-                    <p class="bitstream-cropper-help">Drag to select.</p>
-                    <p class="bitstream-cropper-size" aria-live="polite">Size: --</p>
+                    <div class="bitstream-cropper-meta">
+                        <p class="bitstream-cropper-help"><i class="fa-solid fa-circle-info"></i> Drag to select or resize the crop area.</p>
+                    </div>
                 </div>
                 <div class="bitstream-cropper-footer">
                     <button type="button" class="bitstream-cropper-cancel" data-cropper-close="true">Cancel</button>
-                    <button type="button" class="bitstream-cropper-apply">Crop &amp; Use</button>
+                    <button type="button" class="bitstream-cropper-apply">Crop &amp; Use Image</button>
                 </div>
             </div>
         </div>
@@ -497,8 +485,8 @@ class BitStream_Shortcodes
                         
                         <label style="margin-top: 0.75rem;"><strong>Preview image</strong></label>
                         <div class="bitstream-qp-rebit-image-controls">
-                            <button type="button" class="bitstream-qp-rebit-image-change">Change Image</button>
-                            <button type="button" class="bitstream-qp-rebit-image-remove" hidden>Remove Image</button>
+                            <button type="button" class="bitstream-media-control-icon bitstream-qp-rebit-image-change" title="Change Image" aria-label="Change Image"><i class="fa-solid fa-image" aria-hidden="true"></i></button>
+                            <button type="button" class="bitstream-media-control-icon bitstream-media-remove bitstream-qp-rebit-image-remove" hidden title="Remove Image" aria-label="Remove Image"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>
                         </div>
                         <div class="bitstream-qp-rebit-live-preview" hidden>
                             <p class="bitstream-rebit-live-preview-label"><strong>Preview</strong></p>
@@ -638,6 +626,7 @@ class BitStream_Shortcodes
     {
         add_action('init', [$this, 'register_shortcodes']);
         add_action('wp_enqueue_scripts', [$this, 'enqueue_shortcode_assets']);
+        add_action('wp_footer', [$this, 'render_timeline_edit_modal']);
     }
 
     /**
@@ -661,12 +650,7 @@ class BitStream_Shortcodes
 
         wp_enqueue_script('comment-reply');
 
-        global $post;
-        if (!($post instanceof WP_Post)) {
-            return;
-        }
-
-        if (has_shortcode($post->post_content, 'bitstream_poster')) {
+        if (is_user_logged_in() && current_user_can('edit_posts')) {
             wp_enqueue_media();
         }
     }
@@ -831,27 +815,6 @@ class BitStream_Shortcodes
         $desktop_rss_links = self::render_public_rss_links();
         $desktop_about_box = self::render_about_box();
 
-        if (!empty($desktop_quick_actions) || !empty($desktop_quick_post)) {
-            echo '<div class="bitstream-feed-top-rail hide-on-mobile">';
-
-            if (!empty($desktop_quick_post)) {
-                echo '<div class="bitstream-feed-top-rail-column">';
-                echo $desktop_quick_post;
-                echo '</div>';
-            }
-
-            if (!empty($desktop_quick_actions)) {
-                echo '<div class="bitstream-feed-top-rail-column">';
-                echo '<h3 class="bitstream-feed-sidebar-title">Quick Actions</h3>';
-                echo '<div class="bitstream-feed-sidebar">';
-                echo $desktop_quick_actions;
-                echo '</div>';
-                echo '</div>';
-            }
-
-            echo '</div>';
-        }
-
         echo '<div class="bitstream-feed-sidebar-column">';
 
         echo '<aside class="bitstream-feed-sidebar bitstream-feed-sidebar-intro">';
@@ -860,6 +823,15 @@ class BitStream_Shortcodes
         echo '<p class="bitstream-intro-text">' . nl2br(esc_html($intro_text)) . '</p>';
         echo '</div>';
         echo '</aside>';
+
+        if (!empty($desktop_quick_actions)) {
+            echo '<aside class="hide-on-mobile">';
+            echo '<h3 class="bitstream-feed-sidebar-title">Quick Actions</h3>';
+            echo '<div class="bitstream-feed-sidebar">';
+            echo $desktop_quick_actions;
+            echo '</div>';
+            echo '</aside>';
+        }
 
         echo '<div class="bitstream-feed-sidebar-left">';
 
@@ -991,7 +963,7 @@ class BitStream_Shortcodes
         echo '<main class="bitstream-feed-main">';
 
         if (!empty($desktop_quick_post)) {
-            echo '<div class="bitstream-mobile-quick-post-container" style="margin-bottom: 1rem;">';
+            echo '<div class="bitstream-quick-post-container" style="margin-bottom: 1rem;">';
             echo $desktop_quick_post;
             echo '</div>';
         }
@@ -1682,7 +1654,7 @@ class BitStream_Shortcodes
 
         ob_start();
 ?>
-        <section class="bitstream-poster" data-submit-nonce="<?php echo esc_attr($submit_nonce); ?>">
+        <section class="bitstream-poster" data-submit-nonce="<?php echo esc_attr($submit_nonce); ?>"<?php echo $is_edit_mode ? ' data-edit-mode="1"' : ''; ?>>
             <div class="bitstream-poster-tabs" role="tablist" aria-label="Create a Bit or Rebit">
                 <button type="button" class="bitstream-poster-tab <?php echo $is_bit_active ? 'is-active' : ''; ?>" data-tab="bit" role="tab" aria-selected="<?php echo $is_bit_active ? 'true' : 'false'; ?>" aria-controls="bitstream-poster-panel-bit" id="bitstream-poster-tab-bit">
                     Post a Bit
@@ -1699,10 +1671,6 @@ class BitStream_Shortcodes
             </div>
 
             <div class="bitstream-poster-panel <?php echo $is_bit_active ? 'is-active' : ''; ?>" id="bitstream-poster-panel-bit" role="tabpanel" aria-labelledby="bitstream-poster-tab-bit" <?php echo $is_bit_active ? '' : 'hidden'; ?>>
-                <?php if (!empty($bit_edit_banner)): ?>
-                    <p class="bitstream-poster-editing-banner"><?php echo esc_html($bit_edit_banner); ?></p>
-                <?php
-        endif; ?>
                 <form class="bitstream-poster-form" data-poster-type="bit">
                     <label for="bitstream-bit-content"><strong>Bit content</strong></label>
                     <textarea id="bitstream-bit-content" name="bit_content" rows="5" placeholder="What’s happening?"><?php echo esc_textarea($bit_content_prefill); ?></textarea>
@@ -1719,6 +1687,7 @@ class BitStream_Shortcodes
                     <?php
         endif; ?>
 
+                    <?php if (!$is_edit_mode): ?>
                     <details class="bitstream-post-options">
                         <summary>Advanced</summary>
                         <div class="bitstream-post-options-section">
@@ -1737,6 +1706,7 @@ class BitStream_Shortcodes
                         <input type="hidden" name="bit_schedule_enabled" value="<?php echo esc_attr($bit_schedule_enabled); ?>" data-schedule-hidden="bit">
                         </div>
                     </details>
+                    <?php endif; ?>
 
                     <div class="bitstream-poster-actions">
                         <button type="submit" class="bitstream-poster-submit"><?php echo esc_html($bit_submit_label); ?></button>
@@ -1746,10 +1716,6 @@ class BitStream_Shortcodes
             </div>
 
             <div class="bitstream-poster-panel <?php echo $is_rebit_active ? 'is-active' : ''; ?>" id="bitstream-poster-panel-rebit" role="tabpanel" aria-labelledby="bitstream-poster-tab-rebit" <?php echo $is_rebit_active ? '' : 'hidden'; ?>>
-                <?php if (!empty($rebit_edit_banner)): ?>
-                    <p class="bitstream-poster-editing-banner"><?php echo esc_html($rebit_edit_banner); ?></p>
-                <?php
-        endif; ?>
                 <form class="bitstream-poster-form" data-poster-type="rebit">
                     <label for="bitstream-rebit-url"><strong>Link URL</strong></label>
                     <div class="bitstream-rebit-url-row">
@@ -1777,6 +1743,7 @@ class BitStream_Shortcodes
                         <div class="bitstream-rebit-live-preview-card"></div>
                     </div>
 
+                    <?php if (!$is_edit_mode): ?>
                     <details class="bitstream-post-options">
                         <summary>Advanced</summary>
                         <div class="bitstream-post-options-section">
@@ -1795,6 +1762,7 @@ class BitStream_Shortcodes
                         <input type="hidden" name="rebit_schedule_enabled" value="<?php echo esc_attr($rebit_schedule_enabled); ?>" data-schedule-hidden="rebit">
                         </div>
                     </details>
+                    <?php endif; ?>
 
                     <div class="bitstream-poster-actions">
                         <button type="submit" class="bitstream-poster-submit"><?php echo esc_html($rebit_submit_label); ?></button>
@@ -1940,5 +1908,149 @@ class BitStream_Shortcodes
         <?php
 
         return ob_get_clean();
+    }
+
+    /**
+     * Render the timeline post edit modal in the footer.
+     */
+    public function render_timeline_edit_modal()
+    {
+        if (!is_user_logged_in() || !current_user_can('edit_posts')) {
+            return;
+        }
+
+        $submit_nonce = wp_create_nonce('bitstream_poster_submit_nonce');
+        ?>
+        <!-- Dedicated Timeline Edit Modal -->
+        <div class="bs-edit-modal" id="bs-edit-modal" hidden
+             role="dialog" aria-modal="true" aria-labelledby="bs-edit-modal-title"
+             data-submit-nonce="<?php echo esc_attr($submit_nonce); ?>">
+            <div class="bs-edit-modal-backdrop"></div>
+            <div class="bs-edit-modal-dialog">
+                <header class="bs-edit-modal-header">
+                    <h3 id="bs-edit-modal-title" class="bs-edit-modal-title">Edit Post</h3>
+                    <button type="button" class="bs-edit-modal-close" aria-label="Close">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                    </button>
+                </header>
+
+                <!-- Loading state (shown while fetching post data) -->
+                <div class="bs-edit-modal-loading" hidden>
+                    <i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i>
+                    <p>Loading post…</p>
+                </div>
+
+                <!-- Error state -->
+                <div class="bs-edit-modal-error" hidden>
+                    <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+                    <p class="bs-edit-modal-error-msg"></p>
+                </div>
+
+                <!-- Bit edit form (populated by JS) -->
+                <form class="bs-edit-form bs-edit-form-bit" data-poster-type="bit" hidden novalidate>
+                    <input type="hidden" name="edit_post_id" value="">
+                    <input type="hidden" name="poster_type" value="bit">
+                    <input type="hidden" name="nonce" value="<?php echo esc_attr($submit_nonce); ?>">
+                    <input type="hidden" name="bit_attachment_id" class="bs-edit-attachment-id" value="">
+
+                    <div class="bs-edit-modal-body">
+                        <div class="bs-edit-field">
+                            <label class="bs-edit-label" for="bs-edit-bit-content">Content</label>
+                            <textarea id="bs-edit-bit-content" name="bit_content"
+                                      class="bs-edit-textarea" rows="5"
+                                      placeholder="What's happening?"></textarea>
+                        </div>
+
+                        <!-- Media area -->
+                        <div class="bs-edit-media">
+                            <div class="bs-edit-media-preview" hidden>
+                                <div class="bs-edit-media-preview-inner"></div>
+                            </div>
+                            <div class="bs-edit-media-controls">
+                                <button type="button" class="bs-edit-media-btn bs-edit-media-replace" title="Add / Replace media" aria-label="Add or replace media">
+                                    <i class="fa-solid fa-arrow-right-arrow-left" aria-hidden="true"></i>
+                                </button>
+                                <button type="button" class="bs-edit-media-btn bs-edit-media-remove is-hidden" title="Remove media" aria-label="Remove media">
+                                    <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div><!-- /.bs-edit-modal-body -->
+
+                    <footer class="bs-edit-modal-footer">
+                        <div class="bs-edit-actions">
+                            <button type="submit" class="bs-edit-submit">Update Bit</button>
+                        </div>
+                    </footer>
+                </form>
+
+                <!-- Rebit edit form (populated by JS) -->
+                <form class="bs-edit-form bs-edit-form-rebit" data-poster-type="rebit" hidden novalidate>
+                    <input type="hidden" name="edit_post_id" value="">
+                    <input type="hidden" name="poster_type" value="rebit">
+                    <input type="hidden" name="nonce" value="<?php echo esc_attr($submit_nonce); ?>">
+                    <input type="hidden" name="rebit_attachment_id" class="bs-edit-attachment-id" value="">
+                    <input type="hidden" name="rebit_og_title" class="bs-edit-og-title" value="">
+                    <input type="hidden" name="rebit_og_desc" class="bs-edit-og-desc" value="">
+                    <input type="hidden" name="rebit_og_image" class="bs-edit-og-image" value="">
+                    <input type="hidden" name="rebit_og_image_removed" class="bs-edit-og-image-removed" value="0">
+
+                    <div class="bs-edit-modal-body">
+                        <div class="bs-edit-field">
+                            <label class="bs-edit-label" for="bs-edit-rebit-url">Link URL</label>
+                            <div class="bs-edit-url-row">
+                                <input type="url" id="bs-edit-rebit-url" name="rebit_url"
+                                       class="bs-edit-url-input"
+                                       placeholder="https://example.com/post">
+                                <button type="button" class="bs-edit-refetch-btn">Re-fetch</button>
+                            </div>
+                        </div>
+
+                        <div class="bs-edit-og-preview" hidden>
+                            <div class="bs-edit-og-preview-image-wrap">
+                                <img class="bs-edit-og-preview-img" src="" alt="">
+                                <button type="button" class="bs-edit-og-remove-image"
+                                        title="Remove link image" aria-label="Remove link image">
+                                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                            <div class="bs-edit-og-preview-meta">
+                                <strong class="bs-edit-og-preview-title"></strong>
+                                <span class="bs-edit-og-preview-url"></span>
+                            </div>
+                        </div>
+
+                        <div class="bs-edit-field">
+                            <label class="bs-edit-label" for="bs-edit-rebit-commentary">Commentary</label>
+                            <textarea id="bs-edit-rebit-commentary" name="rebit_commentary"
+                                      class="bs-edit-textarea" rows="4"
+                                      placeholder="Add your thoughts…"></textarea>
+                        </div>
+
+                        <!-- Media area (same structure as Bit) -->
+                        <div class="bs-edit-media">
+                            <div class="bs-edit-media-preview" hidden>
+                                <div class="bs-edit-media-preview-inner"></div>
+                            </div>
+                            <div class="bs-edit-media-controls">
+                                <button type="button" class="bs-edit-media-btn bs-edit-media-replace" title="Add / Replace media" aria-label="Add or replace media">
+                                    <i class="fa-solid fa-arrow-right-arrow-left" aria-hidden="true"></i>
+                                </button>
+                                <button type="button" class="bs-edit-media-btn bs-edit-media-remove is-hidden" title="Remove media" aria-label="Remove media">
+                                    <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div><!-- /.bs-edit-modal-body -->
+
+                    <footer class="bs-edit-modal-footer">
+                        <div class="bs-edit-actions">
+                            <button type="submit" class="bs-edit-submit">Update Rebit</button>
+                        </div>
+                    </footer>
+                </form>
+            </div>
+        </div>
+        <?php
     }
 }

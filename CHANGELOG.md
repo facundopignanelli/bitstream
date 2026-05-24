@@ -3,21 +3,27 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.2.0] - 2026-05-07
+## [3.2.0] - 2026-XX-XX
+
+### Added
+
+- Added a **Media Library** button to the Edit Bit/Rebit modal so users can pick existing media from the WordPress library instead of uploading new files. The button is visible when no media is attached and swaps to a **Replace** button once media is present. Clicking Replace shows a confirmation dialog (styled with the unified modal tokens) before clearing the current attachment and opening the library picker.
+- Reworked the desktop BitStream shell to position the Quick Bit area centered at the top of the timeline feed, with the Quick Actions menu placed in the left sidebar.
+- Added a compact media picker to the Quick Bit box so desktop users can attach media without opening the full poster.
+- Added shared ReBit, media, drafts, and schedule modals to the Quick Bit poster flow, including draft loading, deletion, and schedule handling.
+- Added a dedicated self-contained timeline edit modal with its own form fields, media preview, and Rebit OG metadata preview — replacing the shortcode-based approach entirely.
 
 ### Changed
-- Reworked the desktop BitStream shell to add a new top rail with Quick Actions on the left and Quick Bit on the right.
-- Aligned the top rail so Quick Actions uses the same fixed width as the left sidebar while Quick Bit expands to fill the remaining space.
+
+- Removed support for audio files across the plugin (including backend AJAX handlers, database checks, frontend media dropzones, metadata fields, and custom audio player styling). Enforced strict image and video MIME-type validations on both client-side and server-side uploaders, as well as the Media Library selection dialog.
+- Unified all modal dialogs (Quick Poster modals, timeline Edit Bit/Rebit modal, and image cropper) into a single canonical design system. All modals now share the same shell tokens: `20px` border radius, `backdrop-filter: blur(4px)` overlay, `0 24px 60px` deep shadow, sticky accent-colored header, `1.4rem` horizontal padding, `1.5px #e2e8f0` input borders with `#f8fafc` resting background, and an elevated confirm/submit button with drop-shadow and hover-lift. The edit modal submit button is now in a sticky footer outside the scrollable body, matching the QP modal structure.
+- Configured error and success status messages (e.g. upload progress, metadata fetching alerts, cropper feedback) to display directly inside the active modal that the user is currently viewing, styled as premium alert boxes, instead of in the background poster status element.
 - Moved the desktop side rail widgets so the right rail now shows Content Filter, Archive, RSS Feeds, and the Version box in that order.
-- Added a compact media picker to the Quick Bit box so desktop users can attach media without opening the full poster.
-- Redesigned the Quick Bit media area into a more responsive, modal-driven layout with icon-only add, replace, and remove controls plus a preview pane.
-- Reused the full poster media field, crop, audio-tag, paste, and modal flows inside Quick Bit so both interfaces share the same media workflow.
-- Added shared ReBit, media, drafts, and schedule modals to the Quick Bit poster flow, including draft loading, deletion, and schedule handling.
-- Improved Quick Bit posting so URL-only content is automatically treated as a ReBit when no attachment is selected.
-- Matched the top-right Quick Actions widget styling to the sidebar rail pattern, aligned its width with the right rail, and rebalanced the Quick Bit card so the submit button only spans the text column while the media pane stays centered.
-- Kept the mobile and tablet layout unchanged while letting the floating quick actions button remain visible on tablet touch devices.
 - Let the Hashtags sidebar grow naturally as new tags are added instead of forcing an internal scroll container.
-- Refactored the shared media helpers in `BitStream_Shortcodes` to keep the Quick Bit and poster media code paths aligned.
+
+### Fixed
+
+- Fixed WordPress block editor visual canvas rendering issue (grey screen below header) on WordPress 6.9+ by upgrading the `bitstream/rebit-url` block to API Version 3. Added iframe-aware DOM querying for quoted bit previews inside the visual editor.
 
 ## [3.1.3] - 2026-05-04
 
@@ -561,11 +567,6 @@ BitStream 2.0 is a complete rewrite and modernization of the plugin, transformin
 - User profiles
 - Analytics dashboard
 
-## Version History Summary
-
-- **2.0** - Major architecture overhaul with security and performance improvements
-- **1.0** - Initial Release
-
 ## Contributing
 
 When adding new releases to this changelog:
@@ -575,9 +576,3 @@ When adding new releases to this changelog:
 3. Include sections: Added, Changed, Deprecated, Removed, Fixed, Security
 4. Date format: YYYY-MM-DD
 5. Keep entries concise but descriptive
-
-## Links
-
-- [WordPress Plugin Repository](https://wordpress.org/plugins/bitstream/) (if applicable)
-- [GitHub Repository](https://github.com/facundopignanelli/bitstream)
-- [Documentation](README.md)

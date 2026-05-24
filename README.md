@@ -82,7 +82,7 @@ On mobile devices, use the "Add to Home Screen" option to install BitStream as a
 
 - **Social-App Style Feed** - Clear, single-column reading experience replacing the old masonry layout
 - **Adaptive Sidebars** - Left filter links, right Quick Actions rails, and responsive stacking across devices
-- **Interactive Cards** - Rich media, quoted bits, audio players, and inline actions
+- **Interactive Cards** - Rich media, quoted bits, and inline actions
 - **Quick Bit Box** - Instantly post Bits or auto-detected ReBits directly from the sidebar feed
 - **In-Feed Deletion** - Instantly delete posts if you have the proper capabilities
 
@@ -91,7 +91,7 @@ On mobile devices, use the "Add to Home Screen" option to install BitStream as a
 - **Tabbed Workflow** - Seamlessly switch between composing Bits, ReBits, Drafts, and Scheduled posts
 - **Drafts Support** - Save posts mid-thought, auto-save on tab close (`navigator.sendBeacon`), and resume later
 - **Robust Scheduling** - Plan ahead with a native datetime picker for future publishing (Bits and ReBits)
-- **Rich Media & Audio** - Drag-and-drop uploads, custom image cropper, and support for audio formats (MP3, OGG, WAV, FLAC, etc.) integrated via native `wp.media`
+- **Rich Media** - Drag-and-drop uploads, custom image cropper, and support for video formats integrated via native `wp.media`
 - **Publish Previews** - In-window publish result panel showing the exact frontend-rendered card without refreshing
 - **Quick Actions Post-Publish** - Copy permalinks, quickly edit, or jump to the published post straight from the success screen
 
@@ -132,7 +132,7 @@ The main shortcode for displaying your timeline.
 
 Renders a custom frontend posting interface with intelligent tabs:
 
-- **Post a Bit**: Compose text, drag & drop media, crop images, upload audio.
+- **Post a Bit**: Compose text, drag & drop media, and crop images.
 - **Post a ReBit**: Paste a URL, auto-fetch OG data, manually tweak properties.
 - **Scheduled**: Review, preview, edit, or delete upcoming posts.
 - **Drafts**: Save and manage unpublished works in progress.
@@ -162,13 +162,6 @@ BitStream 3.0 consolidates all administrative panels into a single, clean **Sett
 - **WordPress**: 5.8 or higher
 - **PHP**: 7.4 or higher
 - **Font Awesome**: Recommended for icons (free version)
-
-### Architecture Highlights
-
-- Robust OOP architecture with namespaced classes (`BitStream_*`)
-- Security-first approach with nonces, capability checks, input sanitization, and output escaping
-- Strict SSRF protection on external URL requests
-- Performance optimizations via transient caching, conditional loading, and efficient AJAX endpoints
 
 ## 🤝 Contributing
 

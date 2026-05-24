@@ -19,7 +19,49 @@ class BitStream_Content_Display
         add_action('template_redirect', [$this, 'handle_single_bit_display']);
         add_filter('the_content', [$this, 'display_quoted_content']);
         add_filter('the_content', [$this, 'linkify_hashtags'], 20);
+        add_filter('the_content', [$this, 'refresh_media_cache_busters'], 30);
         add_action('save_post_bit', [$this, 'save_rebit_og_data']);
+    }
+
+    /**
+     * Update any BitStream image cache busters in content to match latest attachment timestamps.
+     */
+    public function refresh_media_cache_busters($content)
+    {
+        if (empty($content) || !strpos($content, 'wp-image-')) {
+            return $content;
+        }
+
+        // Robust attribute-order independent regex for <img> tags with wp-image-ID class
+        return preg_replace_callback('/<img\s+([^>]+)>/i', function($matches) {
+            $attrs_str = $matches[1];
+            
+            // Extract attachment ID from class
+            if (!preg_replace_callback('/class=["\'][^"\']*wp-image-([0-9]+)[^"\']*["\']/i', function($m) use (&$attachment_id) {
+                $attachment_id = intval($m[1]);
+                return $m[0];
+            }, $attrs_str)) {
+                // If no wp-image-ID class found, return original tag
+                if (!$attachment_id) return $matches[0];
+            }
+
+            if (!$attachment_id) return $matches[0];
+
+            // Extract SRC
+            $src = '';
+            preg_match('/src=["\']([^"\']+)["\']/i', $attrs_str, $src_matches);
+            if (empty($src_matches[1])) return $matches[0];
+            
+            $src = $src_matches[1];
+            $url_base = explode('?t=', $src)[0];
+            $latest_buster = get_post_modified_time('U', false, $attachment_id);
+            
+            // Replace the src attribute with the fresh buster
+            $new_src_attr = 'src="' . $url_base . '?t=' . $latest_buster . '"';
+            $new_attrs_str = preg_replace('/src=["\']([^"\']+)["\']/i', $new_src_attr, $attrs_str);
+            
+            return '<img ' . $new_attrs_str . '>';
+        }, $content);
     }
 
     /**
@@ -31,8 +73,13 @@ class BitStream_Content_Display
 
         if (is_single() && $post && $post->post_type === 'bit') {
             // Ensure assets are loaded with proper priority
-            wp_enqueue_style('bitstream-css', BITSTREAM_PLUGIN_URL . 'assets/css/bitstream.css', [], BITSTREAM_VERSION);
-            wp_enqueue_script('bitstream-js', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream.js', ['jquery'], BITSTREAM_VERSION, true);
+            wp_enqueue_style('bitstream-css', BITSTREAM_PLUGIN_URL . 'assets/css/bitstream.css', [], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/css/bitstream.css'));
+            wp_enqueue_script('bitstream-js', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream.js', ['jquery'], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/js/bitstream.js'), true);
+            if (class_exists('BitStream_Ajax_Handlers')) {
+                wp_localize_script('bitstream-js', 'bitstream_ajax', array_merge(BitStream_Ajax_Handlers::get_localized_data(), [
+                    'post_id' => $post->ID
+                ]));
+            }
 
             // Add body class for better targeting
             add_filter('body_class', function ($classes) {

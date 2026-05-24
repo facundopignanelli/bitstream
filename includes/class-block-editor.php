@@ -41,7 +41,7 @@ class BitStream_Block_Editor {
             'type'          => 'string',
             'auth_callback' => function() { return current_user_can('edit_posts'); }
         ]);
-        register_block_type('bitstream/rebit-url', ['editor_script' => 'bitstream-block']);
+        register_block_type('bitstream/rebit-url', ['editor_script' => 'bitstream-block', 'api_version' => 3]);
     }
     
     /**
@@ -58,9 +58,9 @@ class BitStream_Block_Editor {
         // Get post ID for editor context
         $current_post_id = 0;
         if (is_admin() && isset($_GET['post'])) {
-            $current_post_id = absint(wp_unslash($_GET['post']));
+            $current_post_id = abs((int) wp_unslash($_GET['post']));
         } elseif (is_admin() && isset($_POST['post_ID'])) {
-            $current_post_id = absint(wp_unslash($_POST['post_ID']));
+            $current_post_id = abs((int) wp_unslash($_POST['post_ID']));
         }
 
         // Check for media_ids parameter for PWA shared media
@@ -72,15 +72,10 @@ class BitStream_Block_Editor {
         }
 
         // Localize script for block editor
-        wp_localize_script('bitstream-block', 'bitstream_ajax', [
-            'ajax_url' => admin_url('admin-ajax.php'),
-            'admin_url' => admin_url(),
-            'like_nonce' => wp_create_nonce('bitstream_like_nonce'),
-            'load_more_nonce' => wp_create_nonce('bitstream_load_more_nonce'),
-            'og_fetch_nonce' => wp_create_nonce('bitstream_og_fetch_nonce'),
-            'post_id' => $current_post_id,
-            'media_ids' => $media_ids_array  // Pass media IDs to JavaScript
-        ]);
+        wp_localize_script('bitstream-block', 'bitstream_ajax', array_merge(BitStream_Ajax_Handlers::get_localized_data(), [
+            'post_id'   => $current_post_id,
+            'media_ids' => $media_ids_array
+        ]));
         
         $inline_js = $this->get_block_editor_js();
         wp_add_inline_script('bitstream-block', $inline_js);
@@ -91,34 +86,23 @@ class BitStream_Block_Editor {
      * Enqueue frontend assets with optimizations
      */
     public function enqueue_frontend_assets() {
-        wp_enqueue_style('bitstream-css', BITSTREAM_PLUGIN_URL . 'assets/css/bitstream.css', [], BITSTREAM_VERSION);
+        wp_enqueue_style('bitstream-css', BITSTREAM_PLUGIN_URL . 'assets/css/bitstream.css', [], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/css/bitstream.css'));
         
         // Cache-busting version for JS
-        wp_enqueue_script('bitstream-js', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream.js', ['jquery'], BITSTREAM_VERSION, true);
+            wp_enqueue_script('bitstream-js', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream.js', ['jquery'], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/js/bitstream.js'), true);
         // Get post ID for editor context
         $current_post_id = 0;
         if (is_admin() && isset($_GET['post'])) {
-            $current_post_id = absint(wp_unslash($_GET['post']));
+            $current_post_id = abs((int) wp_unslash($_GET['post']));
         } elseif (is_admin() && isset($_POST['post_ID'])) {
-            $current_post_id = absint(wp_unslash($_POST['post_ID']));
+            $current_post_id = abs((int) wp_unslash($_POST['post_ID']));
         } elseif (!is_admin()) {
             $current_post_id = get_the_ID();
         }
 
-        wp_localize_script('bitstream-js', 'bitstream_ajax', [
-            'ajax_url' => admin_url('admin-ajax.php'),
-            'admin_url' => admin_url(),
-            'like_nonce' => wp_create_nonce('bitstream_like_nonce'),
-            'load_more_nonce' => wp_create_nonce('bitstream_load_more_nonce'),
-            'og_fetch_nonce' => wp_create_nonce('bitstream_og_fetch_nonce'),
-            'media_upload_nonce' => wp_create_nonce('bitstream_media_upload_nonce'),
-            'media_crop_nonce' => wp_create_nonce('bitstream_media_crop_nonce'),
-            'audio_meta_nonce' => wp_create_nonce('bitstream_audio_meta_nonce'),
-            'delete_post_nonce' => wp_create_nonce('bitstream_delete_post_nonce'),
-            'post_id' => $current_post_id,
-            'poster_url' => class_exists('BitStream_Shortcodes') ? BitStream_Shortcodes::get_poster_page_url() : home_url('/bitstream/'),
-            'feed_url' => home_url('/bitstream/')
-        ]);
+        wp_localize_script('bitstream-js', 'bitstream_ajax', array_merge(BitStream_Ajax_Handlers::get_localized_data(), [
+            'post_id' => $current_post_id
+        ]));
         
         // Ensure $ is available globally
         add_action('wp_print_footer_scripts', function() {
@@ -251,7 +235,7 @@ JS;
             $this->debug_log('BitStream: Parsed media IDs count: ' . count($ids_array));
             
             $ids_array_json = wp_json_encode(array_values($ids_array));
-            $timestamp = absint(time());
+            $timestamp = (int) time();
             $media_inline_script = <<<JS
 console.log("=== BitStream: MEDIA INSERTION SCRIPT START v2.0 - TIMESTAMP: {$timestamp} ===");
 console.log("BitStream: Media insertion script loaded - VERSION 3.2.0");
@@ -477,6 +461,7 @@ JS;
     const {useState,useEffect} = wp.element;
     
     registerBlockType('bitstream/rebit-url',{
+        apiVersion:3,
         title:'ReBit URL',
         icon:'admin-links',
         category:'widgets',
@@ -825,16 +810,35 @@ JS;
             let attempts = 0;
             const maxAttempts = 50;
             
+            const findEditorElement = (selector) => {
+                let element = document.querySelector(selector);
+                if (element) return element;
+                
+                const iframes = document.querySelectorAll('iframe');
+                for (let i = 0; i < iframes.length; i++) {
+                    try {
+                        const iframe = iframes[i];
+                        if (iframe.contentDocument) {
+                            element = iframe.contentDocument.querySelector(selector);
+                            if (element) return element;
+                        }
+                    } catch (e) {
+                        // Ignore cross-origin frame access errors
+                    }
+                }
+                return null;
+            };
+            
             const waitForEditor = () => {
                 attempts++;
                 console.log('BitStream: Attempt', attempts, 'looking for editor...');
                 
-                const editorElement = document.querySelector('.edit-post-visual-editor') || 
-                                    document.querySelector('.block-editor-writing-flow') ||
-                                    document.querySelector('.editor-styles-wrapper') ||
-                                    document.querySelector('[data-type="core/post-content"]') ||
-                                    document.querySelector('.wp-block-post-content') ||
-                                    document.querySelector('.edit-post-layout__content');
+                const editorElement = findEditorElement('.edit-post-visual-editor') || 
+                                    findEditorElement('.block-editor-writing-flow') ||
+                                    findEditorElement('.editor-styles-wrapper') ||
+                                    findEditorElement('[data-type="core/post-content"]') ||
+                                    findEditorElement('.wp-block-post-content') ||
+                                    findEditorElement('.edit-post-layout__content');
                                     
                 console.log('BitStream: Editor element found:', editorElement);
                 
@@ -854,8 +858,18 @@ JS;
             };
             
             const showQuoteInEditor = (editorElement, quotedBitId) => {
-                // Create quoted bit preview element
-                const quotedPreview = document.createElement('div');
+                // Try multiple insertion points
+                const contentArea = findEditorElement('.editor-styles-wrapper') || 
+                                  findEditorElement('.block-editor-writing-flow') ||
+                                  findEditorElement('.edit-post-visual-editor') ||
+                                  editorElement;
+                                  
+                let targetDoc = document;
+                if (contentArea && contentArea.ownerDocument) {
+                    targetDoc = contentArea.ownerDocument;
+                }
+                
+                const quotedPreview = targetDoc.createElement('div');
                 quotedPreview.id = 'bitstream-quoted-preview';
                 quotedPreview.style.cssText = 
                     'margin: 16px 0;' +
@@ -869,25 +883,19 @@ JS;
                     'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;';
                 quotedPreview.innerHTML = '<div style="color: #666; margin-bottom: 8px;">Loading quoted bit...</div>';
                 
-                // Try multiple insertion points
-                const contentArea = document.querySelector('.editor-styles-wrapper') || 
-                                  document.querySelector('.block-editor-writing-flow') ||
-                                  document.querySelector('.edit-post-visual-editor') ||
-                                  editorElement;
-                                  
                 if (contentArea) {
                     contentArea.insertBefore(quotedPreview, contentArea.firstChild);
                     console.log('BitStream: Preview element inserted');
                 } else {
                     // Fallback: insert after the editor toolbar
-                    const toolbar = document.querySelector('.edit-post-header') || 
-                                  document.querySelector('.block-editor-header');
+                    const toolbar = findEditorElement('.edit-post-header') || 
+                                  findEditorElement('.block-editor-header');
                     if (toolbar && toolbar.parentNode) {
                         toolbar.parentNode.insertBefore(quotedPreview, toolbar.nextSibling);
                         console.log('BitStream: Preview element inserted after toolbar');
                     } else {
                         // Last resort: append to body
-                        document.body.insertBefore(quotedPreview, document.body.firstChild);
+                        targetDoc.body.insertBefore(quotedPreview, targetDoc.body.firstChild);
                         console.log('BitStream: Preview element inserted at top of body');
                     }
                 }

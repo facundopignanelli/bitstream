@@ -70,32 +70,7 @@ class BitStream_Plugin
      */
     private function init_components()
     {
-        // Allow audio uploads
-        add_filter('upload_mimes', function ($mimes) {
-            $mimes['mp3'] = 'audio/mpeg';
-            $mimes['m4a'] = 'audio/mp4';
-            $mimes['ogg'] = 'audio/ogg';
-            $mimes['wav'] = 'audio/wav';
-            $mimes['flac'] = 'audio/flac';
-            return $mimes;
-        }, 1, 1);
-
-        // Bypass file type checks for audio files
-        add_filter('wp_check_filetype_and_ext', function ($data, $file, $filename, $mimes) {
-            $ext = pathinfo($filename, PATHINFO_EXTENSION);
-            if (empty($data['type']) && in_array($ext, ['mp3', 'm4a', 'ogg', 'wav', 'flac'], true)) {
-                $mime_map = [
-                    'mp3' => 'audio/mpeg',
-                    'm4a' => 'audio/mp4',
-                    'ogg' => 'audio/ogg',
-                    'wav' => 'audio/wav',
-                    'flac' => 'audio/flac',
-                ];
-                $data['ext'] = $ext;
-                $data['type'] = $mime_map[$ext];
-            }
-            return $data;
-        }, 10, 4);
+        // Audio support removed: plugin will not add audio MIME types or bypass audio file checks.
 
         // Initialize core components
         $this->components['post_type'] = new BitStream_Post_Type();
@@ -423,11 +398,11 @@ if (!function_exists('bitstream_render_card')) {
                         <i class="fas fa-comment-dots"></i> <?php echo esc_html($comments); ?>
                     </a>
                 <?php else: ?>
-                <button class="bit-comment-toggle bit-action" data-target="comments-<?php echo esc_attr($post_id); ?>" style="background:none;border:none;cursor:pointer;">
+                <button class="bit-comment-toggle bit-action" data-target="comments-<?php echo esc_attr($post_id); ?>" style="background:none;border:none;cursor:pointer;" title="View and add comments">
                     <i class="fas fa-comment-dots"></i> <?php echo esc_html($comments); ?>
                 </button>
                 <?php endif; ?>
-                <button class="bit-like bit-action" data-post-id="<?php echo esc_attr($post_id); ?>" style="background:none;border:none;cursor:pointer;">
+                <button class="bit-like bit-action" data-post-id="<?php echo esc_attr($post_id); ?>" style="background:none;border:none;cursor:pointer;" title="Like this bit">
                     <i class="fas fa-heart"></i> <span class="bit-like-count"><?php echo esc_html($likes); ?></span>
                 </button>
                 <button class="bit-permalink bit-action" data-url="<?php echo esc_url(get_permalink($post_id)); ?>" style="background:none;border:none;cursor:pointer;" title="Copy link: <?php echo esc_attr(get_permalink($post_id)); ?>">
