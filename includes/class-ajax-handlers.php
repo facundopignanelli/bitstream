@@ -13,7 +13,7 @@ class BitStream_Ajax_Handlers
 {
 
     /**
-     * Keep live poster previews visually accurate while removing interactive markup
+     * Keep live composer previews visually accurate while removing interactive markup
      * that can break nested form structures (comments/actions).
      */
     private function sanitize_live_preview_markup($markup)
@@ -89,9 +89,9 @@ class BitStream_Ajax_Handlers
             'media_upload_nonce' => wp_create_nonce('bitstream_media_upload_nonce'),
             'media_crop_nonce'   => wp_create_nonce('bitstream_media_crop_nonce'),
             'delete_post_nonce'  => wp_create_nonce('bitstream_delete_post_nonce'),
-            'poster_submit_nonce'=> wp_create_nonce('bitstream_poster_submit_nonce'),
+            'composer_submit_nonce'=> wp_create_nonce('bitstream_composer_submit_nonce'),
             'feed_url'           => home_url('/bitstream/'),
-            'poster_url'         => class_exists('BitStream_Shortcodes') ? BitStream_Shortcodes::get_feed_page_url() : home_url('/bitstream/')
+            'composer_url'         => class_exists('BitStream_Shortcodes') ? BitStream_Shortcodes::get_feed_page_url() : home_url('/bitstream/')
         ];
     }
 
@@ -104,7 +104,7 @@ class BitStream_Ajax_Handlers
         add_action('wp_ajax_bitstream_fetch_og_data', [$this, 'handle_fetch_og_data']);
         add_action('wp_ajax_bitstream_render_rebit_preview', [$this, 'handle_render_rebit_preview']);
         add_action('wp_ajax_bitstream_get_quoted_bit', [$this, 'handle_get_quoted_bit']);
-        add_action('wp_ajax_bitstream_submit_poster', [$this, 'handle_submit_poster']);
+        add_action('wp_ajax_bitstream_submit_composer', [$this, 'handle_submit_composer']);
         add_action('wp_ajax_bitstream_upload_media', [$this, 'handle_upload_media']);
         add_action('wp_ajax_bitstream_prepare_rebit_image_for_crop', [$this, 'handle_prepare_rebit_image_for_crop']);
         add_action('wp_ajax_bitstream_crop_media', [$this, 'handle_crop_media']);
@@ -132,7 +132,7 @@ class BitStream_Ajax_Handlers
         ]);
 
         update_post_meta($post_id, '_bitstream_attachment_id', $attachment_id);
-        delete_post_meta($attachment_id, '_bitstream_uploaded_via_poster');
+        delete_post_meta($attachment_id, '_bitstream_uploaded_via_composer');
         delete_post_meta($attachment_id, '_bitstream_upload_created_at');
     }
 
@@ -406,7 +406,10 @@ class BitStream_Ajax_Handlers
         if (wp_attachment_is('video', $attachment_id)) {
             $video_url = wp_get_attachment_url($attachment_id);
             if ($video_url) {
-                return wp_video_shortcode(['src' => $video_url]);
+                return sprintf(
+                    '<video class="bitstream-video-attachment" controls preload="metadata" playsinline controlsList="nodownload noplaybackrate" disablepictureinpicture src="%s"></video>',
+                    esc_url($video_url)
+                );
             }
         }
 
@@ -465,7 +468,7 @@ class BitStream_Ajax_Handlers
     }
 
     /**
-     * Handle media upload for poster drag-and-drop
+     * Handle media upload for composer drag-and-drop
      */
     public function handle_upload_media()
     {
@@ -518,7 +521,7 @@ class BitStream_Ajax_Handlers
             $attachment_data = wp_generate_attachment_metadata($attachment_id, $file_path);
             wp_update_attachment_metadata($attachment_id, $attachment_data);
 
-            update_post_meta($attachment_id, '_bitstream_uploaded_via_poster', 1);
+            update_post_meta($attachment_id, '_bitstream_uploaded_via_composer', 1);
             update_post_meta($attachment_id, '_bitstream_upload_created_at', time());
 
             $preview_url = $file_url;
@@ -593,7 +596,7 @@ class BitStream_Ajax_Handlers
                 wp_send_json_error('The fetched URL is not a valid image.');
             }
 
-            update_post_meta($attachment_id, '_bitstream_uploaded_via_poster', 1);
+            update_post_meta($attachment_id, '_bitstream_uploaded_via_composer', 1);
             update_post_meta($attachment_id, '_bitstream_upload_created_at', time());
 
             wp_send_json_success([
@@ -683,12 +686,12 @@ class BitStream_Ajax_Handlers
                 update_post_meta($new_attachment_id, '_wp_attachment_image_alt', $alt_text);
             }
 
-            // Mark the new attachment as uploaded via poster so it can be managed
-            update_post_meta($new_attachment_id, '_bitstream_uploaded_via_poster', '1');
+            // Mark the new attachment as uploaded via composer so it can be managed
+            update_post_meta($new_attachment_id, '_bitstream_uploaded_via_composer', '1');
 
             // Check if we should delete the original to save space
-            // Only delete if it was a temporary upload via poster and NOT used elsewhere
-            $was_temp = get_post_meta($attachment_id, '_bitstream_uploaded_via_poster', true);
+            // Only delete if it was a temporary upload via composer and NOT used elsewhere
+            $was_temp = get_post_meta($attachment_id, '_bitstream_uploaded_via_composer', true);
             if ($was_temp && !$this->is_attachment_used_elsewhere($attachment_id, 0)) {
                 wp_delete_attachment($attachment_id, true);
             }
@@ -706,20 +709,20 @@ class BitStream_Ajax_Handlers
     }
 
     /**
-     * Handle tabbed frontend poster submissions
+     * Handle tabbed frontend composer submissions
      */
-    public function handle_submit_poster()
+    public function handle_submit_composer()
     {
         try {
-            check_ajax_referer('bitstream_poster_submit_nonce', 'nonce');
+            check_ajax_referer('bitstream_composer_submit_nonce', 'nonce');
 
             if (!is_user_logged_in() || !current_user_can('edit_posts')) {
                 wp_send_json_error('Insufficient permissions.');
             }
 
-            $poster_type = sanitize_key($_POST['poster_type'] ?? '');
-            if (!in_array($poster_type, ['bit', 'rebit'], true)) {
-                wp_send_json_error('Invalid poster type.');
+            $composer_type = sanitize_key($_POST['composer_type'] ?? '');
+            if (!in_array($composer_type, ['bit', 'rebit'], true)) {
+                wp_send_json_error('Invalid composer type.');
             }
 
             $save_as_draft = !empty($_POST['save_as_draft']) && $_POST['save_as_draft'] === '1';
@@ -742,7 +745,7 @@ class BitStream_Ajax_Handlers
                 $is_update = true;
             }
 
-            if ($poster_type === 'bit') {
+            if ($composer_type === 'bit') {
                 if ($is_update && !empty(get_post_meta($edit_post_id, 'bitstream_rebit_url', true))) {
                     wp_send_json_error('This post is a Rebit. Edit it from the Rebit tab.');
                 }
@@ -1374,12 +1377,12 @@ class BitStream_Ajax_Handlers
     }
 
     /**
-     * Return draft post data for loading into the quick poster.
+     * Return draft post data for loading into the composer.
      */
     public function handle_get_draft_data()
     {
         try {
-            check_ajax_referer('bitstream_poster_submit_nonce', 'nonce');
+            check_ajax_referer('bitstream_composer_submit_nonce', 'nonce');
 
             if (!current_user_can('edit_posts')) {
                 wp_send_json_error('Insufficient permissions.');
@@ -1415,6 +1418,8 @@ class BitStream_Ajax_Handlers
                 'og_title'      => $is_rebit ? get_post_meta($post_id, 'bitstream_rebit_og_title', true) : '',
                 'og_desc'       => $is_rebit ? get_post_meta($post_id, 'bitstream_rebit_og_desc', true) : '',
                 'og_image'      => $is_rebit ? get_post_meta($post_id, 'bitstream_rebit_og_image', true) : '',
+                'attachment_url'    => $attachment_id > 0 ? wp_get_attachment_url($attachment_id) : '',
+                'attachment_mime'   => $attachment_id > 0 ? get_post_mime_type($attachment_id) : '',
                 'attachment_id' => $attachment_id > 0 ? $attachment_id : '',
             ];
 
@@ -1431,7 +1436,7 @@ class BitStream_Ajax_Handlers
     public function handle_get_post_data()
     {
         try {
-            check_ajax_referer('bitstream_poster_submit_nonce', 'nonce');
+            check_ajax_referer('bitstream_composer_submit_nonce', 'nonce');
 
             if (!current_user_can('edit_posts')) {
                 wp_send_json_error('Insufficient permissions.');
@@ -1527,7 +1532,7 @@ class BitStream_Ajax_Handlers
     public function handle_get_post_edit_data()
     {
         try {
-            check_ajax_referer('bitstream_poster_submit_nonce', 'nonce');
+            check_ajax_referer('bitstream_composer_submit_nonce', 'nonce');
 
             if (!current_user_can('edit_posts')) {
                 wp_send_json_error('Insufficient permissions.');
@@ -1626,7 +1631,7 @@ class BitStream_Ajax_Handlers
     public function handle_get_quote_preview()
     {
         try {
-            check_ajax_referer('bitstream_poster_submit_nonce', 'nonce');
+            check_ajax_referer('bitstream_composer_submit_nonce', 'nonce');
 
             if (!current_user_can('edit_posts')) {
                 wp_send_json_error('Insufficient permissions.');

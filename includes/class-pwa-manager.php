@@ -24,9 +24,9 @@ class BitStream_PWA_Manager {
     }
 
     /**
-     * Resolve poster page URL
+     * Resolve composer page URL
      */
-    private function get_poster_url($query_args = []) {
+    private function get_composer_url($query_args = []) {
         if (class_exists('BitStream_Shortcodes')) {
             return BitStream_Shortcodes::get_feed_page_url($query_args);
         }
@@ -444,8 +444,8 @@ class BitStream_PWA_Manager {
             $transient_key = 'bitstream_shared_' . wp_generate_password(16, false);
             set_transient($transient_key, $pending_share, 15 * MINUTE_IN_SECONDS);
 
-            $login_url = wp_login_url($this->get_poster_url([
-                'poster_tab' => 'bit',
+            $login_url = wp_login_url($this->get_composer_url([
+                'composer_tab' => 'bit',
                 'shared_key' => $transient_key,
             ]));
 
@@ -558,12 +558,12 @@ class BitStream_PWA_Manager {
             if (defined('WP_DEBUG') && WP_DEBUG) {
                 error_log('BitStream: empty share payload, redirecting to new bit page');
             }
-            wp_redirect($this->get_poster_url(['poster_tab' => 'bit']));
+            wp_redirect($this->get_composer_url(['composer_tab' => 'bit']));
             exit;
         }
         
-        // Build redirect URL to frontend poster page
-        $redirect_url = $this->get_poster_url(['poster_tab' => empty($final_url) ? 'bit' : 'rebit']);
+        // Build redirect URL to frontend composer page
+        $redirect_url = $this->get_composer_url(['composer_tab' => empty($final_url) ? 'bit' : 'rebit']);
         
         if (!empty($attachment_ids)) {
             $redirect_url = add_query_arg('media_ids', implode(',', $attachment_ids), $redirect_url);
@@ -575,11 +575,11 @@ class BitStream_PWA_Manager {
         
         if (!empty($final_url)) {
             $redirect_url = add_query_arg('shared_url', urlencode($final_url), $redirect_url);
-            $redirect_url = add_query_arg('poster_tab', 'rebit', $redirect_url);
+            $redirect_url = add_query_arg('composer_tab', 'rebit', $redirect_url);
         }
 
         if (defined('WP_DEBUG') && WP_DEBUG) {
-            error_log('BitStream: redirecting to poster after media share');
+            error_log('BitStream: redirecting to composer after media share');
         }
         wp_redirect($redirect_url);
         exit;
@@ -676,7 +676,7 @@ class BitStream_PWA_Manager {
             // Redirect to appropriate admin page
             switch ($action) {
                 case 'new-bit':
-                    wp_redirect($this->get_poster_url(['poster_tab' => 'bit']));
+                    wp_redirect($this->get_composer_url(['composer_tab' => 'bit']));
                     break;
                 case 'new-rebit':
                     // Handle shared content from Android share sheet
@@ -721,13 +721,13 @@ class BitStream_PWA_Manager {
                             set_transient($transient_key, $shared_data, 10 * MINUTE_IN_SECONDS);
                             
                             // Redirect to login with the shared data key
-                            $login_url = wp_login_url($this->get_poster_url(['poster_tab' => 'rebit', 'shared_key' => $transient_key]));
+                            $login_url = wp_login_url($this->get_composer_url(['composer_tab' => 'rebit', 'shared_key' => $transient_key]));
                             if (defined('WP_DEBUG') && WP_DEBUG) {
                                 error_log('BitStream Share Debug: user not logged in, redirecting with transient key');
                             }
                         } else {
                             // No shared data, just redirect to login
-                            $login_url = wp_login_url($this->get_poster_url(['poster_tab' => 'rebit']));
+                            $login_url = wp_login_url($this->get_composer_url(['composer_tab' => 'rebit']));
                             if (defined('WP_DEBUG') && WP_DEBUG) {
                                 error_log('BitStream Share Debug: user not logged in, redirecting to login');
                             }
@@ -736,7 +736,7 @@ class BitStream_PWA_Manager {
                         exit;
                     }
                     
-                    $redirect_url = $this->get_poster_url(['poster_tab' => 'rebit']);
+                    $redirect_url = $this->get_composer_url(['composer_tab' => 'rebit']);
                     
                     // Add shared content to redirect URL if available
                     if ($final_url) {
@@ -845,7 +845,7 @@ class BitStream_PWA_Manager {
                 echo '      if (redirectUrl) {';
                 echo '        window.location.href = redirectUrl;';
                 echo '      } else {';
-                echo '        window.location.href = "/bitstream/?poster_tab=bit";';
+                echo '        window.location.href = "/bitstream/?composer_tab=bit";';
                 echo '      }';
                 echo '    }';
                 echo '  });';

@@ -42,7 +42,7 @@ BitStream transforms WordPress into a powerful microblogging platform with Twitt
 2. Upload the `bitstream` folder to `/wp-content/plugins/`
 3. Activate the plugin through the 'Plugins' menu in WordPress
 4. Visit Settings → Permalinks and click "Save Changes" to flush rewrite rules
-5. Create a page and add the `[bitstream]` and/or `[bitstream_poster]` shortcodes
+5. Create a page and add the `[bitstream]` shortcode
 
 ### Manual Installation
 
@@ -64,13 +64,9 @@ Create a new page and add the shortcode to display your timeline:
 [bitstream]
 ```
 
-### Create the Posting Interface
+### Posting Interface
 
-Create another page to serve as your dedicated posting area:
-
-```
-[bitstream_poster]
-```
+BitStream features an integrated Composer directly on your main timeline feed. On desktop, this is embedded at the top of the timeline. On mobile, you can use the Quick Action buttons to open the posting workflow in a modal.
 
 ### Install as PWA
 
@@ -83,17 +79,16 @@ On mobile devices, use the "Add to Home Screen" option to install BitStream as a
 - **Social-App Style Feed** - Clear, single-column reading experience replacing the old masonry layout
 - **Adaptive Sidebars** - Left filter links, right Quick Actions rails, and responsive stacking across devices
 - **Interactive Cards** - Rich media, quoted bits, and inline actions
-- **Quick Bit Box** - Instantly post Bits or auto-detected ReBits directly from the sidebar feed
+- **Composer Box** - Instantly post Bits or auto-detected ReBits directly from the sidebar feed
 - **In-Feed Deletion** - Instantly delete posts if you have the proper capabilities
 
-### 📝 Advanced Poster Interface
+### 📝 Composer Interface
 
-- **Tabbed Workflow** - Seamlessly switch between composing Bits, ReBits, Drafts, and Scheduled posts
-- **Drafts Support** - Save posts mid-thought, auto-save on tab close (`navigator.sendBeacon`), and resume later
+- **Unified Feed Composition** - Compose Bits and ReBits directly from the feed page
+- **Drafts Support** - Save posts mid-thought, auto-save on page/tab close (`navigator.sendBeacon`), and resume later
 - **Robust Scheduling** - Plan ahead with a native datetime picker for future publishing (Bits and ReBits)
-- **Rich Media** - Drag-and-drop uploads, custom image cropper, and support for video formats integrated via native `wp.media`
-- **Publish Previews** - In-window publish result panel showing the exact frontend-rendered card without refreshing
-- **Quick Actions Post-Publish** - Copy permalinks, quickly edit, or jump to the published post straight from the success screen
+- **Rich Media** - Drag-and-drop uploads, custom image cropper, and video support integrated via native `wp.media`
+- **In-Feed Management** - Load, preview, edit, or delete drafts and scheduled items directly from their respective modals on the feed page
 
 ### � Social & Discovery
 
@@ -105,14 +100,14 @@ On mobile devices, use the "Add to Home Screen" option to install BitStream as a
 
 - **Secure OpenGraph Fetcher** - Built-in strict SSRF protection (`wp_safe_remote_get`), timeout retries, URL resolution, and JSON-LD parsing
 - **Fast Previews** - 24-hour transient caching minimizes external requests for ReBit data
-- **Manual Overrides** - Edit the fetched title, description, and image directly in the poster before publishing
+- **Manual Overrides** - Edit the fetched title, description, and image directly in the composer before publishing
 
 ### � Progressive Web App (PWA)
 
 - **Installable** - Add to home screen on mobile and desktop
 - **Offline Aware** - Service worker caching functionality
 - **Advanced Share Parsing** - Better Android share integration, automatically separating text and URLs when combined by specific apps
-- **Contextual Routing** - Quick Actions shortcuts map directly to specific poster tabs
+- **Contextual Routing** - Quick Actions shortcuts map directly to specific composer tabs
 
 ## 📝 Shortcodes
 
@@ -128,17 +123,7 @@ The main shortcode for displaying your timeline.
 | `infinite_scroll` | boolean | false | Enable infinite scroll |
 | `show_load_more` | boolean | true | Show/hide load more button |
 
-### `[bitstream_poster]` - Unified Posting Interface
 
-Renders a custom frontend posting interface with intelligent tabs:
-
-- **Post a Bit**: Compose text, drag & drop media, and crop images.
-- **Post a ReBit**: Paste a URL, auto-fetch OG data, manually tweak properties.
-- **Scheduled**: Review, preview, edit, or delete upcoming posts.
-- **Drafts**: Save and manage unpublished works in progress.
-
-**Requirements**:
-- User must be logged in with posting capabilities.
 
 ## 🎛️ Administration & Settings
 
@@ -153,7 +138,7 @@ BitStream 3.0 consolidates all administrative panels into a single, clean **Sett
 
 ### Housekeeping Improvements
 
-- **Weekly Media Cleanup**: Automatic pruning of unattached orphaned files from incomplete poster uploads (`bitstream_weekly_media_cleanup_event`).
+- **Weekly Media Cleanup**: Automatic pruning of unattached orphaned files from incomplete composer uploads (`bitstream_weekly_media_cleanup_event`).
 
 ## 🔧 Technical Details
 

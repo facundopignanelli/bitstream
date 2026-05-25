@@ -50,7 +50,7 @@ class BitStream_Block_Editor {
     public function enqueue_block_editor_assets() {
         wp_register_script(
             'bitstream-block',
-            BITSTREAM_PLUGIN_URL . 'assets/js/bitstream.js',
+            false,
             ['wp-blocks','wp-element','wp-editor','wp-components','wp-data'],
             BITSTREAM_VERSION, true
         );
@@ -61,6 +61,18 @@ class BitStream_Block_Editor {
             $current_post_id = abs((int) wp_unslash($_GET['post']));
         } elseif (is_admin() && isset($_POST['post_ID'])) {
             $current_post_id = abs((int) wp_unslash($_POST['post_ID']));
+        }
+
+        // Determine post type to ensure we only load on 'bit' editor screens
+        $post_type = '';
+        if ($current_post_id) {
+            $post_type = get_post_type($current_post_id);
+        } elseif (isset($_GET['post_type'])) {
+            $post_type = sanitize_text_field(wp_unslash($_GET['post_type']));
+        }
+
+        if ($post_type !== 'bit') {
+            return;
         }
 
         // Check for media_ids parameter for PWA shared media
@@ -429,8 +441,8 @@ JS;
                 
                 // Redirect with the restored shared data
                 $redirect_url = class_exists('BitStream_Shortcodes')
-                    ? BitStream_Shortcodes::get_poster_page_url(['poster_tab' => 'rebit'])
-                    : home_url('/bitstream/?poster_tab=rebit');
+                    ? BitStream_Shortcodes::get_composer_page_url(['composer_tab' => 'rebit'])
+                    : home_url('/bitstream/?composer_tab=rebit');
                 
                 if (!empty($shared_data['url'])) {
                     $redirect_url = add_query_arg('shared_url', urlencode($shared_data['url']), $redirect_url);

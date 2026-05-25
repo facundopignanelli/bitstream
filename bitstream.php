@@ -341,6 +341,55 @@ if (!function_exists('bitstream_render_card')) {
             unset($GLOBALS['bitstream_is_rendering_card']);
         }
 
+        // Normalize WordPress video shortcode output so feed cards do not depend on
+        // MediaElement wrapper sizing, which can collapse in the timeline.
+        if (strpos($content, 'wp-video') !== false || strpos($content, 'mejs-container') !== false) {
+            $previous_dom_state = libxml_use_internal_errors(true);
+            $document = new DOMDocument();
+            $wrapped_content = '<div id="bitstream-card-content-root">' . $content . '</div>';
+            $document->loadHTML('<?xml encoding="utf-8" ?>' . $wrapped_content, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+
+            $xpath = new DOMXPath($document);
+            $wrapper_nodes = $xpath->query('//*[@id="bitstream-card-content-root"]//*[contains(concat(" ", normalize-space(@class), " "), " wp-video ")]');
+            if ($wrapper_nodes) {
+                for ($index = $wrapper_nodes->length - 1; $index >= 0; $index--) {
+                    $wrapper = $wrapper_nodes->item($index);
+                    if (!$wrapper || !$wrapper->parentNode) {
+                        continue;
+                    }
+
+                    $video_node = null;
+                    foreach ($wrapper->getElementsByTagName('video') as $candidate_video) {
+                        $video_node = $candidate_video;
+                        break;
+                    }
+
+                    if ($video_node) {
+                        $clean_video_node = $video_node->cloneNode(true);
+                        $clean_video_node->setAttribute('class', 'bitstream-video-attachment');
+                        $clean_video_node->removeAttribute('width');
+                        $clean_video_node->removeAttribute('height');
+                        $clean_video_node->removeAttribute('style');
+                        $wrapper->parentNode->replaceChild($document->importNode($clean_video_node, true), $wrapper);
+                    }
+                }
+            }
+
+            $root = $document->getElementById('bitstream-card-content-root');
+            if ($root) {
+                $normalized_content = '';
+                foreach ($root->childNodes as $child_node) {
+                    $normalized_content .= $document->saveHTML($child_node);
+                }
+                if ($normalized_content !== '') {
+                    $content = $normalized_content;
+                }
+            }
+
+            libxml_clear_errors();
+            libxml_use_internal_errors($previous_dom_state);
+        }
+
         $timestamp = human_time_diff(get_post_time('U', false, $post_id), current_time('timestamp')) . ' ago';
         $posted_datetime = get_post_time('d/m/Y H:i', false, $post_id);
         $is_edited = get_post_modified_time('U', false, $post_id) > get_post_time('U', false, $post_id);

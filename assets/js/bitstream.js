@@ -40,6 +40,73 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 3000);
     }
 
+    function showDeleteConfirmation(message, onConfirm) {
+        let confirmModal = document.querySelector('.bitstream-composer-modal-delete-confirm');
+        if (!confirmModal) {
+            confirmModal = document.createElement('div');
+            confirmModal.className = 'bitstream-composer-modal bitstream-composer-modal-delete-confirm';
+            confirmModal.hidden = true;
+            confirmModal.innerHTML = `
+                <div class="bitstream-composer-modal-backdrop" data-composer-modal-close="delete-confirm"></div>
+                <div class="bitstream-composer-modal-dialog" role="dialog" aria-modal="true" aria-label="Confirm Delete">
+                    <header class="bitstream-composer-modal-header">
+                        <h3>Confirm Delete</h3>
+                        <button type="button" class="bitstream-composer-modal-close" data-composer-modal-close="delete-confirm" aria-label="Close">
+                            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                        </button>
+                    </header>
+                    <div class="bitstream-composer-modal-body">
+                        <p class="bitstream-delete-confirm-message" style="margin: 0; font-size: 0.95rem; color: #4a5568; line-height: 1.5;"></p>
+                    </div>
+                    <footer class="bitstream-composer-modal-footer">
+                        <button type="button" class="bitstream-composer-modal-cancel" data-composer-modal-close="delete-confirm">Cancel</button>
+                        <button type="button" class="bitstream-composer-modal-confirm bitstream-composer-delete-confirm-btn is-delete">Delete</button>
+                    </footer>
+                </div>
+            `;
+            document.body.appendChild(confirmModal);
+
+            const closeModalFunc = () => {
+                confirmModal.hidden = true;
+                document.body.style.overflow = '';
+            };
+
+            // Bind close events
+            confirmModal.querySelectorAll('[data-composer-modal-close="delete-confirm"]').forEach(el => {
+                el.addEventListener('click', closeModalFunc);
+            });
+
+            // ESC key support
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && !confirmModal.hidden) {
+                    closeModalFunc();
+                }
+            });
+        }
+
+        // Set the message
+        const msgEl = confirmModal.querySelector('.bitstream-delete-confirm-message');
+        if (msgEl) {
+            msgEl.textContent = message;
+        }
+
+        // Bind confirm button
+        const confirmBtn = confirmModal.querySelector('.bitstream-composer-delete-confirm-btn');
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+        newConfirmBtn.addEventListener('click', () => {
+            confirmModal.hidden = true;
+            document.body.style.overflow = '';
+            onConfirm();
+        });
+
+        // Show modal and disable scroll
+        confirmModal.hidden = false;
+        document.body.style.overflow = 'hidden';
+    }
+    window.showDeleteConfirmation = showDeleteConfirmation;
+
     function applyMediaDeterrents(scope) {
         const root = scope || document;
         root.querySelectorAll('video, audio').forEach(mediaEl => {
@@ -53,7 +120,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     document.addEventListener('contextmenu', (event) => {
-        const container = event.target.closest('.bitstream-feed, .bitstream-poster');
+        const container = event.target.closest('.bitstream-feed, .bitstream-composer');
         if (!container) {
             return;
         }
@@ -237,13 +304,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Continue with the rest of the initialization...
     function initBitstreamPoster() {
-        const posterRoot = document.querySelector('.bitstream-poster:not(.bitstream-quick-post-poster)');
-        if (!posterRoot) {
+        const composerRoot = document.querySelector('.bitstream-composer');
+        if (!composerRoot) {
             return;
         }
 
-        const statusEl = posterRoot.querySelector('.bitstream-poster-status');
-        const submitNonce = posterRoot.dataset.submitNonce || '';
+        const statusEl = composerRoot.querySelector('.bitstream-composer-status');
+        const submitNonce = composerRoot.dataset.submitNonce || '';
         let refreshRebitPreview = () => { };
         let refreshRebitEditorImagePreview = () => { };
 
@@ -257,14 +324,14 @@ document.addEventListener('DOMContentLoaded', function () {
             statusEl.classList.toggle('is-success', !isError && !!message);
 
             // Locate active open modal
-            const activeModal = document.querySelector('.bitstream-qp-modal:not([hidden]), .bitstream-cropper-modal:not([hidden]), .bitstream-rebit-editor-modal:not([hidden])');
+            const activeModal = document.querySelector('.bitstream-composer-modal:not([hidden]), .bitstream-cropper-modal:not([hidden]), .bitstream-rebit-editor-modal:not([hidden])');
             if (activeModal) {
-                const bodyEl = activeModal.querySelector('.bitstream-qp-modal-body, .bitstream-cropper-body, .bitstream-rebit-editor-body');
+                const bodyEl = activeModal.querySelector('.bitstream-composer-modal-body, .bitstream-cropper-body, .bitstream-rebit-editor-body');
                 if (bodyEl) {
                     let modalStatusEl = bodyEl.querySelector('.bitstream-modal-status');
                     if (!modalStatusEl) {
                         modalStatusEl = document.createElement('div');
-                        modalStatusEl.className = 'bitstream-modal-status bitstream-poster-status';
+                        modalStatusEl.className = 'bitstream-modal-status bitstream-composer-status';
                         modalStatusEl.setAttribute('aria-live', 'polite');
                         bodyEl.insertBefore(modalStatusEl, bodyEl.firstChild);
                     }
@@ -274,7 +341,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     if (!message) {
                         modalStatusEl.textContent = '';
-                        modalStatusEl.className = 'bitstream-modal-status bitstream-poster-status';
+                        modalStatusEl.className = 'bitstream-modal-status bitstream-composer-status';
                     }
                 }
             }
@@ -282,7 +349,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!message) {
                 document.querySelectorAll('.bitstream-modal-status').forEach(el => {
                     el.textContent = '';
-                    el.className = 'bitstream-modal-status bitstream-poster-status';
+                    el.className = 'bitstream-modal-status bitstream-composer-status';
                 });
             }
         }
@@ -317,12 +384,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            const posterType = form.dataset.posterType || 'bit';
+            const composerType = form.dataset.composerType || 'bit';
             let previewRoot = null;
             let previewCard = null;
 
-            if (posterType === 'rebit') {
-                previewRoot = posterRoot.querySelector('#bitstream-rebit-live-preview');
+            if (composerType === 'rebit') {
+                previewRoot = composerRoot.querySelector('#bitstream-rebit-live-preview');
                 previewCard = previewRoot ? previewRoot.querySelector('.bitstream-rebit-live-preview-card') : null;
             } else {
                 previewRoot = form.querySelector('.bitstream-bit-live-preview');
@@ -330,7 +397,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     previewRoot = document.createElement('div');
                     previewRoot.className = 'bitstream-rebit-live-preview bitstream-bit-live-preview';
                     previewRoot.innerHTML = '<p class="bitstream-rebit-live-preview-label"><strong>Preview</strong></p><div class="bitstream-rebit-live-preview-card"></div>';
-                    const submitButton = form.querySelector('.bitstream-poster-submit');
+                    const submitButton = form.querySelector('.bitstream-composer-submit');
                     if (submitButton && submitButton.parentNode) {
                         submitButton.parentNode.insertBefore(previewRoot, submitButton);
                     } else {
@@ -349,8 +416,8 @@ document.addEventListener('DOMContentLoaded', function () {
             applyMediaDeterrents(previewCard);
         }
 
-        const tabButtons = posterRoot.querySelectorAll('.bitstream-poster-tab');
-        const tabPanels = posterRoot.querySelectorAll('.bitstream-poster-panel');
+        const tabButtons = composerRoot.querySelectorAll('.bitstream-composer-tab');
+        const tabPanels = composerRoot.querySelectorAll('.bitstream-composer-panel');
 
         tabButtons.forEach(button => {
             button.addEventListener('click', () => {
@@ -364,7 +431,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Navigate to the tab via URL so the page reloads with
                 // fresh server-rendered content (up-to-date drafts, scheduled, etc.)
                 const url = new URL(window.location.href);
-                url.searchParams.set('poster_tab', selectedTab);
+                url.searchParams.set('composer_tab', selectedTab);
                 // Strip any stale highlight params when switching tabs
                 url.searchParams.delete('highlight_draft');
                 url.searchParams.delete('highlight_scheduled');
@@ -372,11 +439,11 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
 
-        const scheduleToggles = posterRoot.querySelectorAll('[data-schedule-toggle]');
+        const scheduleToggles = composerRoot.querySelectorAll('[data-schedule-toggle]');
         scheduleToggles.forEach(toggle => {
             const key = toggle.dataset.scheduleToggle;
-            const datetimeInput = posterRoot.querySelector('[data-schedule-input="' + key + '"]');
-            const hiddenInput = posterRoot.querySelector('[data-schedule-hidden="' + key + '"]');
+            const datetimeInput = composerRoot.querySelector('[data-schedule-input="' + key + '"]');
+            const hiddenInput = composerRoot.querySelector('[data-schedule-hidden="' + key + '"]');
 
             if (!datetimeInput) {
                 return;
@@ -412,7 +479,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Scheduled filter — scoped to the scheduled panel only
 
-        const scheduledPanel = posterRoot.querySelector('#bitstream-poster-panel-scheduled');
+        const scheduledPanel = composerRoot.querySelector('#bitstream-composer-panel-scheduled');
         if (scheduledPanel) {
             const scheduledFilterButtons = scheduledPanel.querySelectorAll('.bitstream-scheduled-filter-btn');
             const scheduledList = scheduledPanel.querySelector('.bitstream-scheduled-list');
@@ -439,7 +506,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // Drafts filter — scoped to the drafts panel only
-        const draftsPanel = posterRoot.querySelector('#bitstream-poster-panel-drafts');
+        const draftsPanel = composerRoot.querySelector('#bitstream-composer-panel-drafts');
         if (draftsPanel) {
             const draftsFilterButtons = draftsPanel.querySelectorAll('.bitstream-drafts-filter-btn');
             const draftsList = draftsPanel.querySelector('.bitstream-drafts-list');
@@ -465,7 +532,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
-        posterRoot.addEventListener('click', (event) => {
+        composerRoot.addEventListener('click', (event) => {
             const deleteButton = event.target.closest('.bitstream-scheduled-delete');
             if (!deleteButton) {
                 return;
@@ -488,80 +555,78 @@ document.addEventListener('DOMContentLoaded', function () {
                 ? 'Delete this draft?'
                 : 'Delete this scheduled Bit before publication?';
 
-            if (!window.confirm(confirmMsg)) {
-                return;
-            }
+            showDeleteConfirmation(confirmMsg, () => {
+                deleteButton.disabled = true;
+                setStatus(isDraft ? 'Deleting draft...' : 'Deleting scheduled Bit...');
 
-            deleteButton.disabled = true;
-            setStatus(isDraft ? 'Deleting draft...' : 'Deleting scheduled Bit...');
+                const payload = new FormData();
+                payload.append('action', 'bitstream_delete_post');
+                payload.append('post_id', String(postId));
+                payload.append('nonce', bitstream_ajax.delete_post_nonce);
 
-            const payload = new FormData();
-            payload.append('action', 'bitstream_delete_post');
-            payload.append('post_id', String(postId));
-            payload.append('nonce', bitstream_ajax.delete_post_nonce);
-
-            fetch(bitstream_ajax.ajax_url, {
-                method: 'POST',
-                credentials: 'same-origin',
-                body: payload
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.success) {
-                        throw new Error(data.data || 'Could not delete.');
-                    }
-
-                    const row = deleteButton.closest('.bitstream-scheduled-item');
-                    if (row) {
-                        row.remove();
-                    }
-
-                    // Check both scheduled and drafts lists for empty state
-                    const parentList = isDraft
-                        ? posterRoot.querySelector('.bitstream-drafts-list')
-                        : posterRoot.querySelector('.bitstream-scheduled-list');
-                    const remainingRows = parentList ? parentList.querySelectorAll('.bitstream-scheduled-item') : [];
-                    if (parentList && remainingRows.length === 0) {
-                        parentList.innerHTML = isDraft
-                            ? '<p>No draft Bits or Rebits yet.</p>'
-                            : '<p>No scheduled Bits or Rebits yet.</p>';
-                    }
-
-                    setStatus(isDraft ? 'Draft deleted.' : 'Scheduled Bit deleted.');
+                fetch(bitstream_ajax.ajax_url, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    body: payload
                 })
-                .catch(error => {
-                    setStatus(error.message || 'Could not delete.', true);
-                    deleteButton.disabled = false;
-                });
+                    .then(response => response.json())
+                    .then(data => {
+                        if (!data.success) {
+                            throw new Error(data.data || 'Could not delete.');
+                        }
+
+                        const row = deleteButton.closest('.bitstream-scheduled-item');
+                        if (row) {
+                            row.remove();
+                        }
+
+                        // Check both scheduled and drafts lists for empty state
+                        const parentList = isDraft
+                            ? composerRoot.querySelector('.bitstream-drafts-list')
+                            : composerRoot.querySelector('.bitstream-scheduled-list');
+                        const remainingRows = parentList ? parentList.querySelectorAll('.bitstream-scheduled-item') : [];
+                        if (parentList && remainingRows.length === 0) {
+                            parentList.innerHTML = isDraft
+                                ? '<p>No draft Bits or Rebits yet.</p>'
+                                : '<p>No scheduled Bits or Rebits yet.</p>';
+                        }
+
+                        setStatus(isDraft ? 'Draft deleted.' : 'Scheduled Bit deleted.');
+                    })
+                    .catch(error => {
+                        setStatus(error.message || 'Could not delete.', true);
+                        deleteButton.disabled = false;
+                    });
+            });
         });
 
         function bindMediaButtons() {
-            const removeButtons = posterRoot.querySelectorAll('.bitstream-media-remove');
-            const cropLinks = posterRoot.querySelectorAll('.bitstream-media-crop');
-            const audioTagLinks = posterRoot.querySelectorAll('.bitstream-media-audio-tags');
-            const pasteButtons = posterRoot.querySelectorAll('.bitstream-media-paste');
-            const libraryButtons = posterRoot.querySelectorAll('.bitstream-media-library');
-            const dropzones = posterRoot.querySelectorAll('.bitstream-media-dropzone');
-            const cropperModal = posterRoot.querySelector('.bitstream-cropper-modal');
+            const removeButtons = composerRoot.querySelectorAll('.bitstream-media-remove');
+            const cropLinks = composerRoot.querySelectorAll('.bitstream-media-crop');
+            const audioTagLinks = composerRoot.querySelectorAll('.bitstream-media-audio-tags');
+            const pasteButtons = composerRoot.querySelectorAll('.bitstream-media-paste');
+            const libraryButtons = composerRoot.querySelectorAll('.bitstream-media-library');
+            const dropzones = composerRoot.querySelectorAll('.bitstream-media-dropzone');
+            const cropperModal = composerRoot.querySelector('.bitstream-cropper-modal');
             const cropperImage = cropperModal ? cropperModal.querySelector('.bitstream-cropper-image') : null;
             const cropperSelection = cropperModal ? cropperModal.querySelector('.bitstream-cropper-selection') : null;
             const cropperStage = cropperModal ? cropperModal.querySelector('.bitstream-cropper-stage') : null;
             const cropperApply = cropperModal ? cropperModal.querySelector('.bitstream-cropper-apply') : null;
             const cropperSizeLabel = cropperModal ? cropperModal.querySelector('.bitstream-cropper-size') : null;
             const cropperCloseButtons = cropperModal ? cropperModal.querySelectorAll('[data-cropper-close="true"]') : [];
-            const audioTagsModal = posterRoot.querySelector('.bitstream-audio-tags-modal');
+            const audioTagsModal = composerRoot.querySelector('.bitstream-audio-tags-modal');
             const audioTagsCloseButtons = audioTagsModal ? audioTagsModal.querySelectorAll('[data-audio-tags-close="true"]') : [];
             const audioTagsSelectButton = audioTagsModal ? audioTagsModal.querySelector('.bitstream-audio-tags-select') : null;
             const audioTagsClearButton = audioTagsModal ? audioTagsModal.querySelector('.bitstream-audio-tags-clear') : null;
             const audioTagsSaveButton = audioTagsModal ? audioTagsModal.querySelector('.bitstream-audio-tags-save') : null;
             const audioTagsPreview = audioTagsModal ? audioTagsModal.querySelector('.bitstream-audio-tags-preview') : null;
             const audioTagInputs = audioTagsModal ? audioTagsModal.querySelectorAll('.bitstream-audio-tags-input') : [];
-            const rebitEditorImagePreview = posterRoot.querySelector('.bitstream-rebit-editor-image-preview');
-            const rebitEditorImageSelectButton = posterRoot.querySelector('.bitstream-rebit-editor-image-select');
-            const rebitEditorImageCropButton = posterRoot.querySelector('.bitstream-rebit-editor-image-crop');
-            const rebitEditorImageClearButton = posterRoot.querySelector('.bitstream-rebit-editor-image-clear');
-            const rebitOgImageInput = posterRoot.querySelector('#bitstream-rebit-og-image');
-            const rebitOgImageRemovedInput = posterRoot.querySelector('#bitstream-rebit-og-image-removed');
+            const rebitEditorImagePreview = composerRoot.querySelector('.bitstream-rebit-editor-image-preview');
+            const rebitEditorImageSelectButton = composerRoot.querySelector('.bitstream-rebit-editor-image-select');
+            const rebitEditorImageCropButton = composerRoot.querySelector('.bitstream-rebit-editor-image-crop');
+            const rebitEditorImageClearButton = composerRoot.querySelector('.bitstream-rebit-editor-image-clear');
+            const rebitOgImageInput = composerRoot.querySelector('#bitstream-rebit-og-image');
+            const rebitOgImageRemovedInput = composerRoot.querySelector('#bitstream-rebit-og-image-removed');
             let audioTagsTargetInputId = '';
             let audioTagsTargetPreviewId = '';
             let audioTagsArtworkId = 0;
@@ -571,7 +636,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             function setRemoveVisibility(targetInputId) {
                 const input = document.getElementById(targetInputId);
-                const removeButton = posterRoot.querySelector('.bitstream-media-remove[data-target-input="' + targetInputId + '"]');
+                const removeButton = composerRoot.querySelector('.bitstream-media-remove[data-target-input="' + targetInputId + '"]');
                 if (!removeButton) {
                     return;
                 }
@@ -581,7 +646,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             function setCropVisibility(targetInputId, mimeType) {
-                const cropLink = posterRoot.querySelector('.bitstream-media-crop[data-target-input="' + targetInputId + '"]');
+                const cropLink = composerRoot.querySelector('.bitstream-media-crop[data-target-input="' + targetInputId + '"]');
                 if (!cropLink) {
                     return;
                 }
@@ -591,7 +656,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             function setAudioTagVisibility(targetInputId, mimeType) {
-                const tagLink = posterRoot.querySelector('.bitstream-media-audio-tags[data-target-input="' + targetInputId + '"]');
+                const tagLink = composerRoot.querySelector('.bitstream-media-audio-tags[data-target-input="' + targetInputId + '"]');
                 if (!tagLink) {
                     return;
                 }
@@ -1610,12 +1675,12 @@ document.addEventListener('DOMContentLoaded', function () {
             });
 
             function getActivePosterMediaTarget() {
-                const activePanel = posterRoot.querySelector('.bitstream-poster-panel.is-active');
+                const activePanel = composerRoot.querySelector('.bitstream-composer-panel.is-active');
                 if (!activePanel) {
                     return null;
                 }
 
-                if (activePanel.id === 'bitstream-poster-panel-rebit') {
+                if (activePanel.id === 'bitstream-composer-panel-rebit') {
                     return {
                         targetInputId: 'bitstream-rebit-attachment-id',
                         targetPreviewId: 'bitstream-rebit-media-preview',
@@ -1623,7 +1688,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     };
                 }
 
-                if (activePanel.id === 'bitstream-poster-panel-bit') {
+                if (activePanel.id === 'bitstream-composer-panel-bit') {
                     return {
                         targetInputId: 'bitstream-bit-attachment-id',
                         targetPreviewId: 'bitstream-bit-media-preview',
@@ -1634,7 +1699,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 return null;
             }
 
-            posterRoot.addEventListener('paste', (event) => {
+            composerRoot.addEventListener('paste', (event) => {
                 const clipboard = event.clipboardData;
                 if (!clipboard || !clipboard.items || !clipboard.items.length) {
                     return;
@@ -1666,7 +1731,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 setStatus('Uploading pasted image...');
             });
 
-            const existingMediaInputs = posterRoot.querySelectorAll('input[name="bit_attachment_id"], input[name="rebit_attachment_id"]');
+            const existingMediaInputs = composerRoot.querySelectorAll('input[name="bit_attachment_id"], input[name="rebit_attachment_id"]');
             existingMediaInputs.forEach(input => {
                 const value = parseInt(input.value || '0', 10);
                 if (!value || !window.wp || !wp.media) {
@@ -1678,7 +1743,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const previewSelector = input.name === 'bit_attachment_id'
                     ? '#bitstream-bit-media-preview'
                     : '#bitstream-rebit-media-preview';
-                const previewEl = posterRoot.querySelector(previewSelector);
+                const previewEl = composerRoot.querySelector(previewSelector);
                 const attachment = wp.media.attachment(value);
                 attachment.fetch().then(() => {
                     renderMediaPreview(previewEl, attachment.toJSON());
@@ -1875,15 +1940,18 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         function initRebitPreview() {
-            const urlInput = posterRoot.querySelector('#bitstream-rebit-url');
-            const fetchButton = posterRoot.querySelector('.bitstream-fetch-og');
+            const urlInput = composerRoot.querySelector('#bitstream-rebit-url');
+            const fetchButton = composerRoot.querySelector('.bitstream-fetch-og:not(.bitstream-composer-rebit-fetch)');
+            if (!urlInput || !fetchButton) {
+                return;
+            }
             const fetchButtonDefaultLabel = (fetchButton && fetchButton.textContent)
                 ? fetchButton.textContent.trim()
                 : 'Fetch metadata';
-            const editPreviewActions = posterRoot.querySelector('.bitstream-rebit-preview-actions');
-            const editButton = posterRoot.querySelector('.bitstream-rebit-edit-preview');
-            const refreshButton = posterRoot.querySelector('.bitstream-rebit-refresh-preview');
-            const livePreviewRoot = posterRoot.querySelector('#bitstream-rebit-live-preview');
+            const editPreviewActions = composerRoot.querySelector('.bitstream-rebit-preview-actions');
+            const editButton = composerRoot.querySelector('.bitstream-rebit-edit-preview');
+            const refreshButton = composerRoot.querySelector('.bitstream-rebit-refresh-preview');
+            const livePreviewRoot = composerRoot.querySelector('#bitstream-rebit-live-preview');
             const livePreviewLoading = livePreviewRoot ? livePreviewRoot.querySelector('.bitstream-rebit-live-preview-loading') : null;
             const livePreviewCard = livePreviewRoot ? livePreviewRoot.querySelector('.bitstream-rebit-live-preview-card') : null;
             let isRenderingLivePreview = false;
@@ -1892,16 +1960,16 @@ document.addEventListener('DOMContentLoaded', function () {
             let hasPendingPreviewRender = false;
             let commentaryPreviewDebounceTimer = null;
 
-            const commentaryInput = posterRoot.querySelector('#bitstream-rebit-commentary');
-            const titleHidden = posterRoot.querySelector('#bitstream-rebit-og-title');
-            const descHidden = posterRoot.querySelector('#bitstream-rebit-og-desc');
-            const imageHidden = posterRoot.querySelector('#bitstream-rebit-og-image');
-            const imageRemovedHidden = posterRoot.querySelector('#bitstream-rebit-og-image-removed');
-            const attachmentHidden = posterRoot.querySelector('#bitstream-rebit-attachment-id');
-            const editPostHidden = posterRoot.querySelector('#bitstream-poster-panel-rebit input[name="edit_post_id"]');
+            const commentaryInput = composerRoot.querySelector('#bitstream-rebit-commentary');
+            const titleHidden = composerRoot.querySelector('#bitstream-rebit-og-title');
+            const descHidden = composerRoot.querySelector('#bitstream-rebit-og-desc');
+            const imageHidden = composerRoot.querySelector('#bitstream-rebit-og-image');
+            const imageRemovedHidden = composerRoot.querySelector('#bitstream-rebit-og-image-removed');
+            const attachmentHidden = composerRoot.querySelector('#bitstream-rebit-attachment-id');
+            const editPostHidden = composerRoot.querySelector('#bitstream-composer-panel-rebit input[name="edit_post_id"]');
             const isRebitEditMode = !!(editPostHidden && parseInt(editPostHidden.value || '0', 10) > 0);
 
-            const rebitModal = posterRoot.querySelector('.bitstream-rebit-editor-modal');
+            const rebitModal = composerRoot.querySelector('.bitstream-rebit-editor-modal');
             const modalCloseButtons = rebitModal ? rebitModal.querySelectorAll('[data-rebit-editor-close="true"]') : [];
             const modalSaveButton = rebitModal ? rebitModal.querySelector('.bitstream-rebit-editor-save') : null;
             const modalSaveDefaultLabel = (modalSaveButton && modalSaveButton.textContent)
@@ -2233,9 +2301,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // "Save to Drafts" button handler
-        posterRoot.querySelectorAll('.bitstream-poster-save-draft').forEach(draftButton => {
+        composerRoot.querySelectorAll('.bitstream-composer-save-draft').forEach(draftButton => {
             draftButton.addEventListener('click', () => {
-                const form = draftButton.closest('.bitstream-poster-form');
+                const form = draftButton.closest('.bitstream-composer-form');
                 if (!form) {
                     return;
                 }
@@ -2252,9 +2320,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 const originalText = draftButton.textContent;
                 const payload = new FormData(form);
-                payload.append('action', 'bitstream_submit_poster');
+                payload.append('action', 'bitstream_submit_composer');
                 payload.append('nonce', submitNonce);
-                payload.append('poster_type', form.dataset.posterType || 'bit');
+                payload.append('composer_type', form.dataset.composerType || 'bit');
                 payload.append('save_as_draft', '1');
                 const editPostInput = form.querySelector('input[name="edit_post_id"]');
                 payload.set('edit_post_id', editPostInput ? (editPostInput.value || '0') : '0');
@@ -2283,11 +2351,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         const createdPostId = parseInt(responseData.post_id || '0', 10);
 
                         // Redirect to drafts tab to show the saved draft
-                        const posterBaseUrl = (window.bitstream_ajax && bitstream_ajax.poster_url)
-                            ? bitstream_ajax.poster_url
+                        const composerBaseUrl = (window.bitstream_ajax && bitstream_ajax.composer_url)
+                            ? bitstream_ajax.composer_url
                             : window.location.href;
-                        const redirectUrl = new URL(posterBaseUrl, window.location.origin);
-                        redirectUrl.searchParams.set('poster_tab', 'drafts');
+                        const redirectUrl = new URL(composerBaseUrl, window.location.origin);
+                        redirectUrl.searchParams.set('composer_tab', 'drafts');
                         if (createdPostId > 0) {
                             redirectUrl.searchParams.set('highlight_draft', String(createdPostId));
                         }
@@ -2304,7 +2372,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Track form dirty state for auto-save on tab close
         let formIsDirty = false;
         let autoSaveDraftId = 0;
-        posterRoot.querySelectorAll('.bitstream-poster-form textarea, .bitstream-poster-form input[type="text"], .bitstream-poster-form input[type="url"]').forEach(input => {
+        composerRoot.querySelectorAll('.bitstream-composer-form textarea, .bitstream-composer-form input[type="text"], .bitstream-composer-form input[type="url"]').forEach(input => {
             input.addEventListener('input', () => {
                 formIsDirty = true;
             });
@@ -2321,25 +2389,25 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             // Determine active form
-            const activePanel = posterRoot.querySelector('.bitstream-poster-panel.is-active');
+            const activePanel = composerRoot.querySelector('.bitstream-composer-panel.is-active');
             if (!activePanel) {
                 return;
             }
 
-            const form = activePanel.querySelector('.bitstream-poster-form');
+            const form = activePanel.querySelector('.bitstream-composer-form');
             if (!form) {
                 return;
             }
 
             // Check if there's any content to save
-            const posterType = form.dataset.posterType || 'bit';
+            const composerType = form.dataset.composerType || 'bit';
             let hasContent = false;
 
-            if (posterType === 'bit') {
+            if (composerType === 'bit') {
                 const textArea = form.querySelector('#bitstream-bit-content');
                 const attachmentInput = form.querySelector('#bitstream-bit-attachment-id');
                 hasContent = (textArea && textArea.value.trim()) || (attachmentInput && parseInt(attachmentInput.value || '0', 10) > 0);
-            } else if (posterType === 'rebit') {
+            } else if (composerType === 'rebit') {
                 const urlInput = form.querySelector('#bitstream-rebit-url');
                 hasContent = urlInput && urlInput.value.trim();
             }
@@ -2350,9 +2418,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Use sendBeacon for reliable delivery during page unload
             const payload = new FormData(form);
-            payload.append('action', 'bitstream_submit_poster');
+            payload.append('action', 'bitstream_submit_composer');
             payload.append('nonce', submitNonce);
-            payload.append('poster_type', posterType);
+            payload.append('composer_type', composerType);
             payload.append('save_as_draft', '1');
             payload.append('is_auto_draft', '1');
             const editPostInput = form.querySelector('input[name="edit_post_id"]');
@@ -2362,7 +2430,7 @@ document.addEventListener('DOMContentLoaded', function () {
             formIsDirty = false;
         });
 
-        const forms = posterRoot.querySelectorAll('.bitstream-poster-form');
+        const forms = composerRoot.querySelectorAll('.bitstream-composer-form');
         function isUrlOnly(text) {
             const trimmed = (text || '').trim();
             try {
@@ -2374,7 +2442,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         forms.forEach(form => {
-            if (form.closest('.bitstream-quick-post-poster')) {
+            if (form.closest('.bitstream-composer')) {
                 return;
             }
 
@@ -2394,19 +2462,19 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
 
-                const submitButton = form.querySelector('.bitstream-poster-submit');
+                const submitButton = form.querySelector('.bitstream-composer-submit');
                 const originalText = submitButton ? submitButton.textContent : '';
                 const payload = new FormData(form);
-                payload.append('action', 'bitstream_submit_poster');
+                payload.append('action', 'bitstream_submit_composer');
                 payload.append('nonce', submitNonce);
 
-                const posterType = form.dataset.posterType || 'bit';
-                payload.append('poster_type', posterType);
+                const composerType = form.dataset.composerType || 'bit';
+                payload.append('composer_type', composerType);
                 const editPostInput = form.querySelector('input[name="edit_post_id"]');
                 payload.set('edit_post_id', editPostInput ? (editPostInput.value || '0') : '0');
 
-                const scheduleEnabledInput = form.querySelector('[name="' + posterType + '_schedule_enabled"]');
-                const scheduleDatetimeInput = form.querySelector('[name="' + posterType + '_schedule_datetime"]');
+                const scheduleEnabledInput = form.querySelector('[name="' + composerType + '_schedule_enabled"]');
+                const scheduleDatetimeInput = form.querySelector('[name="' + composerType + '_schedule_datetime"]');
                 if (scheduleEnabledInput && scheduleEnabledInput.value === '1' && scheduleDatetimeInput && !scheduleDatetimeInput.value) {
                     setStatus('Please choose a date and time for the schedule.', true);
                     return;
@@ -2449,15 +2517,15 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (previewRebit) previewRebit.hidden = true;
                         if (previewArea) previewArea.hidden = true;
                         if (textarea) textarea.value = '';
-                        form.dataset.posterType = 'bit';
+                        form.dataset.composerType = 'bit';
                         if (submitBtn) submitBtn.textContent = 'Post Bit';
 
                         if (isScheduled) {
-                            const posterBaseUrl = (window.bitstream_ajax && bitstream_ajax.poster_url)
-                                ? bitstream_ajax.poster_url
+                            const composerBaseUrl = (window.bitstream_ajax && bitstream_ajax.composer_url)
+                                ? bitstream_ajax.composer_url
                                 : window.location.href;
-                            const redirectUrl = new URL(posterBaseUrl, window.location.origin);
-                            redirectUrl.searchParams.set('poster_tab', 'scheduled');
+                            const redirectUrl = new URL(composerBaseUrl, window.location.origin);
+                            redirectUrl.searchParams.set('composer_tab', 'scheduled');
                             if (createdPostId > 0) {
                                 redirectUrl.searchParams.set('highlight_scheduled', String(createdPostId));
                             }
@@ -2508,7 +2576,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const rebitForm = modal.querySelector('.bs-edit-form-rebit');
         const linkMetaModal = modal.querySelector('.bs-edit-link-meta-modal');
         const closeButtons = modal.querySelectorAll('[data-bs-edit-modal-close="true"]');
-        const submitNonce = modal.dataset.submitNonce || (window.bitstream_ajax && bitstream_ajax.poster_submit_nonce) || '';
+        const submitNonce = modal.dataset.submitNonce || (window.bitstream_ajax && bitstream_ajax.composer_submit_nonce) || '';
         let mediaFrame = null;
         let activeMediaForm = null;
         let ogImageFrame = null;
@@ -2750,10 +2818,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         function bindScheduleControls(form) {
-            const posterType = form.dataset.posterType || 'bit';
-            const radios = form.querySelectorAll('input[name="' + posterType + '_schedule_mode"]');
-            const datetimeInput = form.querySelector('input[name="' + posterType + '_schedule_datetime"]');
-            const enabledInput = form.querySelector('input[name="' + posterType + '_schedule_enabled"]');
+            const composerType = form.dataset.composerType || 'bit';
+            const radios = form.querySelectorAll('input[name="' + composerType + '_schedule_mode"]');
+            const datetimeInput = form.querySelector('input[name="' + composerType + '_schedule_datetime"]');
+            const enabledInput = form.querySelector('input[name="' + composerType + '_schedule_enabled"]');
 
             if (!radios.length || !datetimeInput) {
                 return;
@@ -3436,21 +3504,21 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            const posterType = form.dataset.posterType || 'bit';
+            const composerType = form.dataset.composerType || 'bit';
             const editPostInput = form.querySelector('input[name="edit_post_id"]');
             const submitButton = form.querySelector('.bs-edit-submit');
             const draftButton = form.querySelector('.bs-edit-save-draft');
-            const scheduleEnabledInput = form.querySelector('input[name="' + posterType + '_schedule_enabled"]');
-            const scheduleDatetimeInput = form.querySelector('input[name="' + posterType + '_schedule_datetime"]');
-            const scheduleLater = form.querySelector('input[name="' + posterType + '_schedule_mode"][value="later"]');
+            const scheduleEnabledInput = form.querySelector('input[name="' + composerType + '_schedule_enabled"]');
+            const scheduleDatetimeInput = form.querySelector('input[name="' + composerType + '_schedule_datetime"]');
+            const scheduleLater = form.querySelector('input[name="' + composerType + '_schedule_mode"][value="later"]');
 
             if (scheduleLater && scheduleLater.checked && scheduleDatetimeInput && !scheduleDatetimeInput.value) {
                 setErrorState('Please choose a date and time for the schedule.');
                 return;
             }
 
-            let effectiveType = posterType;
-            if (posterType === 'bit') {
+            let effectiveType = composerType;
+            if (composerType === 'bit') {
                 const textarea = form.querySelector('#bs-edit-bit-content');
                 const attachmentInput = form.querySelector('.bs-edit-attachment-id');
                 const quoteInput = form.querySelector('.bs-edit-quote-post-id');
@@ -3491,16 +3559,16 @@ document.addEventListener('DOMContentLoaded', function () {
             setLoadingState(true, saveAsDraft ? 'Saving draft...' : 'Publishing...');
 
             const payload = new FormData(form);
-            payload.append('action', 'bitstream_submit_poster');
+            payload.append('action', 'bitstream_submit_composer');
             payload.append('nonce', submitNonce);
-            payload.append('poster_type', effectiveType);
+            payload.append('composer_type', effectiveType);
             payload.set('edit_post_id', editPostInput ? (editPostInput.value || '0') : '0');
 
             if (saveAsDraft) {
                 payload.append('save_as_draft', '1');
             }
 
-            if (effectiveType === 'rebit' && posterType === 'bit') {
+            if (effectiveType === 'rebit' && composerType === 'bit') {
                 const textarea = form.querySelector('#bs-edit-bit-content');
                 const content = textarea ? textarea.value.trim() : '';
                 if (content) {
@@ -3525,11 +3593,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     const isScheduled = !!responseData.is_scheduled;
 
                     if (saveAsDraft) {
-                        const posterBaseUrl = (window.bitstream_ajax && bitstream_ajax.poster_url)
-                            ? bitstream_ajax.poster_url
+                        const composerBaseUrl = (window.bitstream_ajax && bitstream_ajax.composer_url)
+                            ? bitstream_ajax.composer_url
                             : window.location.href;
-                        const redirectUrl = new URL(posterBaseUrl, window.location.origin);
-                        redirectUrl.searchParams.set('poster_tab', 'drafts');
+                        const redirectUrl = new URL(composerBaseUrl, window.location.origin);
+                        redirectUrl.searchParams.set('composer_tab', 'drafts');
                         if (createdPostId > 0) {
                             redirectUrl.searchParams.set('highlight_draft', String(createdPostId));
                         }
@@ -3538,11 +3606,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
 
                     if (isScheduled) {
-                        const posterBaseUrl = (window.bitstream_ajax && bitstream_ajax.poster_url)
-                            ? bitstream_ajax.poster_url
+                        const composerBaseUrl = (window.bitstream_ajax && bitstream_ajax.composer_url)
+                            ? bitstream_ajax.composer_url
                             : window.location.href;
-                        const redirectUrl = new URL(posterBaseUrl, window.location.origin);
-                        redirectUrl.searchParams.set('poster_tab', 'scheduled');
+                        const redirectUrl = new URL(composerBaseUrl, window.location.origin);
+                        redirectUrl.searchParams.set('composer_tab', 'scheduled');
                         if (createdPostId > 0) {
                             redirectUrl.searchParams.set('highlight_scheduled', String(createdPostId));
                         }
@@ -3817,11 +3885,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            const basePosterUrl = (window.bitstream_ajax && bitstream_ajax.poster_url)
-                ? bitstream_ajax.poster_url
+            const basePosterUrl = (window.bitstream_ajax && bitstream_ajax.composer_url)
+                ? bitstream_ajax.composer_url
                 : (window.location.origin + '/bitstream/');
             const quoteUrl = new URL(basePosterUrl, window.location.origin);
-            quoteUrl.searchParams.set('poster_tab', 'bit');
+            quoteUrl.searchParams.set('composer_tab', 'bit');
             quoteUrl.searchParams.set('quote_post_id', postId);
 
             window.location.href = quoteUrl.toString();
@@ -3859,11 +3927,11 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const basePosterUrl = (window.bitstream_ajax && bitstream_ajax.poster_url)
-            ? bitstream_ajax.poster_url
+        const basePosterUrl = (window.bitstream_ajax && bitstream_ajax.composer_url)
+            ? bitstream_ajax.composer_url
             : (window.location.origin + '/bitstream/');
         const editUrl = new URL(basePosterUrl, window.location.origin);
-        editUrl.searchParams.set('poster_tab', postType);
+        editUrl.searchParams.set('composer_tab', postType);
         editUrl.searchParams.set('edit_post_id', String(postId));
 
         window.location.href = editUrl.toString();
@@ -3896,48 +3964,45 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const confirmed = window.confirm('Are you sure you want to delete this Bit? This action cannot be undone.');
-        if (!confirmed) {
-            return;
-        }
+        showDeleteConfirmation('Are you sure you want to delete this Bit? This action cannot be undone.', () => {
+            button.classList.add('is-active');
 
-        button.classList.add('is-active');
+            const payload = new FormData();
+            payload.append('action', 'bitstream_delete_post');
+            payload.append('post_id', postId);
+            payload.append('nonce', bitstream_ajax.delete_post_nonce);
 
-        const payload = new FormData();
-        payload.append('action', 'bitstream_delete_post');
-        payload.append('post_id', postId);
-        payload.append('nonce', bitstream_ajax.delete_post_nonce);
-
-        fetch(bitstream_ajax.ajax_url, {
-            method: 'POST',
-            credentials: 'same-origin',
-            body: payload
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (!data.success) {
-                    throw new Error(data.data || 'Could not delete post.');
-                }
-
-                const card = button.closest('.bit-card');
-                if (card) {
-                    const lockedHeight = card.offsetHeight;
-                    card.style.minHeight = lockedHeight + 'px';
-                    card.classList.add('bit-card-delete-pending');
-                    card.innerHTML = '<div class="bit-delete-toast">Deleted successfully</div>';
-
-                    setTimeout(() => {
-                        card.classList.add('bit-card-delete-fade');
-                        setTimeout(() => {
-                            card.remove();
-                        }, 350);
-                    }, 3000);
-                }
+            fetch(bitstream_ajax.ajax_url, {
+                method: 'POST',
+                credentials: 'same-origin',
+                body: payload
             })
-            .catch(error => {
-                alert(error.message || 'Could not delete post.');
-                button.classList.remove('is-active');
-            });
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) {
+                        throw new Error(data.data || 'Could not delete post.');
+                    }
+
+                    const card = button.closest('.bit-card');
+                    if (card) {
+                        const lockedHeight = card.offsetHeight;
+                        card.style.minHeight = lockedHeight + 'px';
+                        card.classList.add('bit-card-delete-pending');
+                        card.innerHTML = '<div class="bit-delete-toast">Deleted successfully</div>';
+
+                        setTimeout(() => {
+                            card.classList.add('bit-card-delete-fade');
+                            setTimeout(() => {
+                                card.remove();
+                            }, 350);
+                        }, 3000);
+                    }
+                })
+                .catch(error => {
+                    alert(error.message || 'Could not delete post.');
+                    button.classList.remove('is-active');
+                });
+        });
     });
 
     // Floating BitStream menu functionality
@@ -4104,7 +4169,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function getCardTextTitle(mediaEl) {
-        const card = mediaEl.closest('.bit-card, .bitstream-media-preview, .bitstream-poster');
+        const card = mediaEl.closest('.bit-card, .bitstream-media-preview, .bitstream-composer');
         if (!card) {
             return '';
         }
@@ -4192,8 +4257,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (tagName === 'video') {
-            const posterSrc = mediaEl.getAttribute('poster') || '';
-            const fallbackImage = mediaEl.closest('.bit-card, .bitstream-media-preview, .bitstream-poster')
+            const composerSrc = mediaEl.getAttribute('composer') || '';
+            const fallbackImage = mediaEl.closest('.bit-card, .bitstream-media-preview, .bitstream-composer')
                 ?.querySelector('img')
                 ?.getAttribute('src') || '';
             const bitContentTitle = sanitizeVideoTitleFromBitContent(getCardTextTitle(mediaEl), mediaEl);
@@ -4204,7 +4269,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 title,
                 artist: siteName,
                 album: 'BitStream',
-                artwork: buildArtworkList(posterSrc || fallbackImage),
+                artwork: buildArtworkList(composerSrc || fallbackImage),
             };
         }
 
@@ -4560,28 +4625,28 @@ jQuery(document).ready(function ($) {
         });
     });
 
-    // ── Quick Poster (modal-based) ────────────────────────────────────
+    // ── Composer (modal-based) ────────────────────────────────────
     // Intercept clicks on quick action triggers
     document.addEventListener('click', (e) => {
-        const trigger = e.target.closest('[data-qp-modal-trigger]');
+        const trigger = e.target.closest('[data-composer-modal-trigger]');
         if (!trigger) return;
 
-        const modalName = trigger.dataset.qpModalTrigger;
-        const qp = document.querySelector('.bitstream-quick-post-poster');
+        const modalName = trigger.dataset.composerModalTrigger;
+        const composer = document.querySelector('.bitstream-composer');
         const feedBaseUrl = (window.bitstream_ajax && bitstream_ajax.feed_url)
             ? bitstream_ajax.feed_url
             : (window.location.origin + '/bitstream/');
         const feedUrl = new URL(feedBaseUrl, window.location.origin);
 
-        if (qp) {
+        if (composer) {
             e.preventDefault();
             const isMobile = window.innerWidth < 1024;
             if (isMobile) {
-                qp.hidden = false;
+                composer.hidden = false;
             }
 
             if (modalName === 'new-bit') {
-                const textarea = qp.querySelector('#bitstream-quick-bit-content');
+                const textarea = composer.querySelector('#bitstream-quick-bit-content');
                 if (textarea) {
                     textarea.focus();
                     if (!isMobile) {
@@ -4589,7 +4654,7 @@ jQuery(document).ready(function ($) {
                     }
                 }
             } else if (modalName === 'new-rebit') {
-                const rebitBtn = qp.querySelector('[data-qp-modal="rebit"]');
+                const rebitBtn = composer.querySelector('[data-composer-modal="rebit"]');
                 if (rebitBtn) {
                     rebitBtn.click();
                     if (!isMobile) {
@@ -4598,20 +4663,20 @@ jQuery(document).ready(function ($) {
                 }
             } else {
                 // Close any open modals first
-                qp.querySelectorAll('.bitstream-qp-modal').forEach(m => m.hidden = true);
-                const modal = qp.querySelector('.bitstream-qp-modal-' + modalName);
+                composer.querySelectorAll('.bitstream-composer-modal').forEach(m => m.hidden = true);
+                const modal = composer.querySelector('.bitstream-composer-modal-' + modalName);
                 if (modal) {
                     modal.hidden = false;
-                    const statusEl = qp.querySelector('.bitstream-sidebar-quick-post-status');
+                    const statusEl = composer.querySelector('.bitstream-sidebar-composer-status');
                     if (statusEl) statusEl.textContent = '';
                 }
             }
         } else {
             e.preventDefault();
             if (modalName === 'new-bit') {
-                feedUrl.searchParams.set('poster_tab', 'bit');
+                feedUrl.searchParams.set('composer_tab', 'bit');
             } else if (modalName === 'new-rebit') {
-                feedUrl.searchParams.set('poster_tab', 'rebit');
+                feedUrl.searchParams.set('composer_tab', 'rebit');
             } else if (modalName === 'drafts') {
                 feedUrl.searchParams.set('show_drafts', '1');
             } else if (modalName === 'scheduled-list') {
@@ -4621,42 +4686,42 @@ jQuery(document).ready(function ($) {
         }
     });
 
-    document.querySelectorAll('.bitstream-quick-post-poster').forEach(qpRoot => {
-        const form = qpRoot.querySelector('.bitstream-sidebar-quick-post-form');
+    document.querySelectorAll('.bitstream-composer').forEach(composerRoot => {
+        const form = composerRoot.querySelector('.bitstream-sidebar-composer-form');
         if (!form) return;
 
-        const statusEl = qpRoot.querySelector('.bitstream-sidebar-quick-post-status');
-        const submitBtn = form.querySelector('.bitstream-qp-submit');
+        const statusEl = composerRoot.querySelector('.bitstream-sidebar-composer-status');
+        const submitBtn = form.querySelector('.bitstream-composer-submit');
         const textarea = form.querySelector('#bitstream-quick-bit-content');
-        const submitNonce = qpRoot.dataset.submitNonce || '';
+        const submitNonce = composerRoot.dataset.submitNonce || '';
 
         // Hidden inputs
-        const hAttachmentId = form.querySelector('#bitstream-qp-attachment-id');
-        const hRebitUrl = form.querySelector('#bitstream-qp-rebit-url');
-        const hRebitOgTitle = form.querySelector('#bitstream-qp-rebit-og-title');
-        const hRebitOgDesc = form.querySelector('#bitstream-qp-rebit-og-desc');
-        const hRebitOgImage = form.querySelector('#bitstream-qp-rebit-og-image');
-        const hRebitOgImageRemoved = form.querySelector('#bitstream-qp-rebit-og-image-removed');
-        const hRebitAttachmentId = form.querySelector('#bitstream-qp-rebit-attachment-id');
-        const hScheduleEnabled = form.querySelector('#bitstream-qp-schedule-enabled');
-        const hScheduleDatetime = form.querySelector('#bitstream-qp-schedule-datetime');
-        const hEditPostId = form.querySelector('#bitstream-qp-edit-post-id');
+        const hAttachmentId = form.querySelector('#bitstream-composer-attachment-id');
+        const hRebitUrl = form.querySelector('#bitstream-composer-rebit-url');
+        const hRebitOgTitle = form.querySelector('#bitstream-composer-rebit-og-title');
+        const hRebitOgDesc = form.querySelector('#bitstream-composer-rebit-og-desc');
+        const hRebitOgImage = form.querySelector('#bitstream-composer-rebit-og-image');
+        const hRebitOgImageRemoved = form.querySelector('#bitstream-composer-rebit-og-image-removed');
+        const hRebitAttachmentId = form.querySelector('#bitstream-composer-rebit-attachment-id');
+        const hScheduleEnabled = form.querySelector('#bitstream-composer-schedule-enabled');
+        const hScheduleDatetime = form.querySelector('#bitstream-composer-schedule-datetime');
+        const hEditPostId = form.querySelector('#bitstream-composer-edit-post-id');
         let renderRebitLivePreview, updateModalImagePreview;
 
         // Preview containers
-        const previewArea = form.querySelector('.bitstream-qp-preview-area');
-        const previewRebit = form.querySelector('.bitstream-qp-preview-rebit');
-        const previewRebitCard = form.querySelector('.bitstream-qp-preview-rebit-card');
-        const previewMedia = form.querySelector('.bitstream-qp-preview-media');
-        const previewMediaThumb = form.querySelector('.bitstream-qp-preview-media-thumb');
-        const previewSchedule = form.querySelector('.bitstream-qp-preview-schedule');
-        const previewScheduleDate = form.querySelector('.bitstream-qp-preview-schedule-date');
+        const previewArea = form.querySelector('.bitstream-composer-preview-area');
+        const previewRebit = form.querySelector('.bitstream-composer-preview-rebit');
+        const previewRebitCard = form.querySelector('.bitstream-composer-preview-rebit-card');
+        const previewMedia = form.querySelector('.bitstream-composer-preview-media');
+        const previewMediaThumb = form.querySelector('.bitstream-composer-preview-media-thumb');
+        const previewSchedule = form.querySelector('.bitstream-composer-preview-schedule');
+        const previewScheduleDate = form.querySelector('.bitstream-composer-preview-schedule-date');
         const previewDraft = null;
         const previewDraftLabel = null;
 
         // Save Draft Button
-        const qpSaveDraftBtn = null;
-        const qpSaveDraftActionBtn = form.querySelector('.bitstream-qp-save-draft-action');
+        const composerSaveDraftBtn = null;
+        const composerSaveDraftActionBtn = form.querySelector('.bitstream-composer-save-draft-action');
 
         function setStatus(msg, isError = false) {
             if (!statusEl) return;
@@ -4664,14 +4729,14 @@ jQuery(document).ready(function ($) {
             statusEl.style.color = isError ? '#cc0000' : '#2c6e49';
 
             // Locate active open modal
-            const activeModal = document.querySelector('.bitstream-qp-modal:not([hidden]), .bitstream-cropper-modal:not([hidden]), .bitstream-rebit-editor-modal:not([hidden])');
+            const activeModal = document.querySelector('.bitstream-composer-modal:not([hidden]), .bitstream-cropper-modal:not([hidden]), .bitstream-rebit-editor-modal:not([hidden])');
             if (activeModal) {
-                const bodyEl = activeModal.querySelector('.bitstream-qp-modal-body, .bitstream-cropper-body, .bitstream-rebit-editor-body');
+                const bodyEl = activeModal.querySelector('.bitstream-composer-modal-body, .bitstream-cropper-body, .bitstream-rebit-editor-body');
                 if (bodyEl) {
                     let modalStatusEl = bodyEl.querySelector('.bitstream-modal-status');
                     if (!modalStatusEl) {
                         modalStatusEl = document.createElement('div');
-                        modalStatusEl.className = 'bitstream-modal-status bitstream-poster-status';
+                        modalStatusEl.className = 'bitstream-modal-status bitstream-composer-status';
                         modalStatusEl.setAttribute('aria-live', 'polite');
                         bodyEl.insertBefore(modalStatusEl, bodyEl.firstChild);
                     }
@@ -4681,7 +4746,7 @@ jQuery(document).ready(function ($) {
 
                     if (!msg) {
                         modalStatusEl.textContent = '';
-                        modalStatusEl.className = 'bitstream-modal-status bitstream-poster-status';
+                        modalStatusEl.className = 'bitstream-modal-status bitstream-composer-status';
                     }
                 }
             }
@@ -4689,7 +4754,7 @@ jQuery(document).ready(function ($) {
             if (!msg) {
                 document.querySelectorAll('.bitstream-modal-status').forEach(el => {
                     el.textContent = '';
-                    el.className = 'bitstream-modal-status bitstream-poster-status';
+                    el.className = 'bitstream-modal-status bitstream-composer-status';
                 });
             }
         }
@@ -4703,29 +4768,73 @@ jQuery(document).ready(function ($) {
             if (textarea) textarea.required = !(hasRebit || hasMedia);
         }
 
+        function renderComposerMediaPreview(previewEl, attachment) {
+            if (!previewEl) {
+                return;
+            }
+
+            const dropzone = previewEl.closest('.bitstream-media-dropzone');
+            if (dropzone) {
+                dropzone.classList.toggle('has-media', !!attachment);
+            }
+
+            if (!attachment) {
+                previewEl.innerHTML = '';
+                previewEl.removeAttribute('data-attachment-id');
+                previewEl.removeAttribute('data-attachment-url');
+                previewEl.removeAttribute('data-attachment-mime');
+                return;
+            }
+
+            const mimeType = attachment.mime || '';
+            const previewUrl = attachment.preview_url || attachment.url || '';
+
+            if (attachment.id) {
+                previewEl.dataset.attachmentId = attachment.id;
+            }
+            if (previewUrl) {
+                previewEl.dataset.attachmentUrl = previewUrl;
+            }
+            if (mimeType) {
+                previewEl.dataset.attachmentMime = mimeType;
+            }
+
+            if (mimeType.startsWith('image/')) {
+                previewEl.innerHTML = '<img src="' + previewUrl + '" alt="">';
+                return;
+            }
+
+            if (mimeType.startsWith('video/')) {
+                previewEl.innerHTML = '<video src="' + previewUrl + '" controls controlsList="nodownload noplaybackrate" disablepictureinpicture></video>';
+                return;
+            }
+
+            previewEl.innerHTML = '<p>Selected: ' + (attachment.filename || attachment.title || 'media') + '</p>';
+        }
+
         // Modal open/close helpers
         function openModal(name) {
             setStatus('');
-            const modal = qpRoot.querySelector('.bitstream-qp-modal-' + name);
+            const modal = composerRoot.querySelector('.bitstream-composer-modal-' + name);
             if (modal) {
                 modal.hidden = false;
                 const isMobile = window.innerWidth < 1024;
                 if (isMobile) {
-                    qpRoot.hidden = false;
+                    composerRoot.hidden = false;
                 }
 
                 if (name === 'rebit') {
-                    const mRebitUrl = modal.querySelector('#bitstream-qp-modal-rebit-url');
-                    const mRebitFetch = modal.querySelector('.bitstream-qp-rebit-fetch');
-                    const rebitMetaModal = qpRoot.querySelector('.bitstream-qp-modal-rebit-meta');
+                    const mRebitUrl = modal.querySelector('#bitstream-composer-modal-rebit-url');
+                    const mRebitFetch = modal.querySelector('.bitstream-composer-rebit-fetch');
+                    const rebitMetaModal = composerRoot.querySelector('.bitstream-composer-modal-rebit-meta');
                     
                     if (hRebitUrl && mRebitUrl) {
                         mRebitUrl.value = hRebitUrl.value || '';
                     }
                     
                     if (hRebitUrl && hRebitUrl.value) {
-                        const mRebitTitle = rebitMetaModal ? rebitMetaModal.querySelector('#bitstream-qp-modal-rebit-og-title') : null;
-                        const mRebitDesc = rebitMetaModal ? rebitMetaModal.querySelector('#bitstream-qp-modal-rebit-og-desc') : null;
+                        const mRebitTitle = rebitMetaModal ? rebitMetaModal.querySelector('#bitstream-composer-modal-rebit-og-title') : null;
+                        const mRebitDesc = rebitMetaModal ? rebitMetaModal.querySelector('#bitstream-composer-modal-rebit-og-desc') : null;
                         
                         if (mRebitTitle && hRebitOgTitle) {
                             mRebitTitle.value = hRebitOgTitle.value || '';
@@ -4747,8 +4856,8 @@ jQuery(document).ready(function ($) {
                             mRebitFetch.classList.remove('is-edit-mode');
                             mRebitFetch.textContent = 'Fetch metadata';
                         }
-                        const mRebitPreviewRoot = modal.querySelector('.bitstream-qp-rebit-live-preview');
-                        const mRebitPreviewCard = modal.querySelector('.bitstream-qp-rebit-live-preview-card');
+                        const mRebitPreviewRoot = modal.querySelector('.bitstream-composer-rebit-live-preview');
+                        const mRebitPreviewCard = modal.querySelector('.bitstream-composer-rebit-live-preview-card');
                         if (mRebitPreviewRoot) mRebitPreviewRoot.hidden = true;
                         if (mRebitPreviewCard) mRebitPreviewCard.innerHTML = '';
                     }
@@ -4763,41 +4872,41 @@ jQuery(document).ready(function ($) {
         }
         function closeModal(name, keepPosterOpen = false) {
             setStatus('');
-            if (name === 'quickpost') {
-                qpRoot.hidden = true;
+            if (name === 'composer') {
+                composerRoot.hidden = true;
                 // Also close any open sub-modals
-                qpRoot.querySelectorAll('.bitstream-qp-modal').forEach(m => m.hidden = true);
+                composerRoot.querySelectorAll('.bitstream-composer-modal').forEach(m => m.hidden = true);
             } else {
-                const modal = qpRoot.querySelector('.bitstream-qp-modal-' + name);
+                const modal = composerRoot.querySelector('.bitstream-composer-modal-' + name);
                 if (modal) {
                     modal.hidden = true;
                     const isMobile = window.innerWidth < 1024;
                     if (isMobile && (name === 'drafts' || name === 'scheduled-list') && !keepPosterOpen) {
-                        qpRoot.hidden = true;
+                        composerRoot.hidden = true;
                     }
                 }
             }
         }
 
         // Wire action buttons
-        qpRoot.querySelectorAll('.bitstream-qp-action-btn[data-qp-modal]').forEach(btn => {
-            btn.addEventListener('click', () => openModal(btn.dataset.qpModal));
+        composerRoot.querySelectorAll('.bitstream-composer-action-btn[data-composer-modal]').forEach(btn => {
+            btn.addEventListener('click', () => openModal(btn.dataset.composerModal));
         });
 
         // Wire all close triggers
-        qpRoot.querySelectorAll('[data-qp-modal-close]').forEach(el => {
-            el.addEventListener('click', () => closeModal(el.dataset.qpModalClose));
+        composerRoot.querySelectorAll('[data-composer-modal-close]').forEach(el => {
+            el.addEventListener('click', () => closeModal(el.dataset.composerModalClose));
         });
 
         // Wire preview edit buttons
-        qpRoot.querySelectorAll('.bitstream-qp-preview-edit[data-qp-edit]').forEach(btn => {
-            btn.addEventListener('click', () => openModal(btn.dataset.qpEdit));
+        composerRoot.querySelectorAll('.bitstream-composer-preview-edit[data-composer-edit]').forEach(btn => {
+            btn.addEventListener('click', () => openModal(btn.dataset.composerEdit));
         });
 
         // Wire preview remove buttons
-        qpRoot.querySelectorAll('.bitstream-qp-preview-remove[data-qp-remove]').forEach(btn => {
+        composerRoot.querySelectorAll('.bitstream-composer-preview-remove[data-composer-remove]').forEach(btn => {
             btn.addEventListener('click', () => {
-                const type = btn.dataset.qpRemove;
+                const type = btn.dataset.composerRemove;
                 if (type === 'rebit') {
                     if (hRebitUrl) hRebitUrl.value = '';
                     if (hRebitOgTitle) hRebitOgTitle.value = '';
@@ -4807,7 +4916,7 @@ jQuery(document).ready(function ($) {
                     if (hRebitAttachmentId) hRebitAttachmentId.value = '';
                     if (previewRebit) previewRebit.hidden = true;
                     if (previewRebitCard) previewRebitCard.innerHTML = '';
-                    form.dataset.posterType = 'bit';
+                    form.dataset.composerType = 'bit';
                     if (textarea) textarea.required = true;
                 }
                 if (type === 'media') {
@@ -4824,7 +4933,7 @@ jQuery(document).ready(function ($) {
                         if (isEdit) {
                             submitBtn.textContent = 'Publish Draft';
                         } else {
-                            const isRebit = form.dataset.posterType === 'rebit';
+                            const isRebit = form.dataset.composerType === 'rebit';
                             submitBtn.textContent = isRebit ? 'Publish Rebit' : 'Post Bit';
                         }
                     }
@@ -4832,9 +4941,9 @@ jQuery(document).ready(function ($) {
                 if (type === 'draft') {
                     if (hEditPostId) hEditPostId.value = '0';
                     if (previewDraft) previewDraft.hidden = true;
-                    if (qpSaveDraftBtn) qpSaveDraftBtn.style.display = 'none';
+                    if (composerSaveDraftBtn) composerSaveDraftBtn.style.display = 'none';
                     if (submitBtn) {
-                        const isRebit = form.dataset.posterType === 'rebit';
+                        const isRebit = form.dataset.composerType === 'rebit';
                         submitBtn.textContent = isRebit ? 'Publish Rebit' : 'Post Bit';
                     }
                 }
@@ -4842,9 +4951,9 @@ jQuery(document).ready(function ($) {
             });
         });
 
-        // DRY Helper: Load draft or scheduled post into poster
-        function loadPostIntoQuickPoster(postId) {
-            qpRoot.hidden = false;
+        // DRY Helper: Load draft or scheduled post into composer
+        function loadPostIntoComposer(postId) {
+            composerRoot.hidden = false;
             if (!window.bitstream_ajax) return;
 
             setStatus('Loading post...');
@@ -4871,16 +4980,16 @@ jQuery(document).ready(function ($) {
                         if (hRebitOgImage) hRebitOgImage.value = d.og_image || '';
                         if (hRebitAttachmentId && d.attachment_id) hRebitAttachmentId.value = String(d.attachment_id);
                         if (hRebitOgImageRemoved) hRebitOgImageRemoved.value = '0';
-                        form.dataset.posterType = 'rebit';
+                        form.dataset.composerType = 'rebit';
                         if (textarea) textarea.required = false;
                         if (previewRebitCard) previewRebitCard.innerHTML = d.media_preview_html || '<p style="font-size:0.85rem;color:#555;">Rebit: ' + d.rebit_url + '</p>';
                         if (previewRebit) previewRebit.hidden = false;
 
                         // Prefill Rebit Modal fields
-                        const mRebitUrl = qpRoot.querySelector('#bitstream-qp-modal-rebit-url');
-                        const mRebitTitle = qpRoot.querySelector('#bitstream-qp-modal-rebit-og-title');
-                        const mRebitDesc = qpRoot.querySelector('#bitstream-qp-modal-rebit-og-desc');
-                        const mRebitFetch = qpRoot.querySelector('.bitstream-qp-rebit-fetch');
+                        const mRebitUrl = composerRoot.querySelector('#bitstream-composer-modal-rebit-url');
+                        const mRebitTitle = composerRoot.querySelector('#bitstream-composer-modal-rebit-og-title');
+                        const mRebitDesc = composerRoot.querySelector('#bitstream-composer-modal-rebit-og-desc');
+                        const mRebitFetch = composerRoot.querySelector('.bitstream-composer-rebit-fetch');
 
                         if (mRebitUrl) mRebitUrl.value = d.rebit_url;
                         if (mRebitTitle) mRebitTitle.value = d.og_title || '';
@@ -4895,14 +5004,25 @@ jQuery(document).ready(function ($) {
                             renderRebitLivePreview(d.rebit_url);
                         }
                     } else {
-                        form.dataset.posterType = 'bit';
+                        form.dataset.composerType = 'bit';
                         if (textarea) textarea.required = true;
                     }
 
                     if (d.attachment_id && parseInt(d.attachment_id, 10) > 0) {
                         if (!d.is_rebit) {
                             if (hAttachmentId) hAttachmentId.value = String(d.attachment_id);
-                            if (previewMediaThumb) previewMediaThumb.innerHTML = d.media_preview_html || '<span>Media attached (ID: ' + d.attachment_id + ')</span>';
+                            if (previewMediaThumb) {
+                                if (d.attachment_url && d.attachment_mime) {
+                                    renderComposerMediaPreview(previewMediaThumb, {
+                                        id: parseInt(d.attachment_id, 10) || 0,
+                                        url: d.attachment_url,
+                                        preview_url: d.attachment_url,
+                                        mime: d.attachment_mime
+                                    });
+                                } else {
+                                    previewMediaThumb.innerHTML = d.media_preview_html || '<span>Media attached (ID: ' + d.attachment_id + ')</span>';
+                                }
+                            }
                             if (previewMedia) previewMedia.hidden = false;
                         }
                     }
@@ -4928,8 +5048,8 @@ jQuery(document).ready(function ($) {
                         submitBtn.textContent = isScheduled ? 'Update Scheduled Post' : 'Publish Draft';
                     }
 
-                    if (qpSaveDraftBtn) {
-                        qpSaveDraftBtn.style.display = isScheduled ? 'none' : 'block';
+                    if (composerSaveDraftBtn) {
+                        composerSaveDraftBtn.style.display = isScheduled ? 'none' : 'block';
                     }
 
                     syncPreviewArea();
@@ -4940,25 +5060,25 @@ jQuery(document).ready(function ($) {
         }
 
         // ── REBIT MODAL ──
-        const rebitModal = qpRoot.querySelector('.bitstream-qp-modal-rebit');
-        const rebitMetaModal = qpRoot.querySelector('.bitstream-qp-modal-rebit-meta');
+        const rebitModal = composerRoot.querySelector('.bitstream-composer-modal-rebit');
+        const rebitMetaModal = composerRoot.querySelector('.bitstream-composer-modal-rebit-meta');
         if (rebitModal && rebitMetaModal) {
-            const mRebitUrl = rebitModal.querySelector('#bitstream-qp-modal-rebit-url');
-            const mRebitFetch = rebitModal.querySelector('.bitstream-qp-rebit-fetch');
-            const mRebitPreviewRoot = rebitModal.querySelector('.bitstream-qp-rebit-live-preview');
-            const mRebitPreviewLoading = rebitModal.querySelector('.bitstream-qp-rebit-live-preview-loading');
-            const mRebitPreviewCard = rebitModal.querySelector('.bitstream-qp-rebit-live-preview-card');
-            const mRebitDone = rebitModal.querySelector('.bitstream-qp-rebit-done');
+            const mRebitUrl = rebitModal.querySelector('#bitstream-composer-modal-rebit-url');
+            const mRebitFetch = rebitModal.querySelector('.bitstream-composer-rebit-fetch');
+            const mRebitPreviewRoot = rebitModal.querySelector('.bitstream-composer-rebit-live-preview');
+            const mRebitPreviewLoading = rebitModal.querySelector('.bitstream-composer-rebit-live-preview-loading');
+            const mRebitPreviewCard = rebitModal.querySelector('.bitstream-composer-rebit-live-preview-card');
+            const mRebitDone = rebitModal.querySelector('.bitstream-composer-rebit-done');
 
             // Metadata edit modal controls (now in rebitMetaModal)
-            const mRebitTitle = rebitMetaModal.querySelector('#bitstream-qp-modal-rebit-og-title');
-            const mRebitDesc = rebitMetaModal.querySelector('#bitstream-qp-modal-rebit-og-desc');
-            const mRebitImageChange = rebitMetaModal.querySelector('.bitstream-qp-rebit-image-change');
-            const mRebitImageRemove = rebitMetaModal.querySelector('.bitstream-qp-rebit-image-remove');
-            const mRebitMetaDone = rebitMetaModal.querySelector('.bitstream-qp-rebit-meta-done');
+            const mRebitTitle = rebitMetaModal.querySelector('#bitstream-composer-modal-rebit-og-title');
+            const mRebitDesc = rebitMetaModal.querySelector('#bitstream-composer-modal-rebit-og-desc');
+            const mRebitImageChange = rebitMetaModal.querySelector('.bitstream-composer-rebit-image-change');
+            const mRebitImageRemove = rebitMetaModal.querySelector('.bitstream-composer-rebit-image-remove');
+            const mRebitMetaDone = rebitMetaModal.querySelector('.bitstream-composer-rebit-meta-done');
 
-            const mRebitImagePreviewWrapper = rebitMetaModal.querySelector('.bitstream-qp-rebit-image-preview-wrapper');
-            const mRebitImagePreviewEl = rebitMetaModal.querySelector('.bitstream-qp-rebit-image-preview-el');
+            const mRebitImagePreviewWrapper = rebitMetaModal.querySelector('.bitstream-composer-rebit-image-preview-wrapper');
+            const mRebitImagePreviewEl = rebitMetaModal.querySelector('.bitstream-composer-rebit-image-preview-el');
 
             updateModalImagePreview = function() {
                 const imageUrl = hRebitOgImage ? hRebitOgImage.value : '';
@@ -5114,7 +5234,7 @@ jQuery(document).ready(function ($) {
                     if (hRebitUrl) hRebitUrl.value = url;
                     if (hRebitOgTitle) hRebitOgTitle.value = mRebitTitle ? mRebitTitle.value : '';
                     if (hRebitOgDesc) hRebitOgDesc.value = mRebitDesc ? mRebitDesc.value : '';
-                    form.dataset.posterType = 'rebit';
+                    form.dataset.composerType = 'rebit';
                     if (textarea) textarea.required = false;
 
                     if (previewRebitCard && mRebitPreviewCard) {
@@ -5129,11 +5249,11 @@ jQuery(document).ready(function ($) {
         }
 
         // ── MEDIA MODAL ──
-        const mediaModal = qpRoot.querySelector('.bitstream-qp-modal-media');
+        const mediaModal = composerRoot.querySelector('.bitstream-composer-modal-media');
         if (mediaModal) {
-            const mMediaDone = mediaModal.querySelector('.bitstream-qp-media-done');
-            const mMediaAttInput = mediaModal.querySelector('#bitstream-qp-modal-media-attachment-id');
-            const mMediaPreview = mediaModal.querySelector('#bitstream-qp-modal-media-preview');
+            const mMediaDone = mediaModal.querySelector('.bitstream-composer-media-done');
+            const mMediaAttInput = mediaModal.querySelector('#bitstream-composer-modal-media-attachment-id');
+            const mMediaPreview = mediaModal.querySelector('#bitstream-composer-modal-media-preview');
 
             if (mMediaDone) {
                 mMediaDone.addEventListener('click', () => {
@@ -5144,16 +5264,26 @@ jQuery(document).ready(function ($) {
 
                     if (previewMediaThumb && mMediaPreview) {
                         previewMediaThumb.innerHTML = '';
-                        const previewImg = mMediaPreview.querySelector('img');
-                        if (previewImg) {
-                            const img = document.createElement('img');
-                            img.src = previewImg.src;
-                            img.alt = '';
-                            previewMediaThumb.appendChild(img);
+                        const attachment = {
+                            id: parseInt(attachId, 10) || 0,
+                            url: mMediaPreview.dataset.attachmentUrl || '',
+                            preview_url: mMediaPreview.dataset.attachmentUrl || '',
+                            mime: mMediaPreview.dataset.attachmentMime || ''
+                        };
+                        if (attachment.url) {
+                            renderComposerMediaPreview(previewMediaThumb, attachment);
+                        } else {
+                            const previewImg = mMediaPreview.querySelector('img');
+                            if (previewImg) {
+                                const img = document.createElement('img');
+                                img.src = previewImg.src;
+                                img.alt = '';
+                                previewMediaThumb.appendChild(img);
+                            }
+                            const label = document.createElement('span');
+                            label.textContent = 'Media attached';
+                            previewMediaThumb.appendChild(label);
                         }
-                        const label = document.createElement('span');
-                        label.textContent = 'Media attached';
-                        previewMediaThumb.appendChild(label);
                     }
                     if (previewMedia) previewMedia.hidden = false;
                     syncPreviewArea();
@@ -5164,10 +5294,10 @@ jQuery(document).ready(function ($) {
         }
 
         // ── DRAFTS MODAL ──
-        const draftsModal = qpRoot.querySelector('.bitstream-qp-modal-drafts');
+        const draftsModal = composerRoot.querySelector('.bitstream-composer-modal-drafts');
         if (draftsModal) {
-            const draftFilterBtns = draftsModal.querySelectorAll('.bitstream-qp-drafts-filter-btn');
-            const draftItems = draftsModal.querySelectorAll('.bitstream-qp-draft-item');
+            const draftFilterBtns = draftsModal.querySelectorAll('.bitstream-composer-drafts-filter-btn');
+            const draftItems = draftsModal.querySelectorAll('.bitstream-composer-draft-item');
             draftFilterBtns.forEach(btn => {
                 btn.addEventListener('click', () => {
                     const filter = btn.dataset.filter || 'all';
@@ -5179,44 +5309,45 @@ jQuery(document).ready(function ($) {
                 });
             });
 
-            draftsModal.querySelectorAll('.bitstream-qp-draft-load').forEach(btn => {
+            draftsModal.querySelectorAll('.bitstream-composer-draft-load').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const postId = btn.dataset.postId;
                     if (postId) {
-                        loadPostIntoQuickPoster(postId);
+                        loadPostIntoComposer(postId);
                         closeModal('drafts', true);
                     }
                 });
             });
 
-            draftsModal.querySelectorAll('.bitstream-qp-draft-delete').forEach(btn => {
+            draftsModal.querySelectorAll('.bitstream-composer-draft-delete').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const postId = btn.dataset.postId;
                     if (!postId || !window.bitstream_ajax) return;
-                    if (!confirm('Delete this draft?')) return;
 
-                    btn.disabled = true;
-                    const fd = new FormData();
-                    fd.append('action', 'bitstream_delete_post');
-                    fd.append('nonce', bitstream_ajax.delete_post_nonce);
-                    fd.append('post_id', postId);
+                    showDeleteConfirmation('Delete this draft?', () => {
+                        btn.disabled = true;
+                        const fd = new FormData();
+                        fd.append('action', 'bitstream_delete_post');
+                        fd.append('nonce', bitstream_ajax.delete_post_nonce);
+                        fd.append('post_id', postId);
 
-                    fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
-                        .then(r => r.json())
-                        .then(data => {
-                            if (!data.success) throw new Error(data.data || 'Delete failed.');
-                            const item = btn.closest('.bitstream-qp-draft-item');
-                            if (item) item.remove();
-                            
-                            // Check if empty
-                            const list = draftsModal.querySelector('.bitstream-qp-drafts-list');
-                            const remaining = list ? list.querySelectorAll('.bitstream-qp-draft-item') : [];
-                            if (list && remaining.length === 0) {
-                                list.innerHTML = '<p class="bitstream-qp-drafts-empty">No drafts yet.</p>';
-                            }
-                            setStatus('Draft deleted.');
-                        })
-                        .catch(err => { setStatus(err.message || 'Delete failed.', true); btn.disabled = false; });
+                        fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
+                            .then(r => r.json())
+                            .then(data => {
+                                if (!data.success) throw new Error(data.data || 'Delete failed.');
+                                const item = btn.closest('.bitstream-composer-draft-item');
+                                if (item) item.remove();
+                                
+                                // Check if empty
+                                const list = draftsModal.querySelector('.bitstream-composer-drafts-list');
+                                const remaining = list ? list.querySelectorAll('.bitstream-composer-draft-item') : [];
+                                if (list && remaining.length === 0) {
+                                    list.innerHTML = '<p class="bitstream-composer-drafts-empty">No drafts yet.</p>';
+                                }
+                                setStatus('Draft deleted.');
+                            })
+                            .catch(err => { setStatus(err.message || 'Delete failed.', true); btn.disabled = false; });
+                    });
                 });
             });
 
@@ -5224,8 +5355,8 @@ jQuery(document).ready(function ($) {
         }
 
         // ── SAVE CURRENT BIT TO DRAFTS ACTION BUTTON ──
-        if (qpSaveDraftActionBtn) {
-            qpSaveDraftActionBtn.addEventListener('click', (e) => {
+        if (composerSaveDraftActionBtn) {
+            composerSaveDraftActionBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 if (!window.bitstream_ajax || !submitNonce) { setStatus('Cannot save draft.', true); return; }
 
@@ -5234,15 +5365,15 @@ jQuery(document).ready(function ($) {
                 const hasMedia = hAttachmentId && parseInt(hAttachmentId.value || '0', 10) > 0;
                 if (!content && !hasRebit && !hasMedia) { setStatus('Nothing to save.', true); return; }
 
-                qpSaveDraftActionBtn.disabled = true;
-                const originalHtml = qpSaveDraftActionBtn.innerHTML;
-                qpSaveDraftActionBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>';
+                composerSaveDraftActionBtn.disabled = true;
+                const originalHtml = composerSaveDraftActionBtn.innerHTML;
+                composerSaveDraftActionBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>';
                 setStatus('Saving draft...');
 
                 const fd = new FormData(form);
-                fd.append('action', 'bitstream_submit_poster');
+                fd.append('action', 'bitstream_submit_composer');
                 fd.append('nonce', submitNonce);
-                fd.append('poster_type', form.dataset.posterType || 'bit');
+                fd.append('composer_type', form.dataset.composerType || 'bit');
                 fd.append('save_as_draft', '1');
 
                 fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
@@ -5264,18 +5395,18 @@ jQuery(document).ready(function ($) {
                     })
                     .catch(err => {
                         setStatus(err.message || 'Save failed.', true);
-                        qpSaveDraftActionBtn.disabled = false;
-                        qpSaveDraftActionBtn.innerHTML = originalHtml;
+                        composerSaveDraftActionBtn.disabled = false;
+                        composerSaveDraftActionBtn.innerHTML = originalHtml;
                     });
             });
         }
 
         // ── SCHEDULE MODAL ──
-        const scheduleModal = qpRoot.querySelector('.bitstream-qp-modal-schedule');
+        const scheduleModal = composerRoot.querySelector('.bitstream-composer-modal-schedule');
         if (scheduleModal) {
             const schedRadios = scheduleModal.querySelectorAll('input[name="bitstream_qp_schedule_mode"]');
-            const schedDatetime = scheduleModal.querySelector('.bitstream-qp-schedule-datetime-input');
-            const schedDone = scheduleModal.querySelector('.bitstream-qp-schedule-done');
+            const schedDatetime = scheduleModal.querySelector('.bitstream-composer-schedule-datetime-input');
+            const schedDone = scheduleModal.querySelector('.bitstream-composer-schedule-done');
 
             schedRadios.forEach(radio => {
                 radio.addEventListener('change', () => {
@@ -5313,10 +5444,10 @@ jQuery(document).ready(function ($) {
         }
 
         // ── SCHEDULED LIST MODAL ──
-        const scheduledListModal = qpRoot.querySelector('.bitstream-qp-modal-scheduled-list');
+        const scheduledListModal = composerRoot.querySelector('.bitstream-composer-modal-scheduled-list');
         if (scheduledListModal) {
-            const schedFilterBtns = scheduledListModal.querySelectorAll('.bitstream-qp-scheduled-filter-btn');
-            const schedItems = scheduledListModal.querySelectorAll('.bitstream-qp-scheduled-item');
+            const schedFilterBtns = scheduledListModal.querySelectorAll('.bitstream-composer-scheduled-filter-btn');
+            const schedItems = scheduledListModal.querySelectorAll('.bitstream-composer-scheduled-item');
             schedFilterBtns.forEach(btn => {
                 btn.addEventListener('click', () => {
                     const filter = btn.dataset.filter || 'all';
@@ -5328,65 +5459,66 @@ jQuery(document).ready(function ($) {
                 });
             });
 
-            scheduledListModal.querySelectorAll('.bitstream-qp-scheduled-load').forEach(btn => {
+            scheduledListModal.querySelectorAll('.bitstream-composer-scheduled-load').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const postId = btn.dataset.postId;
                     if (postId) {
-                        loadPostIntoQuickPoster(postId);
+                        loadPostIntoComposer(postId);
                         closeModal('scheduled-list', true);
                     }
                 });
             });
 
-            scheduledListModal.querySelectorAll('.bitstream-qp-scheduled-delete').forEach(btn => {
+            scheduledListModal.querySelectorAll('.bitstream-composer-scheduled-delete').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const postId = btn.dataset.postId;
                     if (!postId || !window.bitstream_ajax) return;
-                    if (!confirm('Delete this scheduled post?')) return;
 
-                    btn.disabled = true;
-                    const fd = new FormData();
-                    fd.append('action', 'bitstream_delete_post');
-                    fd.append('nonce', bitstream_ajax.delete_post_nonce);
-                    fd.append('post_id', postId);
+                    showDeleteConfirmation('Delete this scheduled post?', () => {
+                        btn.disabled = true;
+                        const fd = new FormData();
+                        fd.append('action', 'bitstream_delete_post');
+                        fd.append('nonce', bitstream_ajax.delete_post_nonce);
+                        fd.append('post_id', postId);
 
-                    fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
-                        .then(r => r.json())
-                        .then(data => {
-                            if (!data.success) throw new Error(data.data || 'Delete failed.');
-                            const item = btn.closest('.bitstream-qp-scheduled-item');
-                            if (item) item.remove();
-                            
-                            // Check if empty
-                            const list = scheduledListModal.querySelector('.bitstream-qp-scheduled-list');
-                            const remaining = list ? list.querySelectorAll('.bitstream-qp-scheduled-item') : [];
-                            if (list && remaining.length === 0) {
-                                list.innerHTML = '<p class="bitstream-qp-scheduled-empty">No scheduled Bits or Rebits yet.</p>';
-                            }
-                            setStatus('Scheduled post deleted.');
-                        })
-                        .catch(err => { setStatus(err.message || 'Delete failed.', true); btn.disabled = false; });
+                        fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
+                            .then(r => r.json())
+                            .then(data => {
+                                if (!data.success) throw new Error(data.data || 'Delete failed.');
+                                const item = btn.closest('.bitstream-composer-scheduled-item');
+                                if (item) item.remove();
+                                
+                                // Check if empty
+                                const list = scheduledListModal.querySelector('.bitstream-composer-scheduled-list');
+                                const remaining = list ? list.querySelectorAll('.bitstream-composer-scheduled-item') : [];
+                                if (list && remaining.length === 0) {
+                                    list.innerHTML = '<p class="bitstream-composer-scheduled-empty">No scheduled Bits or Rebits yet.</p>';
+                                }
+                                setStatus('Scheduled post deleted.');
+                            })
+                            .catch(err => { setStatus(err.message || 'Delete failed.', true); btn.disabled = false; });
+                    });
                 });
             });
         }
 
-        // ── QUICK POSTER SAVE DRAFT BUTTON ──
-        if (qpSaveDraftBtn) {
-            qpSaveDraftBtn.addEventListener('click', () => {
+        // ── COMPOSER SAVE DRAFT BUTTON ──
+        if (composerSaveDraftBtn) {
+            composerSaveDraftBtn.addEventListener('click', () => {
                 if (!window.bitstream_ajax || !submitNonce) { setStatus('Cannot save draft.', true); return; }
 
                 const content = textarea ? textarea.value.trim() : '';
                 const hasRebit = hRebitUrl && hRebitUrl.value.trim();
                 if (!content && !hasRebit) { setStatus('Nothing to save.', true); return; }
 
-                qpSaveDraftBtn.disabled = true;
-                qpSaveDraftBtn.textContent = 'Saving...';
+                composerSaveDraftBtn.disabled = true;
+                composerSaveDraftBtn.textContent = 'Saving...';
                 setStatus('Saving draft...');
 
                 const fd = new FormData(form);
-                fd.append('action', 'bitstream_submit_poster');
+                fd.append('action', 'bitstream_submit_composer');
                 fd.append('nonce', submitNonce);
-                fd.append('poster_type', form.dataset.posterType || 'bit');
+                fd.append('composer_type', form.dataset.composerType || 'bit');
                 fd.append('save_as_draft', '1');
 
                 fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
@@ -5408,22 +5540,22 @@ jQuery(document).ready(function ($) {
                     })
                     .catch(err => {
                         setStatus(err.message || 'Save failed.', true);
-                        qpSaveDraftBtn.disabled = false;
-                        qpSaveDraftBtn.textContent = 'Save Draft';
+                        composerSaveDraftBtn.disabled = false;
+                        composerSaveDraftBtn.textContent = 'Save Draft';
                     });
             });
         }
 
-        // Check page load URL parameters to open modals or focus poster elements
+        // Check page load URL parameters to open modals or focus composer elements
         const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has('show_drafts') || urlParams.get('poster_tab') === 'drafts') {
+        if (urlParams.has('show_drafts') || urlParams.get('composer_tab') === 'drafts') {
             openModal('drafts');
         }
-        if (urlParams.has('show_scheduled') || urlParams.get('poster_tab') === 'scheduled') {
+        if (urlParams.has('show_scheduled') || urlParams.get('composer_tab') === 'scheduled') {
             openModal('scheduled-list');
         }
-        if (urlParams.has('show_rebit') || urlParams.get('poster_tab') === 'rebit') {
-            const rebitBtn = qpRoot.querySelector('[data-qp-modal="rebit"]');
+        if (urlParams.has('show_rebit') || urlParams.get('composer_tab') === 'rebit') {
+            const rebitBtn = composerRoot.querySelector('[data-composer-modal="rebit"]');
             if (rebitBtn) {
                 setTimeout(() => {
                     rebitBtn.click();
@@ -5434,10 +5566,10 @@ jQuery(document).ready(function ($) {
                 }, 100);
             }
         }
-        if (urlParams.has('focus_qp') || urlParams.get('poster_tab') === 'bit') {
+        if (urlParams.has('focus_composer') || urlParams.get('composer_tab') === 'bit') {
             const isMobile = window.innerWidth < 1024;
             if (isMobile) {
-                qpRoot.hidden = false;
+                composerRoot.hidden = false;
             }
             if (textarea) {
                 setTimeout(() => {
@@ -5455,13 +5587,13 @@ jQuery(document).ready(function ($) {
             setTimeout(() => openTimelineQuoteModal(quotePostIdFromUrl), 150);
         }
 
-        // Auto-save QP form content when the user navigates away (mirrors poster shortcode beforeunload)
-        let qpFormIsDirty = false;
+        // Auto-save Composer form content when the user navigates away (mirrors composer shortcode beforeunload)
+        let composerFormIsDirty = false;
         if (textarea) {
-            textarea.addEventListener('input', () => { qpFormIsDirty = true; });
+            textarea.addEventListener('input', () => { composerFormIsDirty = true; });
         }
         window.addEventListener('beforeunload', () => {
-            if (!qpFormIsDirty) return;
+            if (!composerFormIsDirty) return;
             if (!window.bitstream_ajax || !bitstream_ajax.ajax_url || !submitNonce) return;
 
             const content = textarea ? textarea.value.trim() : '';
@@ -5470,14 +5602,14 @@ jQuery(document).ready(function ($) {
             if (!content && !hasRebit && !hasMedia) return;
 
             const fd = new FormData(form);
-            fd.append('action', 'bitstream_submit_poster');
+            fd.append('action', 'bitstream_submit_composer');
             fd.append('nonce', submitNonce);
-            fd.append('poster_type', form.dataset.posterType || 'bit');
+            fd.append('composer_type', form.dataset.composerType || 'bit');
             fd.append('save_as_draft', '1');
             fd.append('is_auto_draft', '1');
 
             navigator.sendBeacon(bitstream_ajax.ajax_url, fd);
-            qpFormIsDirty = false;
+            composerFormIsDirty = false;
         });
 
         const initialRebitUrl = hRebitUrl ? hRebitUrl.value.trim() : '';
@@ -5486,7 +5618,7 @@ jQuery(document).ready(function ($) {
                 previewRebitCard.innerHTML = '<p style="font-size:0.85rem;color:#555;">Rebit: ' + initialRebitUrl + '</p>';
             }
             if (previewRebit) previewRebit.hidden = false;
-            form.dataset.posterType = 'rebit';
+            form.dataset.composerType = 'rebit';
             if (textarea) textarea.required = false;
             syncPreviewArea();
         }
@@ -5502,7 +5634,7 @@ jQuery(document).ready(function ($) {
 
         const initialEditPostId = hEditPostId ? parseInt(hEditPostId.value || '0', 10) : 0;
         if (initialEditPostId > 0) {
-            loadPostIntoQuickPoster(initialEditPostId);
+            loadPostIntoComposer(initialEditPostId);
         }
 
         // ── FORM SUBMIT ──
@@ -5510,13 +5642,13 @@ jQuery(document).ready(function ($) {
             e.preventDefault();
             if (!window.bitstream_ajax || !submitNonce) { setStatus('Submit unavailable.', true); return; }
 
-            const posterType = form.dataset.posterType || 'bit';
+            const composerType = form.dataset.composerType || 'bit';
             const content = textarea ? textarea.value.trim() : '';
             const hasMedia = hAttachmentId && parseInt(hAttachmentId.value || '0', 10) > 0;
             const hasRebit = hRebitUrl && hRebitUrl.value.trim();
 
-            let effectiveType = posterType;
-            if (posterType === 'bit' && !hasMedia && !hasRebit && content) {
+            let effectiveType = composerType;
+            if (composerType === 'bit' && !hasMedia && !hasRebit && content) {
                 try {
                     const u = new URL(content);
                     if (u.protocol === 'http:' || u.protocol === 'https:') effectiveType = 'rebit';
@@ -5529,9 +5661,9 @@ jQuery(document).ready(function ($) {
             if (submitBtn) submitBtn.disabled = true;
 
             const fd = new FormData(form);
-            fd.append('action', 'bitstream_submit_poster');
+            fd.append('action', 'bitstream_submit_composer');
             fd.append('nonce', submitNonce);
-            fd.append('poster_type', effectiveType);
+            fd.append('composer_type', effectiveType);
 
             if (effectiveType === 'rebit' && !hasRebit && content) {
                 fd.set('rebit_url', content);
@@ -5550,10 +5682,10 @@ jQuery(document).ready(function ($) {
                     const isScheduled = !!responseData.is_scheduled;
 
                     if (isScheduled) {
-                        const posterBaseUrl = (window.bitstream_ajax && bitstream_ajax.poster_url)
-                            ? bitstream_ajax.poster_url
+                        const composerBaseUrl = (window.bitstream_ajax && bitstream_ajax.composer_url)
+                            ? bitstream_ajax.composer_url
                             : (window.location.origin + '/bitstream/');
-                        const redirectUrl = new URL(posterBaseUrl, window.location.origin);
+                        const redirectUrl = new URL(composerBaseUrl, window.location.origin);
                         redirectUrl.searchParams.set('show_scheduled', '1');
                         if (createdPostId > 0) {
                             redirectUrl.searchParams.set('highlight_scheduled', String(createdPostId));

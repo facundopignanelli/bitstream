@@ -22,31 +22,31 @@ Repository-wide instructions for BitStream work in this workspace.
 - If a rule is important for this repository, keep it here as well so it is visible in the workspace.
 
 ## Modal design system
-All modals in BitStream use a single unified design. **Always use `bitstream-qp-modal-*` classes** for new modals — do not invent new modal class names.
+All modals in BitStream use a single unified design. **Always use `bitstream-composer-modal-*` classes** for new modals — do not invent new modal class names.
 
 ### Canonical HTML structure
 ```html
-<div class="bitstream-qp-modal bitstream-qp-modal-{name}" hidden>
-  <div class="bitstream-qp-modal-backdrop" data-qp-modal-close="{name}"></div>
-  <div class="bitstream-qp-modal-dialog" role="dialog" aria-modal="true" aria-label="…">
-    <header class="bitstream-qp-modal-header">
+<div class="bitstream-composer-modal bitstream-composer-modal-{name}" hidden>
+  <div class="bitstream-composer-modal-backdrop" data-composer-modal-close="{name}"></div>
+  <div class="bitstream-composer-modal-dialog" role="dialog" aria-modal="true" aria-label="…">
+    <header class="bitstream-composer-modal-header">
       <h3>Title</h3>
-      <button type="button" class="bitstream-qp-modal-close" data-qp-modal-close="{name}" aria-label="Close">
+      <button type="button" class="bitstream-composer-modal-close" data-composer-modal-close="{name}" aria-label="Close">
         <i class="fa-solid fa-xmark" aria-hidden="true"></i>
       </button>
     </header>
-    <div class="bitstream-qp-modal-body">
+    <div class="bitstream-composer-modal-body">
       <!-- scrollable content -->
     </div>
-    <footer class="bitstream-qp-modal-footer">
-      <button type="button" class="bitstream-qp-modal-cancel" data-qp-modal-close="{name}">Cancel</button>
-      <button type="button" class="bitstream-qp-modal-confirm">Confirm</button>
+    <footer class="bitstream-composer-modal-footer">
+      <button type="button" class="bitstream-composer-modal-cancel" data-composer-modal-close="{name}">Cancel</button>
+      <button type="button" class="bitstream-composer-modal-confirm">Confirm</button>
     </footer>
   </div>
 </div>
 ```
 
-Use `bitstream-qp-modal-dialog-wide` on the dialog div for wider modals (e.g. Drafts).
+Use `bitstream-composer-modal-dialog-wide` on the dialog div for wider modals (e.g. Drafts).
 
 ### Design tokens (do not deviate)
 | Token | Value |

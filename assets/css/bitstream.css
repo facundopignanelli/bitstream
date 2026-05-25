@@ -17,24 +17,24 @@
 .bitstream-feed-layout h6,
 .bitstream-feed-layout small,
 .bitstream-feed-layout strong,
-.bitstream-poster,
-.bitstream-poster button,
-.bitstream-poster input,
-.bitstream-poster textarea,
-.bitstream-poster select,
-.bitstream-poster summary,
-.bitstream-poster label,
-.bitstream-poster a,
-.bitstream-poster p,
-.bitstream-poster span,
-.bitstream-poster h1,
-.bitstream-poster h2,
-.bitstream-poster h3,
-.bitstream-poster h4,
-.bitstream-poster h5,
-.bitstream-poster h6,
-.bitstream-poster small,
-.bitstream-poster strong {
+.bitstream-composer,
+.bitstream-composer button,
+.bitstream-composer input,
+.bitstream-composer textarea,
+.bitstream-composer select,
+.bitstream-composer summary,
+.bitstream-composer label,
+.bitstream-composer a,
+.bitstream-composer p,
+.bitstream-composer span,
+.bitstream-composer h1,
+.bitstream-composer h2,
+.bitstream-composer h3,
+.bitstream-composer h4,
+.bitstream-composer h5,
+.bitstream-composer h6,
+.bitstream-composer small,
+.bitstream-composer strong {
     font-family: inherit;
 }
 
@@ -78,24 +78,42 @@
 .bit-rebit-preview video,
 .bitstream-quoted-preview video,
 .bitstream-og-card video,
+.bit-card-content .wp-video-shortcode,
+.bit-rebit-preview .wp-video-shortcode,
+.bitstream-quoted-preview .wp-video-shortcode,
+.bitstream-og-card .wp-video-shortcode {
+    max-width: 100% !important;
+    height: auto !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    border-radius: 15px;
+}
+
 .bit-card-content .wp-video,
 .bit-rebit-preview .wp-video,
 .bitstream-quoted-preview .wp-video,
 .bitstream-og-card .wp-video,
-.bit-card-content .wp-video-shortcode,
-.bit-rebit-preview .wp-video-shortcode,
-.bitstream-quoted-preview .wp-video-shortcode,
-.bitstream-og-card .wp-video-shortcode,
 .bit-card-content .mejs-container,
 .bit-rebit-preview .mejs-container,
 .bitstream-quoted-preview .mejs-container,
 .bitstream-og-card .mejs-container {
     max-width: 100% !important;
     width: 100% !important;
-    height: auto !important;
     display: block;
+    visibility: visible !important;
+    opacity: 1 !important;
     border-radius: 15px;
     overflow: hidden;
+}
+
+.bit-card-content .mejs-container video,
+.bit-rebit-preview .mejs-container video,
+.bitstream-quoted-preview .mejs-container video,
+.bitstream-og-card .mejs-container video {
+    width: 100% !important;
+    height: auto !important;
+    display: block !important;
 }
 
 /* Remove min-height once image is loaded */
@@ -145,10 +163,10 @@
     max-width: 100%;
 }
 
-/* Top rail is removed. Quick actions and Quick Bit styles are now handled in the main columns. */
+/* Top rail is removed. Quick actions and Composer styles are now handled in the main columns. */
 
-/* ── Quick Poster (redesigned) ───────────────────────────────────────── */
-.bitstream-quick-post-poster.bitstream-poster {
+/* ── Composer (redesigned) ───────────────────────────────────────── */
+.bitstream-composer {
     max-width: none;
     margin: 0;
     padding: 0.9rem;
@@ -158,17 +176,17 @@
     box-sizing: border-box;
 }
 
-.bitstream-quick-post-poster .bitstream-poster-status {
+.bitstream-composer .bitstream-composer-status {
     margin-top: 0.6rem;
 }
 
-.bitstream-quick-post-poster .bitstream-sidebar-quick-post-form {
+.bitstream-composer .bitstream-sidebar-composer-form {
     display: flex;
     flex-direction: column;
     gap: 0.65rem;
 }
 
-.bitstream-qp-textarea {
+.bitstream-composer-textarea {
     width: 100%;
     box-sizing: border-box;
     border: 1px solid #ccc;
@@ -180,19 +198,19 @@
     min-height: 72px;
 }
 
-.bitstream-qp-textarea:focus {
+.bitstream-composer-textarea:focus {
     border-color: var(--wp--preset--color--accent-1, #2c6e49);
     outline: none;
     box-shadow: 0 0 0 2px rgba(44, 110, 73, 0.15);
 }
 
 /* Action buttons row */
-.bitstream-qp-actions-row {
+.bitstream-composer-actions-row {
     display: flex;
     gap: 0.5rem;
 }
 
-.bitstream-qp-action-btn {
+.bitstream-composer-action-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -207,60 +225,60 @@
     transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
 }
 
-.bitstream-qp-action-btn:hover {
+.bitstream-composer-action-btn:hover {
     background: rgba(44, 110, 73, 0.08);
     color: #1e4d33;
     transform: scale(1.1);
 }
 
-.bitstream-qp-action-btn:active {
+.bitstream-composer-action-btn:active {
     transform: scale(0.95);
     background: rgba(44, 110, 73, 0.15);
 }
 
-.bitstream-qp-action-btn.is-active {
+.bitstream-composer-action-btn.is-active {
     background: rgba(44, 110, 73, 0.15);
     color: #1e4d33;
 }
 
-.bitstream-qp-action-btn.is-danger {
+.bitstream-composer-action-btn.is-danger {
     color: #c81e1e;
 }
 
-.bitstream-qp-action-btn.is-danger:hover {
+.bitstream-composer-action-btn.is-danger:hover {
     background: rgba(200, 30, 30, 0.08);
     color: #a81818;
 }
 
-.bitstream-qp-action-btn.is-danger:active {
+.bitstream-composer-action-btn.is-danger:active {
     background: rgba(200, 30, 30, 0.15);
 }
 
 /* Preview area */
-.bitstream-qp-preview-area {
+.bitstream-composer-preview-area {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
 }
 
-.bitstream-qp-preview-rebit,
-.bitstream-qp-preview-media,
-.bitstream-qp-preview-schedule,
-.bitstream-qp-preview-draft {
+.bitstream-composer-preview-rebit,
+.bitstream-composer-preview-media,
+.bitstream-composer-preview-schedule,
+.bitstream-composer-preview-draft {
     border: 1px solid #e2e8e4;
     border-radius: 10px;
     background: #fbfdfc;
     padding: 0.55rem;
 }
 
-.bitstream-qp-preview-header {
+.bitstream-composer-preview-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin-bottom: 0.35rem;
 }
 
-.bitstream-qp-preview-label {
+.bitstream-composer-preview-label {
     font-size: 0.8rem;
     font-weight: 600;
     color: var(--wp--preset--color--accent-1, #2c6e49);
@@ -269,17 +287,17 @@
     gap: 0.35rem;
 }
 
-.bitstream-qp-preview-label i {
+.bitstream-composer-preview-label i {
     font-size: 0.85rem;
 }
 
-.bitstream-qp-preview-actions {
+.bitstream-composer-preview-actions {
     display: flex;
     gap: 0.35rem;
 }
 
-.bitstream-qp-preview-remove,
-.bitstream-qp-preview-edit {
+.bitstream-composer-preview-remove,
+.bitstream-composer-preview-edit {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -292,48 +310,48 @@
     transition: background 0.15s ease;
 }
 
-.bitstream-qp-preview-remove {
+.bitstream-composer-preview-remove {
     background: rgba(200, 30, 30, 0.1);
     color: #c81e1e;
 }
 
-.bitstream-qp-preview-remove:hover {
+.bitstream-composer-preview-remove:hover {
     background: rgba(200, 30, 30, 0.2);
 }
 
-.bitstream-qp-preview-edit {
+.bitstream-composer-preview-edit {
     background: rgba(44, 110, 73, 0.1);
     color: var(--wp--preset--color--accent-1, #2c6e49);
 }
 
-.bitstream-qp-preview-edit:hover {
+.bitstream-composer-preview-edit:hover {
     background: rgba(44, 110, 73, 0.2);
 }
 
-.bitstream-qp-preview-rebit-card {
+.bitstream-composer-preview-rebit-card {
     font-size: 0.85rem;
     line-height: 1.4;
     overflow: hidden;
 }
 
-.bitstream-qp-preview-rebit-card .bitstream-og-card {
+.bitstream-composer-preview-rebit-card .bitstream-og-card {
     margin: 0;
 }
 
-.bitstream-qp-preview-rebit-card .bit-rebit-embed,
-.bitstream-qp-rebit-live-preview-card .bit-rebit-embed {
+.bitstream-composer-preview-rebit-card .bit-rebit-embed,
+.bitstream-composer-rebit-live-preview-card .bit-rebit-embed {
     max-width: 380px;
     margin: 0.5rem 0;
     border-radius: 8px;
     overflow: hidden;
 }
 
-.bitstream-qp-preview-media-thumb {
+.bitstream-composer-preview-media-thumb {
     position: relative;
     text-align: center;
 }
 
-.bitstream-qp-preview-media-thumb img {
+.bitstream-composer-preview-media-thumb img {
     width: 100%;
     height: auto;
     object-fit: cover;
@@ -343,7 +361,7 @@
 
 
 
-.bitstream-qp-preview-media-thumb span {
+.bitstream-composer-preview-media-thumb span {
     display: block;
     font-size: 0.82rem;
     color: #4f5d55;
@@ -351,8 +369,8 @@
     word-break: break-word;
 }
 
-.bitstream-qp-preview-schedule-date,
-.bitstream-qp-preview-draft-label {
+.bitstream-composer-preview-schedule-date,
+.bitstream-composer-preview-draft-label {
     display: block;
     font-size: 0.82rem;
     color: #3d4a43;
@@ -360,7 +378,7 @@
 }
 
 /* Submit button */
-.bitstream-qp-submit {
+.bitstream-composer-submit {
     width: 100%;
     padding: 0.5rem 1rem;
     font-size: 0.92rem;
@@ -373,17 +391,17 @@
     transition: background 0.15s ease;
 }
 
-.bitstream-qp-submit:hover {
+.bitstream-composer-submit:hover {
     background: #235c3e;
 }
 
-.bitstream-qp-submit:disabled {
+.bitstream-composer-submit:disabled {
     opacity: 0.6;
     cursor: not-allowed;
 }
 
-/* ── Quick Poster Modals (shared — canonical unified style) ──────────────── */
-.bitstream-qp-modal {
+/* ── Composer Modals (shared — canonical unified style) ──────────────── */
+.bitstream-composer-modal {
     position: fixed;
     inset: 0;
     z-index: 100000;
@@ -394,7 +412,7 @@
     box-sizing: border-box;
 }
 
-.bitstream-qp-modal:not([hidden]) {
+.bitstream-composer-modal:not([hidden]) {
     display: flex;
 }
 
@@ -408,7 +426,7 @@
     to { transform: translateY(0); }
 }
 
-.bitstream-qp-modal-backdrop {
+.bitstream-composer-modal-backdrop {
     position: absolute;
     inset: 0;
     background: rgba(0, 0, 0, 0.45);
@@ -417,7 +435,7 @@
     animation: bitstreamFadeIn 0.2s ease-out;
 }
 
-.bitstream-qp-modal-dialog {
+.bitstream-composer-modal-dialog {
     position: relative;
     width: 100%;
     max-width: 520px;
@@ -431,7 +449,7 @@
     animation: bitstreamQpModalIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.bitstream-qp-modal-dialog-wide {
+.bitstream-composer-modal-dialog-wide {
     max-width: 640px;
 }
 
@@ -446,7 +464,7 @@
     }
 }
 
-.bitstream-qp-modal-header {
+.bitstream-composer-modal-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -460,14 +478,14 @@
     flex-shrink: 0;
 }
 
-.bitstream-qp-modal-header h3 {
+.bitstream-composer-modal-header h3 {
     margin: 0;
     font-size: 1.05rem;
     font-weight: 700;
     color: var(--wp--preset--color--accent-1, #2c6e49);
 }
 
-.bitstream-qp-modal-close {
+.bitstream-composer-modal-close {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -483,18 +501,18 @@
     line-height: 1;
 }
 
-.bitstream-qp-modal-close:hover {
+.bitstream-composer-modal-close:hover {
     color: #333;
     background: #f3f4f6;
 }
 
-.bitstream-qp-modal-body {
+.bitstream-composer-modal-body {
     padding: 1rem 1.4rem 1.2rem;
     overflow-y: auto;
     flex: 1 1 auto;
 }
 
-.bitstream-qp-modal-body label {
+.bitstream-composer-modal-body label {
     display: block;
     margin-bottom: 0.3rem;
     font-size: 0.82rem;
@@ -502,10 +520,10 @@
     color: #444;
 }
 
-.bitstream-qp-modal-body input[type="text"],
-.bitstream-qp-modal-body input[type="url"],
-.bitstream-qp-modal-body textarea,
-.bitstream-qp-modal-body input[type="datetime-local"] {
+.bitstream-composer-modal-body input[type="text"],
+.bitstream-composer-modal-body input[type="url"],
+.bitstream-composer-modal-body textarea,
+.bitstream-composer-modal-body input[type="datetime-local"] {
     width: 100%;
     border: 1.5px solid #e2e8f0;
     border-radius: 12px;
@@ -518,22 +536,22 @@
     transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
-.bitstream-qp-modal-body input:focus,
-.bitstream-qp-modal-body textarea:focus {
+.bitstream-composer-modal-body input:focus,
+.bitstream-composer-modal-body textarea:focus {
     border-color: var(--wp--preset--color--accent-1, #2c6e49);
     outline: none;
     background: #fff;
     box-shadow: 0 0 0 3px rgba(44, 110, 73, 0.13);
 }
 
-.bitstream-qp-rebit-image-controls {
+.bitstream-composer-rebit-image-controls {
     display: flex;
     gap: 0.5rem;
     align-items: center;
     margin-bottom: 0.5rem;
 }
 
-.bitstream-qp-modal-footer {
+.bitstream-composer-modal-footer {
     display: flex;
     justify-content: flex-end;
     gap: 0.5rem;
@@ -542,7 +560,7 @@
     flex-shrink: 0;
 }
 
-.bitstream-qp-modal-cancel {
+.bitstream-composer-modal-cancel {
     border: 1.5px solid #e2e8f0;
     border-radius: 10px;
     background: #fff;
@@ -555,12 +573,12 @@
     font-family: inherit;
 }
 
-.bitstream-qp-modal-cancel:hover {
+.bitstream-composer-modal-cancel:hover {
     background: #f3f4f6;
     border-color: #d0d7e0;
 }
 
-.bitstream-qp-modal-confirm {
+.bitstream-composer-modal-confirm {
     border: none;
     border-radius: 10px;
     background: var(--wp--preset--color--accent-1, #2c6e49);
@@ -574,18 +592,18 @@
     transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
 }
 
-.bitstream-qp-modal-confirm:hover {
+.bitstream-composer-modal-confirm:hover {
     background: #205035;
     box-shadow: 0 6px 18px rgba(44, 110, 73, 0.32);
     transform: translateY(-1px);
 }
 
-.bitstream-qp-modal-confirm:active {
+.bitstream-composer-modal-confirm:active {
     transform: translateY(1px);
     box-shadow: 0 2px 8px rgba(44, 110, 73, 0.18);
 }
 
-.bitstream-qp-modal-confirm:disabled {
+.bitstream-composer-modal-confirm:disabled {
     opacity: 0.6;
     cursor: not-allowed;
     transform: none;
@@ -593,7 +611,7 @@
 }
 
 /* Rebit modal live preview */
-.bitstream-qp-rebit-live-preview {
+.bitstream-composer-rebit-live-preview {
     margin-top: 0.75rem;
     border: 1px solid #e2e8e4;
     border-radius: 10px;
@@ -601,24 +619,24 @@
     background: #fbfdfc;
 }
 
-.bitstream-qp-rebit-fetch.is-edit-mode {
+.bitstream-composer-rebit-fetch.is-edit-mode {
     background: transparent !important;
     border: 1.5px solid var(--wp--preset--color--accent-1, #2c6e49) !important;
     color: var(--wp--preset--color--accent-1, #2c6e49) !important;
     box-shadow: none !important;
 }
 
-.bitstream-qp-rebit-fetch.is-edit-mode:hover {
+.bitstream-composer-rebit-fetch.is-edit-mode:hover {
     background: rgba(44, 110, 73, 0.05) !important;
     color: var(--wp--preset--color--accent-1, #2c6e49) !important;
 }
 
 /* Ensure metadata submodal stacks on top of the main Rebit modal */
-.bitstream-qp-modal-rebit-meta {
+.bitstream-composer-modal-rebit-meta {
     z-index: 100002 !important;
 }
 
-.bitstream-qp-rebit-image-preview-wrapper {
+.bitstream-composer-rebit-image-preview-wrapper {
     margin-top: 0.75rem;
     border: 1px solid #e2e8f0;
     border-radius: 12px;
@@ -628,7 +646,7 @@
     max-width: 100%;
 }
 
-.bitstream-qp-rebit-image-preview-el {
+.bitstream-composer-rebit-image-preview-el {
     display: block;
     max-width: 100%;
     max-height: 160px;
@@ -637,11 +655,11 @@
 }
 
 /* Drafts modal */
-.bitstream-qp-drafts-actions {
+.bitstream-composer-drafts-actions {
     margin-bottom: 0.65rem;
 }
 
-.bitstream-qp-save-draft-btn {
+.bitstream-composer-save-draft-btn {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
@@ -658,45 +676,45 @@
     justify-content: center;
 }
 
-.bitstream-qp-save-draft-btn:hover {
+.bitstream-composer-save-draft-btn:hover {
     background: #eef6f1;
 }
 
-.bitstream-qp-drafts-filter {
+.bitstream-composer-drafts-filter {
     margin-bottom: 0.5rem;
 }
 
-.bitstream-qp-draft-item {
+.bitstream-composer-draft-item {
     cursor: default;
 }
 
-.bitstream-qp-draft-info {
+.bitstream-composer-draft-info {
     flex: 1 1 auto;
     min-width: 0;
 }
 
-.bitstream-qp-draft-info p {
+.bitstream-composer-draft-info p {
     margin: 0.15rem 0;
     font-size: 0.85rem;
     color: #444;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal;
 }
 
-.bitstream-qp-draft-info small {
+.bitstream-composer-draft-info small {
     font-size: 0.78rem;
     color: #888;
 }
 
-.bitstream-qp-draft-actions {
+.bitstream-composer-draft-actions {
     display: flex;
     gap: 0.35rem;
     align-items: center;
     flex-shrink: 0;
 }
 
-.bitstream-qp-drafts-empty {
+.bitstream-composer-drafts-empty {
     text-align: center;
     color: #888;
     font-size: 0.88rem;
@@ -704,20 +722,20 @@
 }
 
 /* Scheduled posts list modal */
-.bitstream-qp-scheduled-filter {
+.bitstream-composer-scheduled-filter {
     margin-bottom: 0.5rem;
 }
 
-.bitstream-qp-scheduled-item {
+.bitstream-composer-scheduled-item {
     cursor: default;
 }
 
-.bitstream-qp-scheduled-info {
+.bitstream-composer-scheduled-info {
     flex: 1 1 auto;
     min-width: 0;
 }
 
-.bitstream-qp-scheduled-info p {
+.bitstream-composer-scheduled-info p {
     margin: 0.15rem 0;
     font-size: 0.85rem;
     color: #444;
@@ -726,19 +744,19 @@
     white-space: nowrap;
 }
 
-.bitstream-qp-scheduled-info small {
+.bitstream-composer-scheduled-info small {
     font-size: 0.78rem;
     color: #888;
 }
 
-.bitstream-qp-scheduled-actions {
+.bitstream-composer-scheduled-actions {
     display: flex;
     gap: 0.35rem;
     align-items: center;
     flex-shrink: 0;
 }
 
-.bitstream-qp-scheduled-empty {
+.bitstream-composer-scheduled-empty {
     text-align: center;
     color: #888;
     font-size: 0.88rem;
@@ -746,11 +764,11 @@
 }
 
 /* Schedule modal */
-.bitstream-qp-schedule-datetime-input {
+.bitstream-composer-schedule-datetime-input {
     margin-top: 0.5rem;
 }
 
-.bitstream-qp-schedule-datetime-input:disabled {
+.bitstream-composer-schedule-datetime-input:disabled {
     opacity: 0.4;
 }
 
@@ -878,7 +896,7 @@ a.bitstream-filter-chip:hover {
 
 
 
-.bitstream-quick-post-container {
+.bitstream-composer-container {
     display: block;
 }
 
@@ -1278,7 +1296,7 @@ a.bitstream-filter-chip:hover {
     margin-top: 0.5em !important;
 }
 
-/* Reduce poster name size */
+/* Reduce composer name size */
 .bit-comment-header .bit-comment-author-name {
     font-size: 0.85em !important;
 }
@@ -1799,8 +1817,8 @@ video {
     height: auto !important;
 }
 
-/* Frontend tabbed poster */
-.bitstream-poster {
+/* Frontend tabbed composer */
+.bitstream-composer {
     max-width: 760px;
     margin: 1.5rem auto;
     padding: 1rem;
@@ -1809,7 +1827,7 @@ video {
     background: #fff;
 }
 
-.bitstream-poster-tabs {
+.bitstream-composer-tabs {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     padding: 0.65rem 0.75rem;
@@ -1817,7 +1835,7 @@ video {
     margin: 0 0 0.75rem;
 }
 
-.bitstream-poster-tab {
+.bitstream-composer-tab {
     border: 1px solid #ccc;
     border-radius: 15px;
     background: #fff;
@@ -1827,21 +1845,21 @@ video {
     font-weight: 600;
 }
 
-.bitstream-poster-tab.is-active {
+.bitstream-composer-tab.is-active {
     border-color: var(--wp--preset--color--accent-1, #2c6e49);
     background: var(--wp--preset--color--accent-1, #2c6e49);
     color: #fff;
 }
 
-.bitstream-poster-panel {
+.bitstream-composer-panel {
     display: none;
 }
 
-.bitstream-poster-panel.is-active {
+.bitstream-composer-panel.is-active {
     display: block;
 }
 
-.bitstream-poster-quote-preview-compact {
+.bitstream-composer-quote-preview-compact {
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
@@ -1849,36 +1867,36 @@ video {
     cursor: pointer;
 }
 
-.bitstream-poster-quote-preview-header {
+.bitstream-composer-quote-preview-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
 }
 
-.bitstream-poster-quote-preview-header p {
+.bitstream-composer-quote-preview-header p {
     margin: 0;
 }
 
 /* Settings Tabs */
-.bitstream-poster-quote-preview-time,
-.bitstream-poster-quote-preview-link {
+.bitstream-composer-quote-preview-time,
+.bitstream-composer-quote-preview-link {
     flex-shrink: 0;
     font-size: 0.8rem;
     color: var(--wp--preset--color--secondary, #666);
 }
 
-.bitstream-poster-quote-preview-link {
+.bitstream-composer-quote-preview-link {
     color: var(--wp--preset--color--accent-1, #2c6e49);
     font-weight: 600;
     text-decoration: none;
 }
 
-.bitstream-poster-quote-preview-link:hover {
+.bitstream-composer-quote-preview-link:hover {
     text-decoration: underline;
 }
 
-.bitstream-poster-quote-preview-excerpt {
+.bitstream-composer-quote-preview-excerpt {
     margin: 0;
     color: #30363d;
     font-size: 0.95rem;
@@ -2401,7 +2419,7 @@ video {
     }
 }
 
-.bitstream-poster-editing-banner {
+.bitstream-composer-editing-banner {
     margin: 0 0 0.75rem;
     padding: 0.45rem 0.7rem;
     border-radius: 10px;
@@ -2412,14 +2430,14 @@ video {
     font-weight: 600;
 }
 
-.bitstream-poster-form {
+.bitstream-composer-form {
     display: grid;
     gap: 0.65rem;
 }
 
-.bitstream-poster-form input[type="text"],
-.bitstream-poster-form input[type="url"],
-.bitstream-poster-form textarea {
+.bitstream-composer-form input[type="text"],
+.bitstream-composer-form input[type="url"],
+.bitstream-composer-form textarea {
     width: 100%;
     border: 1px solid #ccc;
     border-radius: 15px;
@@ -2435,10 +2453,11 @@ video {
 }
 
 .bitstream-fetch-og,
+.bitstream-composer-rebit-fetch,
 .bitstream-rebit-edit-preview,
 .bitstream-media-select,
 .bitstream-media-remove,
-.bitstream-poster-submit {
+.bitstream-composer-submit {
     border: none;
     border-radius: 15px;
     padding: 0.6rem 0.9rem;
@@ -2448,6 +2467,7 @@ video {
 }
 
 .bitstream-fetch-og.is-loading::before,
+.bitstream-composer-rebit-fetch.is-loading::before,
 .bitstream-rebit-editor-save.is-loading::before {
     content: "\f110";
     font-family: "Font Awesome 6 Free";
@@ -2468,9 +2488,10 @@ video {
 }
 
 .bitstream-fetch-og,
+.bitstream-composer-rebit-fetch,
 .bitstream-rebit-edit-preview,
 .bitstream-media-select,
-.bitstream-poster-submit {
+.bitstream-composer-submit {
     background: var(--wp--preset--color--accent-1, #2c6e49);
     color: #fff;
 }
@@ -2602,8 +2623,8 @@ video {
     display: none !important;
 }
 
-/* Ensure modal poster actions are spaced and aligned */
-.bitstream-poster-actions {
+/* Ensure modal composer actions are spaced and aligned */
+.bitstream-composer-actions {
     display: flex;
     gap: 0.5rem;
     align-items: center;
@@ -3169,16 +3190,16 @@ body.bitstream-cropper-open {
     color: #555;
 }
 
-.bitstream-poster-status {
+.bitstream-composer-status {
     margin-top: 0.85rem;
     font-size: 0.95rem;
 }
 
-.bitstream-poster-status.is-error {
+.bitstream-composer-status.is-error {
     color: #b42318;
 }
 
-.bitstream-poster-status.is-success {
+.bitstream-composer-status.is-success {
     color: var(--wp--preset--color--accent-1, #2c6e49);
 }
 
@@ -3207,7 +3228,7 @@ body.bitstream-cropper-open {
     color: var(--wp--preset--color--accent-1, #2c6e49);
 }
 
-.bitstream-poster-quote-preview {
+.bitstream-composer-quote-preview {
     border: 1px solid #e0e0e0;
     border-radius: 15px;
     padding: 0.75rem;
@@ -3217,11 +3238,11 @@ body.bitstream-cropper-open {
     box-sizing: border-box;
 }
 
-.bitstream-poster-quote-preview>p {
+.bitstream-composer-quote-preview>p {
     margin: 0 0 0.7rem;
 }
 
-.bitstream-poster-quote-preview .bit-card-quoted-nested {
+.bitstream-composer-quote-preview .bit-card-quoted-nested {
     position: static !important;
     width: 100% !important;
     left: auto !important;
@@ -3413,19 +3434,19 @@ body.bitstream-cropper-open {
 }
 
 /* Poster action buttons row */
-.bitstream-poster-actions {
+.bitstream-composer-actions {
     display: flex;
     gap: 0.65rem;
 }
 
-.bitstream-poster-actions .bitstream-poster-submit,
-.bitstream-poster-actions .bitstream-poster-save-draft {
+.bitstream-composer-actions .bitstream-composer-submit,
+.bitstream-composer-actions .bitstream-composer-save-draft {
     flex: 1;
     text-align: center;
 }
 
 /* Save to Drafts button */
-.bitstream-poster-save-draft {
+.bitstream-composer-save-draft {
     border: 1.5px solid #b0b8b4;
     border-radius: 15px;
     padding: 0.6rem 0.9rem;
@@ -3437,13 +3458,13 @@ body.bitstream-cropper-open {
     transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
 }
 
-.bitstream-poster-save-draft:hover {
+.bitstream-composer-save-draft:hover {
     border-color: #7a8580;
     background: #f5f7f6;
     color: #222;
 }
 
-.bitstream-poster-save-draft:disabled {
+.bitstream-composer-save-draft:disabled {
     opacity: 0.5;
     cursor: wait;
 }
@@ -3469,12 +3490,12 @@ body.bitstream-cropper-open {
         flex-direction: column;
     }
 
-    .bitstream-poster-actions {
+    .bitstream-composer-actions {
         flex-direction: column;
     }
 
-    .bitstream-poster-actions .bitstream-poster-submit,
-    .bitstream-poster-actions .bitstream-poster-save-draft {
+    .bitstream-composer-actions .bitstream-composer-submit,
+    .bitstream-composer-actions .bitstream-composer-save-draft {
         flex: 1 1 100%;
         text-align: center;
     }
@@ -3572,7 +3593,7 @@ iframe[src*="youtu.be"] {
 }
 
 .bitstream-quoted-preview .bit-card-quoted-nested .bit-card-header,
-.bitstream-poster-quote-preview .bit-card-quoted-nested .bit-card-header {
+.bitstream-composer-quote-preview .bit-card-quoted-nested .bit-card-header {
     margin-bottom: 0.45rem !important;
 }
 
@@ -4265,22 +4286,22 @@ iframe[src*="youtu.be"] {
     box-shadow: none;
 }
 
-/* ── Mobile Quick Post Modal & Desktop Inline Restructuring ── */
+/* ── Mobile Composer Modal & Desktop Inline Restructuring ── */
 @media (max-width: 1023px) {
     /* Full-screen mobile modal layout */
-    .bitstream-qp-modal,
+    .bitstream-composer-modal,
     .bs-edit-modal,
     .bitstream-cropper-modal {
         padding: 0 !important;
     }
     
-    .bitstream-qp-modal-backdrop,
+    .bitstream-composer-modal-backdrop,
     .bs-edit-modal-backdrop,
     .bitstream-cropper-backdrop {
         display: none !important; /* Disable blurs & dark overlays to save mobile rendering performance */
     }
     
-    .bitstream-qp-modal-dialog,
+    .bitstream-composer-modal-dialog,
     .bs-edit-modal-dialog,
     .bitstream-cropper-dialog {
         width: 100% !important;
@@ -4294,14 +4315,14 @@ iframe[src*="youtu.be"] {
         flex-direction: column !important;
     }
     
-    .bitstream-qp-modal-header,
+    .bitstream-composer-modal-header,
     .bs-edit-modal-header,
     .bitstream-cropper-header {
         border-radius: 0 !important;
     }
     
     .bs-edit-modal-footer,
-    .bitstream-qp-modal-footer,
+    .bitstream-composer-modal-footer,
     .bitstream-cropper-footer {
         border-radius: 0 !important;
     }
@@ -4311,7 +4332,7 @@ iframe[src*="youtu.be"] {
         text-align: center;
     }
 
-    .bitstream-quick-post-poster.bitstream-poster {
+    .bitstream-composer {
         position: fixed !important;
         inset: 0 !important;
         z-index: 100000 !important;
@@ -4327,15 +4348,15 @@ iframe[src*="youtu.be"] {
         margin: 0 !important;
     }
     
-    .bitstream-quick-post-poster.bitstream-poster:not([hidden]) {
+    .bitstream-composer:not([hidden]) {
         display: flex !important;
     }
     
-    .bitstream-quick-post-poster > .bitstream-qp-modal-backdrop {
+    .bitstream-composer > .bitstream-composer-modal-backdrop {
         display: none !important;
     }
     
-    .bitstream-quick-post-poster > .bitstream-qp-modal-dialog {
+    .bitstream-composer > .bitstream-composer-modal-dialog {
         position: relative;
         width: 100% !important;
         max-width: 100% !important;
@@ -4352,7 +4373,7 @@ iframe[src*="youtu.be"] {
         border: none !important;
     }
     
-    .bitstream-quick-post-poster > .bitstream-qp-modal-dialog > .bitstream-qp-modal-header {
+    .bitstream-composer > .bitstream-composer-modal-dialog > .bitstream-composer-modal-header {
         display: flex !important;
         align-items: center;
         justify-content: space-between;
@@ -4366,24 +4387,24 @@ iframe[src*="youtu.be"] {
         flex-shrink: 0;
     }
     
-    .bitstream-quick-post-poster > .bitstream-qp-modal-dialog > .bitstream-qp-modal-body {
+    .bitstream-composer > .bitstream-composer-modal-dialog > .bitstream-composer-modal-body {
         padding: 1rem 1.4rem 1.2rem !important;
         overflow-y: auto !important;
         flex: 1 1 auto !important;
     }
     
-    /* Ensure the nested sub-modals sit on top of the quickpost modal dialog but behave as full screen sheets */
-    .bitstream-quick-post-poster .bitstream-qp-modal {
+    /* Ensure the nested sub-modals sit on top of the composer modal dialog but behave as full screen sheets */
+    .bitstream-composer .bitstream-composer-modal {
         z-index: 100001 !important;
         padding: 0 !important;
     }
     
     /* Optimize nested mobile modals to prevent double-blur and layout jank */
-    .bitstream-quick-post-poster:has(.bitstream-qp-modal:not([hidden])) > .bitstream-qp-modal-backdrop {
+    .bitstream-composer:has(.bitstream-composer-modal:not([hidden])) > .bitstream-composer-modal-backdrop {
         display: none !important;
     }
     
-    .bitstream-quick-post-poster:has(.bitstream-qp-modal:not([hidden])) > .bitstream-qp-modal-dialog {
+    .bitstream-composer:has(.bitstream-composer-modal:not([hidden])) > .bitstream-composer-modal-dialog {
         background: transparent !important;
         box-shadow: none !important;
         overflow: visible !important;
@@ -4392,32 +4413,32 @@ iframe[src*="youtu.be"] {
         border: none !important;
     }
     
-    .bitstream-quick-post-poster:has(.bitstream-qp-modal:not([hidden])) > .bitstream-qp-modal-dialog > .bitstream-qp-modal-header,
-    .bitstream-quick-post-poster:has(.bitstream-qp-modal:not([hidden])) > .bitstream-qp-modal-dialog > .bitstream-qp-modal-body > form,
-    .bitstream-quick-post-poster:has(.bitstream-qp-modal:not([hidden])) > .bitstream-qp-modal-dialog > .bitstream-qp-modal-body > .bitstream-sidebar-quick-post-status {
+    .bitstream-composer:has(.bitstream-composer-modal:not([hidden])) > .bitstream-composer-modal-dialog > .bitstream-composer-modal-header,
+    .bitstream-composer:has(.bitstream-composer-modal:not([hidden])) > .bitstream-composer-modal-dialog > .bitstream-composer-modal-body > form,
+    .bitstream-composer:has(.bitstream-composer-modal:not([hidden])) > .bitstream-composer-modal-dialog > .bitstream-composer-modal-body > .bitstream-sidebar-composer-status {
         display: none !important;
     }
     
-    .bitstream-quick-post-poster:has(.bitstream-qp-modal:not([hidden])) > .bitstream-qp-modal-dialog > .bitstream-qp-modal-body {
+    .bitstream-composer:has(.bitstream-composer-modal:not([hidden])) > .bitstream-composer-modal-dialog > .bitstream-composer-modal-body {
         padding: 0 !important;
         overflow: visible !important;
     }
 }
 
 @media (min-width: 1024px) {
-    .bitstream-quick-post-poster[hidden] {
+    .bitstream-composer[hidden] {
         display: block !important;
     }
     
-    .bitstream-quick-post-poster > .bitstream-qp-modal-backdrop {
+    .bitstream-composer > .bitstream-composer-modal-backdrop {
         display: none !important;
     }
     
-    .bitstream-quick-post-poster > .bitstream-qp-modal-dialog > .bitstream-qp-modal-header {
+    .bitstream-composer > .bitstream-composer-modal-dialog > .bitstream-composer-modal-header {
         display: none !important;
     }
     
-    .bitstream-quick-post-poster > .bitstream-qp-modal-dialog {
+    .bitstream-composer > .bitstream-composer-modal-dialog {
         background: transparent !important;
         border-radius: 0 !important;
         box-shadow: none !important;
@@ -4431,9 +4452,22 @@ iframe[src*="youtu.be"] {
         border: none !important;
     }
     
-    .bitstream-quick-post-poster > .bitstream-qp-modal-dialog > .bitstream-qp-modal-body {
+    .bitstream-composer > .bitstream-composer-modal-dialog > .bitstream-composer-modal-body {
         padding: 0 !important;
         overflow: visible !important;
         display: block !important;
     }
 }
+
+.bitstream-composer-modal-confirm.is-delete {
+    background: #d32f2f;
+    box-shadow: 0 4px 14px rgba(211, 47, 47, 0.22);
+}
+.bitstream-composer-modal-confirm.is-delete:hover {
+    background: #b71c1c;
+    box-shadow: 0 6px 18px rgba(211, 47, 47, 0.32);
+}
+.bitstream-composer-modal-confirm.is-delete:active {
+    box-shadow: 0 2px 8px rgba(211, 47, 47, 0.18);
+}
+

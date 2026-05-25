@@ -55,12 +55,12 @@ class BitStream_Admin_Interface
     }
 
     /**
-     * Resolve poster page URL
+     * Resolve composer page URL
      */
-    private function get_poster_url($query_args = [])
+    private function get_composer_url($query_args = [])
     {
         if (class_exists('BitStream_Shortcodes')) {
-            return BitStream_Shortcodes::get_poster_page_url($query_args);
+            return BitStream_Shortcodes::get_composer_page_url($query_args);
         }
 
         $fallback = home_url('/bitstream/');
@@ -72,7 +72,7 @@ class BitStream_Admin_Interface
     }
 
     /**
-     * Force new bit creation to use admin poster
+     * Force new bit creation to use admin composer
      */
     public function redirect_new_bit_creation()
     {
@@ -90,11 +90,11 @@ class BitStream_Admin_Interface
             return;
         }
 
-        $poster_tab = (isset($_GET['rebit']) || isset($_GET['poster_tab']) && $_GET['poster_tab'] === 'rebit') ? 'rebit' : 'bit';
+        $composer_tab = (isset($_GET['rebit']) || isset($_GET['composer_tab']) && $_GET['composer_tab'] === 'rebit') ? 'rebit' : 'bit';
         $query_args = [
             'post_type' => 'bit',
             'page' => 'bitstream-new-bit',
-            'poster_tab' => $poster_tab
+            'composer_tab' => $composer_tab
         ];
 
         $forward_keys = ['shared_url', 'shared_title', 'shared_text', 'media_ids', 'quote_post_id', 'shared_key'];
@@ -123,7 +123,7 @@ class BitStream_Admin_Interface
     public function add_admin_menus()
     {
         // 1. New Bit (Unified Poster)
-        $poster_hook = add_submenu_page(
+        $composer_hook = add_submenu_page(
             'edit.php?post_type=bit',
             'New Bit',
             'New Bit',
@@ -132,7 +132,7 @@ class BitStream_Admin_Interface
         [$this, 'new_bit_admin_page'],
             1
         );
-        add_action('admin_print_styles-' . $poster_hook, [$this, 'enqueue_admin_poster_assets']);
+        add_action('admin_print_styles-' . $composer_hook, [$this, 'enqueue_admin_composer_assets']);
 
         // 2. Settings (Unified Settings Page)
         $settings_hook = add_submenu_page(
@@ -156,7 +156,7 @@ class BitStream_Admin_Interface
     }
 
     /**
-     * Display the New Bit poster inside the admin area
+     * Display the New Bit composer inside the admin area
      */
     public function new_bit_admin_page()
     {
@@ -164,7 +164,7 @@ class BitStream_Admin_Interface
         echo '<h1>' . esc_html__('New Bit', 'bitstream') . '</h1>';
         echo '<div style="max-width: 600px; margin-top: 20px;">';
         if (class_exists('BitStream_Shortcodes')) {
-            echo BitStream_Shortcodes::render_quick_post_form(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+            echo BitStream_Shortcodes::render_composer_form(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
         }
         echo '</div>';
         echo '</div>';
@@ -184,9 +184,9 @@ class BitStream_Admin_Interface
     }
 
     /**
-     * Enqueue CSS/JS for the admin poster page
+     * Enqueue CSS/JS for the admin composer page
      */
-    public function enqueue_admin_poster_assets()
+    public function enqueue_admin_composer_assets()
     {
         wp_enqueue_media();
         wp_enqueue_style('bitstream-css', BITSTREAM_PLUGIN_URL . 'assets/css/bitstream.css', [], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/css/bitstream.css'));
@@ -217,7 +217,7 @@ class BitStream_Admin_Interface
             return false;
         }
 
-        if (intval(get_post_meta($attachment_id, '_bitstream_uploaded_via_poster', true)) === 1) {
+        if (intval(get_post_meta($attachment_id, '_bitstream_uploaded_via_composer', true)) === 1) {
             return true;
         }
 
@@ -437,7 +437,7 @@ class BitStream_Admin_Interface
             'post_status' => 'any',
             'meta_query' => [
                 [
-                    'key' => '_bitstream_uploaded_via_poster',
+                    'key' => '_bitstream_uploaded_via_composer',
                     'compare' => 'EXISTS',
                 ],
             ],
@@ -450,7 +450,7 @@ class BitStream_Admin_Interface
         wp_reset_postdata();
 
         $meta_keys = [
-            '_bitstream_uploaded_via_poster',
+            '_bitstream_uploaded_via_composer',
             '_bitstream_upload_created_at',
             '_bitstream_attachment_id',
         ];
@@ -685,7 +685,7 @@ class BitStream_Admin_Interface
     public function add_quote_action($actions, $post)
     {
         if ($post->post_type === 'bit') {
-            // Link to the feed page with ?quote_post_id=N so the QP modal JS handler
+            // Link to the feed page with ?quote_post_id=N so the Composer modal JS handler
             // detects the param on page load and opens the quote flow automatically.
             $feed_url = class_exists('BitStream_Shortcodes')
                 ? BitStream_Shortcodes::get_feed_page_url(['quote_post_id' => $post->ID])
