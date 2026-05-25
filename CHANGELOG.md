@@ -30,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed WordPress block editor visual canvas rendering issue (grey screen below header) on WordPress 6.9+ by upgrading the `bitstream/rebit-url` block to API Version 3. Added iframe-aware DOM querying for quoted bit previews inside the visual editor.
 - Fixed nested quoted bit timestamp tooltip getting clipped by the quote preview container's overflow settings.
+- Fixed draft Rebit editing so the Rebit URL and OG fields are properly restored when loading a saved rebit draft from the Drafts modal.
+- Migrated the remaining `[bitstream_poster]` shortcode capabilities into the Quick Post modal so the shortcode is no longer required: `?quote_post_id=N` URL parameter is now handled by the Quick Post modal (opens the Quote Bit flow via the Timeline Edit modal), browser-close auto-save (`beforeunload` + `sendBeacon`) now runs from the Quick Post form, and the admin bit list "Quote" row action now links to the feed page with `?quote_post_id=N` so the QP modal auto-opens the quote flow instead of redirecting to the poster shortcode page.
 
 ## [3.1.3] - 2026-05-04
 

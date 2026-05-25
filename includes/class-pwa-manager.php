@@ -47,10 +47,9 @@ class BitStream_PWA_Manager {
         
         // Load on archive pages or pages with [bitstream] shortcode
         $is_bit_archive = is_post_type_archive('bit');
-        $has_feed_shortcode = is_a($post, 'WP_Post') && 
-                     (has_shortcode($post->post_content, 'bitstream') || 
-                      has_shortcode($post->post_content, 'bitstream_latest') ||
-                      has_shortcode($post->post_content, 'bitstream_poster'));
+        $has_feed_shortcode = is_a($post, 'WP_Post') &&
+                     (has_shortcode($post->post_content, 'bitstream') ||
+                      has_shortcode($post->post_content, 'bitstream_latest'));
         $is_bitstream_page = isset($_SERVER['REQUEST_URI']) && 
                             strpos($_SERVER['REQUEST_URI'], '/bitstream/') !== false;
         
@@ -140,10 +139,9 @@ class BitStream_PWA_Manager {
 
         // Only show on BitStream-related pages
         $is_bit_archive = is_post_type_archive('bit');
-        $has_feed_shortcode = is_a($post, 'WP_Post') && 
-                     (has_shortcode($post->post_content, 'bitstream') || 
-                      has_shortcode($post->post_content, 'bitstream_latest') ||
-                      has_shortcode($post->post_content, 'bitstream_poster'));
+        $has_feed_shortcode = is_a($post, 'WP_Post') &&
+                     (has_shortcode($post->post_content, 'bitstream') ||
+                      has_shortcode($post->post_content, 'bitstream_latest'));
         $is_bitstream_page = isset($_SERVER['REQUEST_URI']) && 
                             strpos($_SERVER['REQUEST_URI'], '/bitstream/') !== false;
         

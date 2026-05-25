@@ -5449,7 +5449,37 @@ jQuery(document).ready(function ($) {
             }
         }
 
-        // Prefill / load checks on page load
+        // Open quote modal when ?quote_post_id=N is in the URL
+        const quotePostIdFromUrl = parseInt(urlParams.get('quote_post_id') || '0', 10);
+        if (quotePostIdFromUrl > 0 && typeof openTimelineQuoteModal === 'function') {
+            setTimeout(() => openTimelineQuoteModal(quotePostIdFromUrl), 150);
+        }
+
+        // Auto-save QP form content when the user navigates away (mirrors poster shortcode beforeunload)
+        let qpFormIsDirty = false;
+        if (textarea) {
+            textarea.addEventListener('input', () => { qpFormIsDirty = true; });
+        }
+        window.addEventListener('beforeunload', () => {
+            if (!qpFormIsDirty) return;
+            if (!window.bitstream_ajax || !bitstream_ajax.ajax_url || !submitNonce) return;
+
+            const content = textarea ? textarea.value.trim() : '';
+            const hasRebit = hRebitUrl && hRebitUrl.value.trim();
+            const hasMedia = hAttachmentId && parseInt(hAttachmentId.value || '0', 10) > 0;
+            if (!content && !hasRebit && !hasMedia) return;
+
+            const fd = new FormData(form);
+            fd.append('action', 'bitstream_submit_poster');
+            fd.append('nonce', submitNonce);
+            fd.append('poster_type', form.dataset.posterType || 'bit');
+            fd.append('save_as_draft', '1');
+            fd.append('is_auto_draft', '1');
+
+            navigator.sendBeacon(bitstream_ajax.ajax_url, fd);
+            qpFormIsDirty = false;
+        });
+
         const initialRebitUrl = hRebitUrl ? hRebitUrl.value.trim() : '';
         if (initialRebitUrl) {
             if (previewRebitCard) {

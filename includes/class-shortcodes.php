@@ -398,6 +398,13 @@ class BitStream_Shortcodes
         $shared_title = isset($_GET['shared_title']) ? sanitize_text_field(wp_unslash($_GET['shared_title'])) : '';
         $shared_text = isset($_GET['shared_text']) ? sanitize_textarea_field(wp_unslash($_GET['shared_text'])) : '';
         $edit_post_id = isset($_GET['edit_post_id']) ? intval($_GET['edit_post_id']) : 0;
+        $quote_post_id_prefill = isset($_GET['quote_post_id']) ? intval($_GET['quote_post_id']) : 0;
+        if ($quote_post_id_prefill > 0) {
+            $quoted_check = get_post($quote_post_id_prefill);
+            if (!$quoted_check || $quoted_check->post_type !== 'bit' || $quoted_check->post_status !== 'publish') {
+                $quote_post_id_prefill = 0;
+            }
+        }
 
         if (!empty($_GET['shared_key'])) {
             $shared_key = sanitize_text_field(wp_unslash($_GET['shared_key']));
@@ -479,7 +486,7 @@ class BitStream_Shortcodes
                 <input type="hidden" id="bitstream-qp-schedule-enabled" name="bit_schedule_enabled" value="0">
                 <input type="hidden" id="bitstream-qp-schedule-datetime" name="bit_schedule_datetime" value="">
                 <input type="hidden" id="bitstream-qp-edit-post-id" name="edit_post_id" value="<?php echo esc_attr($edit_post_id); ?>">
-                <input type="hidden" id="bitstream-qp-quote-post-id" name="quote_post_id" value="0">
+                <input type="hidden" id="bitstream-qp-quote-post-id" name="quote_post_id" value="<?php echo esc_attr($quote_post_id_prefill); ?>">
 
                 <!-- Action buttons row -->
                 <div class="bitstream-qp-actions-row">

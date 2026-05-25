@@ -163,7 +163,9 @@ class BitStream_Admin_Interface
         echo '<div class="wrap">';
         echo '<h1>' . esc_html__('New Bit', 'bitstream') . '</h1>';
         echo '<div style="max-width: 600px; margin-top: 20px;">';
-        echo do_shortcode('[bitstream_poster]');
+        if (class_exists('BitStream_Shortcodes')) {
+            echo BitStream_Shortcodes::render_quick_post_form(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+        }
         echo '</div>';
         echo '</div>';
     }
@@ -683,8 +685,12 @@ class BitStream_Admin_Interface
     public function add_quote_action($actions, $post)
     {
         if ($post->post_type === 'bit') {
-            $url = $this->get_poster_url(['poster_tab' => 'bit', 'quote_post_id' => $post->ID]);
-            $actions['quote'] = '<a href="' . esc_url($url) . '">Quote</a>';
+            // Link to the feed page with ?quote_post_id=N so the QP modal JS handler
+            // detects the param on page load and opens the quote flow automatically.
+            $feed_url = class_exists('BitStream_Shortcodes')
+                ? BitStream_Shortcodes::get_feed_page_url(['quote_post_id' => $post->ID])
+                : add_query_arg(['quote_post_id' => $post->ID], home_url('/bitstream/'));
+            $actions['quote'] = '<a href="' . esc_url($feed_url) . '">Quote</a>';
         }
         return $actions;
     }
