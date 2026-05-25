@@ -111,6 +111,9 @@ class BitStream_Shortcodes
             foreach ($candidates as $candidate_id) {
                 $content = get_post_field('post_content', $candidate_id);
                 if ($content && has_shortcode($content, 'bitstream')) {
+                    if (strpos($content, 'mode="preview"') !== false || strpos($content, "mode='preview'") !== false) {
+                        continue;
+                    }
                     $cached_url = get_permalink($candidate_id);
                     break;
                 }
@@ -175,6 +178,7 @@ class BitStream_Shortcodes
             ],
             [
                 'type' => 'divider',
+                'class' => 'hide-on-desktop',
             ],
             [
                 'url' => self::get_poster_page_url(['poster_tab' => 'drafts']),
@@ -214,12 +218,24 @@ class BitStream_Shortcodes
 
         $html = '';
         foreach ($actions as $action) {
+            $classes = [];
+            if (isset($action['class'])) {
+                $classes[] = $action['class'];
+            }
+            if (isset($action['modal']) && in_array($action['modal'], ['new-bit', 'new-rebit'], true)) {
+                $classes[] = 'hide-on-desktop';
+            }
+
             if (isset($action['type']) && $action['type'] === 'divider') {
-                $html .= '<hr class="bitstream-quick-action-divider" style="margin: 0.5rem 0; border: 0; border-top: 1px solid #e0e0e0;">';
+                $class_list = !empty($classes) ? ' ' . implode(' ', $classes) : '';
+                $html .= '<hr class="bitstream-quick-action-divider' . esc_attr($class_list) . '" style="margin: 0.5rem 0; border: 0; border-top: 1px solid #e0e0e0;">';
             }
             else {
+                $classes[] = $link_class;
+                $classes[] = 'bitstream-quick-action-link';
+                $class_list = implode(' ', $classes);
                 $modal_attr = isset($action['modal']) ? ' data-qp-modal-trigger="' . esc_attr($action['modal']) . '"' : '';
-                $html .= '<a class="' . esc_attr(trim($link_class . ' bitstream-quick-action-link')) . '" href="' . esc_url($action['url']) . '"' . $modal_attr . '>';
+                $html .= '<a class="' . esc_attr(trim($class_list)) . '" href="' . esc_url($action['url']) . '"' . $modal_attr . '>';
                 $html .= '<i class="' . esc_attr($action['icon']) . '" aria-hidden="true"></i>';
                 $html .= '<span>' . esc_html($action['label']) . '</span>';
                 $html .= '</a>';
@@ -438,9 +454,18 @@ class BitStream_Shortcodes
 
         ob_start();
 ?>
-        <section class="bitstream-poster bitstream-quick-post-poster" data-submit-nonce="<?php echo esc_attr($submit_nonce); ?>">
-            <h3 class="bitstream-feed-sidebar-title" style="color: var(--wp--preset--color--accent-1, #2c6e49); margin-bottom: 0.65rem;">Post a Bit</h3>
-            <form class="bitstream-sidebar-quick-post-form bitstream-poster-form" data-poster-type="<?php echo esc_attr($poster_type_prefill); ?>">
+        <section class="bitstream-poster bitstream-quick-post-poster" data-submit-nonce="<?php echo esc_attr($submit_nonce); ?>" hidden>
+            <div class="bitstream-qp-modal-backdrop" data-qp-modal-close="quickpost"></div>
+            <div class="bitstream-qp-modal-dialog" role="dialog" aria-modal="true" aria-label="Post a Bit">
+                <header class="bitstream-qp-modal-header">
+                    <h3>Post a Bit</h3>
+                    <button type="button" class="bitstream-qp-modal-close" data-qp-modal-close="quickpost" aria-label="Close">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                    </button>
+                </header>
+                <div class="bitstream-qp-modal-body">
+                    <h3 class="bitstream-feed-sidebar-title hide-on-mobile" style="color: var(--wp--preset--color--accent-1, #2c6e49); margin-bottom: 0.65rem;">Post a Bit</h3>
+                    <form class="bitstream-sidebar-quick-post-form bitstream-poster-form" data-poster-type="<?php echo esc_attr($poster_type_prefill); ?>">
                 <textarea id="bitstream-quick-bit-content" name="bit_content" rows="3" placeholder="What's on your mind?" required class="bitstream-poster-field bitstream-qp-textarea"><?php echo esc_textarea($bit_content_prefill); ?></textarea>
 
                 <!-- Hidden inputs for rebit / schedule / edit -->
@@ -516,6 +541,8 @@ class BitStream_Shortcodes
             </form>
 
             <div class="bitstream-poster-status bitstream-sidebar-quick-post-status" aria-live="polite"></div>
+                </div>
+            </div>
 
             <!-- ═══ REBIT MODAL ═══ -->
             <div class="bitstream-qp-modal bitstream-qp-modal-rebit" hidden>
@@ -531,16 +558,8 @@ class BitStream_Shortcodes
                             <input type="url" id="bitstream-qp-modal-rebit-url" placeholder="https://example.com/post" value="">
                             <button type="button" class="bitstream-fetch-og bitstream-qp-rebit-fetch">Fetch metadata</button>
                         </div>
-                        <label for="bitstream-qp-modal-rebit-og-title" style="margin-top: 0.75rem;"><strong>Preview title</strong></label>
-                        <input type="text" id="bitstream-qp-modal-rebit-og-title" placeholder="Auto-filled from metadata">
-                        <label for="bitstream-qp-modal-rebit-og-desc" style="margin-top: 0.5rem;"><strong>Preview description</strong></label>
-                        <textarea id="bitstream-qp-modal-rebit-og-desc" rows="2" placeholder="Auto-filled from metadata"></textarea>
-                        
-                        <label style="margin-top: 0.75rem;"><strong>Preview image</strong></label>
-                        <div class="bitstream-qp-rebit-image-controls">
-                            <button type="button" class="bitstream-media-control-icon bitstream-qp-rebit-image-change" title="Change Image" aria-label="Change Image"><i class="fa-solid fa-image" aria-hidden="true"></i></button>
-                            <button type="button" class="bitstream-media-control-icon bitstream-media-remove bitstream-qp-rebit-image-remove" hidden title="Remove Image" aria-label="Remove Image"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>
-                        </div>
+
+
                         <div class="bitstream-qp-rebit-live-preview" hidden>
                             <p class="bitstream-rebit-live-preview-label"><strong>Preview</strong></p>
                             <p class="bitstream-qp-rebit-live-preview-loading" hidden>Loading preview...</p>
@@ -550,6 +569,36 @@ class BitStream_Shortcodes
                     <footer class="bitstream-qp-modal-footer">
                         <button type="button" class="bitstream-qp-modal-cancel" data-qp-modal-close="rebit">Cancel</button>
                         <button type="button" class="bitstream-qp-modal-confirm bitstream-qp-rebit-done">Done</button>
+                    </footer>
+                </div>
+            </div>
+
+            <!-- ═══ REBIT METADATA EDIT MODAL ═══ -->
+            <div class="bitstream-qp-modal bitstream-qp-modal-rebit-meta" hidden>
+                <div class="bitstream-qp-modal-backdrop" data-qp-modal-close="rebit-meta"></div>
+                <div class="bitstream-qp-modal-dialog" role="dialog" aria-modal="true" aria-label="Edit Metadata">
+                    <header class="bitstream-qp-modal-header">
+                        <h3>Edit Metadata</h3>
+                        <button type="button" class="bitstream-qp-modal-close" data-qp-modal-close="rebit-meta" aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+                    </header>
+                    <div class="bitstream-qp-modal-body">
+                        <label for="bitstream-qp-modal-rebit-og-title"><strong>Preview title</strong></label>
+                        <input type="text" id="bitstream-qp-modal-rebit-og-title" placeholder="Auto-filled from metadata">
+                        <label for="bitstream-qp-modal-rebit-og-desc" style="margin-top: 0.5rem;"><strong>Preview description</strong></label>
+                        <textarea id="bitstream-qp-modal-rebit-og-desc" rows="5" placeholder="Auto-filled from metadata"></textarea>
+                        
+                        <label style="margin-top: 0.75rem;"><strong>Preview image</strong></label>
+                        <div class="bitstream-qp-rebit-image-controls">
+                            <button type="button" class="bitstream-media-control-icon bitstream-qp-rebit-image-change" title="Change Image" aria-label="Change Image"><i class="fa-solid fa-image" aria-hidden="true"></i></button>
+                            <button type="button" class="bitstream-media-control-icon bitstream-media-remove bitstream-qp-rebit-image-remove" hidden title="Remove Image" aria-label="Remove Image"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>
+                        </div>
+                        <div class="bitstream-qp-rebit-image-preview-wrapper" style="margin-top: 0.5rem;" hidden>
+                            <img class="bitstream-qp-rebit-image-preview-el" src="" alt="Preview">
+                        </div>
+                    </div>
+                    <footer class="bitstream-qp-modal-footer">
+                        <button type="button" class="bitstream-qp-modal-cancel" data-qp-modal-close="rebit-meta">Cancel</button>
+                        <button type="button" class="bitstream-qp-modal-confirm bitstream-qp-rebit-meta-done">Done</button>
                     </footer>
                 </div>
             </div>

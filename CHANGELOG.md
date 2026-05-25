@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Rewired the quick actions "New Bit" and "New Rebit" options to be hidden on desktop (where the inline poster is already shown) and open the quick poster in a modal on mobile, with auto-opening of the Rebit editor if clicking "New Rebit".
 - Moved the "Drafts" and "Scheduled" Quick Actions buttons to open in dedicated modals directly on the feed page instead of redirecting to the poster shortcode, and enabled full draft management and scheduled post editing directly within the Quick Poster.
 - Changed the generic ReBit icon from the retweet icon to a standard link/URL icon across the whole project (including tabs, action buttons, and preview badges).
 - Condensed the timeline Rebit edit modal so the main panel only keeps the Link URL, commentary, and media controls, with title/description/image editing moved into a nested link-preview submodal. The URL fetch button is now styled as a full accent-green action.

@@ -237,7 +237,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Continue with the rest of the initialization...
     function initBitstreamPoster() {
-        const posterRoot = document.querySelector('.bitstream-poster');
+        const posterRoot = document.querySelector('.bitstream-poster:not(.bitstream-quick-post-poster)');
         if (!posterRoot) {
             return;
         }
@@ -4575,17 +4575,26 @@ jQuery(document).ready(function ($) {
 
         if (qp) {
             e.preventDefault();
+            const isMobile = window.innerWidth < 1024;
+            if (isMobile) {
+                qp.hidden = false;
+            }
+
             if (modalName === 'new-bit') {
                 const textarea = qp.querySelector('#bitstream-quick-bit-content');
                 if (textarea) {
                     textarea.focus();
-                    textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    if (!isMobile) {
+                        textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
                 }
             } else if (modalName === 'new-rebit') {
                 const rebitBtn = qp.querySelector('[data-qp-modal="rebit"]');
                 if (rebitBtn) {
                     rebitBtn.click();
-                    rebitBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    if (!isMobile) {
+                        rebitBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
                 }
             } else {
                 // Close any open modals first
@@ -4632,6 +4641,7 @@ jQuery(document).ready(function ($) {
         const hScheduleEnabled = form.querySelector('#bitstream-qp-schedule-enabled');
         const hScheduleDatetime = form.querySelector('#bitstream-qp-schedule-datetime');
         const hEditPostId = form.querySelector('#bitstream-qp-edit-post-id');
+        let renderRebitLivePreview, updateModalImagePreview;
 
         // Preview containers
         const previewArea = form.querySelector('.bitstream-qp-preview-area');
@@ -4697,12 +4707,76 @@ jQuery(document).ready(function ($) {
         function openModal(name) {
             setStatus('');
             const modal = qpRoot.querySelector('.bitstream-qp-modal-' + name);
-            if (modal) modal.hidden = false;
+            if (modal) {
+                modal.hidden = false;
+                const isMobile = window.innerWidth < 1024;
+                if (isMobile) {
+                    qpRoot.hidden = false;
+                }
+
+                if (name === 'rebit') {
+                    const mRebitUrl = modal.querySelector('#bitstream-qp-modal-rebit-url');
+                    const mRebitFetch = modal.querySelector('.bitstream-qp-rebit-fetch');
+                    const rebitMetaModal = qpRoot.querySelector('.bitstream-qp-modal-rebit-meta');
+                    
+                    if (hRebitUrl && mRebitUrl) {
+                        mRebitUrl.value = hRebitUrl.value || '';
+                    }
+                    
+                    if (hRebitUrl && hRebitUrl.value) {
+                        const mRebitTitle = rebitMetaModal ? rebitMetaModal.querySelector('#bitstream-qp-modal-rebit-og-title') : null;
+                        const mRebitDesc = rebitMetaModal ? rebitMetaModal.querySelector('#bitstream-qp-modal-rebit-og-desc') : null;
+                        
+                        if (mRebitTitle && hRebitOgTitle) {
+                            mRebitTitle.value = hRebitOgTitle.value || '';
+                        }
+                        if (mRebitDesc && hRebitOgDesc) {
+                            mRebitDesc.value = hRebitOgDesc.value || '';
+                        }
+                        
+                        if (mRebitFetch) {
+                            mRebitFetch.classList.add('is-edit-mode');
+                            mRebitFetch.textContent = 'Edit metadata';
+                        }
+                        
+                        if (renderRebitLivePreview) {
+                            renderRebitLivePreview(hRebitUrl.value);
+                        }
+                    } else {
+                        if (mRebitFetch) {
+                            mRebitFetch.classList.remove('is-edit-mode');
+                            mRebitFetch.textContent = 'Fetch metadata';
+                        }
+                        const mRebitPreviewRoot = modal.querySelector('.bitstream-qp-rebit-live-preview');
+                        const mRebitPreviewCard = modal.querySelector('.bitstream-qp-rebit-live-preview-card');
+                        if (mRebitPreviewRoot) mRebitPreviewRoot.hidden = true;
+                        if (mRebitPreviewCard) mRebitPreviewCard.innerHTML = '';
+                    }
+                }
+
+                if (name === 'rebit-meta') {
+                    if (typeof updateModalImagePreview === 'function') {
+                        updateModalImagePreview();
+                    }
+                }
+            }
         }
-        function closeModal(name) {
+        function closeModal(name, keepPosterOpen = false) {
             setStatus('');
-            const modal = qpRoot.querySelector('.bitstream-qp-modal-' + name);
-            if (modal) modal.hidden = true;
+            if (name === 'quickpost') {
+                qpRoot.hidden = true;
+                // Also close any open sub-modals
+                qpRoot.querySelectorAll('.bitstream-qp-modal').forEach(m => m.hidden = true);
+            } else {
+                const modal = qpRoot.querySelector('.bitstream-qp-modal-' + name);
+                if (modal) {
+                    modal.hidden = true;
+                    const isMobile = window.innerWidth < 1024;
+                    if (isMobile && (name === 'drafts' || name === 'scheduled-list') && !keepPosterOpen) {
+                        qpRoot.hidden = true;
+                    }
+                }
+            }
         }
 
         // Wire action buttons
@@ -4770,6 +4844,7 @@ jQuery(document).ready(function ($) {
 
         // DRY Helper: Load draft or scheduled post into poster
         function loadPostIntoQuickPoster(postId) {
+            qpRoot.hidden = false;
             if (!window.bitstream_ajax) return;
 
             setStatus('Loading post...');
@@ -4794,19 +4869,42 @@ jQuery(document).ready(function ($) {
                         if (hRebitOgTitle) hRebitOgTitle.value = d.og_title || '';
                         if (hRebitOgDesc) hRebitOgDesc.value = d.og_desc || '';
                         if (hRebitOgImage) hRebitOgImage.value = d.og_image || '';
+                        if (hRebitAttachmentId && d.attachment_id) hRebitAttachmentId.value = String(d.attachment_id);
+                        if (hRebitOgImageRemoved) hRebitOgImageRemoved.value = '0';
                         form.dataset.posterType = 'rebit';
                         if (textarea) textarea.required = false;
                         if (previewRebitCard) previewRebitCard.innerHTML = d.media_preview_html || '<p style="font-size:0.85rem;color:#555;">Rebit: ' + d.rebit_url + '</p>';
                         if (previewRebit) previewRebit.hidden = false;
+
+                        // Prefill Rebit Modal fields
+                        const mRebitUrl = qpRoot.querySelector('#bitstream-qp-modal-rebit-url');
+                        const mRebitTitle = qpRoot.querySelector('#bitstream-qp-modal-rebit-og-title');
+                        const mRebitDesc = qpRoot.querySelector('#bitstream-qp-modal-rebit-og-desc');
+                        const mRebitFetch = qpRoot.querySelector('.bitstream-qp-rebit-fetch');
+
+                        if (mRebitUrl) mRebitUrl.value = d.rebit_url;
+                        if (mRebitTitle) mRebitTitle.value = d.og_title || '';
+                        if (mRebitDesc) mRebitDesc.value = d.og_desc || '';
+
+                        if (mRebitFetch) {
+                            mRebitFetch.classList.add('is-edit-mode');
+                            mRebitFetch.textContent = 'Edit metadata';
+                        }
+
+                        if (typeof renderRebitLivePreview === 'function') {
+                            renderRebitLivePreview(d.rebit_url);
+                        }
                     } else {
                         form.dataset.posterType = 'bit';
                         if (textarea) textarea.required = true;
                     }
 
                     if (d.attachment_id && parseInt(d.attachment_id, 10) > 0) {
-                        if (hAttachmentId) hAttachmentId.value = String(d.attachment_id);
-                        if (previewMediaThumb) previewMediaThumb.innerHTML = d.media_preview_html || '<span>Media attached (ID: ' + d.attachment_id + ')</span>';
-                        if (previewMedia) previewMedia.hidden = false;
+                        if (!d.is_rebit) {
+                            if (hAttachmentId) hAttachmentId.value = String(d.attachment_id);
+                            if (previewMediaThumb) previewMediaThumb.innerHTML = d.media_preview_html || '<span>Media attached (ID: ' + d.attachment_id + ')</span>';
+                            if (previewMedia) previewMedia.hidden = false;
+                        }
                     }
 
                     if (d.schedule_enabled === '1' && d.schedule_datetime) {
@@ -4843,19 +4941,40 @@ jQuery(document).ready(function ($) {
 
         // ── REBIT MODAL ──
         const rebitModal = qpRoot.querySelector('.bitstream-qp-modal-rebit');
-        if (rebitModal) {
+        const rebitMetaModal = qpRoot.querySelector('.bitstream-qp-modal-rebit-meta');
+        if (rebitModal && rebitMetaModal) {
             const mRebitUrl = rebitModal.querySelector('#bitstream-qp-modal-rebit-url');
             const mRebitFetch = rebitModal.querySelector('.bitstream-qp-rebit-fetch');
-            const mRebitTitle = rebitModal.querySelector('#bitstream-qp-modal-rebit-og-title');
-            const mRebitDesc = rebitModal.querySelector('#bitstream-qp-modal-rebit-og-desc');
             const mRebitPreviewRoot = rebitModal.querySelector('.bitstream-qp-rebit-live-preview');
             const mRebitPreviewLoading = rebitModal.querySelector('.bitstream-qp-rebit-live-preview-loading');
             const mRebitPreviewCard = rebitModal.querySelector('.bitstream-qp-rebit-live-preview-card');
             const mRebitDone = rebitModal.querySelector('.bitstream-qp-rebit-done');
-            const mRebitImageChange = rebitModal.querySelector('.bitstream-qp-rebit-image-change');
-            const mRebitImageRemove = rebitModal.querySelector('.bitstream-qp-rebit-image-remove');
 
-            function renderRebitLivePreview(url) {
+            // Metadata edit modal controls (now in rebitMetaModal)
+            const mRebitTitle = rebitMetaModal.querySelector('#bitstream-qp-modal-rebit-og-title');
+            const mRebitDesc = rebitMetaModal.querySelector('#bitstream-qp-modal-rebit-og-desc');
+            const mRebitImageChange = rebitMetaModal.querySelector('.bitstream-qp-rebit-image-change');
+            const mRebitImageRemove = rebitMetaModal.querySelector('.bitstream-qp-rebit-image-remove');
+            const mRebitMetaDone = rebitMetaModal.querySelector('.bitstream-qp-rebit-meta-done');
+
+            const mRebitImagePreviewWrapper = rebitMetaModal.querySelector('.bitstream-qp-rebit-image-preview-wrapper');
+            const mRebitImagePreviewEl = rebitMetaModal.querySelector('.bitstream-qp-rebit-image-preview-el');
+
+            updateModalImagePreview = function() {
+                const imageUrl = hRebitOgImage ? hRebitOgImage.value : '';
+                const isRemoved = hRebitOgImageRemoved ? hRebitOgImageRemoved.value === '1' : false;
+                if (imageUrl && !isRemoved) {
+                    if (mRebitImagePreviewEl) mRebitImagePreviewEl.src = imageUrl;
+                    if (mRebitImagePreviewWrapper) mRebitImagePreviewWrapper.hidden = false;
+                    if (mRebitImageRemove) mRebitImageRemove.hidden = false;
+                } else {
+                    if (mRebitImagePreviewEl) mRebitImagePreviewEl.src = '';
+                    if (mRebitImagePreviewWrapper) mRebitImagePreviewWrapper.hidden = true;
+                    if (mRebitImageRemove) mRebitImageRemove.hidden = true;
+                }
+            };
+
+            renderRebitLivePreview = function(url) {
                 if (!mRebitPreviewRoot || !window.bitstream_ajax) return;
                 mRebitPreviewRoot.hidden = false;
                 if (mRebitPreviewLoading) mRebitPreviewLoading.hidden = false;
@@ -4877,14 +4996,15 @@ jQuery(document).ready(function ($) {
                         if (!data.success) throw new Error(data.data || 'Preview failed.');
                         const resp = data.data || {};
                         if (mRebitPreviewCard) mRebitPreviewCard.innerHTML = resp.rendered_html || '';
+                        if (previewRebitCard) previewRebitCard.innerHTML = resp.rendered_html || '';
                         if (mRebitPreviewLoading) mRebitPreviewLoading.hidden = true;
                         if (resp.og && hRebitOgImage) {
                             hRebitOgImage.value = resp.og.image || '';
-                            if (mRebitImageRemove) mRebitImageRemove.hidden = !resp.og.image;
                         }
+                        updateModalImagePreview();
                     })
                     .catch(() => { if (mRebitPreviewLoading) mRebitPreviewLoading.hidden = true; });
-            }
+            };
 
             let livePreviewDebounce;
             const triggerLivePreview = () => {
@@ -4909,7 +5029,7 @@ jQuery(document).ready(function ($) {
                         if (hRebitAttachmentId) hRebitAttachmentId.value = attachment.id;
                         if (hRebitOgImage) hRebitOgImage.value = attachment.url;
                         if (hRebitOgImageRemoved) hRebitOgImageRemoved.value = '0';
-                        if (mRebitImageRemove) mRebitImageRemove.hidden = false;
+                        updateModalImagePreview();
                         triggerLivePreview();
                     });
                     rebitMediaFrame.open();
@@ -4921,13 +5041,17 @@ jQuery(document).ready(function ($) {
                     if (hRebitAttachmentId) hRebitAttachmentId.value = '';
                     if (hRebitOgImage) hRebitOgImage.value = '';
                     if (hRebitOgImageRemoved) hRebitOgImageRemoved.value = '1';
-                    mRebitImageRemove.hidden = true;
+                    updateModalImagePreview();
                     triggerLivePreview();
                 });
             }
 
             if (mRebitFetch) {
                 mRebitFetch.addEventListener('click', () => {
+                    if (mRebitFetch.classList.contains('is-edit-mode')) {
+                        openModal('rebit-meta');
+                        return;
+                    }
                     const url = mRebitUrl ? mRebitUrl.value.trim() : '';
                     if (!url) { setStatus('Enter a URL first.', true); return; }
                     if (!window.bitstream_ajax || !bitstream_ajax.og_fetch_nonce) { setStatus('Metadata fetcher unavailable.', true); return; }
@@ -4950,9 +5074,35 @@ jQuery(document).ready(function ($) {
                             if (mRebitDesc) mRebitDesc.value = meta.description || '';
                             renderRebitLivePreview(url);
                             setStatus('Metadata loaded.');
+                            mRebitFetch.classList.add('is-edit-mode');
+                            mRebitFetch.textContent = 'Edit metadata';
                         })
                         .catch(err => setStatus(err.message || 'Fetch failed.', true))
-                        .finally(() => { mRebitFetch.disabled = false; mRebitFetch.textContent = 'Fetch metadata'; });
+                        .finally(() => { 
+                            mRebitFetch.disabled = false; 
+                            if (!mRebitFetch.classList.contains('is-edit-mode')) {
+                                mRebitFetch.textContent = 'Fetch metadata';
+                            }
+                        });
+                });
+            }
+
+            if (mRebitUrl) {
+                mRebitUrl.addEventListener('input', () => {
+                    mRebitFetch.classList.remove('is-edit-mode');
+                    mRebitFetch.textContent = 'Fetch metadata';
+                    if (mRebitPreviewRoot) mRebitPreviewRoot.hidden = true;
+                    if (mRebitPreviewCard) mRebitPreviewCard.innerHTML = '';
+                    if (mRebitTitle) mRebitTitle.value = '';
+                    if (mRebitDesc) mRebitDesc.value = '';
+                });
+            }
+
+            if (mRebitMetaDone) {
+                mRebitMetaDone.addEventListener('click', () => {
+                    const url = mRebitUrl ? mRebitUrl.value.trim() : '';
+                    renderRebitLivePreview(url);
+                    closeModal('rebit-meta');
                 });
             }
 
@@ -5034,7 +5184,7 @@ jQuery(document).ready(function ($) {
                     const postId = btn.dataset.postId;
                     if (postId) {
                         loadPostIntoQuickPoster(postId);
-                        closeModal('drafts');
+                        closeModal('drafts', true);
                     }
                 });
             });
@@ -5183,7 +5333,7 @@ jQuery(document).ready(function ($) {
                     const postId = btn.dataset.postId;
                     if (postId) {
                         loadPostIntoQuickPoster(postId);
-                        closeModal('scheduled-list');
+                        closeModal('scheduled-list', true);
                     }
                 });
             });
@@ -5277,15 +5427,24 @@ jQuery(document).ready(function ($) {
             if (rebitBtn) {
                 setTimeout(() => {
                     rebitBtn.click();
-                    rebitBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    const isMobile = window.innerWidth < 1024;
+                    if (!isMobile) {
+                        rebitBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
                 }, 100);
             }
         }
         if (urlParams.has('focus_qp') || urlParams.get('poster_tab') === 'bit') {
+            const isMobile = window.innerWidth < 1024;
+            if (isMobile) {
+                qpRoot.hidden = false;
+            }
             if (textarea) {
                 setTimeout(() => {
                     textarea.focus();
-                    textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    if (!isMobile) {
+                        textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
                 }, 100);
             }
         }

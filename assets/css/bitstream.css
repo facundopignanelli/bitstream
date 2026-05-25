@@ -398,12 +398,23 @@
     display: flex;
 }
 
+@keyframes bitstreamFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes bitstreamMobileModalIn {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+
 .bitstream-qp-modal-backdrop {
     position: absolute;
     inset: 0;
     background: rgba(0, 0, 0, 0.45);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
+    animation: bitstreamFadeIn 0.2s ease-out;
 }
 
 .bitstream-qp-modal-dialog {
@@ -588,6 +599,41 @@
     border-radius: 10px;
     padding: 0.55rem;
     background: #fbfdfc;
+}
+
+.bitstream-qp-rebit-fetch.is-edit-mode {
+    background: transparent !important;
+    border: 1.5px solid var(--wp--preset--color--accent-1, #2c6e49) !important;
+    color: var(--wp--preset--color--accent-1, #2c6e49) !important;
+    box-shadow: none !important;
+}
+
+.bitstream-qp-rebit-fetch.is-edit-mode:hover {
+    background: rgba(44, 110, 73, 0.05) !important;
+    color: var(--wp--preset--color--accent-1, #2c6e49) !important;
+}
+
+/* Ensure metadata submodal stacks on top of the main Rebit modal */
+.bitstream-qp-modal-rebit-meta {
+    z-index: 100002 !important;
+}
+
+.bitstream-qp-rebit-image-preview-wrapper {
+    margin-top: 0.75rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0.35rem;
+    background: #f8fafc;
+    display: inline-block;
+    max-width: 100%;
+}
+
+.bitstream-qp-rebit-image-preview-el {
+    display: block;
+    max-width: 100%;
+    max-height: 160px;
+    border-radius: 10px;
+    object-fit: cover;
 }
 
 /* Drafts modal */
@@ -4217,4 +4263,177 @@ iframe[src*="youtu.be"] {
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
+}
+
+/* ── Mobile Quick Post Modal & Desktop Inline Restructuring ── */
+@media (max-width: 1023px) {
+    /* Full-screen mobile modal layout */
+    .bitstream-qp-modal,
+    .bs-edit-modal,
+    .bitstream-cropper-modal {
+        padding: 0 !important;
+    }
+    
+    .bitstream-qp-modal-backdrop,
+    .bs-edit-modal-backdrop,
+    .bitstream-cropper-backdrop {
+        display: none !important; /* Disable blurs & dark overlays to save mobile rendering performance */
+    }
+    
+    .bitstream-qp-modal-dialog,
+    .bs-edit-modal-dialog,
+    .bitstream-cropper-dialog {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: 100% !important;
+        max-height: 100vh !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        animation: bitstreamMobileModalIn 0.28s cubic-bezier(0.32, 0.94, 0.6, 1) !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    
+    .bitstream-qp-modal-header,
+    .bs-edit-modal-header,
+    .bitstream-cropper-header {
+        border-radius: 0 !important;
+    }
+    
+    .bs-edit-modal-footer,
+    .bitstream-qp-modal-footer,
+    .bitstream-cropper-footer {
+        border-radius: 0 !important;
+    }
+
+    .bs-edit-submit {
+        width: 100% !important;
+        text-align: center;
+    }
+
+    .bitstream-quick-post-poster.bitstream-poster {
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: 100000 !important;
+        display: none !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
+        border: none !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        max-width: none !important;
+        margin: 0 !important;
+    }
+    
+    .bitstream-quick-post-poster.bitstream-poster:not([hidden]) {
+        display: flex !important;
+    }
+    
+    .bitstream-quick-post-poster > .bitstream-qp-modal-backdrop {
+        display: none !important;
+    }
+    
+    .bitstream-quick-post-poster > .bitstream-qp-modal-dialog {
+        position: relative;
+        width: 100% !important;
+        max-width: 100% !important;
+        height: 100% !important;
+        max-height: 100vh !important;
+        background: #fff;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        display: flex !important;
+        flex-direction: column;
+        overflow: hidden;
+        animation: bitstreamMobileModalIn 0.28s cubic-bezier(0.32, 0.94, 0.6, 1) !important;
+        z-index: 2;
+        border: none !important;
+    }
+    
+    .bitstream-quick-post-poster > .bitstream-qp-modal-dialog > .bitstream-qp-modal-header {
+        display: flex !important;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1.4rem;
+        border-bottom: 1px solid #eef0f2;
+        position: sticky;
+        top: 0;
+        background: #fff;
+        border-radius: 0 !important;
+        z-index: 1;
+        flex-shrink: 0;
+    }
+    
+    .bitstream-quick-post-poster > .bitstream-qp-modal-dialog > .bitstream-qp-modal-body {
+        padding: 1rem 1.4rem 1.2rem !important;
+        overflow-y: auto !important;
+        flex: 1 1 auto !important;
+    }
+    
+    /* Ensure the nested sub-modals sit on top of the quickpost modal dialog but behave as full screen sheets */
+    .bitstream-quick-post-poster .bitstream-qp-modal {
+        z-index: 100001 !important;
+        padding: 0 !important;
+    }
+    
+    /* Optimize nested mobile modals to prevent double-blur and layout jank */
+    .bitstream-quick-post-poster:has(.bitstream-qp-modal:not([hidden])) > .bitstream-qp-modal-backdrop {
+        display: none !important;
+    }
+    
+    .bitstream-quick-post-poster:has(.bitstream-qp-modal:not([hidden])) > .bitstream-qp-modal-dialog {
+        background: transparent !important;
+        box-shadow: none !important;
+        overflow: visible !important;
+        animation: none !important;
+        transform: none !important;
+        border: none !important;
+    }
+    
+    .bitstream-quick-post-poster:has(.bitstream-qp-modal:not([hidden])) > .bitstream-qp-modal-dialog > .bitstream-qp-modal-header,
+    .bitstream-quick-post-poster:has(.bitstream-qp-modal:not([hidden])) > .bitstream-qp-modal-dialog > .bitstream-qp-modal-body > form,
+    .bitstream-quick-post-poster:has(.bitstream-qp-modal:not([hidden])) > .bitstream-qp-modal-dialog > .bitstream-qp-modal-body > .bitstream-sidebar-quick-post-status {
+        display: none !important;
+    }
+    
+    .bitstream-quick-post-poster:has(.bitstream-qp-modal:not([hidden])) > .bitstream-qp-modal-dialog > .bitstream-qp-modal-body {
+        padding: 0 !important;
+        overflow: visible !important;
+    }
+}
+
+@media (min-width: 1024px) {
+    .bitstream-quick-post-poster[hidden] {
+        display: block !important;
+    }
+    
+    .bitstream-quick-post-poster > .bitstream-qp-modal-backdrop {
+        display: none !important;
+    }
+    
+    .bitstream-quick-post-poster > .bitstream-qp-modal-dialog > .bitstream-qp-modal-header {
+        display: none !important;
+    }
+    
+    .bitstream-quick-post-poster > .bitstream-qp-modal-dialog {
+        background: transparent !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        display: block !important;
+        max-height: none !important;
+        max-width: none !important;
+        overflow: visible !important;
+        animation: none !important;
+        position: static !important;
+        width: auto !important;
+        border: none !important;
+    }
+    
+    .bitstream-quick-post-poster > .bitstream-qp-modal-dialog > .bitstream-qp-modal-body {
+        padding: 0 !important;
+        overflow: visible !important;
+        display: block !important;
+    }
 }
