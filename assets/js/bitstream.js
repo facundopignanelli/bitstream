@@ -515,6 +515,50 @@ document.addEventListener('DOMContentLoaded', function () {
         previewEl.innerHTML = '<p>Selected: ' + (attachment.filename || attachment.title || 'media') + '</p>';
     }
 
+    function renderComposerMediaPreview(previewEl, attachment) {
+        if (!previewEl) {
+            return;
+        }
+
+        const dropzone = previewEl.closest('.bitstream-media-dropzone');
+        if (dropzone) {
+            dropzone.classList.toggle('has-media', !!attachment);
+        }
+
+        if (!attachment) {
+            previewEl.innerHTML = '';
+            previewEl.removeAttribute('data-attachment-id');
+            previewEl.removeAttribute('data-attachment-url');
+            previewEl.removeAttribute('data-attachment-mime');
+            return;
+        }
+
+        const mimeType = attachment.mime || '';
+        const previewUrl = attachment.preview_url || attachment.url || '';
+
+        if (attachment.id) {
+            previewEl.dataset.attachmentId = attachment.id;
+        }
+        if (previewUrl) {
+            previewEl.dataset.attachmentUrl = previewUrl;
+        }
+        if (mimeType) {
+            previewEl.dataset.attachmentMime = mimeType;
+        }
+
+        if (mimeType.startsWith('image/')) {
+            previewEl.innerHTML = '<img src="' + previewUrl + '" alt="">';
+            return;
+        }
+
+        if (mimeType.startsWith('video/')) {
+            previewEl.innerHTML = '<video src="' + previewUrl + '" controls controlsList="nodownload noplaybackrate" disablepictureinpicture></video>';
+            return;
+        }
+
+        previewEl.innerHTML = '<p>Selected: ' + (attachment.filename || attachment.title || 'media') + '</p>';
+    }
+
     // Continue with the rest of the initialization...
     function initBitstreamPoster() {
         const composerRoot = document.querySelector('.bitstream-composer');
@@ -1924,6 +1968,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
             }
 
+            const previewMediaThumb = composerRoot.querySelector('.bitstream-composer-preview-media-thumb');
             const existingMediaInputs = composerRoot.querySelectorAll('input[name="bit_attachment_id"], input[name="rebit_attachment_id"]');
             existingMediaInputs.forEach(input => {
                 const value = parseInt(input.value || '0', 10);
@@ -2665,6 +2710,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 // Prevent auto-save from firing when publishing
                 formIsDirty = false;
+
+                const hAttachmentId = form.querySelector('#bitstream-composer-attachment-id') || form.querySelector('#bitstream-bit-attachment-id');
+                const hRebitUrl = form.querySelector('#bitstream-composer-rebit-url') || form.querySelector('#bitstream-rebit-url');
+                const hRebitOgTitle = form.querySelector('#bitstream-composer-rebit-og-title') || form.querySelector('#bitstream-rebit-og-title');
+                const hRebitOgDesc = form.querySelector('#bitstream-composer-rebit-og-desc') || form.querySelector('#bitstream-rebit-og-desc');
+                const hRebitOgImage = form.querySelector('#bitstream-composer-rebit-og-image') || form.querySelector('#bitstream-rebit-og-image');
+                const hRebitOgImageRemoved = form.querySelector('#bitstream-composer-rebit-og-image-removed') || form.querySelector('#bitstream-rebit-og-image-removed');
+                const hRebitAttachmentId = form.querySelector('#bitstream-composer-rebit-attachment-id') || form.querySelector('#bitstream-rebit-attachment-id');
+                const textarea = form.querySelector('#bitstream-quick-bit-content') || form.querySelector('#bitstream-bit-content');
+                const submitBtn = form.querySelector('.bitstream-composer-submit');
+                
+                const previewArea = form.querySelector('.bitstream-composer-preview-area') || form.querySelector('.bitstream-media-field');
+                const previewRebit = form.querySelector('.bitstream-composer-preview-rebit') || form.querySelector('#bitstream-rebit-preview');
+                const previewRebitCard = form.querySelector('.bitstream-composer-preview-rebit-card') || form.querySelector('.bit-card');
+                const previewMedia = form.querySelector('.bitstream-composer-preview-media') || form.querySelector('.bitstream-media-preview');
+                const previewMediaThumb = form.querySelector('.bitstream-composer-preview-media-thumb');
 
                 if (!window.bitstream_ajax || !bitstream_ajax.ajax_url) {
                     setStatus('Poster submit endpoint is unavailable.', true);
@@ -4955,50 +5016,6 @@ jQuery(document).ready(function ($) {
             const hasDraft = previewDraft && !previewDraft.hidden;
             if (previewArea) previewArea.hidden = !(hasRebit || hasMedia || hasSched || hasDraft);
             if (textarea) textarea.required = !(hasRebit || hasMedia);
-        }
-
-        function renderComposerMediaPreview(previewEl, attachment) {
-            if (!previewEl) {
-                return;
-            }
-
-            const dropzone = previewEl.closest('.bitstream-media-dropzone');
-            if (dropzone) {
-                dropzone.classList.toggle('has-media', !!attachment);
-            }
-
-            if (!attachment) {
-                previewEl.innerHTML = '';
-                previewEl.removeAttribute('data-attachment-id');
-                previewEl.removeAttribute('data-attachment-url');
-                previewEl.removeAttribute('data-attachment-mime');
-                return;
-            }
-
-            const mimeType = attachment.mime || '';
-            const previewUrl = attachment.preview_url || attachment.url || '';
-
-            if (attachment.id) {
-                previewEl.dataset.attachmentId = attachment.id;
-            }
-            if (previewUrl) {
-                previewEl.dataset.attachmentUrl = previewUrl;
-            }
-            if (mimeType) {
-                previewEl.dataset.attachmentMime = mimeType;
-            }
-
-            if (mimeType.startsWith('image/')) {
-                previewEl.innerHTML = '<img src="' + previewUrl + '" alt="">';
-                return;
-            }
-
-            if (mimeType.startsWith('video/')) {
-                previewEl.innerHTML = '<video src="' + previewUrl + '" controls controlsList="nodownload noplaybackrate" disablepictureinpicture></video>';
-                return;
-            }
-
-            previewEl.innerHTML = '<p>Selected: ' + (attachment.filename || attachment.title || 'media') + '</p>';
         }
 
         // Modal open/close helpers
