@@ -38,6 +38,20 @@
     font-family: inherit;
 }
 
+@media (max-width: 782px) {
+    html:has(body.admin-bar .bitstream-feed-layout),
+    html:has(body.admin-bar .bitstream-composer),
+    html:has(body.admin-bar.bitstream-single-bit) {
+        margin-top: 0 !important;
+    }
+
+    body.admin-bar:has(.bitstream-feed-layout) #wpadminbar,
+    body.admin-bar:has(.bitstream-composer) #wpadminbar,
+    body.admin-bar.bitstream-single-bit #wpadminbar {
+        display: none !important;
+    }
+}
+
 .bit-card-content img,
 .bit-rebit-preview img,
 .bitstream-quoted-preview img,

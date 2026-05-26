@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Optimized mobile quick actions performance by caching draft/scheduled counts in user metadata and caching feed page URL resolution in options.
 - Replaced browser-native confirm dialogs with a premium custom modal confirmation flow when deleting bits, drafts, or scheduled posts.
 - Renamed "Quick Bit" to Composer.
 - Rewired the quick actions "New Bit" and "New Rebit" options to be hidden on desktop (where the inline composer is already shown) and open the composer in a modal on mobile, with auto-opening of the Rebit editor if clicking "New Rebit".
@@ -19,17 +20,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed the generic ReBit icon from the retweet icon to a standard link/URL icon across the whole project (including tabs, action buttons, and preview badges).
 - Condensed the timeline Rebit edit modal so the main panel only keeps the Link URL, commentary, and media controls, with title/description/image editing moved into a nested link-preview submodal. The URL fetch button is now styled as a full accent-green action.
 - Changed timeline Bit edit and Quote actions to open the unified modal editor instead of redirecting to the composer shortcode, while keeping the same submit flow, schedule controls, media attachment support, and quote preview behavior.
-- Removed support for audio files across the plugin (including backend AJAX handlers, database checks, frontend media dropzones, metadata fields, and custom audio player styling). Enforced strict image and video MIME-type validations on both client-side and server-side uploaders, as well as the Media Library selection dialog.
+
 - Moved the desktop side rail widgets so the right rail now shows Content Filter, Archive, RSS Feeds, and the Version box in that order.
 - Let the Hashtags sidebar grow naturally as new tags are added instead of forcing an internal scroll container.
 
 ### Deprecated
 
 - Deprecated and removed the `[bitstream_poster]` shortcode. All posting capabilities (composing bits/rebits, managing drafts, and scheduling) have been completely migrated into the inline Composer and unified Composer modals on the main timeline feed (`[bitstream]` shortcode).
+- Removed support for audio files across the plugin (including backend AJAX handlers, database checks, frontend media dropzones, metadata fields, and custom audio player styling). Enforced strict image and video MIME-type validations on both client-side and server-side uploaders, as well as the Media Library selection dialog.
 
 ### Fixed
 - Fixed nested quoted bit timestamp tooltip getting clipped by the quote preview container's overflow settings.
-- Fixed draft previews in the Composer's Drafts modal so long content now wraps instead of forcing horizontal scrolling.
+- Hid the WordPress admin bar on mobile BitStream frontend screens so page and modal titles are not covered.
+- Reduced mobile image upload failures by resizing oversized images, sending larger files in chunks, and improving interrupted-upload messaging.
+- Fixed bug that caused the edit page Block Editor not work.
 
 ## [3.1.3] - 2026-05-04
 

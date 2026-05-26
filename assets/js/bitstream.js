@@ -40,6 +40,219 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 3000);
     }
 
+    const BITSTREAM_IMAGE_UPLOAD_MAX_DIMENSION = 2200;
+    const BITSTREAM_IMAGE_UPLOAD_MAX_BYTES = 2.5 * 1024 * 1024;
+    const BITSTREAM_IMAGE_UPLOAD_QUALITY = 0.86;
+    const BITSTREAM_CHUNKED_UPLOAD_THRESHOLD = 256 * 1024;
+    const BITSTREAM_UPLOAD_CHUNK_SIZE = 512 * 1024;
+
+    function getFileExtension(filename) {
+        const match = String(filename || '').toLowerCase().match(/\.([a-z0-9]+)$/);
+        return match ? match[1] : '';
+    }
+
+    function getUploadMimeType(file) {
+        if (file && file.type) {
+            return file.type;
+        }
+
+        const extension = getFileExtension(file && file.name);
+        if (['jpg', 'jpeg'].includes(extension)) return 'image/jpeg';
+        if (extension === 'png') return 'image/png';
+        if (extension === 'gif') return 'image/gif';
+        if (extension === 'webp') return 'image/webp';
+        if (extension === 'heic') return 'image/heic';
+        if (extension === 'heif') return 'image/heif';
+        if (extension === 'mp4') return 'video/mp4';
+        if (extension === 'mov') return 'video/quicktime';
+        if (extension === 'webm') return 'video/webm';
+
+        return '';
+    }
+
+    function canvasToBlob(canvas, mimeType, quality) {
+        return new Promise(resolve => {
+            canvas.toBlob(blob => resolve(blob), mimeType, quality);
+        });
+    }
+
+    async function loadImageFile(file) {
+        if (window.createImageBitmap) {
+            try {
+                return await createImageBitmap(file, { imageOrientation: 'from-image' });
+            } catch (error) {
+                // Fall back to an HTMLImageElement decode below.
+            }
+        }
+
+        return new Promise((resolve, reject) => {
+            const image = new Image();
+            const objectUrl = URL.createObjectURL(file);
+            image.onload = () => {
+                URL.revokeObjectURL(objectUrl);
+                resolve(image);
+            };
+            image.onerror = () => {
+                URL.revokeObjectURL(objectUrl);
+                reject(new Error('Could not read image.'));
+            };
+            image.src = objectUrl;
+        });
+    }
+
+    async function prepareMediaFileForUpload(file) {
+        const mimeType = getUploadMimeType(file);
+        if (!mimeType.startsWith('image/') || mimeType === 'image/gif') {
+            return file;
+        }
+
+        if (file.size <= BITSTREAM_IMAGE_UPLOAD_MAX_BYTES && !['image/heic', 'image/heif'].includes(mimeType)) {
+            return file;
+        }
+
+        try {
+            const image = await loadImageFile(file);
+            const sourceWidth = image.naturalWidth || image.width;
+            const sourceHeight = image.naturalHeight || image.height;
+            const scale = Math.min(1, BITSTREAM_IMAGE_UPLOAD_MAX_DIMENSION / Math.max(sourceWidth, sourceHeight));
+            const targetWidth = Math.max(1, Math.round(sourceWidth * scale));
+            const targetHeight = Math.max(1, Math.round(sourceHeight * scale));
+
+            const canvas = document.createElement('canvas');
+            canvas.width = targetWidth;
+            canvas.height = targetHeight;
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                return file;
+            }
+
+            ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
+            if (typeof image.close === 'function') {
+                image.close();
+            }
+
+            const outputType = mimeType === 'image/png' && file.size <= (6 * 1024 * 1024) ? 'image/png' : 'image/jpeg';
+            const blob = await canvasToBlob(canvas, outputType, outputType === 'image/jpeg' ? BITSTREAM_IMAGE_UPLOAD_QUALITY : undefined);
+            if (!blob || blob.size <= 0 || blob.size >= file.size) {
+                return file;
+            }
+
+            const baseName = String(file.name || 'mobile-upload').replace(/\.[^.]+$/, '');
+            const extension = outputType === 'image/png' ? 'png' : 'jpg';
+            return new File([blob], baseName + '.' + extension, {
+                type: outputType,
+                lastModified: Date.now()
+            });
+        } catch (error) {
+            return file;
+        }
+    }
+
+    function sendAjaxFormData(formData, onProgress) {
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', bitstream_ajax.ajax_url, true);
+            xhr.withCredentials = true;
+
+            if (typeof onProgress === 'function') {
+                xhr.upload.addEventListener('progress', onProgress);
+            }
+
+            xhr.onreadystatechange = () => {
+                if (xhr.readyState !== 4) {
+                    return;
+                }
+
+                if (xhr.status < 200 || xhr.status >= 300) {
+                    reject(new Error('Upload failed.'));
+                    return;
+                }
+
+                try {
+                    const response = JSON.parse(xhr.responseText || '{}');
+                    if (!response.success) {
+                        reject(new Error(response.data || 'Upload failed.'));
+                        return;
+                    }
+                    resolve(response.data || {});
+                } catch (error) {
+                    reject(new Error('Upload failed.'));
+                }
+            };
+
+            xhr.onerror = () => reject(new Error('Upload failed.'));
+            xhr.send(formData);
+        });
+    }
+
+    function createUploadId() {
+        if (window.crypto && crypto.randomUUID) {
+            return crypto.randomUUID();
+        }
+
+        return 'upload-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+    }
+
+    async function uploadMediaRequest(file, updateProgress) {
+        if (file.size <= BITSTREAM_CHUNKED_UPLOAD_THRESHOLD) {
+            const formData = new FormData();
+            formData.append('action', 'bitstream_upload_media');
+            formData.append('nonce', bitstream_ajax.media_upload_nonce);
+            formData.append('media', file);
+
+            return sendAjaxFormData(formData, event => {
+                if (!event.lengthComputable || typeof updateProgress !== 'function') {
+                    return;
+                }
+                const percent = Math.max(1, Math.round((event.loaded / event.total) * 100));
+                updateProgress(percent, 'Uploading... ' + percent + '%');
+            });
+        }
+
+        const totalChunks = Math.ceil(file.size / BITSTREAM_UPLOAD_CHUNK_SIZE);
+        const uploadId = createUploadId();
+        const mimeType = getUploadMimeType(file);
+
+        for (let index = 0; index < totalChunks; index++) {
+            const start = index * BITSTREAM_UPLOAD_CHUNK_SIZE;
+            const end = Math.min(file.size, start + BITSTREAM_UPLOAD_CHUNK_SIZE);
+            const chunk = file.slice(start, end);
+            const formData = new FormData();
+            formData.append('action', 'bitstream_upload_media_chunk');
+            formData.append('nonce', bitstream_ajax.media_upload_nonce);
+            formData.append('upload_id', uploadId);
+            formData.append('chunk_index', String(index));
+            formData.append('total_chunks', String(totalChunks));
+            formData.append('filename', file.name || 'bitstream-upload');
+            formData.append('mime', mimeType);
+            formData.append('chunk', chunk, (file.name || 'bitstream-upload') + '.part');
+
+            const chunkBasePercent = Math.round((index / totalChunks) * 100);
+            const response = await sendAjaxFormData(formData, event => {
+                if (!event.lengthComputable || typeof updateProgress !== 'function') {
+                    return;
+                }
+                const chunkPercent = event.loaded / event.total;
+                const overallPercent = Math.max(1, Math.min(99, Math.round(((index + chunkPercent) / totalChunks) * 100)));
+                updateProgress(overallPercent, 'Uploading... ' + overallPercent + '%');
+            });
+
+            if (response && !response.partial) {
+                if (typeof updateProgress === 'function') {
+                    updateProgress(100, 'Upload complete!');
+                }
+                return response;
+            }
+
+            if (typeof updateProgress === 'function') {
+                updateProgress(Math.max(1, chunkBasePercent), 'Uploading... ' + Math.max(1, chunkBasePercent) + '%');
+            }
+        }
+
+        throw new Error('Upload did not finish.');
+    }
+
     function showDeleteConfirmation(message, onConfirm) {
         let confirmModal = document.querySelector('.bitstream-composer-modal-delete-confirm');
         if (!confirmModal) {
@@ -1167,14 +1380,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
-            function uploadMediaFile(file, targetInputId, targetPreviewId) {
+            async function uploadMediaFile(file, targetInputId, targetPreviewId) {
                 setStatus('');
                 if (!bitstream_ajax || !bitstream_ajax.ajax_url || !bitstream_ajax.media_upload_nonce) {
                     setStatus('Media upload is unavailable.', true);
                     return;
                 }
 
-                const mimeType = file.type || '';
+                const mimeType = getUploadMimeType(file);
                 if (!mimeType.startsWith('image/') && !mimeType.startsWith('video/')) {
                     setStatus('Unsupported file format. Only images and videos are allowed.', true);
                     return;
@@ -1209,54 +1422,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 };
 
                 showProgress();
+                updateProgress(5, mimeType.startsWith('image/') ? 'Preparing image...' : 'Preparing upload...');
 
-                const formData = new FormData();
-                formData.append('action', 'bitstream_upload_media');
-                formData.append('nonce', bitstream_ajax.media_upload_nonce);
-                formData.append('media', file);
+                const uploadFile = await prepareMediaFileForUpload(file);
+                updateProgress(8, uploadFile.size > BITSTREAM_CHUNKED_UPLOAD_THRESHOLD ? 'Uploading in chunks...' : 'Uploading...');
 
-                const xhr = new XMLHttpRequest();
-                xhr.open('POST', bitstream_ajax.ajax_url, true);
-                xhr.withCredentials = true;
-
-                xhr.upload.addEventListener('progress', (event) => {
-                    if (event.lengthComputable) {
-                        const percent = Math.max(1, Math.round((event.loaded / event.total) * 100));
-                        updateProgress(percent, 'Uploading... ' + percent + '%');
-                    } else {
-                        updateProgress(50, 'Uploading...');
-                    }
-                });
-
-                xhr.onreadystatechange = () => {
-                    if (xhr.readyState !== 4) {
-                        return;
-                    }
-
-                    if (xhr.status < 200 || xhr.status >= 300) {
-                        hideProgress();
-                        setStatus('Upload failed.', true);
-                        return;
-                    }
-
-                    let response;
-                    try {
-                        response = JSON.parse(xhr.responseText || '{}');
-                    } catch (error) {
-                        hideProgress();
-                        setStatus('Upload failed.', true);
-                        return;
-                    }
-
-                    if (!response.success) {
-                        hideProgress();
-                        setStatus(response.data || 'Upload failed.', true);
-                        return;
-                    }
-
-                    updateProgress(100, 'Upload complete!');
-
-                    const media = response.data || {};
+                uploadMediaRequest(uploadFile, updateProgress)
+                    .then(media => {
                     handleMediaSelection(targetInputId, targetPreviewId, {
                         id: media.id,
                         url: media.url,
@@ -1271,14 +1443,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     setTimeout(() => {
                         hideProgress();
                     }, 1000);
-                };
-
-                xhr.onerror = () => {
-                    hideProgress();
-                    setStatus('Upload failed.', true);
-                };
-
-                xhr.send(formData);
+                    })
+                    .catch(error => {
+                        hideProgress();
+                        setStatus(error.message || 'Upload failed.', true);
+                    });
             }
 
             function uploadClipboardImage(targetInputId, targetPreviewId) {
@@ -2859,13 +3028,13 @@ document.addEventListener('DOMContentLoaded', function () {
             const targetPreviewId = previewEl.id || 'bs-edit-bit-media-preview';
 
             // Helper to upload media file via AJAX
-            const uploadFile = (file) => {
+            const uploadFile = async (file) => {
                 if (!bitstream_ajax || !bitstream_ajax.ajax_url || !bitstream_ajax.media_upload_nonce) {
                     setErrorState('Media upload is unavailable.');
                     return;
                 }
 
-                const mimeType = file.type || '';
+                const mimeType = getUploadMimeType(file);
                 if (!mimeType.startsWith('image/') && !mimeType.startsWith('video/')) {
                     setErrorState('Unsupported file format. Only images and videos are allowed.');
                     return;
@@ -2891,65 +3060,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 };
 
                 showProgress();
+                updateProgress(5, mimeType.startsWith('image/') ? 'Preparing image...' : 'Preparing upload...');
 
-                const formData = new FormData();
-                formData.append('action', 'bitstream_upload_media');
-                formData.append('nonce', bitstream_ajax.media_upload_nonce);
-                formData.append('media', file);
+                const preparedFile = await prepareMediaFileForUpload(file);
+                updateProgress(8, preparedFile.size > BITSTREAM_CHUNKED_UPLOAD_THRESHOLD ? 'Uploading in chunks...' : 'Uploading...');
 
-                const xhr = new XMLHttpRequest();
-                xhr.open('POST', bitstream_ajax.ajax_url, true);
-                xhr.withCredentials = true;
-
-                xhr.upload.addEventListener('progress', (event) => {
-                    if (event.lengthComputable) {
-                        const percent = Math.max(1, Math.round((event.loaded / event.total) * 100));
-                        updateProgress(percent, 'Uploading... ' + percent + '%');
-                    } else {
-                        updateProgress(50, 'Uploading...');
-                    }
-                });
-
-                xhr.onreadystatechange = () => {
-                    if (xhr.readyState !== 4) return;
-
-                    if (xhr.status < 200 || xhr.status >= 300) {
-                        hideProgress();
-                        setErrorState('Upload failed.');
-                        return;
-                    }
-
-                    let response;
-                    try {
-                        response = JSON.parse(xhr.responseText || '{}');
-                    } catch (error) {
-                        hideProgress();
-                        setErrorState('Upload failed.');
-                        return;
-                    }
-
-                    if (!response.success) {
-                        hideProgress();
-                        setErrorState(response.data || 'Upload failed.');
-                        return;
-                    }
-
-                    updateProgress(100, 'Upload complete!');
-
-                    const media = response.data || {};
+                uploadMediaRequest(preparedFile, updateProgress)
+                    .then(media => {
                     setAttachmentPreview(form, media.id, media.url, media.mime);
 
                     setTimeout(() => {
                         hideProgress();
                     }, 1000);
-                };
-
-                xhr.onerror = () => {
-                    hideProgress();
-                    setErrorState('Upload failed.');
-                };
-
-                xhr.send(formData);
+                    })
+                    .catch(error => {
+                        hideProgress();
+                        setErrorState(error.message || 'Upload failed.');
+                    });
             };
 
             // Clipboard paste
@@ -3927,22 +4054,34 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const basePosterUrl = (window.bitstream_ajax && bitstream_ajax.composer_url)
-            ? bitstream_ajax.composer_url
-            : (window.location.origin + '/bitstream/');
-        const editUrl = new URL(basePosterUrl, window.location.origin);
-        editUrl.searchParams.set('composer_tab', postType);
-        editUrl.searchParams.set('edit_post_id', String(postId));
-
-        window.location.href = editUrl.toString();
-
-        const icon = button.querySelector('i');
-        if (icon) {
-            icon.classList.remove('pulse');
-            void icon.offsetWidth;
-            icon.classList.add('pulse');
-            setTimeout(() => icon.classList.remove('pulse'), 300);
+        if (typeof initTimelineEditModal === 'function') {
+            initTimelineEditModal();
+            if (typeof openTimelineEditModal === 'function' && openTimelineEditModal(postId, postType)) {
+                const icon = button.querySelector('i');
+                if (icon) {
+                    icon.classList.remove('pulse');
+                    void icon.offsetWidth;
+                    icon.classList.add('pulse');
+                    setTimeout(() => icon.classList.remove('pulse'), 300);
+                }
+                return;
+            }
         }
+
+        const composer = document.querySelector('.bitstream-composer');
+        if (composer && typeof composer.bitstreamLoadPostIntoComposer === 'function') {
+            composer.bitstreamLoadPostIntoComposer(postId);
+            const icon = button.querySelector('i');
+            if (icon) {
+                icon.classList.remove('pulse');
+                void icon.offsetWidth;
+                icon.classList.add('pulse');
+                setTimeout(() => icon.classList.remove('pulse'), 300);
+            }
+            return;
+        }
+
+        window.alert('The BitStream editor is unavailable on this page. Refresh and try again.');
     });
 
     // Delete button functionality (delegated for dynamically loaded cards)
@@ -4644,6 +4783,7 @@ jQuery(document).ready(function ($) {
             if (isMobile) {
                 composer.hidden = false;
             }
+            composer.dataset.quickActionSource = modalName;
 
             if (modalName === 'new-bit') {
                 const textarea = composer.querySelector('#bitstream-quick-bit-content');
@@ -4874,6 +5014,7 @@ jQuery(document).ready(function ($) {
             setStatus('');
             if (name === 'composer') {
                 composerRoot.hidden = true;
+                delete composerRoot.dataset.quickActionSource;
                 // Also close any open sub-modals
                 composerRoot.querySelectorAll('.bitstream-composer-modal').forEach(m => m.hidden = true);
             } else {
@@ -4881,8 +5022,15 @@ jQuery(document).ready(function ($) {
                 if (modal) {
                     modal.hidden = true;
                     const isMobile = window.innerWidth < 1024;
-                    if (isMobile && (name === 'drafts' || name === 'scheduled-list') && !keepPosterOpen) {
+                    const quickActionSource = composerRoot.dataset.quickActionSource || '';
+                    const shouldCloseComposer = isMobile && !keepPosterOpen && (
+                        name === 'drafts'
+                        || name === 'scheduled-list'
+                        || (name === 'rebit' && quickActionSource === 'new-rebit')
+                    );
+                    if (shouldCloseComposer) {
                         composerRoot.hidden = true;
+                        delete composerRoot.dataset.quickActionSource;
                     }
                 }
             }
@@ -4955,6 +5103,7 @@ jQuery(document).ready(function ($) {
         function loadPostIntoComposer(postId) {
             composerRoot.hidden = false;
             if (!window.bitstream_ajax) return;
+            delete composerRoot.dataset.quickActionSource;
 
             setStatus('Loading post...');
             if (submitBtn) submitBtn.disabled = true;
@@ -5005,6 +5154,14 @@ jQuery(document).ready(function ($) {
                         }
                     } else {
                         form.dataset.composerType = 'bit';
+                        if (hRebitUrl) hRebitUrl.value = '';
+                        if (hRebitOgTitle) hRebitOgTitle.value = '';
+                        if (hRebitOgDesc) hRebitOgDesc.value = '';
+                        if (hRebitOgImage) hRebitOgImage.value = '';
+                        if (hRebitAttachmentId) hRebitAttachmentId.value = '';
+                        if (hRebitOgImageRemoved) hRebitOgImageRemoved.value = '0';
+                        if (previewRebit) previewRebit.hidden = true;
+                        if (previewRebitCard) previewRebitCard.innerHTML = '';
                         if (textarea) textarea.required = true;
                     }
 
@@ -5058,6 +5215,7 @@ jQuery(document).ready(function ($) {
                 .catch(err => setStatus(err.message || 'Could not load post.', true))
                 .finally(() => { if (submitBtn) submitBtn.disabled = false; });
         }
+        composerRoot.bitstreamLoadPostIntoComposer = loadPostIntoComposer;
 
         // ── REBIT MODAL ──
         const rebitModal = composerRoot.querySelector('.bitstream-composer-modal-rebit');
@@ -5242,7 +5400,8 @@ jQuery(document).ready(function ($) {
                     }
                     if (previewRebit) previewRebit.hidden = false;
                     syncPreviewArea();
-                    closeModal('rebit');
+                    delete composerRoot.dataset.quickActionSource;
+                    closeModal('rebit', true);
                     setStatus('Rebit attached.');
                 });
             }
@@ -5309,14 +5468,16 @@ jQuery(document).ready(function ($) {
                 });
             });
 
-            draftsModal.querySelectorAll('.bitstream-composer-draft-load').forEach(btn => {
-                btn.addEventListener('click', () => {
+            draftsModal.addEventListener('click', (event) => {
+                const btn = event.target.closest('.bitstream-composer-draft-load');
+                if (btn && draftsModal.contains(btn)) {
+                    event.preventDefault();
                     const postId = btn.dataset.postId;
                     if (postId) {
                         loadPostIntoComposer(postId);
                         closeModal('drafts', true);
                     }
-                });
+                }
             });
 
             draftsModal.querySelectorAll('.bitstream-composer-draft-delete').forEach(btn => {
@@ -5558,8 +5719,11 @@ jQuery(document).ready(function ($) {
             const rebitBtn = composerRoot.querySelector('[data-composer-modal="rebit"]');
             if (rebitBtn) {
                 setTimeout(() => {
-                    rebitBtn.click();
                     const isMobile = window.innerWidth < 1024;
+                    if (isMobile) {
+                        composerRoot.dataset.quickActionSource = 'new-rebit';
+                    }
+                    rebitBtn.click();
                     if (!isMobile) {
                         rebitBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }

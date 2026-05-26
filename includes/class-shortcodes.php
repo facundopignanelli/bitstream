@@ -98,29 +98,33 @@ class BitStream_Shortcodes
         static $cached_url = null;
 
         if ($cached_url === null) {
-            $cached_url = '';
-
-            $candidates = get_posts([
-                'post_type' => ['page', 'post'],
-                'post_status' => 'publish',
-                'posts_per_page' => -1,
-                'fields' => 'ids',
-                'no_found_rows' => true,
-            ]);
-
-            foreach ($candidates as $candidate_id) {
-                $content = get_post_field('post_content', $candidate_id);
-                if ($content && has_shortcode($content, 'bitstream')) {
-                    if (strpos($content, 'mode="preview"') !== false || strpos($content, "mode='preview'") !== false) {
-                        continue;
-                    }
-                    $cached_url = get_permalink($candidate_id);
-                    break;
-                }
-            }
+            $cached_url = get_option('bitstream_feed_page_url', '');
 
             if (empty($cached_url)) {
-                $cached_url = home_url('/bitstream/');
+                $candidates = get_posts([
+                    'post_type' => ['page', 'post'],
+                    'post_status' => 'publish',
+                    'posts_per_page' => -1,
+                    'fields' => 'ids',
+                    'no_found_rows' => true,
+                ]);
+
+                foreach ($candidates as $candidate_id) {
+                    $content = get_post_field('post_content', $candidate_id);
+                    if ($content && has_shortcode($content, 'bitstream')) {
+                        if (strpos($content, 'mode="preview"') !== false || strpos($content, "mode='preview'") !== false) {
+                            continue;
+                        }
+                        $cached_url = get_permalink($candidate_id);
+                        break;
+                    }
+                }
+
+                if (empty($cached_url)) {
+                    $cached_url = home_url('/bitstream/');
+                } else {
+                    update_option('bitstream_feed_page_url', $cached_url);
+                }
             }
         }
 
@@ -143,23 +147,35 @@ class BitStream_Shortcodes
 
         $author_id = get_current_user_id();
 
-        // Count drafts for current user
-        $draft_count = (int)(new WP_Query([
-            'post_type' => 'bit',
-            'post_status' => 'draft',
-            'author' => $author_id,
-            'posts_per_page' => 1,
-            'fields' => 'ids'
-        ]))->found_posts;
+        // Try to get cached counts from user meta
+        $draft_count = get_user_meta($author_id, '_bitstream_draft_count', true);
+        if ($draft_count === '') {
+            $draft_count = (int)(new WP_Query([
+                'post_type' => 'bit',
+                'post_status' => 'draft',
+                'author' => $author_id,
+                'posts_per_page' => 1,
+                'fields' => 'ids'
+            ]))->found_posts;
+            update_user_meta($author_id, '_bitstream_draft_count', $draft_count);
+        } else {
+            $draft_count = (int)$draft_count;
+        }
 
-        // Count scheduled for current user
-        $future_count = (int)(new WP_Query([
-            'post_type' => 'bit',
-            'post_status' => 'future',
-            'author' => $author_id,
-            'posts_per_page' => 1,
-            'fields' => 'ids'
-        ]))->found_posts;
+        // Try to get cached scheduled counts from user meta
+        $future_count = get_user_meta($author_id, '_bitstream_scheduled_count', true);
+        if ($future_count === '') {
+            $future_count = (int)(new WP_Query([
+                'post_type' => 'bit',
+                'post_status' => 'future',
+                'author' => $author_id,
+                'posts_per_page' => 1,
+                'fields' => 'ids'
+            ]))->found_posts;
+            update_user_meta($author_id, '_bitstream_scheduled_count', $future_count);
+        } else {
+            $future_count = (int)$future_count;
+        }
 
         return [
             [
@@ -782,6 +798,39 @@ class BitStream_Shortcodes
         add_action('init', [$this, 'register_shortcodes']);
         add_action('wp_enqueue_scripts', [$this, 'enqueue_shortcode_assets']);
         add_action('wp_footer', [$this, 'render_timeline_edit_modal']);
+        add_filter('show_admin_bar', [__CLASS__, 'hide_mobile_admin_bar']);
+        add_action('clean_post_cache', [__CLASS__, 'clear_feed_page_url_cache']);
+        add_action('transition_post_status', [__CLASS__, 'flush_user_post_counts_on_transition'], 10, 3);
+        add_action('before_delete_post', [__CLASS__, 'flush_user_post_counts_on_delete']);
+    }
+
+    /**
+     * Hide the WordPress admin bar on mobile BitStream frontend screens.
+     *
+     * @param bool $show Whether to show the admin bar.
+     * @return bool
+     */
+    public static function hide_mobile_admin_bar($show)
+    {
+        if (!$show || is_admin() || !wp_is_mobile()) {
+            return $show;
+        }
+
+        if (is_singular('bit') || is_post_type_archive('bit')) {
+            return false;
+        }
+
+        if (is_singular()) {
+            $post = get_post();
+            if ($post instanceof WP_Post) {
+                $content = (string) $post->post_content;
+                if (has_shortcode($content, 'bitstream') || has_shortcode($content, 'bitstream_settings')) {
+                    return false;
+                }
+            }
+        }
+
+        return $show;
     }
 
     /**
@@ -1802,5 +1851,48 @@ class BitStream_Shortcodes
             </div>
         </div>
         <?php
+    }
+
+    /**
+     * Clear the feed page URL cache.
+     */
+    public static function clear_feed_page_url_cache()
+    {
+        delete_option('bitstream_feed_page_url');
+    }
+
+    /**
+     * Flush cached draft and scheduled post counts for a user.
+     *
+     * @param int $author_id Author user ID
+     */
+    public static function flush_user_post_counts($author_id)
+    {
+        $author_id = intval($author_id);
+        if ($author_id > 0) {
+            delete_user_meta($author_id, '_bitstream_draft_count');
+            delete_user_meta($author_id, '_bitstream_scheduled_count');
+        }
+    }
+
+    /**
+     * Flush user post counts when post status transitions.
+     */
+    public static function flush_user_post_counts_on_transition($new_status, $old_status, $post)
+    {
+        if ($post && $post->post_type === 'bit') {
+            self::flush_user_post_counts($post->post_author);
+        }
+    }
+
+    /**
+     * Flush user post counts when a post is about to be deleted.
+     */
+    public static function flush_user_post_counts_on_delete($post_id)
+    {
+        $post = get_post($post_id);
+        if ($post && $post->post_type === 'bit') {
+            self::flush_user_post_counts($post->post_author);
+        }
     }
 }

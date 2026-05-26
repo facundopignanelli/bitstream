@@ -73,6 +73,33 @@ class BitStream_Ajax_Handlers
         return $clean_markup !== '' ? $clean_markup : $markup;
     }
 
+    /**
+     * Return a friendlier message for PHP upload errors.
+     *
+     * @param int $error_code PHP UPLOAD_ERR_* code.
+     * @return string
+     */
+    private function get_upload_error_message($error_code)
+    {
+        switch ((int) $error_code) {
+            case UPLOAD_ERR_INI_SIZE:
+            case UPLOAD_ERR_FORM_SIZE:
+                return 'This file is larger than the site upload limit.';
+            case UPLOAD_ERR_PARTIAL:
+                return 'Upload interrupted before the file finished sending. Try again on a steadier connection or choose a smaller image.';
+            case UPLOAD_ERR_NO_FILE:
+                return 'No file uploaded.';
+            case UPLOAD_ERR_NO_TMP_DIR:
+                return 'Server upload folder is missing.';
+            case UPLOAD_ERR_CANT_WRITE:
+                return 'Server could not save the uploaded file.';
+            case UPLOAD_ERR_EXTENSION:
+                return 'Upload stopped by a server extension.';
+            default:
+                return 'Upload failed.';
+        }
+    }
+
 
 
     /**
@@ -106,6 +133,7 @@ class BitStream_Ajax_Handlers
         add_action('wp_ajax_bitstream_get_quoted_bit', [$this, 'handle_get_quoted_bit']);
         add_action('wp_ajax_bitstream_submit_composer', [$this, 'handle_submit_composer']);
         add_action('wp_ajax_bitstream_upload_media', [$this, 'handle_upload_media']);
+        add_action('wp_ajax_bitstream_upload_media_chunk', [$this, 'handle_upload_media_chunk']);
         add_action('wp_ajax_bitstream_prepare_rebit_image_for_crop', [$this, 'handle_prepare_rebit_image_for_crop']);
         add_action('wp_ajax_bitstream_crop_media', [$this, 'handle_crop_media']);
         add_action('wp_ajax_bitstream_delete_post', [$this, 'handle_delete_post']);
@@ -282,6 +310,62 @@ class BitStream_Ajax_Handlers
 
             wp_delete_attachment($attachment_id, true);
         }
+    }
+
+    /**
+     * Create a WordPress attachment from a file already moved into uploads.
+     *
+     * @param string $file_path Absolute uploaded file path.
+     * @param string $file_url Public uploaded file URL.
+     * @return array Attachment response data.
+     * @throws Exception When validation or attachment creation fails.
+     */
+    private function create_media_attachment_from_upload($file_path, $file_url)
+    {
+        $file_type = wp_check_filetype(basename($file_path), null);
+        $mime_type = $file_type['type'];
+
+        if (empty($mime_type) || (strpos($mime_type, 'image/') !== 0 && strpos($mime_type, 'video/') !== 0)) {
+            @unlink($file_path);
+            throw new Exception('Unsupported file format. Only images and videos are allowed.');
+        }
+
+        $attachment = [
+            'post_mime_type' => $mime_type,
+            'post_title' => sanitize_text_field(pathinfo($file_path, PATHINFO_FILENAME)),
+            'post_content' => '',
+            'post_status' => 'inherit',
+        ];
+
+        $attachment_id = wp_insert_attachment($attachment, $file_path);
+        if (is_wp_error($attachment_id)) {
+            throw new Exception('Could not create attachment.');
+        }
+
+        $attachment_data = wp_generate_attachment_metadata($attachment_id, $file_path);
+        wp_update_attachment_metadata($attachment_id, $attachment_data);
+
+        update_post_meta($attachment_id, '_bitstream_uploaded_via_composer', 1);
+        update_post_meta($attachment_id, '_bitstream_upload_created_at', time());
+
+        $preview_url = $file_url;
+        if (strpos($file_type['type'], 'image/') === 0) {
+            $preview_url = wp_get_attachment_image_url($attachment_id, 'medium');
+            if (!$preview_url) {
+                $preview_url = wp_get_attachment_image_url($attachment_id, 'full');
+            }
+            if (!$preview_url) {
+                $preview_url = $file_url;
+            }
+        }
+
+        return [
+            'id' => $attachment_id,
+            'url' => $file_url,
+            'preview_url' => $preview_url,
+            'mime' => $file_type['type'],
+            'edit_url' => get_edit_post_link($attachment_id, ''),
+        ];
     }
 
     /**
@@ -483,6 +567,10 @@ class BitStream_Ajax_Handlers
                 wp_send_json_error('No file uploaded.');
             }
 
+            if (!empty($_FILES['media']['error'])) {
+                wp_send_json_error($this->get_upload_error_message($_FILES['media']['error']));
+            }
+
             require_once ABSPATH . 'wp-admin/includes/file.php';
             require_once ABSPATH . 'wp-admin/includes/media.php';
             require_once ABSPATH . 'wp-admin/includes/image.php';
@@ -496,52 +584,117 @@ class BitStream_Ajax_Handlers
                 wp_send_json_error($uploaded_file['error']);
             }
 
-            $file_path = $uploaded_file['file'];
-            $file_url = $uploaded_file['url'];
-            $file_type = wp_check_filetype(basename($file_path), null);
-            $mime_type = $file_type['type'];
+            wp_send_json_success($this->create_media_attachment_from_upload($uploaded_file['file'], $uploaded_file['url']));
+        }
+        catch (Exception $e) {
+            wp_send_json_error($e->getMessage() ?: 'Upload failed.');
+        }
+    }
 
-            if (empty($mime_type) || (strpos($mime_type, 'image/') !== 0 && strpos($mime_type, 'video/') !== 0)) {
-                @unlink($file_path);
-                wp_send_json_error('Unsupported file format. Only images and videos are allowed.');
+    /**
+     * Handle chunked media uploads for mobile browsers and flaky multipart requests.
+     */
+    public function handle_upload_media_chunk()
+    {
+        try {
+            check_ajax_referer('bitstream_media_upload_nonce', 'nonce');
+
+            if (!current_user_can('upload_files') || !current_user_can('edit_posts')) {
+                wp_send_json_error('Insufficient permissions.');
             }
 
-            $attachment = [
-                'post_mime_type' => $mime_type,
-                'post_title' => sanitize_text_field(pathinfo($file_path, PATHINFO_FILENAME)),
-                'post_content' => '',
-                'post_status' => 'inherit',
+            if (empty($_FILES['chunk'])) {
+                wp_send_json_error('No upload chunk received.');
+            }
+
+            if (!empty($_FILES['chunk']['error'])) {
+                wp_send_json_error($this->get_upload_error_message($_FILES['chunk']['error']));
+            }
+
+            $upload_id = sanitize_key(wp_unslash($_POST['upload_id'] ?? ''));
+            $chunk_index = isset($_POST['chunk_index']) ? intval($_POST['chunk_index']) : -1;
+            $total_chunks = isset($_POST['total_chunks']) ? intval($_POST['total_chunks']) : 0;
+            $filename = sanitize_file_name(wp_unslash($_POST['filename'] ?? ''));
+
+            if (empty($upload_id) || empty($filename) || $chunk_index < 0 || $total_chunks <= 0 || $total_chunks > 1000 || $chunk_index >= $total_chunks) {
+                wp_send_json_error('Invalid upload chunk.');
+            }
+
+            $uploads = wp_upload_dir();
+            if (!empty($uploads['error'])) {
+                wp_send_json_error($uploads['error']);
+            }
+
+            $chunk_dir = trailingslashit($uploads['basedir']) . 'bitstream-chunks/' . get_current_user_id() . '/' . $upload_id;
+            if (!wp_mkdir_p($chunk_dir)) {
+                wp_send_json_error('Could not prepare upload folder.');
+            }
+
+            $chunk_path = trailingslashit($chunk_dir) . sprintf('%06d.part', $chunk_index);
+            if (!move_uploaded_file($_FILES['chunk']['tmp_name'], $chunk_path)) {
+                wp_send_json_error('Could not save upload chunk.');
+            }
+
+            for ($index = 0; $index < $total_chunks; $index++) {
+                if (!file_exists(trailingslashit($chunk_dir) . sprintf('%06d.part', $index))) {
+                    wp_send_json_success([
+                        'partial' => true,
+                        'chunk_index' => $chunk_index,
+                    ]);
+                }
+            }
+
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            require_once ABSPATH . 'wp-admin/includes/media.php';
+            require_once ABSPATH . 'wp-admin/includes/image.php';
+
+            $assembled_path = wp_tempnam($filename);
+            if (!$assembled_path) {
+                wp_send_json_error('Could not prepare uploaded file.');
+            }
+
+            $out = fopen($assembled_path, 'wb');
+            if (!$out) {
+                @unlink($assembled_path);
+                wp_send_json_error('Could not assemble uploaded file.');
+            }
+
+            for ($index = 0; $index < $total_chunks; $index++) {
+                $part_path = trailingslashit($chunk_dir) . sprintf('%06d.part', $index);
+                $in = fopen($part_path, 'rb');
+                if (!$in) {
+                    fclose($out);
+                    @unlink($assembled_path);
+                    wp_send_json_error('Could not read upload chunk.');
+                }
+                stream_copy_to_stream($in, $out);
+                fclose($in);
+            }
+            fclose($out);
+
+            for ($index = 0; $index < $total_chunks; $index++) {
+                @unlink(trailingslashit($chunk_dir) . sprintf('%06d.part', $index));
+            }
+            @rmdir($chunk_dir);
+
+            $file_array = [
+                'name' => $filename,
+                'type' => sanitize_mime_type(wp_unslash($_POST['mime'] ?? '')),
+                'tmp_name' => $assembled_path,
+                'error' => 0,
+                'size' => filesize($assembled_path),
             ];
 
-            $attachment_id = wp_insert_attachment($attachment, $file_path);
-            if (is_wp_error($attachment_id)) {
-                wp_send_json_error('Could not create attachment.');
-            }
-
-            $attachment_data = wp_generate_attachment_metadata($attachment_id, $file_path);
-            wp_update_attachment_metadata($attachment_id, $attachment_data);
-
-            update_post_meta($attachment_id, '_bitstream_uploaded_via_composer', 1);
-            update_post_meta($attachment_id, '_bitstream_upload_created_at', time());
-
-            $preview_url = $file_url;
-            if (strpos($file_type['type'], 'image/') === 0) {
-                $preview_url = wp_get_attachment_image_url($attachment_id, 'medium');
-                if (!$preview_url) {
-                    $preview_url = wp_get_attachment_image_url($attachment_id, 'full');
-                }
-                if (!$preview_url) {
-                    $preview_url = $file_url;
-                }
-            }
-
-            wp_send_json_success([
-                'id' => $attachment_id,
-                'url' => $file_url,
-                'preview_url' => $preview_url,
-                'mime' => $file_type['type'],
-                'edit_url' => get_edit_post_link($attachment_id, ''),
+            $uploaded_file = wp_handle_sideload($file_array, [
+                'test_form' => false,
             ]);
+
+            if (isset($uploaded_file['error'])) {
+                @unlink($assembled_path);
+                wp_send_json_error($uploaded_file['error']);
+            }
+
+            wp_send_json_success($this->create_media_attachment_from_upload($uploaded_file['file'], $uploaded_file['url']));
         }
         catch (Exception $e) {
             wp_send_json_error($e->getMessage() ?: 'Upload failed.');
