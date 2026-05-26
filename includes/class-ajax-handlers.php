@@ -350,7 +350,26 @@ class BitStream_Ajax_Handlers
 
         $preview_url = $file_url;
         if (strpos($file_type['type'], 'image/') === 0) {
-            $preview_url = wp_get_attachment_image_url($attachment_id, 'medium');
+            // Find the largest browser-safe generated size first
+            $metadata = wp_get_attachment_metadata($attachment_id);
+            $best_size = '';
+            if (!empty($metadata['sizes'])) {
+                // Priority list of sizes from largest to smallest, excluding thumbnail
+                $sizes_to_check = ['large', 'medium_large', 'medium'];
+                foreach ($sizes_to_check as $size) {
+                    if (isset($metadata['sizes'][$size])) {
+                        $best_size = $size;
+                        break;
+                    }
+                }
+            }
+
+            if ($best_size) {
+                $preview_url = wp_get_attachment_image_url($attachment_id, $best_size);
+            } else {
+                $preview_url = wp_get_attachment_image_url($attachment_id, 'medium');
+            }
+
             if (!$preview_url) {
                 $preview_url = wp_get_attachment_image_url($attachment_id, 'full');
             }

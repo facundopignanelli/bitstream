@@ -406,7 +406,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         const mimeType = attachment.mime || '';
-        const previewUrl = attachment.preview_url || (attachment.sizes && attachment.sizes.medium && attachment.sizes.medium.url) || attachment.url || '';
+        const previewUrl = attachment.preview_url || (attachment.sizes && ((attachment.sizes.large && attachment.sizes.large.url) || (attachment.sizes.medium_large && attachment.sizes.medium_large.url) || (attachment.sizes.medium && attachment.sizes.medium.url))) || attachment.url || '';
 
         if (attachment.id) {
             previewEl.dataset.attachmentId = attachment.id;
@@ -1121,11 +1121,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     handleMediaSelection(targetInputId, targetPreviewId, {
                         id: data.id,
                         url: data.url,
-                        preview_url: data.preview_url || (data.sizes && data.sizes.medium && data.sizes.medium.url) || data.url,
+                        preview_url: data.preview_url || (data.sizes && ((data.sizes.large && data.sizes.large.url) || (data.sizes.medium_large && data.sizes.medium_large.url) || (data.sizes.medium && data.sizes.medium.url))) || data.url,
                         mime: mime,
                         filename: data.filename || data.title || '',
                         title: data.title || '',
-                        sizes: data.sizes || { medium: { url: data.preview_url || (data.sizes && data.sizes.medium && data.sizes.medium.url) || data.url } }
+                        sizes: data.sizes || { medium: { url: data.preview_url || (data.sizes && ((data.sizes.large && data.sizes.large.url) || (data.sizes.medium_large && data.sizes.medium_large.url) || (data.sizes.medium && data.sizes.medium.url))) || data.url } }
                     });
                 });
 
@@ -1909,13 +1909,36 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
 
-                const previewSelector = input.name === 'bit_attachment_id'
-                    ? '#bitstream-bit-media-preview'
-                    : '#bitstream-rebit-media-preview';
-                const previewEl = composerRoot.querySelector(previewSelector);
+                let previewEl = null;
+                if (input.closest('.bitstream-media-field')) {
+                    previewEl = input.closest('.bitstream-media-field').querySelector('.bitstream-media-preview');
+                } else if (input.id === 'bitstream-composer-attachment-id') {
+                    previewEl = previewMediaThumb;
+                }
+
+                if (!previewEl) {
+                    const previewSelector = input.name === 'bit_attachment_id'
+                        ? '#bitstream-bit-media-preview'
+                        : '#bitstream-rebit-media-preview';
+                    previewEl = composerRoot.querySelector(previewSelector);
+                }
+
+                if (!previewEl) return;
+
                 const attachment = wp.media.attachment(value);
                 attachment.fetch().then(() => {
-                    renderMediaPreview(previewEl, attachment.toJSON());
+                    const data = attachment.toJSON();
+                    if (previewEl === previewMediaThumb) {
+                        const previewUrl = data.preview_url || (data.sizes && ((data.sizes.large && data.sizes.large.url) || (data.sizes.medium_large && data.sizes.medium_large.url) || (data.sizes.medium && data.sizes.medium.url))) || data.url;
+                        renderComposerMediaPreview(previewMediaThumb, {
+                            id: value,
+                            url: data.url,
+                            preview_url: previewUrl,
+                            mime: data.mime || data.type || ''
+                        });
+                    } else {
+                        renderMediaPreview(previewEl, data);
+                    }
                     setRemoveVisibility(input.id);
                     setCropVisibility(input.id, attachment.get('mime'));
                     setAudioTagVisibility(input.id, attachment.get('mime'));
@@ -1947,7 +1970,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     const attachment = wp.media.attachment(attachmentId);
                     attachment.fetch().then(() => {
                         const data = attachment.toJSON();
-                        const previewUrl = latestPreviewUrl || (data.sizes && data.sizes.medium && data.sizes.medium.url) || data.url || fallbackUrl;
+                        const previewUrl = latestPreviewUrl || (data.sizes && ((data.sizes.large && data.sizes.large.url) || (data.sizes.medium_large && data.sizes.medium_large.url) || (data.sizes.medium && data.sizes.medium.url))) || data.url || fallbackUrl;
                         setRebitEditorPreviewImage(previewUrl || '');
                         if (rebitEditorImageCropButton) {
                             rebitEditorImageCropButton.disabled = false;
@@ -4837,6 +4860,10 @@ jQuery(document).ready(function ($) {
 
         // Hidden inputs
         const hAttachmentId = form.querySelector('#bitstream-composer-attachment-id');
+        const modalAttachmentId = composerRoot.querySelector('#bitstream-composer-modal-media-attachment-id');
+        if (hAttachmentId && modalAttachmentId && hAttachmentId.value && !modalAttachmentId.value) {
+            modalAttachmentId.value = hAttachmentId.value;
+        }
         const hRebitUrl = form.querySelector('#bitstream-composer-rebit-url');
         const hRebitOgTitle = form.querySelector('#bitstream-composer-rebit-og-title');
         const hRebitOgDesc = form.querySelector('#bitstream-composer-rebit-og-desc');
@@ -5790,7 +5817,7 @@ jQuery(document).ready(function ($) {
         const initialAttachmentId = hAttachmentId ? hAttachmentId.value.trim() : '';
         if (initialAttachmentId && initialAttachmentId !== '0') {
             if (previewMediaThumb) {
-                previewMediaThumb.innerHTML = '<span>Media attached (ID: ' + initialAttachmentId + ')</span>';
+                previewMediaThumb.innerHTML = '<span>Loading preview...</span>';
             }
             if (previewMedia) previewMedia.hidden = false;
             syncPreviewArea();
