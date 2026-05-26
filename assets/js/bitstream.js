@@ -1900,10 +1900,34 @@ document.addEventListener('DOMContentLoaded', function () {
                 setStatus('Uploading pasted image...');
             });
 
+            function fetchAttachmentData(attachmentId) {
+                if (!window.bitstream_ajax || !bitstream_ajax.ajax_url || !bitstream_ajax.media_upload_nonce) {
+                    return Promise.reject(new Error('AJAX details unavailable'));
+                }
+
+                const fd = new FormData();
+                fd.append('action', 'bitstream_get_attachment_data');
+                fd.append('nonce', bitstream_ajax.media_upload_nonce);
+                fd.append('attachment_id', String(attachmentId));
+
+                return fetch(bitstream_ajax.ajax_url, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    body: fd
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success) {
+                        throw new Error(data.data || 'Failed to fetch attachment.');
+                    }
+                    return data.data;
+                });
+            }
+
             const existingMediaInputs = composerRoot.querySelectorAll('input[name="bit_attachment_id"], input[name="rebit_attachment_id"]');
             existingMediaInputs.forEach(input => {
                 const value = parseInt(input.value || '0', 10);
-                if (!value || !window.wp || !wp.media) {
+                if (!value) {
                     setRemoveVisibility(input.id);
                     setCropVisibility(input.id, '');
                     return;
@@ -1925,24 +1949,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (!previewEl) return;
 
-                const attachment = wp.media.attachment(value);
-                attachment.fetch().then(() => {
-                    const data = attachment.toJSON();
-                    if (previewEl === previewMediaThumb) {
-                        const previewUrl = data.preview_url || (data.sizes && ((data.sizes.large && data.sizes.large.url) || (data.sizes.medium_large && data.sizes.medium_large.url) || (data.sizes.medium && data.sizes.medium.url))) || data.url;
-                        renderComposerMediaPreview(previewMediaThumb, {
-                            id: value,
-                            url: data.url,
-                            preview_url: previewUrl,
-                            mime: data.mime || data.type || ''
-                        });
-                    } else {
-                        renderMediaPreview(previewEl, data);
-                    }
-                    setRemoveVisibility(input.id);
-                    setCropVisibility(input.id, attachment.get('mime'));
-                    setAudioTagVisibility(input.id, attachment.get('mime'));
-                }).catch(() => { });
+                fetchAttachmentData(value)
+                    .then(data => {
+                        if (previewEl === previewMediaThumb) {
+                            renderComposerMediaPreview(previewMediaThumb, data);
+                        } else {
+                            renderMediaPreview(previewEl, data);
+                        }
+                        setRemoveVisibility(input.id);
+                        setCropVisibility(input.id, data.mime);
+                        setAudioTagVisibility(input.id, data.mime);
+                    })
+                    .catch(() => {
+                        if (previewEl === previewMediaThumb) {
+                            previewEl.innerHTML = '<span>Media attached (ID: ' + value + ')</span>';
+                        }
+                    });
             });
 
             function setRebitEditorPreviewImage(url) {

@@ -141,6 +141,7 @@ class BitStream_Ajax_Handlers
         add_action('wp_ajax_bitstream_get_post_data', [$this, 'handle_get_post_data']);
         add_action('wp_ajax_bitstream_get_post_edit_data', [$this, 'handle_get_post_edit_data']);
         add_action('wp_ajax_bitstream_get_quote_preview', [$this, 'handle_get_quote_preview']);
+        add_action('wp_ajax_bitstream_get_attachment_data', [$this, 'handle_get_attachment_data']);
         add_action('before_delete_post', [$this, 'handle_before_delete_post']);
     }
 
@@ -717,6 +718,64 @@ class BitStream_Ajax_Handlers
         }
         catch (Exception $e) {
             wp_send_json_error($e->getMessage() ?: 'Upload failed.');
+        }
+    }
+
+    /**
+     * Fetch metadata for a given attachment ID.
+     */
+    public function handle_get_attachment_data()
+    {
+        try {
+            check_ajax_referer('bitstream_media_upload_nonce', 'nonce');
+
+            if (!current_user_can('edit_posts')) {
+                wp_send_json_error('Insufficient permissions.');
+            }
+
+            $attachment_id = isset($_POST['attachment_id']) ? intval($_POST['attachment_id']) : 0;
+            if ($attachment_id <= 0 || get_post_type($attachment_id) !== 'attachment') {
+                wp_send_json_error('Invalid attachment ID.');
+            }
+
+            $file_url = wp_get_attachment_url($attachment_id);
+            $mime_type = get_post_mime_type($attachment_id);
+
+            $preview_url = $file_url;
+            if (strpos($mime_type, 'image/') === 0) {
+                // Find the largest browser-safe generated size first
+                $metadata = wp_get_attachment_metadata($attachment_id);
+                $best_size = '';
+                if (!empty($metadata['sizes'])) {
+                    $sizes_to_check = ['large', 'medium_large', 'medium'];
+                    foreach ($sizes_to_check as $size) {
+                        if (isset($metadata['sizes'][$size])) {
+                            $best_size = $size;
+                            break;
+                        }
+                    }
+                }
+
+                if ($best_size) {
+                    $preview_url = wp_get_attachment_image_url($attachment_id, $best_size);
+                } else {
+                    $preview_url = wp_get_attachment_image_url($attachment_id, 'medium');
+                }
+
+                if (!$preview_url) {
+                    $preview_url = wp_get_attachment_image_url($attachment_id, 'full');
+                }
+            }
+
+            wp_send_json_success([
+                'id' => $attachment_id,
+                'url' => $file_url,
+                'preview_url' => $preview_url ?: $file_url,
+                'mime' => $mime_type,
+            ]);
+        }
+        catch (Exception $e) {
+            wp_send_json_error($e->getMessage() ?: 'Could not get attachment data.');
         }
     }
 
