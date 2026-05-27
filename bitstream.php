@@ -26,10 +26,21 @@ class BitStream_Plugin
 {
 
     private $components = [];
+    private static $instance = null;
+
+    public static function get_instance()
+    {
+        return self::$instance;
+    }
 
     public function __construct()
     {
-        add_action('plugins_loaded', [$this, 'init']);
+        self::$instance = $this;
+        if (did_action('plugins_loaded')) {
+            $this->init();
+        } else {
+            add_action('plugins_loaded', [$this, 'init']);
+        }
     }
 
     /**
@@ -128,12 +139,17 @@ function bitstream_render_rebit_section($post_id)
             . esc_html($map['label'])
             . '</div>';
     }
+    elseif (stripos($host, 'youtube.com') !== false || stripos($host, 'youtu.be') !== false || stripos($host, 'youtube-nocookie.com') !== false) {
+        echo '<div class="bit-rebit-label" style="margin-bottom:0.5rem;font-size:0.95rem;color:#333;">'
+            . '<i class="fab fa-youtube" aria-hidden="true" style="margin-right:0.5rem;"></i>'
+            . 'shared a video</div>';
+    }
     else {
         echo '<div class="bit-rebit-label" style="margin-bottom:0.5rem;font-size:0.95rem;color:#333;">'
             . '<i class="fas fa-link" aria-hidden="true" style="margin-right:0.5rem;"></i> shared a link</div>';
     }
 
-    $is_yt = stripos($host, 'youtube.com') !== false || stripos($host, 'youtu.be') !== false;
+    $is_yt = stripos($host, 'youtube.com') !== false || stripos($host, 'youtu.be') !== false || stripos($host, 'youtube-nocookie.com') !== false;
     $is_twitter = stripos($host, 'twitter.com') !== false || stripos($host, 'x.com') !== false;
 
     if ($is_yt) {
@@ -147,10 +163,10 @@ function bitstream_render_rebit_section($post_id)
         }
 
         if ($video_id) {
-            echo '<div class="bit-rebit-embed" style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;margin:1rem 0;">'
+            echo '<div class="bit-rebit-embed" style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;margin:1rem 0;border-radius:15px;">'
                 . '<iframe src="https://www.youtube.com/embed/' . esc_attr($video_id) . '" '
                 . 'frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" '
-                . 'allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;"></iframe></div>';
+                . 'allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:15px;"></iframe></div>';
         }
         else {
             echo '<a href="' . esc_url($rebit_url) . '" target="_blank" rel="noopener" style="white-space:normal;overflow-wrap:anywhere;word-break:break-word;">' . esc_html($rebit_url) . '</a>';

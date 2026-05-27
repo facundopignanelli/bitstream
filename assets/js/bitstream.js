@@ -515,49 +515,7 @@ document.addEventListener('DOMContentLoaded', function () {
         previewEl.innerHTML = '<p>Selected: ' + (attachment.filename || attachment.title || 'media') + '</p>';
     }
 
-    function renderComposerMediaPreview(previewEl, attachment) {
-        if (!previewEl) {
-            return;
-        }
-
-        const dropzone = previewEl.closest('.bitstream-media-dropzone');
-        if (dropzone) {
-            dropzone.classList.toggle('has-media', !!attachment);
-        }
-
-        if (!attachment) {
-            previewEl.innerHTML = '';
-            previewEl.removeAttribute('data-attachment-id');
-            previewEl.removeAttribute('data-attachment-url');
-            previewEl.removeAttribute('data-attachment-mime');
-            return;
-        }
-
-        const mimeType = attachment.mime || '';
-        const previewUrl = attachment.preview_url || attachment.url || '';
-
-        if (attachment.id) {
-            previewEl.dataset.attachmentId = attachment.id;
-        }
-        if (previewUrl) {
-            previewEl.dataset.attachmentUrl = previewUrl;
-        }
-        if (mimeType) {
-            previewEl.dataset.attachmentMime = mimeType;
-        }
-
-        if (mimeType.startsWith('image/')) {
-            previewEl.innerHTML = '<img src="' + previewUrl + '" alt="">';
-            return;
-        }
-
-        if (mimeType.startsWith('video/')) {
-            previewEl.innerHTML = '<video src="' + previewUrl + '" controls controlsList="nodownload noplaybackrate" disablepictureinpicture></video>';
-            return;
-        }
-
-        previewEl.innerHTML = '<p>Selected: ' + (attachment.filename || attachment.title || 'media') + '</p>';
-    }
+    // Expose media preview renderer globally so it's accessible outside DOMContentLoaded scope
 
     // Continue with the rest of the initialization...
     function initBitstreamPoster() {
@@ -4573,6 +4531,30 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    function adjustCardMediaDimensions(scope = document) {
+        scope.querySelectorAll('.bit-card-content img:not(.emoji), .bit-rebit-preview img:not(.emoji), .bitstream-quoted-preview img:not(.emoji), .bitstream-composer-preview-media-thumb img:not(.emoji)').forEach(img => {
+            const processImage = () => {
+                const width = img.naturalWidth;
+                const height = img.naturalHeight;
+                if (width && height) {
+                    if (height / width > 1.2) {
+                        img.classList.add('bit-image-portrait');
+                        img.classList.remove('bit-image-landscape');
+                    } else {
+                        img.classList.add('bit-image-landscape');
+                        img.classList.remove('bit-image-portrait');
+                    }
+                }
+            };
+
+            if (img.complete) {
+                processImage();
+            } else {
+                img.addEventListener('load', processImage);
+            }
+        });
+    }
+
     function initMediaSession(scope = document) {
         if (!scope || !scope.querySelectorAll) {
             return;
@@ -4604,11 +4586,13 @@ document.addEventListener('DOMContentLoaded', function () {
     // Run on page load
     makeEmbedsResponsive();
     initMediaSession(document);
+    adjustCardMediaDimensions(document);
 
     // Run when new content is loaded (for infinite scroll)
     const observer = new MutationObserver(() => {
         makeEmbedsResponsive();
         initMediaSession(document);
+        adjustCardMediaDimensions(document);
         initFloatingMenu(); // Re-init floating menu if new content added
         initCommentToggles(); // Re-init comment toggles for new content
     });
@@ -4808,6 +4792,51 @@ document.addEventListener('DOMContentLoaded', function () {
         loadMoreButton.addEventListener('click', loadNextPage);
     }
 });
+
+// Expose media preview renderer globally so it's accessible by all components/scopes
+function renderComposerMediaPreview(previewEl, attachment) {
+    if (!previewEl) {
+        return;
+    }
+
+    const dropzone = previewEl.closest('.bitstream-media-dropzone');
+    if (dropzone) {
+        dropzone.classList.toggle('has-media', !!attachment);
+    }
+
+    if (!attachment) {
+        previewEl.innerHTML = '';
+        previewEl.removeAttribute('data-attachment-id');
+        previewEl.removeAttribute('data-attachment-url');
+        previewEl.removeAttribute('data-attachment-mime');
+        return;
+    }
+
+    const mimeType = attachment.mime || '';
+    const previewUrl = attachment.preview_url || attachment.url || '';
+
+    if (attachment.id) {
+        previewEl.dataset.attachmentId = attachment.id;
+    }
+    if (previewUrl) {
+        previewEl.dataset.attachmentUrl = previewUrl;
+    }
+    if (mimeType) {
+        previewEl.dataset.attachmentMime = mimeType;
+    }
+
+    if (mimeType.startsWith('image/')) {
+        previewEl.innerHTML = '<img src="' + previewUrl + '" alt="">';
+        return;
+    }
+
+    if (mimeType.startsWith('video/')) {
+        previewEl.innerHTML = '<video src="' + previewUrl + '" controls controlsList="nodownload noplaybackrate" disablepictureinpicture></video>';
+        return;
+    }
+
+    previewEl.innerHTML = '<p>Selected: ' + (attachment.filename || attachment.title || 'media') + '</p>';
+}
 
 // Consolidated comment styling function
 function applyCommentStyles() {

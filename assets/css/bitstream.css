@@ -96,12 +96,41 @@
 .bit-rebit-preview .wp-video-shortcode,
 .bitstream-quoted-preview .wp-video-shortcode,
 .bitstream-og-card .wp-video-shortcode {
+    width: 100% !important;
     max-width: 100% !important;
+    max-height: 560px;
     height: auto !important;
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
     border-radius: 15px;
+    overflow: hidden;
+    -webkit-mask-image: -webkit-radial-gradient(white, black);
+    object-fit: contain;
+}
+
+/* Landscape/Square images: same width as card content area */
+.bit-card-content img.bit-image-landscape,
+.bit-rebit-preview img.bit-image-landscape,
+.bitstream-quoted-preview img.bit-image-landscape,
+.bitstream-og-card img.bit-image-landscape {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    object-fit: cover;
+}
+
+/* Portrait/Tall and narrow images: centered, height-bounded, original aspect ratio */
+.bit-card-content img.bit-image-portrait,
+.bit-rebit-preview img.bit-image-portrait,
+.bitstream-quoted-preview img.bit-image-portrait,
+.bitstream-og-card img.bit-image-portrait {
+    width: auto !important;
+    max-width: 100% !important;
+    max-height: 560px;
+    height: auto !important;
+    margin: 0.5em auto !important;
+    object-fit: contain;
 }
 
 .bit-card-content .wp-video,
@@ -365,12 +394,33 @@
     text-align: center;
 }
 
-.bitstream-composer-preview-media-thumb img {
+.bitstream-composer-preview-media-thumb img,
+.bitstream-composer-preview-media-thumb video {
     width: 100%;
     height: auto;
     object-fit: cover;
     border-radius: 8px;
     margin: 0;
+    overflow: hidden;
+    -webkit-mask-image: -webkit-radial-gradient(white, black);
+}
+
+/* Landscape/Square composer preview images */
+.bitstream-composer-preview-media-thumb img.bit-image-landscape {
+    width: 100% !important;
+    height: auto !important;
+    object-fit: cover;
+}
+
+/* Portrait/Tall composer preview images */
+.bitstream-composer-preview-media-thumb img.bit-image-portrait {
+    width: auto !important;
+    max-width: 100% !important;
+    max-height: 240px;
+    height: auto !important;
+    margin: 0.5em auto !important;
+    object-fit: contain;
+    display: block;
 }
 
 
@@ -1820,6 +1870,13 @@ a.bitstream-filter-chip:hover {
 .bit-rebit-embed {
     width: 100% !important;
     max-width: 100% !important;
+    border-radius: 15px;
+    overflow: hidden;
+    transform: translate3d(0, 0, 0); /* Safari clip bug fix */
+}
+
+.bit-rebit-embed iframe {
+    border-radius: 15px;
 }
 
 /* Responsive iframe and embed handling */
@@ -1833,12 +1890,13 @@ video {
 
 /* Frontend tabbed composer */
 .bitstream-composer {
-    max-width: 760px;
-    margin: 1.5rem auto;
+    max-width: 100%;
+    margin: 0 auto;
     padding: 1rem;
     border: 1px solid #ddd;
     border-radius: 15px;
     background: #fff;
+    box-sizing: border-box;
 }
 
 .bitstream-composer-tabs {
@@ -2664,6 +2722,8 @@ video {
     max-width: 100%;
     border-radius: 15px;
     border: 1px solid #ddd;
+    overflow: hidden;
+    -webkit-mask-image: -webkit-radial-gradient(white, black);
 }
 
 
@@ -3517,11 +3577,13 @@ body.bitstream-cropper-open {
 
 /* Specific YouTube embed fixes */
 iframe[src*="youtube.com"],
-iframe[src*="youtu.be"] {
+iframe[src*="youtu.be"],
+iframe[src*="youtube-nocookie.com"] {
     width: 100% !important;
     max-width: 100% !important;
     aspect-ratio: 16/9;
     height: auto !important;
+    border-radius: 15px;
 }
 
 /* Generic responsive embed container */

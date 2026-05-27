@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed support for audio files across the plugin (including backend AJAX handlers, database checks, frontend media dropzones, metadata fields, and custom audio player styling). Enforced strict image and video MIME-type validations on both client-side and server-side uploaders, as well as the Media Library selection dialog.
 
 ### Fixed
+- Standardized image and video dimensions to span the full width of the timeline cards and composer previews, except for portrait/narrow images which are constrained and centered.
+- Fixed YouTube shared links rendering as "shared a link" instead of "shared a video" (specifically when using short youtu.be URLs or when mappings are uninitialized).
+- Added rounded corners to the YouTube video embed player and its container in feed cards to align with images and native video.
 - Fixed nested quoted bit timestamp tooltip getting clipped by the quote preview container's overflow settings.
 - Hid the WordPress admin bar on mobile BitStream frontend screens so page and modal titles are not covered.
 - Reduced mobile image upload failures by resizing oversized images, sending larger files in chunks, and improving interrupted-upload messaging.

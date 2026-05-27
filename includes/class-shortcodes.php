@@ -795,7 +795,7 @@ class BitStream_Shortcodes
 
     public function __construct()
     {
-        add_action('init', [$this, 'register_shortcodes']);
+        $this->register_shortcodes();
         add_action('wp_enqueue_scripts', [$this, 'enqueue_shortcode_assets']);
         add_action('wp_footer', [$this, 'render_timeline_edit_modal']);
         add_filter('show_admin_bar', [__CLASS__, 'hide_mobile_admin_bar']);
@@ -1690,11 +1690,9 @@ class BitStream_Shortcodes
         wp_nonce_field('bitstream_reset', 'bitstream_reset_nonce');
         echo '<input type="hidden" name="settings_tab" value="advanced">';
         echo '<button type="submit" name="bitstream_confirm_reset" style="background: #dc3545; color: #fff; border: none; border-radius: 8px; padding: 0.6rem 1.5rem; cursor: pointer; font-weight: 600;" onclick="return confirm(\'Permanently delete ALL BitStream data and reset to virgin state? This cannot be undone.\');">Reset Everything</button>';
-    ; ?>
-        </section>
-        <?php
-
-        return ob_get_clean();
+        echo '</form>';
+        echo '</div>';
+        echo '</div>';
     }
 
     /**

@@ -170,15 +170,22 @@ class BitStream_Admin_Interface
         echo '</div>';
     }
 
-    /**
-     * Display the Settings page inside the admin area
-     */
     public function settings_admin_page()
     {
         echo '<div class="wrap">';
         echo '<h1>' . esc_html__('BitStream Settings', 'bitstream') . '</h1>';
         echo '<div style="margin-top: 20px;">';
-        echo do_shortcode('[bitstream_settings]');
+        if (class_exists('BitStream_Plugin')) {
+            $plugin = BitStream_Plugin::get_instance();
+            $shortcodes = $plugin ? $plugin->get_component('shortcodes') : null;
+            if ($shortcodes && method_exists($shortcodes, 'render_settings')) {
+                echo $shortcodes->render_settings([]);
+            } else {
+                echo do_shortcode('[bitstream_settings]');
+            }
+        } else {
+            echo do_shortcode('[bitstream_settings]');
+        }
         echo '</div>';
         echo '</div>';
     }

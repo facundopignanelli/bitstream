@@ -27,6 +27,7 @@ class BitStream_ReBit_Mappings {
             'twitter' => ['domain' => 'twitter.com', 'label' => 'shared a Tweet', 'icon' => 'fab fa-twitter'],
             'x' => ['domain' => 'x.com', 'label' => 'shared a post', 'icon' => 'fab fa-x-twitter'],
             'youtube' => ['domain' => 'youtube.com', 'label' => 'shared a video', 'icon' => 'fab fa-youtube'],
+            'youtube_short' => ['domain' => 'youtu.be', 'label' => 'shared a video', 'icon' => 'fab fa-youtube'],
             'github' => ['domain' => 'github.com', 'label' => 'shared a repository', 'icon' => 'fab fa-github'],
             'linkedin' => ['domain' => 'linkedin.com', 'label' => 'shared a post', 'icon' => 'fab fa-linkedin'],
             'facebook' => ['domain' => 'facebook.com', 'label' => 'shared a post', 'icon' => 'fab fa-facebook'],
@@ -59,6 +60,7 @@ class BitStream_ReBit_Mappings {
                 ['domain' => 'twitter.com', 'label' => 'shared a Tweet', 'icon' => 'fab fa-twitter'],
                 ['domain' => 'x.com', 'label' => 'shared a post', 'icon' => 'fab fa-x-twitter'],
                 ['domain' => 'youtube.com', 'label' => 'shared a video', 'icon' => 'fab fa-youtube'],
+                ['domain' => 'youtu.be', 'label' => 'shared a video', 'icon' => 'fab fa-youtube'],
                 ['domain' => 'github.com', 'label' => 'shared a repository', 'icon' => 'fab fa-github'],
                 ['domain' => 'linkedin.com', 'label' => 'shared a post', 'icon' => 'fab fa-linkedin'],
                 ['domain' => 'facebook.com', 'label' => 'shared a post', 'icon' => 'fab fa-facebook'],
@@ -106,6 +108,20 @@ class BitStream_ReBit_Mappings {
         foreach ($mappings as $mapping) {
             if (stripos($domain, $mapping['domain']) !== false) {
                 return $mapping;
+            }
+        }
+        
+        // Fallback domain normalization for YouTube (e.g. youtu.be / youtube-nocookie.com -> youtube.com)
+        $normalized_domain = null;
+        if (stripos($domain, 'youtu.be') !== false || stripos($domain, 'youtube-nocookie.com') !== false) {
+            $normalized_domain = 'youtube.com';
+        }
+        
+        if ($normalized_domain) {
+            foreach ($mappings as $mapping) {
+                if (stripos($normalized_domain, $mapping['domain']) !== false) {
+                    return $mapping;
+                }
             }
         }
         
