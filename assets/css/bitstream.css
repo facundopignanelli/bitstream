@@ -4389,20 +4389,18 @@ iframe[src*="youtube-nocookie.com"] {
 
 /* ── Mobile Composer Modal & Desktop Inline Restructuring ── */
 @media (max-width: 1023px) {
-    /* Full-screen mobile modal layout */
-    .bitstream-composer-modal,
+    /* Full-screen mobile modal layout — applies to top-level modals only (bs-edit, cropper)
+       Nested sub-modals inside .bitstream-composer use popup style (overridden below). */
     .bs-edit-modal,
     .bitstream-cropper-modal {
         padding: 0 !important;
     }
-    
-    .bitstream-composer-modal-backdrop,
+
     .bs-edit-modal-backdrop,
     .bitstream-cropper-backdrop {
-        display: none !important; /* Disable blurs & dark overlays to save mobile rendering performance */
+        display: none !important;
     }
     
-    .bitstream-composer-modal-dialog,
     .bs-edit-modal-dialog,
     .bitstream-cropper-dialog {
         width: 100% !important;
@@ -4416,14 +4414,12 @@ iframe[src*="youtube-nocookie.com"] {
         flex-direction: column !important;
     }
     
-    .bitstream-composer-modal-header,
     .bs-edit-modal-header,
     .bitstream-cropper-header {
         border-radius: 0 !important;
     }
     
     .bs-edit-modal-footer,
-    .bitstream-composer-modal-footer,
     .bitstream-cropper-footer {
         border-radius: 0 !important;
     }
@@ -4433,6 +4429,7 @@ iframe[src*="youtube-nocookie.com"] {
         text-align: center;
     }
 
+    /* ── Main Composer wrapper (full-screen on mobile) ── */
     .bitstream-composer {
         position: fixed !important;
         inset: 0 !important;
@@ -4494,13 +4491,71 @@ iframe[src*="youtube-nocookie.com"] {
         flex: 1 1 auto !important;
     }
     
-    /* Ensure the nested sub-modals sit on top of the composer modal dialog but behave as full screen sheets */
+    /* ── Nested sub-modals (media, rebit, schedule, drafts…) → popup style on mobile ── */
     .bitstream-composer .bitstream-composer-modal {
+        /* Re-use the standard modal backdrop/centering so they float above the full-screen composer */
+        position: fixed !important;
+        inset: 0 !important;
         z-index: 100001 !important;
-        padding: 0 !important;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem !important;
+        box-sizing: border-box;
+        background: transparent;
+    }
+
+    .bitstream-composer .bitstream-composer-modal:not([hidden]) {
+        display: flex !important;
+    }
+
+    /* Show the backdrop for nested sub-modals */
+    .bitstream-composer .bitstream-composer-modal > .bitstream-composer-modal-backdrop {
+        display: block !important;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.45);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        z-index: 0;
+    }
+
+    /* Popup dialog style for nested sub-modals on mobile */
+    .bitstream-composer .bitstream-composer-modal > .bitstream-composer-modal-dialog {
+        position: relative;
+        z-index: 1;
+        width: 100% !important;
+        max-width: 480px !important;
+        height: auto !important;
+        max-height: 90vh !important;
+        border-radius: 20px !important;
+        box-shadow: 0 24px 60px rgba(0,0,0,0.18) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        background: #fff;
+        overflow: hidden;
+        animation: bitstreamModalIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    }
+
+    .bitstream-composer .bitstream-composer-modal > .bitstream-composer-modal-dialog > .bitstream-composer-modal-header {
+        border-radius: 20px 20px 0 0 !important;
+    }
+
+    .bitstream-composer .bitstream-composer-modal > .bitstream-composer-modal-dialog > .bitstream-composer-modal-footer {
+        border-radius: 0 0 20px 20px !important;
+    }
+
+    .bitstream-composer .bitstream-composer-modal > .bitstream-composer-modal-dialog > .bitstream-composer-modal-body {
+        overflow-y: auto;
+        flex: 1 1 auto;
+    }
+
+    /* Wide dialog variant */
+    .bitstream-composer .bitstream-composer-modal > .bitstream-composer-modal-dialog.bitstream-composer-modal-dialog-wide {
+        max-width: min(90vw, 600px) !important;
     }
     
-    /* Optimize nested mobile modals to prevent double-blur and layout jank */
+    /* When a sub-modal is open, hide the composer form content but keep the overlay */
     .bitstream-composer:has(.bitstream-composer-modal:not([hidden])) > .bitstream-composer-modal-backdrop {
         display: none !important;
     }
@@ -4826,6 +4881,20 @@ iframe[src*="youtube-nocookie.com"] {
     overflow: hidden;
     border: 1.5px solid #e2e8f0;
     background: #f8fafc;
+}
+
+/* Video play-icon overlay inside composer preview grid */
+.bitstream-media-preview-video-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 1.6rem;
+    pointer-events: none;
+    text-shadow: 0 1px 6px rgba(0,0,0,0.5);
+    background: rgba(0,0,0,0.18);
 }
 
 .bitstream-media-preview-item img,

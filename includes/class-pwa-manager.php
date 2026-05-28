@@ -1318,7 +1318,8 @@ class BitStream_PWA_Manager {
             
             $data['title'] = 'New BitStream Post';
             $data['body'] = $content;
-            $data['url'] = get_permalink($post_id);
+            $base_url = class_exists('BitStream_Shortcodes') ? BitStream_Shortcodes::get_feed_page_url() : home_url('/bitstream/');
+            $data['url'] = add_query_arg('highlight_bit', $post_id, $base_url);
             
             // Check if it's a ReBit
             $rebit_url = get_post_meta($post_id, 'bitstream_rebit_url', true);

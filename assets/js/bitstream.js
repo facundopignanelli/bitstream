@@ -210,7 +210,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 const video = document.createElement('video');
                 video.src = url;
                 video.preload = 'metadata';
+                video.muted = true;
                 item.appendChild(video);
+                // Play-icon overlay so the thumbnail is recognisable on mobile
+                const playOverlay = document.createElement('div');
+                playOverlay.className = 'bitstream-media-preview-video-overlay';
+                playOverlay.setAttribute('aria-hidden', 'true');
+                playOverlay.innerHTML = '<i class="fa-solid fa-circle-play"></i>';
+                item.appendChild(playOverlay);
             } else {
                 const fallback = document.createElement('div');
                 fallback.className = 'bitstream-media-fallback-text';
@@ -1969,7 +1976,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
 
-                zone.addEventListener('click', () => {
+                zone.addEventListener('click', (event) => {
+                    // Don't open file picker when the user clicks on an existing preview item
+                    if (event.target.closest('.bitstream-media-preview-item') ||
+                        event.target.closest('.bitstream-media-preview-remove-item')) {
+                        return;
+                    }
                     input.click();
                 });
 
@@ -3304,9 +3316,13 @@ document.addEventListener('DOMContentLoaded', function () {
             // Drag and drop events
             if (dropzone && fileInput) {
                 dropzone.addEventListener('click', (event) => {
-                    if (event.target !== fileInput && !event.target.closest('.bitstream-media-preview')) {
-                        fileInput.click();
+                    // Don't open file picker when clicking on an existing preview item or the file input itself
+                    if (event.target === fileInput) return;
+                    if (event.target.closest('.bitstream-media-preview-item') ||
+                        event.target.closest('.bitstream-media-preview-remove-item')) {
+                        return;
                     }
+                    fileInput.click();
                 });
 
                 dropzone.addEventListener('dragover', (event) => {

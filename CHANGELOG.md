@@ -45,6 +45,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed media upload preview issue where video thumbnails in the composer and media upload modals were not scaled and centered to cover the 1:1 preview grid boxes due to global video aspect ratio rules.
 - Removed the default black shadow/gradient overlay from the native HTML5 video player controls panel when hovering or interacting with video elements in the timeline, composer, and lightbox.
 - Fixed lightbox video player aspect-ratio alignment issue where the native player control bar was wider than the actual video content. The video container element's box is now dynamically scaled based on the video's intrinsic dimensions to fit perfectly on the stage.
+- Fixed sub-modals inside the Composer (media upload, rebit, schedule, drafts, etc.) displaying as full-screen sheets on mobile. They now open as centered popup overlays with a backdrop and rounded corners, matching the desktop experience. Only the main Composer window remains full-screen on mobile.
+- Fixed missing square video thumbnail in the media upload dropzone preview grid on mobile — video items now display a play-icon overlay so they are clearly recognisable even when the browser doesn't pre-render a video frame.
+- Fixed a UX bug where clicking an already-uploaded image or video in the media dropzone preview grid simultaneously opened the lightbox **and** triggered the file-picker to select a new file.
 
 ## [3.1.3] - 2026-05-04
 
