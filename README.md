@@ -111,9 +111,32 @@ On mobile devices, use the "Add to Home Screen" option to install BitStream as a
 
 ### 🔔 Push Notifications
 
-- **PWA Web Push** - Receive push notifications on your device when new updates are posted
-- **Self-Hosted VAPID** - Authenticated notifications secure and private, with keys generated directly on your server using OpenSSL
-- **Payload-free Dispatch** - Lightweight notification deliveries that fetch latest post details dynamically, conserving device resources and avoiding complex encryption
+- **PWA Web Push** - Receive push notifications on your device when new Bits or ReBits are published
+- **Self-Hosted VAPID** - Authenticated notifications secured with keys generated directly on your server using OpenSSL — no third-party push services required
+- **Payload-free Dispatch** - Lightweight notification deliveries that fetch the latest post details dynamically, conserving device resources and avoiding complex payload encryption
+
+#### Setup
+
+1. Go to **Settings → Push Notifications** (or open the `[bitstream_settings]` page and click the **Push Notifications** tab)
+2. Click **Generate VAPID Keys** — the plugin uses OpenSSL to create a public/private key pair and stores them in your database
+3. Enable push notifications and save
+
+#### Subscribing a Device
+
+Once VAPID keys are configured, a **Get Notifications** button appears in:
+- The **right-rail sidebar** on the main feed (desktop)
+- The **Quick Actions widget** (mobile / floating menu)
+- The **Push Notifications settings tab** ("Subscribe this Device" button)
+
+#### Android / Mobile Permission Prompt
+
+On Android, browsers block notifications by default at the OS level. BitStream handles this with a three-stage permission flow so the system prompt is correctly surfaced:
+
+1. **`default` (never asked)** — clicking Subscribe triggers `Notification.requestPermission()`, which surfaces the native OS/browser allow-or-block dialog
+2. **`granted`** — subscribe proceeds immediately without an extra prompt
+3. **`denied` (hard-blocked)** — the button changes to **"Notifications Blocked — Enable in Browser Settings"** (shown in orange) with a tooltip explaining how to re-enable them; no silent failure occurs
+
+> **Tip:** If you previously tapped "Block" on the browser prompt, open Chrome → tap the lock icon in the address bar → **Site settings** → **Notifications** → set to **Allow**, then refresh the page.
 
 ## 📝 Shortcodes
 

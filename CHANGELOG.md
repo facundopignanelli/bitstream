@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added PWA Web Push Notifications support allowing users to subscribe their devices to notifications when new Bit or ReBit posts are published. Includes a dedicated Settings panel tab for managing VAPID keys, settings, and subscribing devices.
+- Added an explicit `Notification.requestPermission()` call in the push-subscribe flow so the OS-level notification prompt is correctly surfaced on Android (and other platforms where it is blocked by default). The subscribe button now immediately reflects a "blocked" state with a tooltip when notifications are hard-denied in browser/OS settings, instead of silently failing.
 - Supported attaching up to 10 images or videos to a single Bit post, displayed in a modern asymmetrical or symmetrical grid layout.
 - Integrated a responsive fullscreen media lightbox overlay allowing users to browse through multiple attachments with keyboard navigation and mouse controls.
 - New "Composer" inline posting box for logged-in users. Features all options of the old Quick Bit and Poster shortcode.

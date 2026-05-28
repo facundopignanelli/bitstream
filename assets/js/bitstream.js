@@ -6560,13 +6560,21 @@ jQuery(document).ready(function ($) {
     const unsupportedDiv = document.getElementById('bitstream-push-device-unsupported');
 
     if (subscribeButtons.length > 0) {
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
             if (unsupportedDiv) unsupportedDiv.style.display = 'block';
             subscribeButtons.forEach(btn => { btn.style.display = 'none'; });
             widgetContainers.forEach(container => { container.style.display = 'none'; });
         } else {
             // Show the public widget containers
             widgetContainers.forEach(container => { container.style.display = 'block'; });
+
+            // Reflect blocked state immediately so user knows before clicking
+            if (Notification.permission === 'denied') {
+                subscribeButtons.forEach(btn => {
+                    updateSubscriptionButton(btn, false, true);
+                    btn.disabled = false;
+                });
+            }
 
             // Use getRegistration to support accessing the Service Worker registration from wp-admin (outside SW scope)
             let getRegistrationPromise;
@@ -6652,42 +6660,87 @@ jQuery(document).ready(function ($) {
                                     subscribeButtons.forEach(b => { b.disabled = false; });
                                 });
                             } else {
-                                // Subscribe
-                                const vapidKeyB64 = btn.getAttribute('data-vapid-public');
-                                if (!vapidKeyB64) {
-                                    alert('VAPID public key not configured.');
-                                    subscribeButtons.forEach(b => { b.disabled = false; });
+                                // --- Subscribe flow with explicit permission request ---
+                                //
+                                // On Android, the browser may have notifications blocked at the
+                                // OS or site level.  Calling pushManager.subscribe() directly
+                                // without a prior Notification.requestPermission() means the
+                                // OS prompt is never shown and the subscribe silently fails.
+                                // We request permission explicitly first so the system prompt
+                                // appears, then bail early with a helpful message if denied.
+
+                                if (Notification.permission === 'denied') {
+                                    // Already hard-blocked — user must go to browser/OS settings
+                                    subscribeButtons.forEach(b => {
+                                        updateSubscriptionButton(b, false, true);
+                                        b.disabled = false;
+                                    });
                                     return;
                                 }
 
-                                try {
-                                    const applicationServerKey = urlBase64ToUint8Array(vapidKeyB64);
-                                    registration.pushManager.subscribe({
-                                        userVisibleOnly: true,
-                                        applicationServerKey: applicationServerKey
-                                    }).then(function(newSubscription) {
-                                        sendSubscriptionToServer(newSubscription, 'subscribe', function(res) {
-                                            if (res.success) {
-                                                isSubscribed = true;
-                                                subscription = newSubscription;
+                                const doSubscribe = function() {
+                                    const vapidKeyB64 = btn.getAttribute('data-vapid-public');
+                                    if (!vapidKeyB64) {
+                                        alert('VAPID public key not configured.');
+                                        subscribeButtons.forEach(b => { b.disabled = false; });
+                                        return;
+                                    }
+
+                                    try {
+                                        const applicationServerKey = urlBase64ToUint8Array(vapidKeyB64);
+                                        registration.pushManager.subscribe({
+                                            userVisibleOnly: true,
+                                            applicationServerKey: applicationServerKey
+                                        }).then(function(newSubscription) {
+                                            sendSubscriptionToServer(newSubscription, 'subscribe', function(res) {
+                                                if (res.success) {
+                                                    isSubscribed = true;
+                                                    subscription = newSubscription;
+                                                    subscribeButtons.forEach(b => {
+                                                        updateSubscriptionButton(b, true);
+                                                        b.disabled = false;
+                                                    });
+                                                } else {
+                                                    alert('Subscription registration failed on server.');
+                                                    newSubscription.unsubscribe();
+                                                    subscribeButtons.forEach(b => { b.disabled = false; });
+                                                }
+                                            });
+                                        }).catch(function(err) {
+                                            console.error('Failed to subscribe:', err);
+                                            // If the error is a permission error, update button to blocked state
+                                            if (err.name === 'NotAllowedError') {
                                                 subscribeButtons.forEach(b => {
-                                                    updateSubscriptionButton(b, true);
+                                                    updateSubscriptionButton(b, false, true);
                                                     b.disabled = false;
                                                 });
                                             } else {
-                                                alert('Subscription registration failed on server.');
-                                                newSubscription.unsubscribe();
+                                                alert('Subscription failed: ' + err.message);
                                                 subscribeButtons.forEach(b => { b.disabled = false; });
                                             }
                                         });
-                                    }).catch(function(err) {
-                                        console.error('Failed to subscribe:', err);
-                                        alert('Notification permission denied or subscription failed: ' + err.message);
+                                    } catch (e) {
+                                        console.error('VAPID key parsing error:', e);
                                         subscribeButtons.forEach(b => { b.disabled = false; });
+                                    }
+                                };
+
+                                if (Notification.permission === 'granted') {
+                                    // Permission already granted — go straight to subscribe
+                                    doSubscribe();
+                                } else {
+                                    // permission === 'default': ask the user via the OS prompt
+                                    Notification.requestPermission().then(function(result) {
+                                        if (result === 'granted') {
+                                            doSubscribe();
+                                        } else {
+                                            // User dismissed or denied the prompt
+                                            subscribeButtons.forEach(b => {
+                                                updateSubscriptionButton(b, false, result === 'denied');
+                                                b.disabled = false;
+                                            });
+                                        }
                                     });
-                                } catch (e) {
-                                    console.error('VAPID key parsing error:', e);
-                                    subscribeButtons.forEach(b => { b.disabled = false; });
                                 }
                             }
                         });
@@ -6699,10 +6752,25 @@ jQuery(document).ready(function ($) {
         }
     }
 
-    function updateSubscriptionButton(btn, isSubscribed) {
+    function updateSubscriptionButton(btn, isSubscribed, isBlocked) {
         const span = btn.querySelector('span');
         const icon = btn.querySelector('i');
         
+        if (isBlocked) {
+            // Notifications are blocked at OS/browser level
+            if (btn.classList.contains('bitstream-filter-link')) {
+                if (span) span.textContent = 'Notifications Blocked';
+                if (icon) icon.className = 'fa-solid fa-bell-slash';
+                btn.style.background = '';
+                btn.title = 'Notifications are blocked. Go to your browser\'s site settings to re-enable them.';
+            } else {
+                btn.textContent = 'Notifications Blocked — Enable in Browser Settings';
+                btn.style.background = '#e67e22';
+                btn.title = 'Tap to learn how to re-enable notifications for this site in your browser settings.';
+            }
+            return;
+        }
+
         if (btn.classList.contains('bitstream-filter-link')) {
             // Public sidebar / mobile tab button
             if (span) {
@@ -6712,6 +6780,7 @@ jQuery(document).ready(function ($) {
                 icon.className = isSubscribed ? 'fa-solid fa-bell-slash' : 'fa-solid fa-bell';
             }
             btn.style.background = '';
+            btn.title = '';
         } else {
             // Admin settings button
             if (isSubscribed) {
@@ -6721,6 +6790,7 @@ jQuery(document).ready(function ($) {
                 btn.textContent = 'Subscribe this Device';
                 btn.style.background = 'var(--wp--preset--color--accent-1, #2c6e49)';
             }
+            btn.title = '';
         }
     }
 
