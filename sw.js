@@ -205,6 +205,7 @@ self.addEventListener('push', event => {
           body: data.body || 'A new bit has been posted!',
           icon: data.icon || '/wp-content/plugins/bitstream/assets/images/logo_192.png',
           badge: data.badge || '/wp-content/plugins/bitstream/assets/images/logo_192.png',
+          image: data.image || undefined,
           data: {
             url: data.url || siteUrl
           }

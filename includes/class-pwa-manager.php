@@ -1311,7 +1311,8 @@ class BitStream_PWA_Manager {
                 $content = mb_substr($content, 0, 117) . '...';
             }
             
-            if (empty($content)) {
+            $is_empty_content = empty($content);
+            if ($is_empty_content) {
                 $content = 'New update posted!';
             }
             
@@ -1319,9 +1320,45 @@ class BitStream_PWA_Manager {
             $data['body'] = $content;
             $data['url'] = get_permalink($post_id);
             
+            // Check if it's a ReBit
             $rebit_url = get_post_meta($post_id, 'bitstream_rebit_url', true);
             if (!empty($rebit_url)) {
                 $data['title'] = 'New ReBit Post';
+                
+                $rebit_title = get_post_meta($post_id, 'bitstream_rebit_og_title', true);
+                if (empty($rebit_title)) {
+                    $rebit_title = $rebit_url;
+                }
+                
+                if (!$is_empty_content && $content !== 'New update posted!') {
+                    $data['body'] = $content . ' (shared: ' . $rebit_title . ')';
+                } else {
+                    $data['body'] = 'Shared a link: ' . $rebit_title;
+                }
+                
+                // Add OpenGraph image preview if available
+                $rebit_image = get_post_meta($post_id, 'bitstream_rebit_og_image', true);
+                if (!empty($rebit_image)) {
+                    $data['image'] = $rebit_image;
+                }
+            } else {
+                // Normal Bit image attachments preview
+                $thumb_id = get_post_thumbnail_id($post_id);
+                if ($thumb_id) {
+                    $img_src = wp_get_attachment_image_src($thumb_id, 'large');
+                    if ($img_src) {
+                        $data['image'] = $img_src[0];
+                    }
+                } else {
+                    $attachments = get_attached_media('image', $post_id);
+                    if (!empty($attachments)) {
+                        $first = reset($attachments);
+                        $img_src = wp_get_attachment_image_src($first->ID, 'large');
+                        if ($img_src) {
+                            $data['image'] = $img_src[0];
+                        }
+                    }
+                }
             }
         }
         
