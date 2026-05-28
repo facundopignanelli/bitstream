@@ -3083,7 +3083,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const urlInput = rebitForm.querySelector('#bs-edit-rebit-url');
             const attachmentInput = rebitForm.querySelector('input[name="rebit_attachment_id"]');
             const titleInput = rebitForm.querySelector('input[name="rebit_og_title"]');
-            const descInput = rebitForm.querySelector('textarea[name="rebit_og_desc"]');
+            const descInput = rebitForm.querySelector('input[name="rebit_og_desc"]');
             const imageInput = rebitForm.querySelector('input[name="rebit_og_image"]');
             const imageRemovedInput = rebitForm.querySelector('input[name="rebit_og_image_removed"]');
 
@@ -3133,7 +3133,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             const titleInput = rebitForm.querySelector('input[name="rebit_og_title"]');
-            const descInput = rebitForm.querySelector('textarea[name="rebit_og_desc"]');
+            const descInput = rebitForm.querySelector('input[name="rebit_og_desc"]');
             const imageInput = rebitForm.querySelector('input[name="rebit_og_image"]');
             const imageRemovedInput = rebitForm.querySelector('input[name="rebit_og_image_removed"]');
 
@@ -3521,7 +3521,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                             const og = data.data || {};
                             const titleInput = rebitForm.querySelector('input[name="rebit_og_title"]');
-                            const descInput = rebitForm.querySelector('textarea[name="rebit_og_desc"]');
+                            const descInput = rebitForm.querySelector('input[name="rebit_og_desc"]');
 
                             if (titleInput) {
                                 titleInput.value = og.title || '';
@@ -4677,7 +4677,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function adjustCardMediaDimensions(scope = document) {
-        scope.querySelectorAll('.bit-card-content img:not(.emoji), .bit-rebit-preview img:not(.emoji), .bitstream-quoted-preview img:not(.emoji), .bitstream-composer-preview-media-thumb img:not(.emoji)').forEach(img => {
+        scope.querySelectorAll('.bit-card-content img:not(.emoji):not(.bitstream-gallery-media), .bit-rebit-preview img:not(.emoji):not(.bitstream-gallery-media), .bitstream-quoted-preview img:not(.emoji):not(.bitstream-gallery-media), .bitstream-composer-preview-media-thumb img:not(.emoji):not(.bitstream-gallery-media)').forEach(img => {
             const processImage = () => {
                 const width = img.naturalWidth;
                 const height = img.naturalHeight;
@@ -6432,6 +6432,43 @@ jQuery(document).ready(function ($) {
             video.autoplay = true;
             video.setAttribute('controlsList', 'nodownload');
             video.setAttribute('playsinline', '');
+
+            const resizeVideo = () => {
+                if (!video.videoWidth || !video.videoHeight) return;
+                const stageEl = video.closest('.bitstream-lightbox-stage');
+                if (!stageEl) return;
+
+                const stageWidth = stageEl.clientWidth;
+                const stageHeight = stageEl.clientHeight;
+                if (!stageWidth || !stageHeight) return;
+
+                const videoRatio = video.videoWidth / video.videoHeight;
+                const stageRatio = stageWidth / stageHeight;
+
+                if (videoRatio > stageRatio) {
+                    video.style.setProperty('width', '100%', 'important');
+                    video.style.setProperty('height', 'auto', 'important');
+                } else {
+                    video.style.setProperty('width', 'auto', 'important');
+                    video.style.setProperty('height', '100%', 'important');
+                }
+            };
+
+            video.addEventListener('loadedmetadata', resizeVideo);
+            window.addEventListener('resize', resizeVideo);
+
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    mutation.removedNodes.forEach((node) => {
+                        if (node === video) {
+                            window.removeEventListener('resize', resizeVideo);
+                            observer.disconnect();
+                        }
+                    });
+                });
+            });
+            observer.observe(stage, { childList: true });
+
             stage.appendChild(video);
         }
 

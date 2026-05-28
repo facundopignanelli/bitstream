@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Moved the desktop side rail widgets so the right rail now shows Content Filter, Archive, RSS Feeds, and the Version box in that order.
 - Let the Hashtags sidebar grow naturally as new tags are added instead of forcing an internal scroll container.
+- Removed title headings from all siderail widgets (Quick Actions, Search, RSS Feeds, Archive, Content, Hashtags, and Version), keeping only the main title for the Welcome/Intro widget.
 
 ### Deprecated
 
@@ -39,6 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hid the WordPress admin bar on mobile BitStream frontend screens so page and modal titles are not covered.
 - Reduced mobile image upload failures by resizing oversized images, sending larger files in chunks, and improving interrupted-upload messaging.
 - Fixed bug that caused the edit page Block Editor not work.
+- Fixed timeline ReBit edit metadata saving issues where custom descriptions entered in the nested metadata edit modal were not correctly synchronized to the hidden form field and saved to the database.
+- Fixed media upload preview issue where video thumbnails in the composer and media upload modals were not scaled and centered to cover the 1:1 preview grid boxes due to global video aspect ratio rules.
+- Removed the default black shadow/gradient overlay from the native HTML5 video player controls panel when hovering or interacting with video elements in the timeline, composer, and lightbox.
+- Fixed lightbox video player aspect-ratio alignment issue where the native player control bar was wider than the actual video content. The video container element's box is now dynamically scaled based on the video's intrinsic dimensions to fit perfectly on the stage.
 
 ## [3.1.3] - 2026-05-04
 

@@ -78,7 +78,7 @@ On mobile devices, use the "Add to Home Screen" option to install BitStream as a
 
 - **Social-App Style Feed** - Clear, single-column reading experience replacing the old masonry layout
 - **Adaptive Sidebars** - Left filter links, right Quick Actions rails, and responsive stacking across devices
-- **Interactive Cards** - Rich media, quoted bits, and inline actions
+- **Interactive Cards** - Rich media (including multi-image/video grids with fullscreen lightbox overlays), quoted bits, and inline actions
 - **Composer Box** - Instantly post Bits or auto-detected ReBits directly from the sidebar feed
 - **In-Feed Deletion** - Instantly delete posts if you have the proper capabilities
 
@@ -87,7 +87,7 @@ On mobile devices, use the "Add to Home Screen" option to install BitStream as a
 - **Unified Feed Composition** - Compose Bits and ReBits directly from the feed page
 - **Drafts Support** - Save posts mid-thought, auto-save on page/tab close (`navigator.sendBeacon`), and resume later
 - **Robust Scheduling** - Plan ahead with a native datetime picker for future publishing (Bits and ReBits)
-- **Rich Media** - Drag-and-drop uploads, custom image cropper, and video support integrated via native `wp.media`
+- **Rich Media** - Drag-and-drop uploads, attaching up to 10 images or videos per post, custom image cropper, and video support integrated via native `wp.media`
 - **In-Feed Management** - Load, preview, edit, or delete drafts and scheduled items directly from their respective modals on the feed page
 
 ### � Social & Discovery
@@ -113,15 +113,20 @@ On mobile devices, use the "Add to Home Screen" option to install BitStream as a
 
 ### `[bitstream]` - Display Feed
 
-The main shortcode for displaying your timeline.
+The main shortcode for displaying your microblog timeline. For logged-in users with publishing permissions, it also automatically integrates the inline Composer at the top of the feed (on desktop) and enables the floating Quick Actions menu (on mobile) to compose Bits/ReBits, attach media, save drafts, and schedule posts directly from the frontend.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `posts_per_page` | integer | 10 | Number of posts to load per page |
 | `limit` | integer | - | Limit total posts (disables pagination) |
+| `exact_limit` | integer | - | Render exactly this number of posts in preview mode instead of auto-filling to a cap |
 | `mode` | string | - | Set to `"preview"` for a compact 3-column grid without sidebars |
 | `infinite_scroll` | boolean | false | Enable infinite scroll |
 | `show_load_more` | boolean | true | Show/hide load more button |
+
+### `[bitstream_settings]` - Settings Interface
+
+Renders the tabbed Settings panel on the front-end for logged-in users with the `edit_posts` capability. Enables updating Personalisation options, ReBit Mappings, RSS Feeds, and Advanced tools.
 
 
 

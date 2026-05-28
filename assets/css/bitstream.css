@@ -109,6 +109,15 @@
     object-fit: contain;
 }
 
+/* Remove default black shadow/gradient overlay from native HTML5 video controls */
+.bitstream-feed-layout video::-webkit-media-controls-panel,
+.bitstream-composer video::-webkit-media-controls-panel,
+.bitstream-composer-modal video::-webkit-media-controls-panel,
+.bitstream-lightbox video::-webkit-media-controls-panel {
+    background-image: none !important;
+    background: transparent !important;
+}
+
 /* Landscape/Square images: same width as card content area */
 .bit-card-content img.bit-image-landscape,
 .bit-rebit-preview img.bit-image-landscape,
@@ -4605,14 +4614,25 @@ iframe[src*="youtube-nocookie.com"] {
 }
 
 .bitstream-gallery-item img,
-.bitstream-gallery-item video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
+.bitstream-gallery-item video,
+.bitstream-gallery-item img.bit-image-landscape,
+.bitstream-gallery-item img.bit-image-portrait,
+.bit-card-content .bitstream-gallery-item img.bit-image-landscape,
+.bit-card-content .bitstream-gallery-item img.bit-image-portrait,
+.bitstream-quoted-preview .bitstream-gallery-item img.bit-image-landscape,
+.bitstream-quoted-preview .bitstream-gallery-item img.bit-image-portrait {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    object-fit: cover !important;
+    display: block !important;
     cursor: pointer;
-    border: none;
-    border-radius: 0;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
     transition: transform 0.25s ease;
 }
 
@@ -4810,10 +4830,13 @@ iframe[src*="youtube-nocookie.com"] {
 
 .bitstream-media-preview-item img,
 .bitstream-media-preview-item video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    object-fit: cover !important;
+    margin: 0 !important;
+    display: block !important;
 }
 
 .bitstream-media-preview-remove-item {
