@@ -207,10 +207,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 img.alt = '';
                 item.appendChild(img);
             } else if (mime.startsWith('video/')) {
+                item.classList.add('is-video-item'); // dark placeholder bg until frame loads
                 const video = document.createElement('video');
                 video.src = url;
                 video.preload = 'metadata';
                 video.muted = true;
+                video.playsInline = true;
+                // Seek to first frame so mobile browsers paint a thumbnail
+                video.addEventListener('loadedmetadata', function onMeta() {
+                    video.removeEventListener('loadedmetadata', onMeta);
+                    video.currentTime = 0.001;
+                });
                 item.appendChild(video);
                 // Play-icon overlay so the thumbnail is recognisable on mobile
                 const playOverlay = document.createElement('div');

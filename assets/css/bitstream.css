@@ -4512,11 +4512,12 @@ iframe[src*="youtube-nocookie.com"] {
     /* Show the backdrop for nested sub-modals */
     .bitstream-composer .bitstream-composer-modal > .bitstream-composer-modal-backdrop {
         display: block !important;
-        position: fixed;
+        /* position:absolute keeps it contained within the already-fixed parent.
+           position:fixed would let backdrop-filter composite against the entire
+           viewport stack, blurring the main page behind the composer. */
+        position: absolute;
         inset: 0;
-        background: rgba(0,0,0,0.45);
-        backdrop-filter: blur(4px);
-        -webkit-backdrop-filter: blur(4px);
+        background: rgba(0, 0, 0, 0.50);
         z-index: 0;
     }
 
@@ -4895,6 +4896,11 @@ iframe[src*="youtube-nocookie.com"] {
     pointer-events: none;
     text-shadow: 0 1px 6px rgba(0,0,0,0.5);
     background: rgba(0,0,0,0.18);
+}
+
+/* Dark placeholder so the play icon is visible before the video frame loads */
+.bitstream-media-preview-item.is-video-item {
+    background: #1a1a2e;
 }
 
 .bitstream-media-preview-item img,
