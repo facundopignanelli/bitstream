@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
--New "Composer" inline posting box for logged-in users. Features all options of the old Quick Bit and Poster shortcode.
+- Supported attaching up to 10 images or videos to a single Bit post, displayed in a modern asymmetrical or symmetrical grid layout.
+- Integrated a responsive fullscreen media lightbox overlay allowing users to browse through multiple attachments with keyboard navigation and mouse controls.
+- New "Composer" inline posting box for logged-in users. Features all options of the old Quick Bit and Poster shortcode.
 
 
 ### Changed

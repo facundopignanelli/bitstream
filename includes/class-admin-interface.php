@@ -460,6 +460,7 @@ class BitStream_Admin_Interface
             '_bitstream_uploaded_via_composer',
             '_bitstream_upload_created_at',
             '_bitstream_attachment_id',
+            '_bitstream_attachment_ids',
         ];
 
         foreach ($meta_keys as $meta_key) {

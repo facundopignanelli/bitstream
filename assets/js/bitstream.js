@@ -100,6 +100,235 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    function getExistingAttachmentIds(targetInputId) {
+        if (!targetInputId) return [];
+        const inputId = targetInputId.endsWith('s') ? targetInputId : targetInputId + 's';
+        const input = document.getElementById(inputId) || document.querySelector('.' + inputId) || document.querySelector('[name="' + targetInputId.replace('_id', '_ids') + '"]');
+        if (!input || !input.value) return [];
+        return input.value.split(',').map(id => parseInt(id, 10)).filter(Boolean);
+    }
+
+    function getPreviewElement(targetPreviewId) {
+        if (typeof targetPreviewId === 'string') {
+            return document.getElementById(targetPreviewId) || document.querySelector(targetPreviewId);
+        }
+        return targetPreviewId;
+    }
+
+    function getExistingAttachments(previewEl) {
+        if (!previewEl || !previewEl.dataset.attachmentsJson) return [];
+        try {
+            return JSON.parse(previewEl.dataset.attachmentsJson);
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function updateAttachmentsList(previewEl, attachments) {
+        if (!previewEl) return;
+
+        const form = previewEl.closest('form, .bitstream-media-field, .bitstream-composer');
+        if (!form) return;
+
+        const targetInput = form.querySelector('.bs-edit-attachment-id') || form.querySelector('#bitstream-composer-attachment-id');
+        const targetInputs = form.querySelector('.bs-edit-attachment-ids') || form.querySelector('#bitstream-composer-attachment-ids');
+        const removeButton = form.querySelector('.bitstream-media-remove') || form.querySelector('.bitstream-composer-preview-remove[data-composer-remove="media"]');
+        const cropButton = form.querySelector('.bitstream-media-crop') || form.querySelector('.bitstream-composer-preview-edit[data-composer-edit="media"]');
+
+        if (attachments.length > 10) {
+            alert('You can attach up to 10 images or videos.');
+            attachments = attachments.slice(0, 10);
+        }
+
+        const firstId = attachments.length > 0 ? attachments[0].id : 0;
+        const allIds = attachments.map(item => item.id).join(',');
+
+        if (targetInput) {
+            targetInput.value = firstId > 0 ? String(firstId) : '';
+            targetInput.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        if (targetInputs) {
+            targetInputs.value = allIds;
+            targetInputs.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        const dropzone = previewEl.closest('.bitstream-media-dropzone');
+        if (dropzone) {
+            dropzone.classList.toggle('has-media', attachments.length > 0);
+        }
+
+        previewEl.dataset.attachmentsJson = JSON.stringify(attachments);
+        renderMultiplePreviews(previewEl, attachments);
+
+        if (removeButton) {
+            removeButton.classList.toggle('is-hidden', attachments.length === 0);
+        }
+        if (cropButton) {
+            const isSingleImage = attachments.length === 1 && attachments[0].mime && attachments[0].mime.startsWith('image/');
+            cropButton.classList.toggle('is-hidden', !isSingleImage);
+        }
+
+        const previewMedia = form.querySelector('.bitstream-composer-preview-media');
+        const previewArea = form.querySelector('.bitstream-composer-preview-area');
+        if (previewMedia && previewArea) {
+            previewMedia.hidden = attachments.length === 0;
+            const hasVisiblePreviews = Array.from(previewArea.children).some(child => !child.hidden);
+            previewArea.hidden = !hasVisiblePreviews;
+        }
+    }
+
+    function renderMultiplePreviews(previewEl, attachments) {
+        if (!previewEl) return;
+
+        if (attachments.length === 0) {
+            previewEl.innerHTML = '';
+            previewEl.classList.remove('has-multiple');
+            return;
+        }
+
+        previewEl.innerHTML = '';
+        previewEl.classList.add('has-multiple');
+
+        const grid = document.createElement('div');
+        grid.className = 'bitstream-media-preview-grid';
+
+        attachments.forEach((attachment, index) => {
+            const item = document.createElement('div');
+            item.className = 'bitstream-media-preview-item';
+            item.dataset.index = index;
+            item.dataset.attachmentId = attachment.id;
+
+            const mime = attachment.mime || '';
+            const url = attachment.preview_url || attachment.url || '';
+
+            if (mime.startsWith('image/')) {
+                const img = document.createElement('img');
+                img.src = url;
+                img.alt = '';
+                item.appendChild(img);
+            } else if (mime.startsWith('video/')) {
+                const video = document.createElement('video');
+                video.src = url;
+                video.preload = 'metadata';
+                item.appendChild(video);
+            } else {
+                const fallback = document.createElement('div');
+                fallback.className = 'bitstream-media-fallback-text';
+                fallback.textContent = attachment.filename || 'Media';
+                item.appendChild(fallback);
+            }
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'bitstream-media-preview-remove-item';
+            removeBtn.innerHTML = '&times;';
+            removeBtn.title = 'Remove';
+            removeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                const updated = attachments.filter((_, i) => i !== index);
+                updateAttachmentsList(previewEl, updated);
+            });
+
+            item.appendChild(removeBtn);
+            grid.appendChild(item);
+        });
+
+        previewEl.appendChild(grid);
+    }
+
+    async function uploadMultipleFiles(files, targetInputId, targetPreviewId, options = {}) {
+        const setStatusFn = options.setStatus || console.log;
+        setStatusFn('', false);
+        
+        if (!bitstream_ajax || !bitstream_ajax.ajax_url || !bitstream_ajax.media_upload_nonce) {
+            setStatusFn('Media upload is unavailable.', true);
+            return;
+        }
+
+        const isRebit = targetInputId && (targetInputId.indexOf('rebit') !== -1);
+        
+        const validFiles = Array.from(files).filter(file => {
+            const mimeType = getUploadMimeType(file);
+            return mimeType.startsWith('image/') || mimeType.startsWith('video/');
+        });
+
+        if (validFiles.length === 0) {
+            setStatusFn('Unsupported file format. Only images and videos are allowed.', true);
+            return;
+        }
+
+        const existingIds = getExistingAttachmentIds(targetInputId);
+        const currentCount = existingIds.length;
+        if (!isRebit && currentCount + validFiles.length > 10) {
+            setStatusFn('You can attach up to 10 images or videos.', true);
+            alert('You can attach up to 10 images or videos.');
+            return;
+        }
+
+        const progressContainer = document.querySelector(`[data-progress-bar="${targetInputId}"]`);
+        const progressBar = progressContainer ? progressContainer.querySelector('.bitstream-media-progress-bar') : null;
+        const progressText = progressContainer ? progressContainer.querySelector('.bitstream-media-progress-text') : null;
+
+        const showProgress = () => {
+            if (!progressContainer) return;
+            progressContainer.classList.remove('is-hidden');
+            if (progressBar) progressBar.style.width = '0%';
+            if (progressText) progressText.textContent = 'Uploading...';
+        };
+
+        const updateProgress = (percent, text) => {
+            if (progressBar) progressBar.style.width = percent + '%';
+            if (progressText && text) progressText.textContent = text;
+        };
+
+        const hideProgress = () => {
+            if (progressContainer) progressContainer.classList.add('is-hidden');
+        };
+
+        showProgress();
+
+        try {
+            const loadedAttachments = [];
+            for (let i = 0; i < validFiles.length; i++) {
+                const file = validFiles[i];
+                updateProgress(5 + (i / validFiles.length) * 90, `Uploading file ${i+1}/${validFiles.length}...`);
+                
+                const uploadFile = await prepareMediaFileForUpload(file);
+                const media = await uploadMediaRequest(uploadFile, (percent, text) => {
+                    const subPercent = 5 + ((i + percent / 100) / validFiles.length) * 90;
+                    updateProgress(subPercent, `Uploading file ${i+1}/${validFiles.length} (${percent}%)...`);
+                });
+
+                loadedAttachments.push({
+                    id: media.id,
+                    url: media.url,
+                    preview_url: media.preview_url || media.url,
+                    mime: media.mime,
+                    filename: file.name
+                });
+            }
+
+            const previewEl = getPreviewElement(targetPreviewId);
+            const existingAttachments = getExistingAttachments(previewEl);
+            let finalAttachments = [];
+            if (isRebit) {
+                finalAttachments = loadedAttachments.slice(0, 1);
+            } else {
+                finalAttachments = [...existingAttachments, ...loadedAttachments].slice(0, 10);
+            }
+
+            updateAttachmentsList(previewEl, finalAttachments);
+            setStatusFn('', false);
+            setTimeout(() => {
+                hideProgress();
+            }, 1000);
+        } catch (error) {
+            hideProgress();
+            setStatusFn(error.message || 'Upload failed.', true);
+        }
+    }
+
     async function prepareMediaFileForUpload(file) {
         const mimeType = getUploadMimeType(file);
         if (!mimeType.startsWith('image/') || mimeType === 'image/gif') {
@@ -1100,35 +1329,42 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
 
+                const isRebit = targetInputId && (targetInputId.indexOf('rebit') !== -1);
+
                 const frame = wp.media({
                     title: 'Select media',
                     button: { text: 'Use media' },
-                    multiple: false,
+                    multiple: !isRebit,
                     library: { type: ['image', 'video'] }
                 });
 
                 frame.on('select', () => {
-                    const selection = frame.state().get('selection').first();
-                    if (!selection) {
-                        return;
-                    }
-
-                    const data = selection.toJSON();
-                    const mime = data.mime || data.type || '';
-                    if (!mime.startsWith('image/') && !mime.startsWith('video/')) {
-                        setStatus('Only image and video files are supported.', true);
-                        return;
-                    }
-
-                    handleMediaSelection(targetInputId, targetPreviewId, {
-                        id: data.id,
-                        url: data.url,
-                        preview_url: data.preview_url || (data.sizes && ((data.sizes.large && data.sizes.large.url) || (data.sizes.medium_large && data.sizes.medium_large.url) || (data.sizes.medium && data.sizes.medium.url))) || data.url,
-                        mime: mime,
-                        filename: data.filename || data.title || '',
-                        title: data.title || '',
-                        sizes: data.sizes || { medium: { url: data.preview_url || (data.sizes && ((data.sizes.large && data.sizes.large.url) || (data.sizes.medium_large && data.sizes.medium_large.url) || (data.sizes.medium && data.sizes.medium.url))) || data.url } }
+                    const selections = frame.state().get('selection').models;
+                    const loadedAttachments = [];
+                    selections.forEach(selection => {
+                        const data = selection.toJSON();
+                        const mime = data.mime || data.type || '';
+                        if (mime.startsWith('image/') || mime.startsWith('video/')) {
+                            loadedAttachments.push({
+                                id: data.id,
+                                url: data.url,
+                                preview_url: data.preview_url || (data.sizes && ((data.sizes.large && data.sizes.large.url) || (data.sizes.medium_large && data.sizes.medium_large.url) || (data.sizes.medium && data.sizes.medium.url))) || data.url,
+                                mime: mime,
+                                filename: data.filename || data.title || ''
+                            });
+                        }
                     });
+
+                    const previewEl = getPreviewElement(targetPreviewId);
+                    const existingAttachments = getExistingAttachments(previewEl);
+                    let finalAttachments = [];
+                    if (isRebit) {
+                        finalAttachments = loadedAttachments.slice(0, 1);
+                    } else {
+                        finalAttachments = [...existingAttachments, ...loadedAttachments].slice(0, 10);
+                    }
+
+                    updateAttachmentsList(previewEl, finalAttachments);
                 });
 
                 frame.open();
@@ -1380,79 +1616,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     refreshRebitEditorImagePreview();
                     refreshRebitPreview();
                 }
-            }
-
-            async function uploadMediaFile(file, targetInputId, targetPreviewId) {
-                setStatus('');
-                if (!bitstream_ajax || !bitstream_ajax.ajax_url || !bitstream_ajax.media_upload_nonce) {
-                    setStatus('Media upload is unavailable.', true);
-                    return;
-                }
-
-                const mimeType = getUploadMimeType(file);
-                if (!mimeType.startsWith('image/') && !mimeType.startsWith('video/')) {
-                    setStatus('Unsupported file format. Only images and videos are allowed.', true);
-                    return;
-                }
-
-                const progressContainer = document.querySelector(`[data-progress-bar="${targetInputId}"]`);
-                const progressBar = progressContainer ? progressContainer.querySelector('.bitstream-media-progress-bar') : null;
-                const progressText = progressContainer ? progressContainer.querySelector('.bitstream-media-progress-text') : null;
-
-                const showProgress = () => {
-                    if (!progressContainer) {
-                        return;
-                    }
-                    progressContainer.classList.remove('is-hidden');
-                    if (progressBar) progressBar.style.width = '0%';
-                    if (progressText) progressText.textContent = 'Uploading...';
-                };
-
-                const updateProgress = (percent, text) => {
-                    if (progressBar) {
-                        progressBar.style.width = percent + '%';
-                    }
-                    if (progressText && text) {
-                        progressText.textContent = text;
-                    }
-                };
-
-                const hideProgress = () => {
-                    if (progressContainer) {
-                        progressContainer.classList.add('is-hidden');
-                    }
-                };
-
-                showProgress();
-                updateProgress(5, mimeType.startsWith('image/') ? 'Preparing image...' : 'Preparing upload...');
-
-                const uploadFile = await prepareMediaFileForUpload(file);
-                updateProgress(8, uploadFile.size > BITSTREAM_CHUNKED_UPLOAD_THRESHOLD ? 'Uploading in chunks...' : 'Uploading...');
-
-                uploadMediaRequest(uploadFile, updateProgress)
-                    .then(media => {
-                    handleMediaSelection(targetInputId, targetPreviewId, {
-                        id: media.id,
-                        url: media.url,
-                        preview_url: media.preview_url || media.url,
-                        mime: media.mime,
-                        audio_meta: media.audio_meta || null,
-                        sizes: {
-                            medium: { url: media.preview_url || media.url }
-                        }
-                    });
-
-                    setTimeout(() => {
-                        hideProgress();
-                    }, 1000);
-                    })
-                    .catch(error => {
-                        hideProgress();
-                        setStatus(error.message || 'Upload failed.', true);
-                    });
-            }
-
-            function uploadClipboardImage(targetInputId, targetPreviewId) {
+            }            function uploadClipboardImage(targetInputId, targetPreviewId) {
                 if (!navigator.clipboard || typeof navigator.clipboard.read !== 'function') {
                     setStatus('Clipboard paste is unavailable in this browser.', true);
                     return;
@@ -1474,7 +1638,9 @@ document.addEventListener('DOMContentLoaded', function () {
                             const extension = imageType.indexOf('jpeg') !== -1 ? 'jpg' : (imageType.split('/')[1] || 'png');
                             const filename = 'pasted-image-' + Date.now() + '.' + extension;
                             const file = new File([blob], filename, { type: imageType });
-                            uploadMediaFile(file, targetInputId, targetPreviewId);
+                            uploadMultipleFiles([file], targetInputId, targetPreviewId, {
+                                setStatus: (msg, isError) => setStatus(msg, isError)
+                            });
                             setStatus('Uploading pasted image...');
                         });
                     })
@@ -1485,13 +1651,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
             removeButtons.forEach(button => {
                 button.addEventListener('click', () => {
-                    const targetInput = document.getElementById(button.dataset.targetInput || '');
                     const targetPreview = document.getElementById(button.dataset.targetPreview || '');
-
-                    if (targetInput) {
-                        targetInput.value = '';
+                    if (targetPreview) {
+                        updateAttachmentsList(targetPreview, []);
                     }
-                    renderMediaPreview(targetPreview, null);
 
                     if ((button.dataset.targetInput || '') === 'bitstream-rebit-attachment-id') {
                         if (rebitOgImageRemovedInput) {
@@ -1500,12 +1663,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         refreshRebitEditorImagePreview();
                         refreshRebitPreview();
                     }
-
-                    if (button.dataset.targetInput) {
-                        setRemoveVisibility(button.dataset.targetInput);
-                        setCropVisibility(button.dataset.targetInput, '');
-                        setAudioTagVisibility(button.dataset.targetInput, '');
-                    }
+                    setRemoveVisibility(button.dataset.targetInput || '');
+                    setCropVisibility(button.dataset.targetInput || '', '');
+                    setAudioTagVisibility(button.dataset.targetInput || '', '');
                 });
             });
 
@@ -1826,21 +1986,21 @@ document.addEventListener('DOMContentLoaded', function () {
                     event.preventDefault();
                     zone.classList.remove('is-dragover');
 
-                    const file = event.dataTransfer.files && event.dataTransfer.files[0];
-                    if (!file) {
-                        return;
+                    const files = event.dataTransfer.files;
+                    if (files && files.length > 0) {
+                        uploadMultipleFiles(Array.from(files), targetInputId, targetPreviewId, {
+                            setStatus: (msg, isError) => setStatus(msg, isError)
+                        });
                     }
-
-                    uploadMediaFile(file, targetInputId, targetPreviewId);
                 });
 
                 input.addEventListener('change', () => {
-                    const file = input.files && input.files[0];
-                    if (!file) {
-                        return;
+                    const files = input.files;
+                    if (files && files.length > 0) {
+                        uploadMultipleFiles(Array.from(files), targetInputId, targetPreviewId, {
+                            setStatus: (msg, isError) => setStatus(msg, isError)
+                        });
                     }
-
-                    uploadMediaFile(file, targetInputId, targetPreviewId);
                     input.value = '';
                 });
             });
@@ -1927,8 +2087,41 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             const previewMediaThumb = composerRoot.querySelector('.bitstream-composer-preview-media-thumb');
+            const existingMediaIdsInputs = composerRoot.querySelectorAll('input[name="bit_attachment_ids"]');
+            
+            existingMediaIdsInputs.forEach(input => {
+                const val = input.value || '';
+                const ids = val.split(',').map(id => parseInt(id.trim(), 10)).filter(Boolean);
+                if (ids.length === 0) return;
+
+                let previewEl = null;
+                if (input.closest('.bitstream-media-field')) {
+                    previewEl = input.closest('.bitstream-media-field').querySelector('.bitstream-media-preview');
+                } else if (input.id === 'bitstream-composer-attachment-ids') {
+                    previewEl = previewMediaThumb;
+                }
+                if (!previewEl) {
+                    previewEl = composerRoot.querySelector('#bitstream-bit-media-preview');
+                }
+                if (!previewEl) return;
+
+                const promises = ids.map(id => fetchAttachmentData(id).catch(() => null));
+                Promise.all(promises).then(results => {
+                    const validAttachments = results.filter(Boolean);
+                    updateAttachmentsList(previewEl, validAttachments);
+                });
+            });
+
             const existingMediaInputs = composerRoot.querySelectorAll('input[name="bit_attachment_id"], input[name="rebit_attachment_id"]');
             existingMediaInputs.forEach(input => {
+                const formEl = input.closest('form, .bitstream-media-field, .bitstream-composer');
+                if (formEl) {
+                    const idsInput = formEl.querySelector('input[name="bit_attachment_ids"]');
+                    if (idsInput && idsInput.value) {
+                        return; // already processed via bit_attachment_ids
+                    }
+                }
+
                 const value = parseInt(input.value || '0', 10);
                 if (!value) {
                     setRemoveVisibility(input.id);
@@ -1954,14 +2147,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 fetchAttachmentData(value)
                     .then(data => {
-                        if (previewEl === previewMediaThumb) {
-                            renderComposerMediaPreview(previewMediaThumb, data);
-                        } else {
-                            renderMediaPreview(previewEl, data);
-                        }
-                        setRemoveVisibility(input.id);
-                        setCropVisibility(input.id, data.mime);
-                        setAudioTagVisibility(input.id, data.mime);
+                        updateAttachmentsList(previewEl, [data]);
                     })
                     .catch(() => {
                         if (previewEl === previewMediaThumb) {
@@ -2864,47 +3050,28 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        function setAttachmentPreview(form, attachmentId, attachmentUrl, attachmentMime) {
+        function setAttachmentPreview(form, attachmentId, attachmentUrl, attachmentMime, attachments) {
             if (!form) {
                 return;
             }
 
-            const targetInput = form.querySelector('.bs-edit-attachment-id');
-            if (targetInput) {
-                targetInput.value = attachmentId > 0 ? String(attachmentId) : '';
-            }
-
-            const previewEl = form.querySelector('.bitstream-media-preview');
+            const previewEl = form.querySelector('.bitstream-media-preview') || form.querySelector('.bitstream-composer-preview-media-thumb');
             if (!previewEl) {
                 return;
             }
 
-            const removeButton = form.querySelector('.bitstream-media-remove');
-            const cropButton = form.querySelector('.bitstream-media-crop');
-
-            if (attachmentId > 0 && attachmentUrl) {
-                const attachment = {
+            if (Array.isArray(attachments)) {
+                updateAttachmentsList(previewEl, attachments);
+            } else if (attachmentId > 0 && attachmentUrl) {
+                const singleAtt = {
                     id: attachmentId,
                     url: attachmentUrl,
                     preview_url: attachmentUrl,
                     mime: attachmentMime
                 };
-                renderMediaPreview(previewEl, attachment);
-                if (removeButton) {
-                    removeButton.classList.remove('is-hidden');
-                }
-                if (cropButton) {
-                    const isImage = attachmentMime && attachmentMime.startsWith('image/');
-                    cropButton.classList.toggle('is-hidden', !isImage);
-                }
+                updateAttachmentsList(previewEl, [singleAtt]);
             } else {
-                renderMediaPreview(previewEl, null);
-                if (removeButton) {
-                    removeButton.classList.add('is-hidden');
-                }
-                if (cropButton) {
-                    cropButton.classList.add('is-hidden');
-                }
+                updateAttachmentsList(previewEl, []);
             }
         }
 
@@ -3091,56 +3258,16 @@ document.addEventListener('DOMContentLoaded', function () {
             const targetInputId = targetInput.id || 'bs-edit-bit-attachment-id';
             const targetPreviewId = previewEl.id || 'bs-edit-bit-media-preview';
 
-            // Helper to upload media file via AJAX
-            const uploadFile = async (file) => {
-                if (!bitstream_ajax || !bitstream_ajax.ajax_url || !bitstream_ajax.media_upload_nonce) {
-                    setErrorState('Media upload is unavailable.');
-                    return;
-                }
-
-                const mimeType = getUploadMimeType(file);
-                if (!mimeType.startsWith('image/') && !mimeType.startsWith('video/')) {
-                    setErrorState('Unsupported file format. Only images and videos are allowed.');
-                    return;
-                }
-
-                const progressContainer = form.querySelector(`[data-progress-bar="${targetInputId}"]`);
-                const progressBar = progressContainer ? progressContainer.querySelector('.bitstream-media-progress-bar') : null;
-                const progressText = progressContainer ? progressContainer.querySelector('.bitstream-media-progress-text') : null;
-
-                const showProgress = () => {
-                    if (progressContainer) progressContainer.classList.remove('is-hidden');
-                    if (progressBar) progressBar.style.width = '0%';
-                    if (progressText) progressText.textContent = 'Uploading...';
-                };
-
-                const updateProgress = (percent, text) => {
-                    if (progressBar) progressBar.style.width = percent + '%';
-                    if (progressText && text) progressText.textContent = text;
-                };
-
-                const hideProgress = () => {
-                    if (progressContainer) progressContainer.classList.add('is-hidden');
-                };
-
-                showProgress();
-                updateProgress(5, mimeType.startsWith('image/') ? 'Preparing image...' : 'Preparing upload...');
-
-                const preparedFile = await prepareMediaFileForUpload(file);
-                updateProgress(8, preparedFile.size > BITSTREAM_CHUNKED_UPLOAD_THRESHOLD ? 'Uploading in chunks...' : 'Uploading...');
-
-                uploadMediaRequest(preparedFile, updateProgress)
-                    .then(media => {
-                    setAttachmentPreview(form, media.id, media.url, media.mime);
-
-                    setTimeout(() => {
-                        hideProgress();
-                    }, 1000);
-                    })
-                    .catch(error => {
-                        hideProgress();
-                        setErrorState(error.message || 'Upload failed.');
-                    });
+            const uploadFiles = (files) => {
+                uploadMultipleFiles(files, targetInputId, targetPreviewId, {
+                    setStatus: (msg, isError) => {
+                        if (isError) {
+                            setErrorState(msg);
+                        } else {
+                            clearFormFeedback();
+                        }
+                    }
+                });
             };
 
             // Clipboard paste
@@ -3166,7 +3293,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             const extension = imageType.indexOf('jpeg') !== -1 ? 'jpg' : (imageType.split('/')[1] || 'png');
                             const filename = 'pasted-image-' + Date.now() + '.' + extension;
                             const file = new File([blob], filename, { type: imageType });
-                            uploadFile(file);
+                            uploadFiles([file]);
                         });
                     })
                     .catch(error => {
@@ -3195,16 +3322,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     event.preventDefault();
                     dropzone.classList.remove('is-dragover');
 
-                    const file = event.dataTransfer.files && event.dataTransfer.files[0];
-                    if (file) {
-                        uploadFile(file);
+                    const files = event.dataTransfer.files;
+                    if (files && files.length > 0) {
+                        uploadFiles(Array.from(files));
                     }
                 });
 
                 fileInput.addEventListener('change', () => {
-                    const file = fileInput.files && fileInput.files[0];
-                    if (file) {
-                        uploadFile(file);
+                    const files = fileInput.files;
+                    if (files && files.length > 0) {
+                        uploadFiles(Array.from(files));
                     }
                     fileInput.value = '';
                 });
@@ -3214,7 +3341,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (removeButton) {
                 removeButton.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    setAttachmentPreview(form, 0, '', '');
+                    setAttachmentPreview(form, 0, '', '', []);
                 });
             }
 
@@ -3246,25 +3373,42 @@ document.addEventListener('DOMContentLoaded', function () {
                         return;
                     }
 
+                    const isRebit = targetInputId && (targetInputId.indexOf('rebit') !== -1);
+
                     const frame = wp.media({
                         title: 'Select media',
                         button: { text: 'Use media' },
-                        multiple: false,
+                        multiple: !isRebit,
                         library: { type: ['image', 'video'] }
                     });
 
                     frame.on('select', () => {
-                        const selection = frame.state().get('selection').first();
-                        if (!selection) return;
+                        const selections = frame.state().get('selection').models;
+                        const loadedAttachments = [];
+                        selections.forEach(selection => {
+                            const data = selection.toJSON();
+                            const mime = data.mime || data.type || '';
+                            if (mime.startsWith('image/') || mime.startsWith('video/')) {
+                                loadedAttachments.push({
+                                    id: data.id,
+                                    url: data.url,
+                                    preview_url: data.preview_url || (data.sizes && ((data.sizes.large && data.sizes.large.url) || (data.sizes.medium_large && data.sizes.medium_large.url) || (data.sizes.medium && data.sizes.medium.url))) || data.url,
+                                    mime: mime,
+                                    filename: data.filename || data.title || ''
+                                });
+                            }
+                        });
 
-                        const data = selection.toJSON();
-                        const mime = data.mime || data.type || '';
-                        if (!mime.startsWith('image/') && !mime.startsWith('video/')) {
-                            setErrorState('Only image and video files are supported.');
-                            return;
+                        const previewEl = getPreviewElement(targetPreviewId);
+                        const existingAttachments = getExistingAttachments(previewEl);
+                        let finalAttachments = [];
+                        if (isRebit) {
+                            finalAttachments = loadedAttachments.slice(0, 1);
+                        } else {
+                            finalAttachments = [...existingAttachments, ...loadedAttachments].slice(0, 10);
                         }
 
-                        setAttachmentPreview(form, data.id, data.url, mime);
+                        updateAttachmentsList(previewEl, finalAttachments);
                     });
 
                     frame.open();
@@ -3288,10 +3432,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         return;
                     }
 
-                    const file = clipboardData.files[0];
-                    if (file && (file.type.startsWith('image/') || file.type.startsWith('video/'))) {
+                    const files = clipboardData.files;
+                    const validFiles = Array.from(files).filter(file => file.type.startsWith('image/') || file.type.startsWith('video/'));
+                    if (validFiles.length > 0) {
                         event.preventDefault();
-                        uploadFile(file);
+                        uploadFiles(validFiles);
                     }
                 });
             }
@@ -3604,7 +3749,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             setQuotePreview(bitForm, quotePostId, quotePreviewHtml);
-            setAttachmentPreview(bitForm, isQuoteMode ? 0 : attachmentId, isQuoteMode ? '' : attachmentUrl, isQuoteMode ? '' : attachmentMime);
+            setAttachmentPreview(bitForm, isQuoteMode ? 0 : attachmentId, isQuoteMode ? '' : attachmentUrl, isQuoteMode ? '' : attachmentMime, isQuoteMode ? [] : (data.attachments || []));
             setScheduleState(bitForm, 'bit', scheduleEnabled && !isQuoteMode, isQuoteMode ? '' : scheduleDatetime);
 
             if (submitButton) {
@@ -4791,6 +4936,11 @@ document.addEventListener('DOMContentLoaded', function () {
     if (loadMoreButton) {
         loadMoreButton.addEventListener('click', loadNextPage);
     }
+
+    // Expose helpers globally
+    window.getExistingAttachments = getExistingAttachments;
+    window.updateAttachmentsList = updateAttachmentsList;
+    window.uploadMultipleFiles = uploadMultipleFiles;
 });
 
 // Expose media preview renderer globally so it's accessible by all components/scopes
@@ -4972,9 +5122,14 @@ jQuery(document).ready(function ($) {
 
         // Hidden inputs
         const hAttachmentId = form.querySelector('#bitstream-composer-attachment-id');
+        const hAttachmentIds = form.querySelector('#bitstream-composer-attachment-ids');
         const modalAttachmentId = composerRoot.querySelector('#bitstream-composer-modal-media-attachment-id');
+        const modalAttachmentIds = composerRoot.querySelector('#bitstream-composer-modal-media-attachment-ids');
         if (hAttachmentId && modalAttachmentId && hAttachmentId.value && !modalAttachmentId.value) {
             modalAttachmentId.value = hAttachmentId.value;
+        }
+        if (hAttachmentIds && modalAttachmentIds && hAttachmentIds.value && !modalAttachmentIds.value) {
+            modalAttachmentIds.value = hAttachmentIds.value;
         }
         const hRebitUrl = form.querySelector('#bitstream-composer-rebit-url');
         const hRebitOgTitle = form.querySelector('#bitstream-composer-rebit-og-title');
@@ -5056,6 +5211,14 @@ jQuery(document).ready(function ($) {
                 const isMobile = window.innerWidth < 1024;
                 if (isMobile) {
                     composerRoot.hidden = false;
+                }
+
+                if (name === 'media') {
+                    const mMediaPreview = modal.querySelector('#bitstream-composer-modal-media-preview');
+                    if (mMediaPreview && previewMediaThumb) {
+                        const currentAttachments = getExistingAttachments(previewMediaThumb);
+                        updateAttachmentsList(mMediaPreview, currentAttachments);
+                    }
                 }
 
                 if (name === 'rebit') {
@@ -5163,9 +5326,13 @@ jQuery(document).ready(function ($) {
                     if (textarea) textarea.required = true;
                 }
                 if (type === 'media') {
-                    if (hAttachmentId) hAttachmentId.value = '';
-                    if (previewMedia) previewMedia.hidden = true;
-                    if (previewMediaThumb) previewMediaThumb.innerHTML = '';
+                    if (previewMediaThumb) {
+                        updateAttachmentsList(previewMediaThumb, []);
+                    } else {
+                        if (hAttachmentId) hAttachmentId.value = '';
+                        if (hAttachmentIds) hAttachmentIds.value = '';
+                        if (previewMedia) previewMedia.hidden = true;
+                    }
                 }
                 if (type === 'schedule') {
                     if (hScheduleEnabled) hScheduleEnabled.value = '0';
@@ -5260,23 +5427,32 @@ jQuery(document).ready(function ($) {
                         if (textarea) textarea.required = true;
                     }
 
-                    if (d.attachment_id && parseInt(d.attachment_id, 10) > 0) {
-                        if (!d.is_rebit) {
-                            if (hAttachmentId) hAttachmentId.value = String(d.attachment_id);
-                            if (previewMediaThumb) {
-                                if (d.attachment_url && d.attachment_mime) {
-                                    renderComposerMediaPreview(previewMediaThumb, {
-                                        id: parseInt(d.attachment_id, 10) || 0,
-                                        url: d.attachment_url,
-                                        preview_url: d.attachment_url,
-                                        mime: d.attachment_mime
-                                    });
-                                } else {
-                                    previewMediaThumb.innerHTML = d.media_preview_html || '<span>Media attached (ID: ' + d.attachment_id + ')</span>';
-                                }
+                    const previewEl = previewMediaThumb || form.querySelector('.bitstream-media-preview');
+                    const hAttachmentIds = form.querySelector('#bitstream-composer-attachment-ids');
+                    if (d.attachment_id && parseInt(d.attachment_id, 10) > 0 && !d.is_rebit) {
+                        if (hAttachmentId) hAttachmentId.value = String(d.attachment_id);
+                        if (hAttachmentIds && d.attachment_ids) hAttachmentIds.value = d.attachment_ids;
+                        if (previewEl) {
+                            if (d.attachments && d.attachments.length > 0) {
+                                updateAttachmentsList(previewEl, d.attachments);
+                            } else if (d.attachment_url && d.attachment_mime) {
+                                const singleAtt = {
+                                    id: parseInt(d.attachment_id, 10),
+                                    url: d.attachment_url,
+                                    preview_url: d.attachment_url,
+                                    mime: d.attachment_mime
+                                };
+                                updateAttachmentsList(previewEl, [singleAtt]);
+                            } else {
+                                previewEl.innerHTML = d.media_preview_html || '<span>Media attached (ID: ' + d.attachment_id + ')</span>';
                             }
-                            if (previewMedia) previewMedia.hidden = false;
                         }
+                        if (previewMedia) previewMedia.hidden = false;
+                    } else {
+                        if (hAttachmentId) hAttachmentId.value = '';
+                        if (hAttachmentIds) hAttachmentIds.value = '';
+                        if (previewEl) updateAttachmentsList(previewEl, []);
+                        if (previewMedia) previewMedia.hidden = true;
                     }
 
                     if (d.schedule_enabled === '1' && d.schedule_datetime) {
@@ -5511,35 +5687,19 @@ jQuery(document).ready(function ($) {
 
             if (mMediaDone) {
                 mMediaDone.addEventListener('click', () => {
-                    const attachId = mMediaAttInput ? mMediaAttInput.value : '';
-                    if (!attachId || attachId === '0') { setStatus('Upload or select media first.', true); return; }
+                    const attachments = getExistingAttachments(mMediaPreview);
+                    if (attachments.length === 0) { setStatus('Upload or select media first.', true); return; }
 
-                    if (hAttachmentId) hAttachmentId.value = attachId;
-
-                    if (previewMediaThumb && mMediaPreview) {
-                        previewMediaThumb.innerHTML = '';
-                        const attachment = {
-                            id: parseInt(attachId, 10) || 0,
-                            url: mMediaPreview.dataset.attachmentUrl || '',
-                            preview_url: mMediaPreview.dataset.attachmentUrl || '',
-                            mime: mMediaPreview.dataset.attachmentMime || ''
-                        };
-                        if (attachment.url) {
-                            renderComposerMediaPreview(previewMediaThumb, attachment);
-                        } else {
-                            const previewImg = mMediaPreview.querySelector('img');
-                            if (previewImg) {
-                                const img = document.createElement('img');
-                                img.src = previewImg.src;
-                                img.alt = '';
-                                previewMediaThumb.appendChild(img);
-                            }
-                            const label = document.createElement('span');
-                            label.textContent = 'Media attached';
-                            previewMediaThumb.appendChild(label);
-                        }
+                    if (previewMediaThumb) {
+                        updateAttachmentsList(previewMediaThumb, attachments);
+                    } else {
+                        const attachId = attachments[0].id;
+                        const attachIds = attachments.map(item => item.id).join(',');
+                        if (hAttachmentId) hAttachmentId.value = String(attachId);
+                        if (hAttachmentIds) hAttachmentIds.value = attachIds;
+                        if (previewMedia) previewMedia.hidden = false;
                     }
-                    if (previewMedia) previewMedia.hidden = false;
+
                     syncPreviewArea();
                     closeModal('media');
                     setStatus('Media attached.');
@@ -6171,5 +6331,173 @@ jQuery(document).ready(function ($) {
                 }, 2000);
             });
         });
+    });
+
+    // ═══ FULLSCREEN LIGHTBOX CONTROLLER ═══
+    let lightboxEl = null;
+    let lightboxMediaList = [];
+    let lightboxCurrentIndex = 0;
+
+    function initLightbox() {
+        if (document.querySelector('.bitstream-lightbox')) {
+            return;
+        }
+
+        lightboxEl = document.createElement('div');
+        lightboxEl.className = 'bitstream-lightbox';
+        lightboxEl.setAttribute('aria-hidden', 'true');
+        lightboxEl.innerHTML = `
+            <button class="bitstream-lightbox-close" aria-label="Close lightbox"><i class="fa-solid fa-xmark"></i></button>
+            <button class="bitstream-lightbox-nav bitstream-lightbox-nav-prev" aria-label="Previous"><i class="fa-solid fa-chevron-left"></i></button>
+            <div class="bitstream-lightbox-stage"></div>
+            <button class="bitstream-lightbox-nav bitstream-lightbox-nav-next" aria-label="Next"><i class="fa-solid fa-chevron-right"></i></button>
+            <div class="bitstream-lightbox-counter"></div>
+        `;
+
+        document.body.appendChild(lightboxEl);
+
+        lightboxEl.querySelector('.bitstream-lightbox-close').addEventListener('click', closeLightbox);
+        lightboxEl.querySelector('.bitstream-lightbox-nav-prev').addEventListener('click', prevLightboxItem);
+        lightboxEl.querySelector('.bitstream-lightbox-nav-next').addEventListener('click', nextLightboxItem);
+        
+        lightboxEl.addEventListener('click', (e) => {
+            if (e.target === lightboxEl || e.target.classList.contains('bitstream-lightbox-stage')) {
+                closeLightbox();
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (!lightboxEl.classList.contains('is-open')) return;
+            if (e.key === 'Escape') closeLightbox();
+            if (e.key === 'ArrowLeft') prevLightboxItem();
+            if (e.key === 'ArrowRight') nextLightboxItem();
+        });
+    }
+
+    function openLightbox(mediaList, startIndex) {
+        initLightbox();
+        lightboxMediaList = mediaList;
+        lightboxCurrentIndex = startIndex;
+        
+        lightboxEl.style.display = 'flex';
+        lightboxEl.offsetHeight; // Force reflow
+        lightboxEl.classList.add('is-open');
+        lightboxEl.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+
+        showLightboxItem(lightboxCurrentIndex);
+    }
+
+    function closeLightbox() {
+        if (!lightboxEl) return;
+        lightboxEl.classList.remove('is-open');
+        lightboxEl.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+        const stage = lightboxEl.querySelector('.bitstream-lightbox-stage');
+        if (stage) {
+            const video = stage.querySelector('video');
+            if (video) video.pause();
+        }
+        setTimeout(() => {
+            lightboxEl.style.display = 'none';
+        }, 250);
+    }
+
+    function showLightboxItem(index) {
+        if (!lightboxEl || lightboxMediaList.length === 0) return;
+        
+        if (index < 0) index = lightboxMediaList.length - 1;
+        if (index >= lightboxMediaList.length) index = 0;
+        lightboxCurrentIndex = index;
+
+        const media = lightboxMediaList[lightboxCurrentIndex];
+        const stage = lightboxEl.querySelector('.bitstream-lightbox-stage');
+        const counter = lightboxEl.querySelector('.bitstream-lightbox-counter');
+        const prevBtn = lightboxEl.querySelector('.bitstream-lightbox-nav-prev');
+        const nextBtn = lightboxEl.querySelector('.bitstream-lightbox-nav-next');
+
+        stage.innerHTML = '';
+
+        if (media.mime.startsWith('image/')) {
+            const img = document.createElement('img');
+            img.src = media.url;
+            img.className = 'bitstream-lightbox-media';
+            img.alt = '';
+            stage.appendChild(img);
+        } else if (media.mime.startsWith('video/')) {
+            const video = document.createElement('video');
+            video.src = media.url;
+            video.className = 'bitstream-lightbox-media';
+            video.controls = true;
+            video.autoplay = true;
+            video.setAttribute('controlsList', 'nodownload');
+            video.setAttribute('playsinline', '');
+            stage.appendChild(video);
+        }
+
+        counter.textContent = `${lightboxCurrentIndex + 1} / ${lightboxMediaList.length}`;
+        
+        const hasMultiple = lightboxMediaList.length > 1;
+        prevBtn.style.display = hasMultiple ? 'flex' : 'none';
+        nextBtn.style.display = hasMultiple ? 'flex' : 'none';
+    }
+
+    function prevLightboxItem() {
+        showLightboxItem(lightboxCurrentIndex - 1);
+    }
+
+    function nextLightboxItem() {
+        showLightboxItem(lightboxCurrentIndex + 1);
+    }
+
+    document.body.addEventListener('click', (e) => {
+        // 1. Timeline Gallery item clicks
+        const item = e.target.closest('.bitstream-gallery-media, .bitstream-gallery-overlay, .bitstream-gallery-item-has-overlay');
+        if (item) {
+            const gallery = item.closest('.bitstream-gallery');
+            if (gallery) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const mediaElements = gallery.querySelectorAll('.bitstream-gallery-media');
+                const mediaList = Array.from(mediaElements).map(el => {
+                    return {
+                        url: el.src || el.getAttribute('src'),
+                        mime: el.dataset.mime || (el.tagName.toLowerCase() === 'video' ? 'video/mp4' : 'image/jpeg')
+                    };
+                });
+
+                let clickIndex = parseInt(item.dataset.index || item.querySelector('[data-index]')?.dataset.index || '0', 10);
+                if (isNaN(clickIndex)) clickIndex = 0;
+
+                openLightbox(mediaList, clickIndex);
+                return;
+            }
+        }
+
+        // 2. Composer/Modal Preview item clicks
+        const previewItem = e.target.closest('.bitstream-media-preview-item');
+        if (previewItem && !e.target.closest('.bitstream-media-preview-remove-item')) {
+            const grid = previewItem.closest('.bitstream-media-preview-grid');
+            if (grid) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const allItems = Array.from(grid.querySelectorAll('.bitstream-media-preview-item'));
+                const mediaItems = allItems.filter(item => item.querySelector('img, video'));
+                if (!mediaItems.includes(previewItem)) return;
+
+                const mediaList = mediaItems.map(item => {
+                    const el = item.querySelector('img, video');
+                    return {
+                        url: el.src || el.getAttribute('src'),
+                        mime: el.tagName.toLowerCase() === 'video' ? 'video/mp4' : 'image/jpeg'
+                    };
+                });
+
+                const clickIndex = mediaItems.indexOf(previewItem);
+                openLightbox(mediaList, clickIndex);
+            }
+        }
     });
 });

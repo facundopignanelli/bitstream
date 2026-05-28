@@ -304,6 +304,7 @@ class BitStream_Shortcodes
     private static function render_media_field($attachment_input_id, $preview_id, $edit_post_id = 0)
     {
         $attachment_id = 0;
+        $attachment_ids = '';
         if ($edit_post_id > 0) {
             $attachment_id = intval(get_post_meta($edit_post_id, '_bitstream_attachment_id', true));
             if ($attachment_id <= 0) {
@@ -321,6 +322,10 @@ class BitStream_Shortcodes
                     $attachment_id = intval(reset($children));
                 }
             }
+            $attachment_ids = get_post_meta($edit_post_id, '_bitstream_attachment_ids', true);
+            if (empty($attachment_ids) && $attachment_id > 0) {
+                $attachment_ids = (string)$attachment_id;
+            }
         }
 
         ob_start();
@@ -330,11 +335,12 @@ class BitStream_Shortcodes
                 <input type="hidden" name="edit_post_id" value="<?php echo esc_attr($edit_post_id); ?>">
             <?php endif; ?>
             <input type="hidden" id="<?php echo esc_attr($attachment_input_id); ?>" class="bs-edit-attachment-id" name="bit_attachment_id" value="<?php echo $attachment_id > 0 ? esc_attr($attachment_id) : ''; ?>">
+            <input type="hidden" id="<?php echo esc_attr($attachment_input_id); ?>s" class="bs-edit-attachment-ids" name="bit_attachment_ids" value="<?php echo esc_attr($attachment_ids); ?>">
             <div class="bitstream-media-dropzone" data-target-input="<?php echo esc_attr($attachment_input_id); ?>" data-target-preview="<?php echo esc_attr($preview_id); ?>" data-accept="image/*,video/*">
                 <i class="fa-solid fa-photo-film bitstream-media-dropzone-icon" aria-hidden="true"></i>
                 <span>Drag and drop media here, or click to upload</span>
                 <div class="bitstream-media-preview" id="<?php echo esc_attr($preview_id); ?>"></div>
-                <input type="file" class="bitstream-media-file" accept="image/*,video/*">
+                <input type="file" class="bitstream-media-file" accept="image/*,video/*" multiple>
             </div>
             <div class="bitstream-media-progress is-hidden" data-progress-bar="<?php echo esc_attr($attachment_input_id); ?>">
                 <div class="bitstream-media-progress-track">
@@ -434,11 +440,13 @@ class BitStream_Shortcodes
         }
 
         $bit_attachment_id_prefill = 0;
+        $bit_attachment_ids_prefill = '';
         if (!empty($_GET['media_ids'])) {
             $media_ids_raw = sanitize_text_field(wp_unslash($_GET['media_ids']));
             $media_ids = array_filter(array_map('intval', explode(',', $media_ids_raw)));
             if (!empty($media_ids)) {
                 $bit_attachment_id_prefill = intval(reset($media_ids));
+                $bit_attachment_ids_prefill = implode(',', $media_ids);
             }
         }
 
@@ -493,6 +501,7 @@ class BitStream_Shortcodes
 
                 <!-- Hidden inputs for rebit / schedule / edit -->
                 <input type="hidden" id="bitstream-composer-attachment-id" name="bit_attachment_id" value="<?php echo $bit_attachment_id_prefill > 0 ? esc_attr($bit_attachment_id_prefill) : ''; ?>">
+                <input type="hidden" id="bitstream-composer-attachment-ids" name="bit_attachment_ids" value="<?php echo esc_attr($bit_attachment_ids_prefill); ?>">
                 <input type="hidden" id="bitstream-composer-rebit-url" name="rebit_url" value="<?php echo esc_url($shared_url); ?>">
                 <input type="hidden" id="bitstream-composer-rebit-og-title" name="rebit_og_title" value="<?php echo esc_attr($shared_title); ?>">
                 <input type="hidden" id="bitstream-composer-rebit-og-desc" name="rebit_og_desc" value="">

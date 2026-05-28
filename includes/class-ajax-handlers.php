@@ -148,21 +148,50 @@ class BitStream_Ajax_Handlers
     /**
      * Attach media to a Bit post for ownership tracking and cleanup.
      */
-    private function assign_attachment_to_bit($post_id, $attachment_id)
+    /**
+     * Attach multiple media files to a Bit post for ownership tracking and cleanup.
+     */
+    private function assign_attachments_to_bit($post_id, $attachment_ids)
     {
-        $attachment_id = $this->get_valid_attachment_id($attachment_id);
-        if ($post_id <= 0 || $attachment_id <= 0) {
+        if (empty($attachment_ids)) {
+            delete_post_meta($post_id, '_bitstream_attachment_id');
+            delete_post_meta($post_id, '_bitstream_attachment_ids');
             return;
         }
 
-        wp_update_post([
-            'ID' => $attachment_id,
-            'post_parent' => $post_id,
-        ]);
+        if (!is_array($attachment_ids)) {
+            $attachment_ids = [intval($attachment_ids)];
+        }
 
-        update_post_meta($post_id, '_bitstream_attachment_id', $attachment_id);
-        delete_post_meta($attachment_id, '_bitstream_uploaded_via_composer');
-        delete_post_meta($attachment_id, '_bitstream_upload_created_at');
+        $valid_ids = [];
+        foreach ($attachment_ids as $id) {
+            $attachment_id = $this->get_valid_attachment_id($id);
+            if ($attachment_id > 0) {
+                $valid_ids[] = $attachment_id;
+                wp_update_post([
+                    'ID' => $attachment_id,
+                    'post_parent' => $post_id,
+                ]);
+                delete_post_meta($attachment_id, '_bitstream_uploaded_via_composer');
+                delete_post_meta($attachment_id, '_bitstream_upload_created_at');
+            }
+        }
+
+        if (!empty($valid_ids)) {
+            update_post_meta($post_id, '_bitstream_attachment_id', $valid_ids[0]);
+            update_post_meta($post_id, '_bitstream_attachment_ids', implode(',', $valid_ids));
+        } else {
+            delete_post_meta($post_id, '_bitstream_attachment_id');
+            delete_post_meta($post_id, '_bitstream_attachment_ids');
+        }
+    }
+
+    /**
+     * Legacy single-attachment helper for compatibility.
+     */
+    private function assign_attachment_to_bit($post_id, $attachment_id)
+    {
+        $this->assign_attachments_to_bit($post_id, [$attachment_id]);
     }
 
     /**
@@ -175,6 +204,12 @@ class BitStream_Ajax_Handlers
         $tracked_id = intval(get_post_meta($post_id, '_bitstream_attachment_id', true));
         if ($tracked_id > 0) {
             $ids[] = $tracked_id;
+        }
+
+        $tracked_ids_str = get_post_meta($post_id, '_bitstream_attachment_ids', true);
+        if (!empty($tracked_ids_str)) {
+            $tracked_ids = array_filter(array_map('intval', explode(',', $tracked_ids_str)));
+            $ids = array_merge($ids, $tracked_ids);
         }
 
         $thumb_id = intval(get_post_thumbnail_id($post_id));
@@ -488,43 +523,112 @@ class BitStream_Ajax_Handlers
     /**
      * Build media markup for Bit post content
      */
-    private function build_media_markup($attachment_id)
+    /**
+     * Build media markup for Bit post content (supports multiple media gallery)
+     */
+    private function build_media_markup($attachment_ids)
     {
-        if ($attachment_id <= 0) {
+        if (empty($attachment_ids)) {
             return '';
         }
 
-        if (wp_attachment_is('image', $attachment_id)) {
-            $url = wp_get_attachment_image_url($attachment_id, 'full');
-            $alt = get_post_meta($attachment_id, '_wp_attachment_image_alt', true);
-            $buster = get_post_modified_time('U', false, $attachment_id);
-            return sprintf(
-                '<img src="%s?t=%s" alt="%s" class="wp-image-%d" />',
-                esc_url($url),
-                $buster,
-                esc_attr($alt),
-                $attachment_id
-            );
+        if (!is_array($attachment_ids)) {
+            $attachment_ids = [intval($attachment_ids)];
+        }
+        $attachment_ids = array_values(array_filter(array_unique(array_map('intval', $attachment_ids))));
+
+        if (empty($attachment_ids)) {
+            return '';
         }
 
-        if (wp_attachment_is('video', $attachment_id)) {
-            $video_url = wp_get_attachment_url($attachment_id);
-            if ($video_url) {
+        $count = count($attachment_ids);
+
+        if ($count === 1) {
+            $attachment_id = $attachment_ids[0];
+            if (wp_attachment_is('image', $attachment_id)) {
+                $url = wp_get_attachment_image_url($attachment_id, 'full');
+                $alt = get_post_meta($attachment_id, '_wp_attachment_image_alt', true);
+                $buster = get_post_modified_time('U', false, $attachment_id);
                 return sprintf(
-                    '<video class="bitstream-video-attachment" controls preload="metadata" playsinline controlsList="nodownload noplaybackrate" disablepictureinpicture src="%s"></video>',
-                    esc_url($video_url)
+                    '<img src="%s?t=%s" alt="%s" class="wp-image-%d" />',
+                    esc_url($url),
+                    $buster,
+                    esc_attr($alt),
+                    $attachment_id
                 );
             }
+
+            if (wp_attachment_is('video', $attachment_id)) {
+                $video_url = wp_get_attachment_url($attachment_id);
+                if ($video_url) {
+                    return sprintf(
+                        '<video class="bitstream-video-attachment" controls preload="metadata" playsinline controlsList="nodownload noplaybackrate" disablepictureinpicture src="%s"></video>',
+                        esc_url($video_url)
+                    );
+                }
+            }
+
+            $file_url = wp_get_attachment_url($attachment_id);
+            if ($file_url) {
+                return '<p><a href="' . esc_url($file_url) . '" target="_blank" rel="noopener">Attached media</a></p>';
+            }
+
+            return '';
         }
 
+        // Multiple attachments: render a gallery grid
+        $html = sprintf('<div class="bitstream-gallery bitstream-gallery-%d" data-attachment-ids="%s">', min(4, $count), esc_attr(implode(',', $attachment_ids)));
+        
+        foreach ($attachment_ids as $index => $attachment_id) {
+            $is_hidden = $index >= 4;
+            $class = 'bitstream-gallery-item';
+            if ($is_hidden) {
+                $class .= ' bitstream-gallery-item-hidden';
+            }
+            
+            $item_html = '';
+            if (wp_attachment_is('image', $attachment_id)) {
+                $url = wp_get_attachment_image_url($attachment_id, 'full');
+                $alt = get_post_meta($attachment_id, '_wp_attachment_image_alt', true);
+                $buster = get_post_modified_time('U', false, $attachment_id);
+                $item_html = sprintf(
+                    '<img src="%s?t=%s" alt="%s" class="wp-image-%d bitstream-gallery-media" data-index="%d" data-mime="image/jpeg" />',
+                    esc_url($url),
+                    $buster,
+                    esc_attr($alt),
+                    $attachment_id,
+                    $index
+                );
+            } elseif (wp_attachment_is('video', $attachment_id)) {
+                $video_url = wp_get_attachment_url($attachment_id);
+                if ($video_url) {
+                    $item_html = sprintf(
+                        '<div class="bitstream-gallery-video-container"><video class="bitstream-video-attachment bitstream-gallery-media" preload="metadata" playsinline controlsList="nodownload noplaybackrate" disablepictureinpicture src="%s" data-index="%d" data-mime="video/mp4"></video><div class="bitstream-gallery-video-play-overlay"><i class="fa-solid fa-play"></i></div></div>',
+                        esc_url($video_url),
+                        $index
+                    );
+                }
+            } else {
+                $file_url = wp_get_attachment_url($attachment_id);
+                if ($file_url) {
+                    $item_html = sprintf('<div class="bitstream-gallery-file-fallback"><a href="%s" target="_blank" rel="noopener">Attached media %d</a></div>', esc_url($file_url), $index + 1);
+                }
+            }
 
-
-        $file_url = wp_get_attachment_url($attachment_id);
-        if ($file_url) {
-            return '<p><a href="' . esc_url($file_url) . '" target="_blank" rel="noopener">Attached media</a></p>';
+            if (!empty($item_html)) {
+                $style = $is_hidden ? 'display: none;' : '';
+                
+                if ($index === 3 && $count > 4) {
+                    $overlay_html = sprintf('<div class="bitstream-gallery-overlay"><span>+%d</span></div>', $count - 3);
+                    $html .= sprintf('<div class="%s bitstream-gallery-item-has-overlay" style="%s" data-index="%d">%s%s</div>', esc_attr($class), $style, $index, $item_html, $overlay_html);
+                } else {
+                    $html .= sprintf('<div class="%s" style="%s" data-index="%d">%s</div>', esc_attr($class), $style, $index, $item_html);
+                }
+            }
         }
-
-        return '';
+        
+        $html .= '</div>';
+        return $html;
     }
 
 
@@ -983,7 +1087,16 @@ class BitStream_Ajax_Handlers
 
                 $raw_content = wp_unslash($_POST['bit_content'] ?? '');
                 $content = wp_kses_post($raw_content);
-                $attachment_id = $this->get_valid_attachment_id($_POST['bit_attachment_id'] ?? 0);
+                
+                $attachment_ids_raw = sanitize_text_field(wp_unslash($_POST['bit_attachment_ids'] ?? ''));
+                $attachment_ids = array_filter(array_map('intval', explode(',', $attachment_ids_raw)));
+                if (empty($attachment_ids)) {
+                    $single_id = $this->get_valid_attachment_id($_POST['bit_attachment_id'] ?? 0);
+                    if ($single_id > 0) {
+                        $attachment_ids[] = $single_id;
+                    }
+                }
+                
                 $quote_post_id = intval($_POST['quote_post_id'] ?? 0);
                 $schedule = $this->build_schedule_args('bit_schedule_enabled', 'bit_schedule_datetime');
 
@@ -1008,12 +1121,12 @@ class BitStream_Ajax_Handlers
 
                 // Allow saving empty drafts for auto-save
                 if (!$save_as_draft && !$is_auto_draft) {
-                    if (trim(wp_strip_all_tags($content)) === '' && $attachment_id <= 0) {
+                    if (trim(wp_strip_all_tags($content)) === '' && empty($attachment_ids)) {
                         wp_send_json_error('Bit content or media is required.');
                     }
                 }
 
-                $media_markup = $this->build_media_markup($attachment_id);
+                $media_markup = $this->build_media_markup($attachment_ids);
                 $post_content = $content;
                 if (!empty($media_markup)) {
                     $post_content .= (empty($post_content) ? '' : "\n\n") . $media_markup;
@@ -1051,11 +1164,12 @@ class BitStream_Ajax_Handlers
                     delete_post_meta($post_id, '_bitstream_quoted_bit');
                 }
 
-                if ($attachment_id > 0) {
-                    $this->assign_attachment_to_bit($post_id, $attachment_id);
+                if (!empty($attachment_ids)) {
+                    $this->assign_attachments_to_bit($post_id, $attachment_ids);
                 }
                 else {
                     delete_post_meta($post_id, '_bitstream_attachment_id');
+                    delete_post_meta($post_id, '_bitstream_attachment_ids');
                 }
 
                 wp_send_json_success([
@@ -1096,7 +1210,16 @@ class BitStream_Ajax_Handlers
             $manual_desc = sanitize_textarea_field(wp_unslash($_POST['rebit_og_desc'] ?? ''));
             $manual_image = esc_url_raw(wp_unslash($_POST['rebit_og_image'] ?? ''));
             $manual_image_removed = !empty($_POST['rebit_og_image_removed']) && strval($_POST['rebit_og_image_removed']) === '1';
-            $attachment_id = $this->get_valid_attachment_id($_POST['rebit_attachment_id'] ?? 0);
+            
+            $attachment_ids_raw = sanitize_text_field(wp_unslash($_POST['rebit_attachment_ids'] ?? ''));
+            $attachment_ids = array_filter(array_map('intval', explode(',', $attachment_ids_raw)));
+            if (empty($attachment_ids)) {
+                $single_id = $this->get_valid_attachment_id($_POST['rebit_attachment_id'] ?? 0);
+                if ($single_id > 0) {
+                    $attachment_ids[] = $single_id;
+                }
+            }
+            
             $schedule = $this->build_schedule_args('rebit_schedule_enabled', 'rebit_schedule_datetime');
 
             if ($save_as_draft || $is_auto_draft) {
@@ -1131,8 +1254,8 @@ class BitStream_Ajax_Handlers
             $og_desc = !empty($manual_desc) ? $manual_desc : ($og_data['description'] ?? '');
             $og_image = $manual_image_removed ? '' : (!empty($manual_image) ? $manual_image : ($og_data['image'] ?? ''));
 
-            if ($attachment_id > 0) {
-                $attachment_image = wp_get_attachment_image_url($attachment_id, 'large');
+            if (!empty($attachment_ids)) {
+                $attachment_image = wp_get_attachment_image_url($attachment_ids[0], 'large');
                 if ($attachment_image) {
                     $og_image = $attachment_image;
                 }
@@ -1166,11 +1289,12 @@ class BitStream_Ajax_Handlers
             update_post_meta($post_id, '_bitstream_og_image', esc_url_raw($og_image));
             update_post_meta($post_id, '_bitstream_og_fetched', time());
 
-            if ($attachment_id > 0) {
-                $this->assign_attachment_to_bit($post_id, $attachment_id);
+            if (!empty($attachment_ids)) {
+                $this->assign_attachments_to_bit($post_id, $attachment_ids);
             }
             else {
                 delete_post_meta($post_id, '_bitstream_attachment_id');
+                delete_post_meta($post_id, '_bitstream_attachment_ids');
             }
 
             wp_send_json_success([
@@ -1636,9 +1760,28 @@ class BitStream_Ajax_Handlers
             $rebit_url = get_post_meta($post_id, 'bitstream_rebit_url', true);
             $is_rebit = !empty($rebit_url);
 
+            $attachment_ids_str = get_post_meta($post_id, '_bitstream_attachment_ids', true);
             $attachment_id = intval(get_post_meta($post_id, '_bitstream_attachment_id', true));
             if ($attachment_id <= 0) {
                 $attachment_id = intval(get_post_thumbnail_id($post_id));
+            }
+            if (empty($attachment_ids_str) && $attachment_id > 0) {
+                $attachment_ids_str = strval($attachment_id);
+            }
+            $attachment_ids = !empty($attachment_ids_str) ? array_filter(array_map('intval', explode(',', $attachment_ids_str))) : [];
+
+            $attachments_data = [];
+            foreach ($attachment_ids as $id) {
+                $url = wp_get_attachment_url($id);
+                $mime = get_post_mime_type($id);
+                if ($url && $mime) {
+                    $attachments_data[] = [
+                        'id' => $id,
+                        'url' => $url,
+                        'preview_url' => wp_get_attachment_image_url($id, 'medium') ?: $url,
+                        'mime' => $mime
+                    ];
+                }
             }
 
             $data = [
@@ -1652,6 +1795,8 @@ class BitStream_Ajax_Handlers
                 'attachment_url'    => $attachment_id > 0 ? wp_get_attachment_url($attachment_id) : '',
                 'attachment_mime'   => $attachment_id > 0 ? get_post_mime_type($attachment_id) : '',
                 'attachment_id' => $attachment_id > 0 ? $attachment_id : '',
+                'attachment_ids' => $attachment_ids_str,
+                'attachments'   => $attachments_data,
             ];
 
             wp_send_json_success($data);
@@ -1690,34 +1835,38 @@ class BitStream_Ajax_Handlers
             $rebit_url = get_post_meta($post_id, 'bitstream_rebit_url', true);
             $is_rebit = !empty($rebit_url);
 
-            // Resolve primary attachment
+            // Resolve attachments
+            $attachment_ids_str = get_post_meta($post_id, '_bitstream_attachment_ids', true);
             $attachment_id = intval(get_post_meta($post_id, '_bitstream_attachment_id', true));
             if ($attachment_id <= 0) {
                 $attachment_id = intval(get_post_thumbnail_id($post_id));
             }
-            if ($attachment_id <= 0) {
-                $children = get_children([
-                    'post_parent' => $post_id,
-                    'post_type' => 'attachment',
-                    'post_status' => 'inherit',
-                    'fields' => 'ids',
-                    'numberposts' => 1,
-                ]);
-                if (!empty($children)) {
-                    $attachment_id = intval(reset($children));
-                }
+            if (empty($attachment_ids_str) && $attachment_id > 0) {
+                $attachment_ids_str = strval($attachment_id);
             }
+            $attachment_ids = !empty($attachment_ids_str) ? array_filter(array_map('intval', explode(',', $attachment_ids_str))) : [];
 
+            $attachments_data = [];
             $media_preview_html = '';
-            if ($attachment_id > 0) {
-                if (wp_attachment_is('image', $attachment_id)) {
-                    $url = wp_get_attachment_image_url($attachment_id, 'thumbnail');
-                    $media_preview_html = sprintf('<img src="%s" style="max-height:80px;border-radius:4px;" />', esc_url($url));
-                } elseif (wp_attachment_is('video', $attachment_id)) {
-                    $media_preview_html = '<div style="font-size:0.9rem;color:#666;"><i class="fa-solid fa-video"></i> Video attached</div>';
-
-                } else {
-                    $media_preview_html = '<div style="font-size:0.9rem;color:#666;"><i class="fa-solid fa-file"></i> Media attached</div>';
+            foreach ($attachment_ids as $id) {
+                $url = wp_get_attachment_url($id);
+                $mime = get_post_mime_type($id);
+                if ($url && $mime) {
+                    $attachments_data[] = [
+                        'id' => $id,
+                        'url' => $url,
+                        'preview_url' => wp_get_attachment_image_url($id, 'medium') ?: $url,
+                        'mime' => $mime
+                    ];
+                    
+                    if (wp_attachment_is('image', $id)) {
+                        $thumb = wp_get_attachment_image_url($id, 'thumbnail');
+                        $media_preview_html .= sprintf('<img src="%s" style="max-height:80px;border-radius:4px;margin-right:5px;" />', esc_url($thumb));
+                    } elseif (wp_attachment_is('video', $id)) {
+                        $media_preview_html .= '<div style="font-size:0.9rem;color:#666;display:inline-block;margin-right:10px;"><i class="fa-solid fa-video"></i> Video</div>';
+                    } else {
+                        $media_preview_html .= '<div style="font-size:0.9rem;color:#666;display:inline-block;margin-right:10px;"><i class="fa-solid fa-file"></i> Media</div>';
+                    }
                 }
             }
 
@@ -1731,6 +1880,7 @@ class BitStream_Ajax_Handlers
             // Strip media markup from the post body for textarea editing
             $content = (string)$post->post_content;
             $content = strip_shortcodes($content);
+            $content = preg_replace('#<div[^>]*class="[^"]*bitstream-gallery[^"]*"[^>]*>[\s\S]*?</div>#i', '', $content);
             $content = preg_replace('#<figure[^>]*>[\s\S]*?</figure>#i', '', $content);
             $content = preg_replace('#<(audio|video)[^>]*>[\s\S]*?</\1>#i', '', $content);
             $content = preg_replace('#<img[^>]*>#i', '', $content);
@@ -1745,6 +1895,8 @@ class BitStream_Ajax_Handlers
                 'og_desc'           => $is_rebit ? get_post_meta($post_id, '_bitstream_og_desc', true) : '',
                 'og_image'          => $is_rebit ? get_post_meta($post_id, '_bitstream_og_image', true) : '',
                 'attachment_id'     => $attachment_id > 0 ? $attachment_id : '',
+                'attachment_ids'    => $attachment_ids_str,
+                'attachments'       => $attachments_data,
                 'media_preview_html'=> $media_preview_html,
                 'schedule_enabled'  => $schedule_enabled,
                 'schedule_datetime' => $schedule_datetime,
@@ -1786,21 +1938,28 @@ class BitStream_Ajax_Handlers
             $rebit_url = get_post_meta($post_id, 'bitstream_rebit_url', true);
             $is_rebit  = !empty($rebit_url);
 
-            // Resolve primary attachment
+            // Resolve attachments
+            $attachment_ids_str = get_post_meta($post_id, '_bitstream_attachment_ids', true);
             $attachment_id  = intval(get_post_meta($post_id, '_bitstream_attachment_id', true));
             if ($attachment_id <= 0) {
                 $attachment_id = intval(get_post_thumbnail_id($post_id));
             }
-            if ($attachment_id <= 0) {
-                $children = get_children([
-                    'post_parent' => $post_id,
-                    'post_type'   => 'attachment',
-                    'post_status' => 'inherit',
-                    'fields'      => 'ids',
-                    'numberposts' => 1,
-                ]);
-                if (!empty($children)) {
-                    $attachment_id = intval(reset($children));
+            if (empty($attachment_ids_str) && $attachment_id > 0) {
+                $attachment_ids_str = strval($attachment_id);
+            }
+            $attachment_ids = !empty($attachment_ids_str) ? array_filter(array_map('intval', explode(',', $attachment_ids_str))) : [];
+
+            $attachments_data = [];
+            foreach ($attachment_ids as $id) {
+                $url = wp_get_attachment_url($id);
+                $mime = get_post_mime_type($id);
+                if ($url && $mime) {
+                    $attachments_data[] = [
+                        'id' => $id,
+                        'url' => $url,
+                        'preview_url' => wp_get_attachment_image_url($id, 'medium') ?: $url,
+                        'mime' => $mime
+                    ];
                 }
             }
 
@@ -1816,9 +1975,14 @@ class BitStream_Ajax_Handlers
 
             // Strip raw media embeds so only the text is returned for editing
             $editable_content = preg_replace(
+                '#<div[^>]*class="[^"]*bitstream-gallery[^"]*"[^>]*>[\s\S]*?</div>#i',
+                '',
+                $post->post_content
+            );
+            $editable_content = preg_replace(
                 '#<(audio|video)[^>]*>[\s\S]*?</\1>#i',
                 '',
-                wp_strip_all_tags($post->post_content)
+                wp_strip_all_tags($editable_content)
             );
             $editable_content = trim($editable_content);
 
@@ -1830,6 +1994,8 @@ class BitStream_Ajax_Handlers
                 'attachment_id'   => $attachment_id,
                 'attachment_url'  => $attachment_url ?: '',
                 'attachment_mime' => $attachment_mime ?: '',
+                'attachment_ids'  => $attachment_ids_str,
+                'attachments'     => $attachments_data,
                 'schedule_enabled' => $schedule_enabled,
                 'schedule_datetime'=> $schedule_datetime,
             ];
