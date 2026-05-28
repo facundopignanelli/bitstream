@@ -14,12 +14,12 @@ BitStream transforms WordPress into a powerful microblogging platform with Twitt
 
 ### Key Highlights
 
-- 📱 **Progressive Web App** - Install as native app on mobile/desktop with robust share sheet integration
+- 📱 **Progressive Web App** - Install as native app on mobile/desktop with robust share sheet integration and Web Push Notifications
 - 🎨 **Modern Social Timeline** - Clean, responsive feed layout replacing the old masonry grid
-- � **Advanced Poster Interface** - Tabbed posting with drafts, scheduling, and rich media
+- 📝 **Advanced Poster Interface** - Tabbed posting with drafts, scheduling, and rich media
 - 🏷️ **Hashtags & Discovery** - Auto-linked tags, trending sidebars, and hashtag feed filtering
-- � **Enhanced ReBit System** - Secure, cached OpenGraph previews with manual overrides
-- ⚙️ **Unified Settings** - Centralized management for all your personalization and mapping needs
+- 🔗 **Enhanced ReBit System** - Secure, cached OpenGraph previews with manual overrides
+- ⚙️ **Unified Settings** - Centralized management for all your personalization, mapping, and notification needs
 
 ## 📋 Table of Contents
 
@@ -108,6 +108,12 @@ On mobile devices, use the "Add to Home Screen" option to install BitStream as a
 - **Offline Aware** - Service worker caching functionality
 - **Advanced Share Parsing** - Better Android share integration, automatically separating text and URLs when combined by specific apps
 - **Contextual Routing** - Quick Actions shortcuts map directly to specific composer tabs
+
+### 🔔 Push Notifications
+
+- **PWA Web Push** - Receive push notifications on your device when new updates are posted
+- **Self-Hosted VAPID** - Authenticated notifications secure and private, with keys generated directly on your server using OpenSSL
+- **Payload-free Dispatch** - Lightweight notification deliveries that fetch latest post details dynamically, conserving device resources and avoiding complex encryption
 
 ## 📝 Shortcodes
 

@@ -298,6 +298,30 @@ class BitStream_Shortcodes
         return $html;
     }
 
+    public static function render_public_push_subscription_button($class = 'bitstream-filter-link')
+    {
+        if (get_option('bitstream_enable_push_notifications', '1') !== '1') {
+            return '';
+        }
+        
+        $keys = class_exists('BitStream_PWA_Manager') ? BitStream_PWA_Manager::get_vapid_keys() : null;
+        $vapid_public = isset($keys['public_key']) ? $keys['public_key'] : '';
+        if (empty($vapid_public)) {
+            return '';
+        }
+        
+        ob_start();
+        ?>
+        <div id="bitstream-push-widget-container" class="bitstream-push-widget-container" style="display: none;">
+            <a href="#" role="button" data-vapid-public="<?php echo esc_attr($vapid_public); ?>" class="<?php echo esc_attr(trim($class . ' bitstream-quick-action-link bitstream-push-subscribe-btn')); ?>" style="cursor: pointer;">
+                <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                <span>Get Notifications</span>
+            </a>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
+
     /**
      * Render the shared media field used by the composer and composer cards.
      */
@@ -1025,6 +1049,7 @@ class BitStream_Shortcodes
         $desktop_quick_actions = self::render_quick_action_links();
         $desktop_composer = self::render_composer_form();
         $desktop_rss_links = self::render_public_rss_links();
+        $desktop_push_button = self::render_public_push_subscription_button();
         $desktop_about_box = self::render_about_box();
 
         echo '<div class="bitstream-feed-sidebar-column">';
@@ -1050,7 +1075,7 @@ class BitStream_Shortcodes
         $hashtag_counts = class_exists('BitStream_Content_Display') ?BitStream_Content_Display::get_hashtag_counts() : [];
         echo '<div class="bitstream-mobile-tabs-nav hide-on-desktop">';
         echo '<button class="bitstream-feed-sidebar-summary" data-panel="search" title="Search" aria-label="Search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i></button>';
-        if (!empty($desktop_rss_links)) {
+        if (!empty($desktop_rss_links) || !empty($desktop_push_button)) {
             echo '<button class="bitstream-feed-sidebar-summary" data-panel="rss" title="RSS Feeds" aria-label="RSS Feeds"><i class="fa-solid fa-rss" aria-hidden="true"></i></button>';
         }
         echo '<button class="bitstream-feed-sidebar-summary" data-panel="filters" title="Filters" aria-label="Filters"><i class="fa-solid fa-sliders" aria-hidden="true"></i></button>';
@@ -1078,10 +1103,15 @@ class BitStream_Shortcodes
         echo '</div>';
 
         // RSS Panel
-        if (!empty($desktop_rss_links)) {
+        if (!empty($desktop_rss_links) || !empty($desktop_push_button)) {
             echo '<div class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-rss mobile-rss-panel hide-on-desktop" data-panel-id="rss">';
             echo '<div class="bitstream-feed-sidebar">';
-            echo $desktop_rss_links;
+            if (!empty($desktop_push_button)) {
+                echo $desktop_push_button;
+            }
+            if (!empty($desktop_rss_links)) {
+                echo $desktop_rss_links;
+            }
             echo '</div>';
             echo '</div>';
         }
@@ -1283,10 +1313,15 @@ class BitStream_Shortcodes
         echo '</div>';
         echo '</aside>';
 
-        if (!empty($desktop_rss_links)) {
+        if (!empty($desktop_rss_links) || !empty($desktop_push_button)) {
             echo '<aside class="hide-on-mobile">';
             echo '<div class="bitstream-feed-sidebar">';
-            echo $desktop_rss_links;
+            if (!empty($desktop_push_button)) {
+                echo $desktop_push_button;
+            }
+            if (!empty($desktop_rss_links)) {
+                echo $desktop_rss_links;
+            }
             echo '</div>';
             echo '</aside>';
         }
@@ -1384,12 +1419,13 @@ class BitStream_Shortcodes
         }
 
         $requested_tab = isset($_GET['settings_tab']) ? sanitize_key(wp_unslash($_GET['settings_tab'])) : 'personalisation';
-        $valid_tabs = ['personalisation', 'mappings', 'rss', 'advanced'];
+        $valid_tabs = ['personalisation', 'mappings', 'rss', 'push', 'advanced'];
         $initial_tab = in_array($requested_tab, $valid_tabs, true) ? $requested_tab : 'personalisation';
 
         $is_personalisation = ($initial_tab === 'personalisation');
         $is_mappings = ($initial_tab === 'mappings');
         $is_rss = ($initial_tab === 'rss');
+        $is_push = ($initial_tab === 'push');
         $is_advanced = ($initial_tab === 'advanced');
 
         ob_start();
@@ -1404,6 +1440,9 @@ class BitStream_Shortcodes
                 </button>
                 <button type="button" class="bitstream-settings-tab <?php echo $is_rss ? 'is-active' : ''; ?>" data-settings-tab="rss" role="tab" aria-selected="<?php echo $is_rss ? 'true' : 'false'; ?>">
                     <i class="fa-solid fa-rss" aria-hidden="true"></i> RSS Feeds
+                </button>
+                <button type="button" class="bitstream-settings-tab <?php echo $is_push ? 'is-active' : ''; ?>" data-settings-tab="push" role="tab" aria-selected="<?php echo $is_push ? 'true' : 'false'; ?>">
+                    <i class="fa-solid fa-bell" aria-hidden="true"></i> Notifications
                 </button>
                 <?php if (current_user_can('manage_options')): ?>
                 <button type="button" class="bitstream-settings-tab <?php echo $is_advanced ? 'is-active' : ''; ?>" data-settings-tab="advanced" role="tab" aria-selected="<?php echo $is_advanced ? 'true' : 'false'; ?>">
@@ -1426,6 +1465,11 @@ class BitStream_Shortcodes
             <!-- RSS Feeds Panel -->
             <div class="bitstream-settings-panel <?php echo $is_rss ? 'is-active' : ''; ?>" id="bitstream-settings-panel-rss" role="tabpanel" <?php echo $is_rss ? '' : 'hidden'; ?>>
                 <?php $this->render_settings_rss(); ?>
+            </div>
+
+            <!-- Notifications Panel -->
+            <div class="bitstream-settings-panel <?php echo $is_push ? 'is-active' : ''; ?>" id="bitstream-settings-panel-push" role="tabpanel" <?php echo $is_push ? '' : 'hidden'; ?>>
+                <?php $this->render_settings_push(); ?>
             </div>
 
             <!-- Advanced Panel -->
@@ -1583,7 +1627,150 @@ class BitStream_Shortcodes
     }
 
     /**
-     * Settings Tab 4: Advanced (Debug Logs, Media Cleanup, Reset)
+     * Settings Tab 4: Push Notifications
+     */
+    private function render_settings_push()
+    {
+        $updated = false;
+        $test_sent = false;
+        $test_count = 0;
+
+        if (current_user_can('manage_options')) {
+            if (isset($_POST['bitstream_save_push_settings']) && check_admin_referer('bitstream_push_settings_save', 'bitstream_push_settings_nonce')) {
+                $enable_push = isset($_POST['bitstream_enable_push_notifications']) ? '1' : '0';
+                $push_subject = sanitize_text_field(wp_unslash($_POST['bitstream_push_subject'] ?? ''));
+                
+                update_option('bitstream_enable_push_notifications', $enable_push, false);
+                update_option('bitstream_push_subject', $push_subject, false);
+                $updated = true;
+            }
+
+            if (isset($_POST['bitstream_regenerate_vapid']) && check_admin_referer('bitstream_push_settings_save', 'bitstream_push_settings_nonce')) {
+                if (class_exists('BitStream_PWA_Manager')) {
+                    $keys = BitStream_PWA_Manager::generate_vapid_keys();
+                    if ($keys) {
+                        update_option('bitstream_vapid_public_key', $keys['public_key'], false);
+                        update_option('bitstream_vapid_private_key', $keys['private_key'], false);
+                        $updated = true;
+                    }
+                }
+            }
+
+            if (isset($_POST['bitstream_send_test_push']) && check_admin_referer('bitstream_push_settings_save', 'bitstream_push_settings_nonce')) {
+                if (class_exists('BitStream_PWA_Manager')) {
+                    $args = [
+                        'post_type' => 'bit',
+                        'post_status' => 'publish',
+                        'posts_per_page' => 1,
+                        'fields' => 'ids'
+                    ];
+                    $query = new WP_Query($args);
+                    $post_id = 0;
+                    if ($query->have_posts()) {
+                        $post_id = $query->posts[0];
+                    }
+                    wp_reset_postdata();
+                    
+                    $pwa = new BitStream_PWA_Manager();
+                    $pwa->send_push_notifications_cron($post_id);
+                    
+                    $test_sent = true;
+                    $subscriptions = get_option('bitstream_push_subscriptions', []);
+                    $test_count = is_array($subscriptions) ? count($subscriptions) : 0;
+                }
+            }
+        }
+
+        $enable_push = get_option('bitstream_enable_push_notifications', '1') === '1';
+        $push_subject = get_option('bitstream_push_subject');
+        if (empty($push_subject)) {
+            $push_subject = 'mailto:' . get_option('admin_email');
+        }
+
+        $vapid_public = '';
+        if (class_exists('BitStream_PWA_Manager')) {
+            $keys = BitStream_PWA_Manager::get_vapid_keys();
+            $vapid_public = isset($keys['public_key']) ? $keys['public_key'] : '';
+        }
+
+        $subscriptions = get_option('bitstream_push_subscriptions', []);
+        $subscriber_count = is_array($subscriptions) ? count($subscriptions) : 0;
+
+        echo '<h2 style="margin-top: 0;">Push Notifications</h2>';
+        echo '<p>Configure push notifications for your installed BitStream PWA application.</p>';
+
+        if ($updated) {
+            echo '<div class="notice notice-success" style="padding: 10px; border-left: 4px solid #2c6e49; background: #f0f9f4; margin-bottom: 1rem;"><p style="margin: 0;">Push settings updated successfully.</p></div>';
+        }
+        if ($test_sent) {
+            echo '<div class="notice notice-success" style="padding: 10px; border-left: 4px solid #2c6e49; background: #f0f9f4; margin-bottom: 1rem;"><p style="margin: 0;">Test notification dispatched to ' . intval($test_count) . ' active subscription(s).</p></div>';
+        }
+
+        // Section 1: Device Subscription (Available for any logged-in settings user)
+        echo '<div class="bitstream-settings-section" style="margin-bottom: 2rem;">';
+        echo '<h3>This Device</h3>';
+        echo '<p>Subscribe or unsubscribe this specific device from push notifications.</p>';
+        echo '<div id="bitstream-push-device-unsupported" style="display: none; padding: 10px; border-left: 4px solid #dc3545; background: #fff5f5; margin-bottom: 1rem;">';
+        echo '<p style="margin: 0;"><strong>Unsupported Browser:</strong> Push notifications are not supported on this browser or connection. Service workers require a secure HTTPS context or localhost.</p>';
+        echo '</div>';
+        echo '<div id="bitstream-push-device-control" style="margin-top: 1rem;">';
+        echo '<button type="button" id="bitstream-push-subscribe-btn" class="bitstream-push-subscribe-btn" data-vapid-public="' . esc_attr($vapid_public) . '" style="background: var(--wp--preset--color--accent-1, #2c6e49); color: #fff; border: none; border-radius: 10px; padding: 0.6rem 1.5rem; cursor: pointer; font-weight: 600; font-size: 0.95rem;" disabled>Checking status...</button>';
+        echo '</div>';
+        echo '</div>';
+
+        // Section 2: Global Configuration (Only for site admins)
+        if (current_user_can('manage_options')) {
+            echo '<form method="post">';
+            wp_nonce_field('bitstream_push_settings_save', 'bitstream_push_settings_nonce');
+            echo '<input type="hidden" name="settings_tab" value="push">';
+
+            echo '<div class="bitstream-settings-section" style="margin-bottom: 2rem;">';
+            echo '<h3>Global Settings</h3>';
+            
+            echo '<div style="margin-bottom: 1rem; display: flex; align-items: center; gap: 8px;">';
+            echo '<input type="checkbox" id="bitstream_enable_push_notifications" name="bitstream_enable_push_notifications" value="1" ' . ($enable_push ? 'checked' : '') . ' style="width: auto;">';
+            echo '<label for="bitstream_enable_push_notifications" style="font-weight: 600; margin-bottom: 0;">Enable Push Notifications globally</label>';
+            echo '</div>';
+
+            echo '<div style="margin-bottom: 1rem;">';
+            echo '<label for="bitstream_push_subject" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">VAPID Subject (Email or URL)</label>';
+            echo '<input id="bitstream_push_subject" name="bitstream_push_subject" type="text" style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box;" value="' . esc_attr($push_subject) . '" required>';
+            echo '<small style="color: #666; display: block; margin-top: 0.25rem;">Required by browser push endpoints to contact the sender. Format: <code>mailto:your@email.com</code> or <code>https://yoursite.com</code></small>';
+            echo '</div>';
+
+            echo '<button type="submit" name="bitstream_save_push_settings" style="background: var(--wp--preset--color--accent-1, #2c6e49); color: #fff; border: none; border-radius: 10px; padding: 0.6rem 1.5rem; cursor: pointer; font-weight: 600; font-size: 0.95rem;">Save Push Settings</button>';
+            echo '</div>';
+
+            echo '<div class="bitstream-settings-section" style="margin-bottom: 2rem;">';
+            echo '<h3>VAPID Key Configuration</h3>';
+            echo '<p>VAPID keys authenticate your server with push servers.</p>';
+            
+            echo '<div style="margin-bottom: 1rem;">';
+            echo '<label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">VAPID Public Key</label>';
+            echo '<input type="text" value="' . esc_attr($vapid_public) . '" readonly style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 8px; font-family: monospace; background: #f9f9f9; box-sizing: border-box;" onclick="this.select();" />';
+            echo '</div>';
+
+            echo '<div style="display: flex; gap: 8px; flex-wrap: wrap;">';
+            echo '<button type="submit" name="bitstream_regenerate_vapid" style="background: #666; color: #fff; border: none; border-radius: 8px; padding: 0.5rem 1.2rem; cursor: pointer; font-weight: 600; font-size: 0.875rem;" onclick="return confirm(\'Regenerating VAPID keys will invalidate all existing subscribers. They will need to re-subscribe. Are you sure?\');">Regenerate VAPID Keys</button>';
+            echo '</div>';
+            echo '</div>';
+
+            echo '<div class="bitstream-settings-section">';
+            echo '<h3>Subscribers & Testing</h3>';
+            echo '<p>Currently active subscriber devices: <strong>' . intval($subscriber_count) . '</strong></p>';
+            
+            if ($subscriber_count > 0) {
+                echo '<button type="submit" name="bitstream_send_test_push" style="background: #007cba; color: #fff; border: none; border-radius: 8px; padding: 0.5rem 1.2rem; cursor: pointer; font-weight: 600; font-size: 0.875rem;">Send Test Push Notification</button>';
+            } else {
+                echo '<button type="button" style="background: #ccc; color: #fff; border: none; border-radius: 8px; padding: 0.5rem 1.2rem; cursor: not-allowed; font-weight: 600; font-size: 0.875rem;" disabled>Send Test Push Notification</button>';
+            }
+            echo '</div>';
+            echo '</form>';
+        }
+    }
+
+    /**
+     * Settings Tab 5: Advanced (Debug Logs, Media Cleanup, Reset)
      */
     private function render_settings_advanced()
     {

@@ -6537,4 +6537,210 @@ jQuery(document).ready(function ($) {
             }
         }
     });
+
+    // --- PWA Push Notifications Toggle Logic ---
+    const subscribeButtons = document.querySelectorAll('.bitstream-push-subscribe-btn');
+    const widgetContainers = document.querySelectorAll('.bitstream-push-widget-container');
+    const unsupportedDiv = document.getElementById('bitstream-push-device-unsupported');
+
+    if (subscribeButtons.length > 0) {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+            if (unsupportedDiv) unsupportedDiv.style.display = 'block';
+            subscribeButtons.forEach(btn => { btn.style.display = 'none'; });
+            widgetContainers.forEach(container => { container.style.display = 'none'; });
+        } else {
+            // Show the public widget containers
+            widgetContainers.forEach(container => { container.style.display = 'block'; });
+
+            // Use getRegistration to support accessing the Service Worker registration from wp-admin (outside SW scope)
+            let getRegistrationPromise;
+            if (navigator.serviceWorker.controller) {
+                getRegistrationPromise = navigator.serviceWorker.getRegistration();
+            } else {
+                getRegistrationPromise = navigator.serviceWorker.getRegistration('/bitstream/');
+            }
+
+            getRegistrationPromise.then(function(registration) {
+                if (!registration) {
+                    console.log("BitStream SW registration not found. Registering dynamically for scope /bitstream/...");
+                    // Construct service worker URL from localized data
+                    const baseHomeUrl = bitstream_ajax.feed_url.replace(/\/bitstream\/?$/, '/');
+                    const swUrl = baseHomeUrl + '?bitstream_sw=main';
+                    
+                    return navigator.serviceWorker.register(swUrl, {
+                        scope: '/bitstream/',
+                        updateViaCache: 'none'
+                    }).then(function(newReg) {
+                        console.log("BitStream SW registered dynamically from current page.");
+                        return newReg;
+                    }).catch(function(err) {
+                        console.warn("BitStream SW dynamic registration failed:", err);
+                        return null;
+                    });
+                }
+                return registration;
+            }).then(function(registration) {
+                if (!registration) {
+                    // Update buttons to show active status check error
+                    subscribeButtons.forEach(btn => {
+                        btn.disabled = false;
+                        if (btn.classList.contains('bitstream-filter-link')) {
+                            const span = btn.querySelector('span');
+                            if (span) span.textContent = 'SW Active Check Failed';
+                        } else {
+                            btn.textContent = 'Service Worker inactive. Visit homepage feed once.';
+                            btn.style.background = '#666';
+                        }
+                    });
+                    return;
+                }
+
+                registration.pushManager.getSubscription().then(function(subscription) {
+                    let isSubscribed = !(subscription === null);
+                    subscribeButtons.forEach(btn => {
+                        updateSubscriptionButton(btn, isSubscribed);
+                        btn.disabled = false;
+                    });
+
+                    subscribeButtons.forEach(btn => {
+                        btn.addEventListener('click', function(e) {
+                            if (btn.tagName.toLowerCase() === 'a') {
+                                e.preventDefault();
+                            }
+                            
+                            // Disable all buttons during operation
+                            subscribeButtons.forEach(b => { b.disabled = true; });
+
+                            if (isSubscribed) {
+                                // Unsubscribe
+                                subscription.unsubscribe().then(function(successful) {
+                                    if (successful) {
+                                        sendSubscriptionToServer(subscription, 'unsubscribe', function(res) {
+                                            if (res.success) {
+                                                isSubscribed = false;
+                                                subscribeButtons.forEach(b => {
+                                                    updateSubscriptionButton(b, false);
+                                                    b.disabled = false;
+                                                });
+                                            } else {
+                                                alert('Failed to remove subscription from server.');
+                                                subscribeButtons.forEach(b => { b.disabled = false; });
+                                            }
+                                        });
+                                    } else {
+                                        alert('Failed to unsubscribe from device.');
+                                        subscribeButtons.forEach(b => { b.disabled = false; });
+                                    }
+                                }).catch(function(err) {
+                                    console.error('Error unsubscribing:', err);
+                                    subscribeButtons.forEach(b => { b.disabled = false; });
+                                });
+                            } else {
+                                // Subscribe
+                                const vapidKeyB64 = btn.getAttribute('data-vapid-public');
+                                if (!vapidKeyB64) {
+                                    alert('VAPID public key not configured.');
+                                    subscribeButtons.forEach(b => { b.disabled = false; });
+                                    return;
+                                }
+
+                                try {
+                                    const applicationServerKey = urlBase64ToUint8Array(vapidKeyB64);
+                                    registration.pushManager.subscribe({
+                                        userVisibleOnly: true,
+                                        applicationServerKey: applicationServerKey
+                                    }).then(function(newSubscription) {
+                                        sendSubscriptionToServer(newSubscription, 'subscribe', function(res) {
+                                            if (res.success) {
+                                                isSubscribed = true;
+                                                subscription = newSubscription;
+                                                subscribeButtons.forEach(b => {
+                                                    updateSubscriptionButton(b, true);
+                                                    b.disabled = false;
+                                                });
+                                            } else {
+                                                alert('Subscription registration failed on server.');
+                                                newSubscription.unsubscribe();
+                                                subscribeButtons.forEach(b => { b.disabled = false; });
+                                            }
+                                        });
+                                    }).catch(function(err) {
+                                        console.error('Failed to subscribe:', err);
+                                        alert('Notification permission denied or subscription failed: ' + err.message);
+                                        subscribeButtons.forEach(b => { b.disabled = false; });
+                                    });
+                                } catch (e) {
+                                    console.error('VAPID key parsing error:', e);
+                                    subscribeButtons.forEach(b => { b.disabled = false; });
+                                }
+                            }
+                        });
+                    });
+                }).catch(function(err) {
+                    console.error('Error getting subscription:', err);
+                });
+            });
+        }
+    }
+
+    function updateSubscriptionButton(btn, isSubscribed) {
+        const span = btn.querySelector('span');
+        const icon = btn.querySelector('i');
+        
+        if (btn.classList.contains('bitstream-filter-link')) {
+            // Public sidebar / mobile tab button
+            if (span) {
+                span.textContent = isSubscribed ? 'Mute Notifications' : 'Get Notifications';
+            }
+            if (icon) {
+                icon.className = isSubscribed ? 'fa-solid fa-bell-slash' : 'fa-solid fa-bell';
+            }
+            btn.style.background = '';
+        } else {
+            // Admin settings button
+            if (isSubscribed) {
+                btn.textContent = 'Unsubscribe this Device';
+                btn.style.background = '#dc3545';
+            } else {
+                btn.textContent = 'Subscribe this Device';
+                btn.style.background = 'var(--wp--preset--color--accent-1, #2c6e49)';
+            }
+        }
+    }
+
+    function sendSubscriptionToServer(subscription, action, callback) {
+        const payload = subscription.toJSON();
+        payload.action = action;
+
+        fetch(bitstream_ajax.ajax_url + '?action=bitstream_save_push_subscription', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(data => {
+            callback(data);
+        })
+        .catch(error => {
+            console.error('Error saving subscription:', error);
+            callback({ success: false });
+        });
+    }
+
+    function urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding)
+            .replace(/\-/g, '+')
+            .replace(/_/g, '/');
+
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    }
 });

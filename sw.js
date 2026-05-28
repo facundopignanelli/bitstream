@@ -17,7 +17,15 @@ const ASSETS_TO_CACHE = [
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(ASSETS_TO_CACHE))
+      .then(cache => {
+        return Promise.all(
+          ASSETS_TO_CACHE.map(url => {
+            return cache.add(url).catch(err => {
+              console.warn(`BitStream SW: Failed to cache ${url}:`, err);
+            });
+          })
+        );
+      })
       .then(() => self.skipWaiting())
   );
 });
@@ -182,3 +190,62 @@ async function handleShareTargetPost(request) {
     return new Response('Upload failed', { status: 500 });
   }
 }
+
+// Push notification listener (payload-free style)
+self.addEventListener('push', event => {
+  const ajaxUrl = typeof BITSTREAM_AJAX_URL !== 'undefined' ? BITSTREAM_AJAX_URL : '/wp-admin/admin-ajax.php';
+  const siteUrl = typeof BITSTREAM_SITE_URL !== 'undefined' ? BITSTREAM_SITE_URL : '/bitstream/';
+  
+  event.waitUntil(
+    fetch(`${ajaxUrl}?action=bitstream_get_latest_notification`)
+      .then(response => response.json())
+      .then(data => {
+        const title = data.title || 'New BitStream Post';
+        const options = {
+          body: data.body || 'A new bit has been posted!',
+          icon: data.icon || '/wp-content/plugins/bitstream/assets/images/logo_192.png',
+          badge: data.badge || '/wp-content/plugins/bitstream/assets/images/logo_192.png',
+          data: {
+            url: data.url || siteUrl
+          }
+        };
+        return self.registration.showNotification(title, options);
+      })
+      .catch(err => {
+        console.error('BitStream SW: Push fetch failed:', err);
+        return self.registration.showNotification('New BitStream Update', {
+          body: 'A new post is available on BitStream.',
+          icon: '/wp-content/plugins/bitstream/assets/images/logo_192.png',
+          badge: '/wp-content/plugins/bitstream/assets/images/logo_192.png',
+          data: {
+            url: siteUrl
+          }
+        });
+      })
+  );
+});
+
+// Handle notification click to navigate/focus
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const siteUrl = typeof BITSTREAM_SITE_URL !== 'undefined' ? BITSTREAM_SITE_URL : '/bitstream/';
+  let targetUrl = event.notification.data && event.notification.data.url ? event.notification.data.url : siteUrl;
+  
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then(windowClients => {
+        for (let i = 0; i < windowClients.length; i++) {
+          const client = windowClients[i];
+          if (client.url.includes('/bitstream/') && 'focus' in client) {
+            if ('navigate' in client) {
+              client.navigate(targetUrl);
+            }
+            return client.focus();
+          }
+        }
+        if (self.clients.openWindow) {
+          return self.clients.openWindow(targetUrl);
+        }
+      })
+  );
+});
