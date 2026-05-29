@@ -4556,30 +4556,7 @@ iframe[src*="youtube-nocookie.com"] {
         max-width: min(90vw, 600px) !important;
     }
     
-    /* When a sub-modal is open, hide the composer form content but keep the overlay */
-    .bitstream-composer:has(.bitstream-composer-modal:not([hidden])) > .bitstream-composer-modal-backdrop {
-        display: none !important;
-    }
-    
-    .bitstream-composer:has(.bitstream-composer-modal:not([hidden])) > .bitstream-composer-modal-dialog {
-        background: transparent !important;
-        box-shadow: none !important;
-        overflow: visible !important;
-        animation: none !important;
-        transform: none !important;
-        border: none !important;
-    }
-    
-    .bitstream-composer:has(.bitstream-composer-modal:not([hidden])) > .bitstream-composer-modal-dialog > .bitstream-composer-modal-header,
-    .bitstream-composer:has(.bitstream-composer-modal:not([hidden])) > .bitstream-composer-modal-dialog > .bitstream-composer-modal-body > form,
-    .bitstream-composer:has(.bitstream-composer-modal:not([hidden])) > .bitstream-composer-modal-dialog > .bitstream-composer-modal-body > .bitstream-sidebar-composer-status {
-        display: none !important;
-    }
-    
-    .bitstream-composer:has(.bitstream-composer-modal:not([hidden])) > .bitstream-composer-modal-dialog > .bitstream-composer-modal-body {
-        padding: 0 !important;
-        overflow: visible !important;
-    }
+
 }
 
 @media (min-width: 1024px) {

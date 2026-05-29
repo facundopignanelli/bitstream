@@ -192,6 +192,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const grid = document.createElement('div');
         grid.className = 'bitstream-media-preview-grid';
 
+        const videoElementsToLoad = [];
+
         attachments.forEach((attachment, index) => {
             const item = document.createElement('div');
             item.className = 'bitstream-media-preview-item';
@@ -209,22 +211,27 @@ document.addEventListener('DOMContentLoaded', function () {
             } else if (mime.startsWith('video/')) {
                 item.classList.add('is-video-item'); // dark placeholder bg until frame loads
                 const video = document.createElement('video');
-                video.src = url;
-                video.preload = 'metadata';
+                video.preload = 'auto';
                 video.muted = true;
                 video.playsInline = true;
+                video.setAttribute('playsinline', '');
+                
                 // Seek to first frame so mobile browsers paint a thumbnail
                 video.addEventListener('loadedmetadata', function onMeta() {
                     video.removeEventListener('loadedmetadata', onMeta);
                     video.currentTime = 0.001;
                 });
+                
                 item.appendChild(video);
+                
                 // Play-icon overlay so the thumbnail is recognisable on mobile
                 const playOverlay = document.createElement('div');
                 playOverlay.className = 'bitstream-media-preview-video-overlay';
                 playOverlay.setAttribute('aria-hidden', 'true');
                 playOverlay.innerHTML = '<i class="fa-solid fa-circle-play"></i>';
                 item.appendChild(playOverlay);
+
+                videoElementsToLoad.push({ el: video, src: url });
             } else {
                 const fallback = document.createElement('div');
                 fallback.className = 'bitstream-media-fallback-text';
@@ -249,6 +256,12 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         previewEl.appendChild(grid);
+
+        // Load videos after elements are connected to the DOM
+        videoElementsToLoad.forEach(item => {
+            item.el.src = item.src;
+            item.el.load();
+        });
     }
 
     async function uploadMultipleFiles(files, targetInputId, targetPreviewId, options = {}) {
@@ -486,10 +499,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     updateProgress(100, 'Upload complete!');
                 }
                 return response;
-            }
-
-            if (typeof updateProgress === 'function') {
-                updateProgress(Math.max(1, chunkBasePercent), 'Uploading... ' + Math.max(1, chunkBasePercent) + '%');
             }
         }
 
@@ -1984,8 +1993,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 zone.addEventListener('click', (event) => {
-                    // Don't open file picker when the user clicks on an existing preview item
-                    if (event.target.closest('.bitstream-media-preview-item') ||
+                    // Don't open file picker when clicking on the input itself, or inside the preview area
+                    if (event.target === input) return;
+                    if (event.target.closest('.bitstream-media-preview') ||
                         event.target.closest('.bitstream-media-preview-remove-item')) {
                         return;
                     }
@@ -3323,9 +3333,9 @@ document.addEventListener('DOMContentLoaded', function () {
             // Drag and drop events
             if (dropzone && fileInput) {
                 dropzone.addEventListener('click', (event) => {
-                    // Don't open file picker when clicking on an existing preview item or the file input itself
+                    // Don't open file picker when clicking on the input itself, or inside the preview area
                     if (event.target === fileInput) return;
-                    if (event.target.closest('.bitstream-media-preview-item') ||
+                    if (event.target.closest('.bitstream-media-preview') ||
                         event.target.closest('.bitstream-media-preview-remove-item')) {
                         return;
                     }
