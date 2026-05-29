@@ -3,6 +3,53 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0] - 2026-XX-XX
+
+### Added
+
+- Added PWA Web Push Notifications support allowing users to subscribe their devices to notifications when new Bit or ReBit posts are published. Includes a dedicated Settings panel tab for managing VAPID keys, settings, and subscribing devices.
+- Added an explicit `Notification.requestPermission()` call in the push-subscribe flow so the OS-level notification prompt is correctly surfaced on Android (and other platforms where it is blocked by default). The subscribe button now immediately reflects a "blocked" state with a tooltip when notifications are hard-denied in browser/OS settings, instead of silently failing.
+- Supported attaching up to 10 images or videos to a single Bit post, displayed in a modern asymmetrical or symmetrical grid layout.
+- Integrated a responsive fullscreen media lightbox overlay allowing users to browse through multiple attachments with keyboard navigation and mouse controls.
+- New "Composer" inline posting box for logged-in users. Features all options of the old Quick Bit and Poster shortcode.
+
+
+### Changed
+
+- Optimized mobile quick actions performance by caching draft/scheduled counts in user metadata and caching feed page URL resolution in options.
+- Replaced browser-native confirm dialogs with a premium custom modal confirmation flow when deleting bits, drafts, or scheduled posts.
+- Renamed "Quick Bit" to Composer.
+- Rewired the quick actions "New Bit" and "New Rebit" options to be hidden on desktop (where the inline composer is already shown) and open the composer in a modal on mobile, with auto-opening of the Rebit editor if clicking "New Rebit".
+- Moved the "Drafts" and "Scheduled" Quick Actions buttons to open in dedicated modals directly on the feed page instead of redirecting to the composer shortcode, and enabled full draft management and scheduled post editing directly within the Composer.
+- Changed the generic ReBit icon from the retweet icon to a standard link/URL icon across the whole project (including tabs, action buttons, and preview badges).
+- Condensed the timeline Rebit edit modal so the main panel only keeps the Link URL, commentary, and media controls, with title/description/image editing moved into a nested link-preview submodal. The URL fetch button is now styled as a full accent-green action.
+- Changed timeline Bit edit and Quote actions to open the unified modal editor instead of redirecting to the composer shortcode, while keeping the same submit flow, schedule controls, media attachment support, and quote preview behavior.
+
+- Moved the desktop side rail widgets so the right rail now shows Content Filter, Archive, RSS Feeds, and the Version box in that order.
+- Let the Hashtags sidebar grow naturally as new tags are added instead of forcing an internal scroll container.
+- Removed title headings from all siderail widgets (Quick Actions, Search, RSS Feeds, Archive, Content, Hashtags, and Version), keeping only the main title for the Welcome/Intro widget.
+
+### Deprecated
+
+- Deprecated and removed the `[bitstream_poster]` shortcode. All posting capabilities (composing bits/rebits, managing drafts, and scheduling) have been completely migrated into the inline Composer and unified Composer modals on the main timeline feed (`[bitstream]` shortcode).
+- Removed support for audio files across the plugin (including backend AJAX handlers, database checks, frontend media dropzones, metadata fields, and custom audio player styling). Enforced strict image and video MIME-type validations on both client-side and server-side uploaders, as well as the Media Library selection dialog.
+
+### Fixed
+- Standardized image and video dimensions to span the full width of the timeline cards and composer previews, except for portrait/narrow images which are constrained and centered.
+- Fixed YouTube shared links rendering as "shared a link" instead of "shared a video" (specifically when using short youtu.be URLs or when mappings are uninitialized).
+- Added rounded corners to the YouTube video embed player and its container in feed cards to align with images and native video.
+- Fixed nested quoted bit timestamp tooltip getting clipped by the quote preview container's overflow settings.
+- Hid the WordPress admin bar on mobile BitStream frontend screens so page and modal titles are not covered.
+- Reduced mobile image upload failures by resizing oversized images, sending larger files in chunks, and improving interrupted-upload messaging.
+- Fixed bug that caused the edit page Block Editor not work.
+- Fixed timeline ReBit edit metadata saving issues where custom descriptions entered in the nested metadata edit modal were not correctly synchronized to the hidden form field and saved to the database.
+- Fixed media upload preview issue where video thumbnails in the composer and media upload modals were not scaled and centered to cover the 1:1 preview grid boxes due to global video aspect ratio rules.
+- Removed the default black shadow/gradient overlay from the native HTML5 video player controls panel when hovering or interacting with video elements in the timeline, composer, and lightbox.
+- Fixed lightbox video player aspect-ratio alignment issue where the native player control bar was wider than the actual video content. The video container element's box is now dynamically scaled based on the video's intrinsic dimensions to fit perfectly on the stage.
+- Fixed sub-modals inside the Composer (media upload, rebit, schedule, drafts, etc.) displaying as full-screen sheets on mobile. They now open as centered popup overlays with a backdrop and rounded corners, matching the desktop experience. Only the main Composer window remains full-screen on mobile.
+- Fixed missing square video thumbnail in the media upload dropzone preview grid on mobile — video items now display a play-icon overlay so they are clearly recognisable even when the browser doesn't pre-render a video frame.
+- Fixed a UX bug where clicking an already-uploaded image or video in the media dropzone preview grid simultaneously opened the lightbox **and** triggered the file-picker to select a new file.
+
 ## [3.1.3] - 2026-05-04
 
 ### Changed
@@ -19,7 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fixed mobile image upload preview reliability in `assets/js/bitstream.js` and `includes/class-ajax-handlers.php`:
   - Added a server-provided browser-safe `preview_url` for uploaded images.
-  - Updated poster preview rendering to prefer `preview_url`, improving compatibility for formats like HEIC where the original file URL may not render in-browser.
+  - Updated composer preview rendering to prefer `preview_url`, improving compatibility for formats like HEIC where the original file URL may not render in-browser.
 - Fixed mobile like registration consistency in `assets/js/bitstream.js`:
   - Replaced per-element like listeners with delegated click handling.
   - Added robust in-flight guarding and like-state syncing so likes register and counters update reliably, including on cards loaded dynamically.
@@ -39,9 +86,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Updated quote action navigation in `assets/js/bitstream.js`:
   - Changed feed card Quote button behavior to navigate in the current tab (matching other card actions) instead of opening a new tab.
-- Unified Quick Bit publish redirect behavior in `assets/js/bitstream.js`:
-  - Quick Bit/ReBit sidebar posts now redirect to feed URL with `highlight_bit` after publish.
-  - Aligns sidebar quick-post flow with poster shortcode publish/highlight behavior.
+- Unified Composer publish redirect behavior in `assets/js/bitstream.js`:
+  - Composer/ReBit sidebar posts now redirect to feed URL with `highlight_bit` after publish.
+  - Aligns sidebar quick-post flow with composer shortcode publish/highlight behavior.
 - Improved hashtag sidebar wrapping in `assets/css/bitstream.css`:
   - Long hashtags now line-wrap inside each row instead of forcing horizontal scrolling on the hashtags container.
   - Preserved count alignment while allowing tag text to wrap.
@@ -61,7 +108,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed PHP session usage from PWA share flow in `class-pwa-manager.php`:
   - Removed `session_start()` and `$_SESSION` usage.
   - Replaced temporary share handoff with tokenized transient storage (`set_transient`, `get_transient`, `delete_transient`).
-  - Preserved existing `shared_key` handoff behavior for poster prefill after login.
+  - Preserved existing `shared_key` handoff behavior for composer prefill after login.
 - Hardened inline editor script injection in `class-block-editor.php`:
   - Replaced direct `<script>` echo interpolation for shared/media query data with safe `wp_add_inline_script()` payloads.
   - Sanitized request-derived values with `sanitize_text_field()`/`absint()` (plus `wp_unslash()` where applicable) before JavaScript use.
@@ -94,7 +141,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Removed unhooked obsolete methods `schedule_og_fetch()` and `process_og_data()`.
   - Removed stale commented-out constructor hook registrations referencing those methods.
   - Kept active synchronous/AJAX OG fetching logic unchanged.
-- Reduced dead frontend poster publish-path surface in `assets/js/bitstream.js`:
+- Reduced dead frontend composer publish-path surface in `assets/js/bitstream.js`:
   - Removed unreachable UI-reset code that executed after publish redirect/`return` in the submit success handler.
   - Kept existing successful publish redirect behavior intact.
 - Fixed ReBit mappings delete persistence in `admin-rebit-mappings-interface.php`:
@@ -104,24 +151,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.0.0] - 2026-02-23
 
 ### Added
-- New frontend tabbed poster shortcode: `[bitstream_poster]`
+- New frontend tabbed composer shortcode: `[bitstream_poster]`
 - Dedicated posting tabs for:
   - Post a Bit
   - Post a Rebit
   - Scheduled (review upcoming posts)
   - Drafts (save and manage draft posts)
 - **Draft Support** - Save posts as drafts for later editing and publishing
-  - "Save to Drafts" button in both Bit and Rebit poster forms (white with grey border styling)
-  - New "Drafts" tab in the poster interface alongside Scheduled
+  - "Save to Drafts" button in both Bit and Rebit composer forms (white with grey border styling)
+  - New "Drafts" tab in the composer interface alongside Scheduled
   - Draft list with filter by type (All / Bits / Rebits), matching Scheduled tab UI
   - Edit, preview, and delete actions for each draft (same UI as scheduled posts)
   - Automatic save-to-draft when closing the browser tab (via `navigator.sendBeacon`)
   - Draft editing support with "Update Draft" button label when editing an existing draft
   - Highlight draft after save with `highlight_draft` query parameter
-- Native WordPress Media Library support in poster forms (`wp.media`) for Bit/Rebit attachments
-- Rebit metadata fetch action in poster UI with OG preview population and manual overrides
+- Native WordPress Media Library support in composer forms (`wp.media`) for Bit/Rebit attachments
+- Rebit metadata fetch action in composer UI with OG preview population and manual overrides
 - In-window publish result panel showing the exact frontend-rendered card preview
-- Post-publish quick actions in poster result panel:
+- Post-publish quick actions in composer result panel:
   - Copy permalink
   - Edit post
   - Open/Preview post
@@ -129,12 +176,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Schedule UI with radio buttons: "Post now" (default) and "Schedule for later"
 - Native datetime picker with calendar and clock selection for scheduling
 - Scheduled posts tab filter controls (All / Bits / Rebits)
-- Drag-and-drop media upload areas for Bit and Rebit poster forms
+- Drag-and-drop media upload areas for Bit and Rebit composer forms
 - Audio file support in Bit posts (MP3, M4A, OGG, WAV, FLAC)
 - Custom image cropper with free-form selection and live size readout
 - In-feed Delete Bit action (trash icon) for logged-in users with `delete_post` capability
 - Improved PWA share parsing: automatically separates text and URL when they arrive combined from Android share targets
-- Weekly media cleanup cron event (`bitstream_weekly_media_cleanup_event`) to automatically prune unattached orphaned files from poster uploads
+- Weekly media cleanup cron event (`bitstream_weekly_media_cleanup_event`) to automatically prune unattached orphaned files from composer uploads
 - Support for visually rich nested quoted cards rendering to display quoted content with better context
 - **Enhanced Open Graph Fetcher:**
   - Added 24-hour transient caching to reduce external requests
@@ -145,8 +192,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Implemented relative-to-absolute URL resolution for OG images
   - Optimized HTML parser to stop reading after the closing `</head>` tag
 - In-feed right sidebar improvements:
-  - Added a "Quick Bit" inline posting box for logged-in users
-  - **Auto-ReBit Detection:** Quick Bit automatically detects when only a URL is pasted and posts it as a ReBit instead of a standard Bit
+  - Added a "Composer" inline posting box for logged-in users
+  - **Auto-ReBit Detection:** Composer automatically detects when only a URL is pasted and posts it as a ReBit instead of a standard Bit
   - Added dedicated RSS Feeds section visible to all users
   - **Dynamic Quick Actions Menu:** Right rail and mobile floating menu now feature dynamic drafts/scheduled counts and section dividers
 - **Unified Settings Page:**
@@ -161,12 +208,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Homepage Preview Mode:** New `mode="preview"` attribute on `[bitstream]` renders a compact 3-column responsive grid (1→2→3 columns) of the latest N bits without sidebars, filters, or pagination — ideal for homepage embeds
 
 ### Changed
-- Unified posting workflow around the custom poster interface instead of Gutenberg new-post flow
+- Unified posting workflow around the custom composer interface instead of Gutenberg new-post flow
 - Schedule section now uses radio buttons with "Post now" as default (was checkbox)
-- Admin new post creation (`post-new.php?post_type=bit`) now redirects to the poster page
-- Admin “Add New ReBit” route now redirects to the poster page Rebit tab
-- Admin quote action now routes to the poster page with quote prefill context
-- Floating quick action menu now links to poster tabs (Bit/Rebit) instead of editor creation screens
+- Admin new post creation (`post-new.php?post_type=bit`) now redirects to the composer page
+- Admin “Add New ReBit” route now redirects to the composer page Rebit tab
+- Admin quote action now routes to the composer page with quote prefill context
+- Floating quick action menu now links to composer tabs (Bit/Rebit) instead of editor creation screens
 - PWA shortcut/share routing now resolves the page containing `[bitstream_poster]` and forwards payload
 - Poster now supports shared payload prefill (`shared_url`, `shared_title`, `shared_text`, `media_ids`, `shared_key`)
 - Poster submit handler now supports `publish` and `future` statuses based on schedule options
@@ -265,7 +312,7 @@ BitStream 2.0 is a complete rewrite and modernization of the plugin, transformin
 - **Custom Post Type** - Dedicated "Bit" post type with full REST API support
 - **Automatic Titles** - Smart title generation (`Bit #YYYY-MM-DD:001`) with daily caching
 - **Block Editor Support** - Custom ReBit URL block for the Gutenberg editor
-- **Quick Post Shortcode** - `[bitstream_quick_post]` for front-end posting
+- **Composer Shortcode** - `[bitstream_quick_post]` for front-end posting
 - **Feed Shortcode** - `[bitstream]` with extensive customization options
 - **Media Support** - Full WordPress media library integration for images
 - **Draft Support** - Save and preview bits before publishing
@@ -545,11 +592,6 @@ BitStream 2.0 is a complete rewrite and modernization of the plugin, transformin
 - User profiles
 - Analytics dashboard
 
-## Version History Summary
-
-- **2.0** - Major architecture overhaul with security and performance improvements
-- **1.0** - Initial Release
-
 ## Contributing
 
 When adding new releases to this changelog:
@@ -559,9 +601,3 @@ When adding new releases to this changelog:
 3. Include sections: Added, Changed, Deprecated, Removed, Fixed, Security
 4. Date format: YYYY-MM-DD
 5. Keep entries concise but descriptive
-
-## Links
-
-- [WordPress Plugin Repository](https://wordpress.org/plugins/bitstream/) (if applicable)
-- [GitHub Repository](https://github.com/facundopignanelli/bitstream)
-- [Documentation](README.md)

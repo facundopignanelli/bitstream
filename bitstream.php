@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BitStream
  * Description: A lightweight microblogging platform for WordPress with PWA support, masonry layout, and social sharing.
- * Version: 3.1.3
+ * Version: 3.2.0
  * Author: Facundo Pignanelli
  * Text Domain: bitstream
  * Requires at least: 5.8
@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('BITSTREAM_VERSION', '3.1.3');
+define('BITSTREAM_VERSION', '3.2.0');
 define('BITSTREAM_PLUGIN_PATH', plugin_dir_path(__FILE__));
 define('BITSTREAM_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -26,10 +26,21 @@ class BitStream_Plugin
 {
 
     private $components = [];
+    private static $instance = null;
+
+    public static function get_instance()
+    {
+        return self::$instance;
+    }
 
     public function __construct()
     {
-        add_action('plugins_loaded', [$this, 'init']);
+        self::$instance = $this;
+        if (did_action('plugins_loaded')) {
+            $this->init();
+        } else {
+            add_action('plugins_loaded', [$this, 'init']);
+        }
     }
 
     /**
@@ -70,32 +81,7 @@ class BitStream_Plugin
      */
     private function init_components()
     {
-        // Allow audio uploads
-        add_filter('upload_mimes', function ($mimes) {
-            $mimes['mp3'] = 'audio/mpeg';
-            $mimes['m4a'] = 'audio/mp4';
-            $mimes['ogg'] = 'audio/ogg';
-            $mimes['wav'] = 'audio/wav';
-            $mimes['flac'] = 'audio/flac';
-            return $mimes;
-        }, 1, 1);
-
-        // Bypass file type checks for audio files
-        add_filter('wp_check_filetype_and_ext', function ($data, $file, $filename, $mimes) {
-            $ext = pathinfo($filename, PATHINFO_EXTENSION);
-            if (empty($data['type']) && in_array($ext, ['mp3', 'm4a', 'ogg', 'wav', 'flac'], true)) {
-                $mime_map = [
-                    'mp3' => 'audio/mpeg',
-                    'm4a' => 'audio/mp4',
-                    'ogg' => 'audio/ogg',
-                    'wav' => 'audio/wav',
-                    'flac' => 'audio/flac',
-                ];
-                $data['ext'] = $ext;
-                $data['type'] = $mime_map[$ext];
-            }
-            return $data;
-        }, 10, 4);
+        // Audio support removed: plugin will not add audio MIME types or bypass audio file checks.
 
         // Initialize core components
         $this->components['post_type'] = new BitStream_Post_Type();
@@ -153,12 +139,17 @@ function bitstream_render_rebit_section($post_id)
             . esc_html($map['label'])
             . '</div>';
     }
+    elseif (stripos($host, 'youtube.com') !== false || stripos($host, 'youtu.be') !== false || stripos($host, 'youtube-nocookie.com') !== false) {
+        echo '<div class="bit-rebit-label" style="margin-bottom:0.5rem;font-size:0.95rem;color:#333;">'
+            . '<i class="fab fa-youtube" aria-hidden="true" style="margin-right:0.5rem;"></i>'
+            . 'shared a video</div>';
+    }
     else {
         echo '<div class="bit-rebit-label" style="margin-bottom:0.5rem;font-size:0.95rem;color:#333;">'
             . '<i class="fas fa-link" aria-hidden="true" style="margin-right:0.5rem;"></i> shared a link</div>';
     }
 
-    $is_yt = stripos($host, 'youtube.com') !== false || stripos($host, 'youtu.be') !== false;
+    $is_yt = stripos($host, 'youtube.com') !== false || stripos($host, 'youtu.be') !== false || stripos($host, 'youtube-nocookie.com') !== false;
     $is_twitter = stripos($host, 'twitter.com') !== false || stripos($host, 'x.com') !== false;
 
     if ($is_yt) {
@@ -172,10 +163,10 @@ function bitstream_render_rebit_section($post_id)
         }
 
         if ($video_id) {
-            echo '<div class="bit-rebit-embed" style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;margin:1rem 0;">'
+            echo '<div class="bit-rebit-embed" style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;margin:1rem 0;border-radius:15px;">'
                 . '<iframe src="https://www.youtube.com/embed/' . esc_attr($video_id) . '" '
                 . 'frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" '
-                . 'allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;"></iframe></div>';
+                . 'allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:15px;"></iframe></div>';
         }
         else {
             echo '<a href="' . esc_url($rebit_url) . '" target="_blank" rel="noopener" style="white-space:normal;overflow-wrap:anywhere;word-break:break-word;">' . esc_html($rebit_url) . '</a>';
@@ -366,6 +357,55 @@ if (!function_exists('bitstream_render_card')) {
             unset($GLOBALS['bitstream_is_rendering_card']);
         }
 
+        // Normalize WordPress video shortcode output so feed cards do not depend on
+        // MediaElement wrapper sizing, which can collapse in the timeline.
+        if (strpos($content, 'wp-video') !== false || strpos($content, 'mejs-container') !== false) {
+            $previous_dom_state = libxml_use_internal_errors(true);
+            $document = new DOMDocument();
+            $wrapped_content = '<div id="bitstream-card-content-root">' . $content . '</div>';
+            $document->loadHTML('<?xml encoding="utf-8" ?>' . $wrapped_content, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+
+            $xpath = new DOMXPath($document);
+            $wrapper_nodes = $xpath->query('//*[@id="bitstream-card-content-root"]//*[contains(concat(" ", normalize-space(@class), " "), " wp-video ")]');
+            if ($wrapper_nodes) {
+                for ($index = $wrapper_nodes->length - 1; $index >= 0; $index--) {
+                    $wrapper = $wrapper_nodes->item($index);
+                    if (!$wrapper || !$wrapper->parentNode) {
+                        continue;
+                    }
+
+                    $video_node = null;
+                    foreach ($wrapper->getElementsByTagName('video') as $candidate_video) {
+                        $video_node = $candidate_video;
+                        break;
+                    }
+
+                    if ($video_node) {
+                        $clean_video_node = $video_node->cloneNode(true);
+                        $clean_video_node->setAttribute('class', 'bitstream-video-attachment');
+                        $clean_video_node->removeAttribute('width');
+                        $clean_video_node->removeAttribute('height');
+                        $clean_video_node->removeAttribute('style');
+                        $wrapper->parentNode->replaceChild($document->importNode($clean_video_node, true), $wrapper);
+                    }
+                }
+            }
+
+            $root = $document->getElementById('bitstream-card-content-root');
+            if ($root) {
+                $normalized_content = '';
+                foreach ($root->childNodes as $child_node) {
+                    $normalized_content .= $document->saveHTML($child_node);
+                }
+                if ($normalized_content !== '') {
+                    $content = $normalized_content;
+                }
+            }
+
+            libxml_clear_errors();
+            libxml_use_internal_errors($previous_dom_state);
+        }
+
         $timestamp = human_time_diff(get_post_time('U', false, $post_id), current_time('timestamp')) . ' ago';
         $posted_datetime = get_post_time('d/m/Y H:i', false, $post_id);
         $is_edited = get_post_modified_time('U', false, $post_id) > get_post_time('U', false, $post_id);
@@ -423,11 +463,11 @@ if (!function_exists('bitstream_render_card')) {
                         <i class="fas fa-comment-dots"></i> <?php echo esc_html($comments); ?>
                     </a>
                 <?php else: ?>
-                <button class="bit-comment-toggle bit-action" data-target="comments-<?php echo esc_attr($post_id); ?>" style="background:none;border:none;cursor:pointer;">
+                <button class="bit-comment-toggle bit-action" data-target="comments-<?php echo esc_attr($post_id); ?>" style="background:none;border:none;cursor:pointer;" title="View and add comments">
                     <i class="fas fa-comment-dots"></i> <?php echo esc_html($comments); ?>
                 </button>
                 <?php endif; ?>
-                <button class="bit-like bit-action" data-post-id="<?php echo esc_attr($post_id); ?>" style="background:none;border:none;cursor:pointer;">
+                <button class="bit-like bit-action" data-post-id="<?php echo esc_attr($post_id); ?>" style="background:none;border:none;cursor:pointer;" title="Like this bit">
                     <i class="fas fa-heart"></i> <span class="bit-like-count"><?php echo esc_html($likes); ?></span>
                 </button>
                 <button class="bit-permalink bit-action" data-url="<?php echo esc_url(get_permalink($post_id)); ?>" style="background:none;border:none;cursor:pointer;" title="Copy link: <?php echo esc_attr(get_permalink($post_id)); ?>">

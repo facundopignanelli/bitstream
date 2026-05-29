@@ -21,14 +21,26 @@ class BitStream_PWA_Manager {
         add_action('template_redirect', [$this, 'handle_shortcut_requests']);
         add_filter('query_vars', [$this, 'add_query_vars']);
         add_action('template_redirect', [$this, 'handle_debug_requests']);
+        
+        // Push notifications AJAX hooks
+        add_action('wp_ajax_bitstream_save_push_subscription', [$this, 'handle_save_push_subscription']);
+        add_action('wp_ajax_nopriv_bitstream_save_push_subscription', [$this, 'handle_save_push_subscription']);
+        add_action('wp_ajax_bitstream_get_latest_notification', [$this, 'handle_get_latest_notification']);
+        add_action('wp_ajax_nopriv_bitstream_get_latest_notification', [$this, 'handle_get_latest_notification']);
+
+        // Post status transition hook to trigger push
+        add_action('transition_post_status', [$this, 'on_post_status_transition'], 10, 3);
+
+        // WP Cron background job for push dispatch
+        add_action('bitstream_send_push_notifications_job', [$this, 'send_push_notifications_cron']);
     }
 
     /**
-     * Resolve poster page URL
+     * Resolve composer page URL
      */
-    private function get_poster_url($query_args = []) {
+    private function get_composer_url($query_args = []) {
         if (class_exists('BitStream_Shortcodes')) {
-            return BitStream_Shortcodes::get_poster_page_url($query_args);
+            return BitStream_Shortcodes::get_feed_page_url($query_args);
         }
 
         $fallback = home_url('/bitstream/');
@@ -47,17 +59,17 @@ class BitStream_PWA_Manager {
         
         // Load on archive pages or pages with [bitstream] shortcode
         $is_bit_archive = is_post_type_archive('bit');
-        $has_feed_shortcode = is_a($post, 'WP_Post') && 
-                     (has_shortcode($post->post_content, 'bitstream') || 
-                      has_shortcode($post->post_content, 'bitstream_latest') ||
-                      has_shortcode($post->post_content, 'bitstream_poster'));
+        $has_feed_shortcode = is_a($post, 'WP_Post') &&
+                     (has_shortcode($post->post_content, 'bitstream') ||
+                      has_shortcode($post->post_content, 'bitstream_latest'));
         $is_bitstream_page = isset($_SERVER['REQUEST_URI']) && 
                             strpos($_SERVER['REQUEST_URI'], '/bitstream/') !== false;
         
         if ($is_bit_archive || $has_feed_shortcode || $is_bitstream_page) {
             $base = BITSTREAM_PLUGIN_URL;
             $manifest_url = $base . 'manifest.json';
-            $sw_url = home_url('/sw.js');
+            // Use a query-var endpoint to avoid redirect chains on /sw.js when rewrites are unavailable.
+            $sw_url = add_query_arg('bitstream_sw', 'main', home_url('/'));
             
             echo '<link rel="manifest" href="'.esc_url($manifest_url).'">';
             echo '<link rel="apple-touch-icon" href="'.esc_url($base . 'assets/images/logo_192.png').'">';
@@ -139,10 +151,9 @@ class BitStream_PWA_Manager {
 
         // Only show on BitStream-related pages
         $is_bit_archive = is_post_type_archive('bit');
-        $has_feed_shortcode = is_a($post, 'WP_Post') && 
-                     (has_shortcode($post->post_content, 'bitstream') || 
-                      has_shortcode($post->post_content, 'bitstream_latest') ||
-                      has_shortcode($post->post_content, 'bitstream_poster'));
+        $has_feed_shortcode = is_a($post, 'WP_Post') &&
+                     (has_shortcode($post->post_content, 'bitstream') ||
+                      has_shortcode($post->post_content, 'bitstream_latest'));
         $is_bitstream_page = isset($_SERVER['REQUEST_URI']) && 
                             strpos($_SERVER['REQUEST_URI'], '/bitstream/') !== false;
         
@@ -162,7 +173,7 @@ class BitStream_PWA_Manager {
         ?>
         <style>
         /* Mobile-specific fixes for floating BitStream menu */
-        @media (min-width: 1024px) {
+        @media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
             #bitstream-floating-menu {
                 display: none !important;
             }
@@ -231,7 +242,7 @@ class BitStream_PWA_Manager {
                     <i class="fa-solid fa-plus" style="margin: 0; pointer-events: none;"></i>
                 </button>
                 <div class="bitstream-dropdown" style="position: absolute; bottom: 70px; right: 0; background: white; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.15); min-width: 180px; opacity: 0; visibility: hidden; transform: translateY(10px); transition: all 0.3s ease; pointer-events: none;">
-                    <?php echo wp_kses_post($quick_actions_html); ?>
+                    <?php echo $quick_actions_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
                 </div>
             </div>
         </div>
@@ -371,6 +382,17 @@ class BitStream_PWA_Manager {
             if (defined('WP_DEBUG') && WP_DEBUG) {
                 error_log('BitStream: service worker file found');
             }
+            
+            // Fetch VAPID public key
+            $keys = self::get_vapid_keys();
+            $public_key = isset($keys['public_key']) ? $keys['public_key'] : '';
+            
+            // Output service worker config block
+            echo "// BitStream PWA Config\n";
+            echo "const BITSTREAM_AJAX_URL = '" . esc_js(admin_url('admin-ajax.php')) . "';\n";
+            echo "const BITSTREAM_VAPID_PUBLIC_KEY = '" . esc_js($public_key) . "';\n";
+            echo "const BITSTREAM_SITE_URL = '" . esc_js(home_url('/bitstream/')) . "';\n\n";
+            
             readfile($file_path);
             exit;
         } else {
@@ -445,8 +467,8 @@ class BitStream_PWA_Manager {
             $transient_key = 'bitstream_shared_' . wp_generate_password(16, false);
             set_transient($transient_key, $pending_share, 15 * MINUTE_IN_SECONDS);
 
-            $login_url = wp_login_url($this->get_poster_url([
-                'poster_tab' => 'bit',
+            $login_url = wp_login_url($this->get_composer_url([
+                'composer_tab' => 'bit',
                 'shared_key' => $transient_key,
             ]));
 
@@ -559,12 +581,12 @@ class BitStream_PWA_Manager {
             if (defined('WP_DEBUG') && WP_DEBUG) {
                 error_log('BitStream: empty share payload, redirecting to new bit page');
             }
-            wp_redirect($this->get_poster_url(['poster_tab' => 'bit']));
+            wp_redirect($this->get_composer_url(['composer_tab' => 'bit']));
             exit;
         }
         
-        // Build redirect URL to frontend poster page
-        $redirect_url = $this->get_poster_url(['poster_tab' => empty($final_url) ? 'bit' : 'rebit']);
+        // Build redirect URL to frontend composer page
+        $redirect_url = $this->get_composer_url(['composer_tab' => empty($final_url) ? 'bit' : 'rebit']);
         
         if (!empty($attachment_ids)) {
             $redirect_url = add_query_arg('media_ids', implode(',', $attachment_ids), $redirect_url);
@@ -576,11 +598,11 @@ class BitStream_PWA_Manager {
         
         if (!empty($final_url)) {
             $redirect_url = add_query_arg('shared_url', urlencode($final_url), $redirect_url);
-            $redirect_url = add_query_arg('poster_tab', 'rebit', $redirect_url);
+            $redirect_url = add_query_arg('composer_tab', 'rebit', $redirect_url);
         }
 
         if (defined('WP_DEBUG') && WP_DEBUG) {
-            error_log('BitStream: redirecting to poster after media share');
+            error_log('BitStream: redirecting to composer after media share');
         }
         wp_redirect($redirect_url);
         exit;
@@ -677,7 +699,7 @@ class BitStream_PWA_Manager {
             // Redirect to appropriate admin page
             switch ($action) {
                 case 'new-bit':
-                    wp_redirect($this->get_poster_url(['poster_tab' => 'bit']));
+                    wp_redirect($this->get_composer_url(['composer_tab' => 'bit']));
                     break;
                 case 'new-rebit':
                     // Handle shared content from Android share sheet
@@ -722,13 +744,13 @@ class BitStream_PWA_Manager {
                             set_transient($transient_key, $shared_data, 10 * MINUTE_IN_SECONDS);
                             
                             // Redirect to login with the shared data key
-                            $login_url = wp_login_url($this->get_poster_url(['poster_tab' => 'rebit', 'shared_key' => $transient_key]));
+                            $login_url = wp_login_url($this->get_composer_url(['composer_tab' => 'rebit', 'shared_key' => $transient_key]));
                             if (defined('WP_DEBUG') && WP_DEBUG) {
                                 error_log('BitStream Share Debug: user not logged in, redirecting with transient key');
                             }
                         } else {
                             // No shared data, just redirect to login
-                            $login_url = wp_login_url($this->get_poster_url(['poster_tab' => 'rebit']));
+                            $login_url = wp_login_url($this->get_composer_url(['composer_tab' => 'rebit']));
                             if (defined('WP_DEBUG') && WP_DEBUG) {
                                 error_log('BitStream Share Debug: user not logged in, redirecting to login');
                             }
@@ -737,7 +759,7 @@ class BitStream_PWA_Manager {
                         exit;
                     }
                     
-                    $redirect_url = $this->get_poster_url(['poster_tab' => 'rebit']);
+                    $redirect_url = $this->get_composer_url(['composer_tab' => 'rebit']);
                     
                     // Add shared content to redirect URL if available
                     if ($final_url) {
@@ -846,7 +868,7 @@ class BitStream_PWA_Manager {
                 echo '      if (redirectUrl) {';
                 echo '        window.location.href = redirectUrl;';
                 echo '      } else {';
-                echo '        window.location.href = "/bitstream/?poster_tab=bit";';
+                echo '        window.location.href = "/bitstream/?composer_tab=bit";';
                 echo '      }';
                 echo '    }';
                 echo '  });';
@@ -1031,5 +1053,434 @@ class BitStream_PWA_Manager {
         </body>
         </html>
         <?php
+    }
+
+    /**
+     * Get or generate VAPID keys
+     */
+    public static function get_vapid_keys() {
+        $public_key = get_option('bitstream_vapid_public_key');
+        $private_key = get_option('bitstream_vapid_private_key');
+        
+        if (empty($public_key) || empty($private_key)) {
+            $keys = self::generate_vapid_keys();
+            if ($keys) {
+                update_option('bitstream_vapid_public_key', $keys['public_key'], false);
+                update_option('bitstream_vapid_private_key', $keys['private_key'], false);
+                return $keys;
+            }
+        }
+        
+        return [
+            'public_key' => $public_key,
+            'private_key' => $private_key
+        ];
+    }
+
+    /**
+     * Generate VAPID key pair
+     */
+    public static function generate_vapid_keys() {
+        if (!extension_loaded('openssl')) {
+            if (class_exists('BitStream_Error_Logger')) {
+                BitStream_Error_Logger::log('error', 'BitStream Push: OpenSSL extension is not enabled. VAPID keys cannot be generated.');
+            }
+            return false;
+        }
+
+        $cnf_path = tempnam(sys_get_temp_dir(), 'openssl_');
+        $config = [
+            "private_key_type" => OPENSSL_KEYTYPE_EC,
+            "curve_name" => "prime256v1",
+            "private_key_bits" => 384,
+        ];
+        
+        if ($cnf_path) {
+            $cnf_content = "[req]\ndistinguished_name = req_distinguished_name\n[req_distinguished_name]\n";
+            file_put_contents($cnf_path, $cnf_content);
+            $config['config'] = str_replace('/', DIRECTORY_SEPARATOR, $cnf_path);
+        }
+
+        $res = openssl_pkey_new($config);
+        if (!$res) {
+            if ($cnf_path) {
+                @unlink($cnf_path);
+            }
+            if (class_exists('BitStream_Error_Logger')) {
+                BitStream_Error_Logger::log('error', 'BitStream Push: Failed to generate EC key pair using OpenSSL. ' . openssl_error_string());
+            }
+            return false;
+        }
+        
+        $private_key_pem = '';
+        $export_opts = [];
+        if ($cnf_path) {
+            $export_opts['config'] = str_replace('/', DIRECTORY_SEPARATOR, $cnf_path);
+        }
+        $export_res = openssl_pkey_export($res, $private_key_pem, null, $export_opts);
+        
+        if ($cnf_path) {
+            @unlink($cnf_path);
+        }
+
+        if (!$export_res) {
+            if (class_exists('BitStream_Error_Logger')) {
+                BitStream_Error_Logger::log('error', 'BitStream Push: Failed to export EC private key. ' . openssl_error_string());
+            }
+            return false;
+        }
+        
+        $details = openssl_pkey_get_details($res);
+        if (!isset($details['ec'])) {
+            if (class_exists('BitStream_Error_Logger')) {
+                BitStream_Error_Logger::log('error', 'BitStream Push: Failed to get EC details from key.');
+            }
+            return false;
+        }
+        
+        $x = $details['ec']['x'];
+        $y = $details['ec']['y'];
+        
+        $public_key_bin = "\x04" . $x . $y;
+        $public_key_b64url = self::base64url_encode($public_key_bin);
+        
+        return [
+            'public_key' => $public_key_b64url,
+            'private_key' => $private_key_pem,
+        ];
+    }
+
+    /**
+     * Base64URL encode helper
+     */
+    public static function base64url_encode($data) {
+        return rtrim(str_replace(['+', '/'], ['-', '_'], base64_encode($data)), '=');
+    }
+
+    /**
+     * Base64URL decode helper
+     */
+    public static function base64url_decode($data) {
+        return base64_decode(str_replace(['-', '_'], ['+', '/'], $data));
+    }
+
+    /**
+     * Convert DER signature format to IEEE P1363 (concatenated R and S)
+     */
+    private static function der_to_p1363($der) {
+        if (ord($der[0]) !== 0x30) return false;
+        
+        $offset = 2;
+        if (ord($der[1]) & 0x80) {
+            $offset += ord($der[1]) & 0x7f;
+        }
+        
+        if (ord($der[$offset]) !== 0x02) return false;
+        $r_len = ord($der[$offset + 1]);
+        $r = substr($der, $offset + 2, $r_len);
+        $offset += 2 + $r_len;
+        
+        if (ord($der[$offset]) !== 0x02) return false;
+        $s_len = ord($der[$offset + 1]);
+        $s = substr($der, $offset + 2, $s_len);
+        
+        if (ord($r[0]) === 0 && strlen($r) > 32) {
+            $r = substr($r, 1);
+        }
+        if (ord($s[0]) === 0 && strlen($s) > 32) {
+            $s = substr($s, 1);
+        }
+        
+        $r = str_pad($r, 32, "\x00", STR_PAD_LEFT);
+        $s = str_pad($s, 32, "\x00", STR_PAD_LEFT);
+        
+        return $r . $s;
+    }
+
+    /**
+     * Sign JWT using EC private key (ES256)
+     */
+    public static function sign_jwt($private_key_pem, $claims) {
+        if (!extension_loaded('openssl')) {
+            return false;
+        }
+        $header = self::base64url_encode(json_encode(['alg' => 'ES256', 'typ' => 'JWT']));
+        $payload = self::base64url_encode(json_encode($claims));
+        $input = $header . '.' . $payload;
+        
+        $signature = '';
+        $success = openssl_sign($input, $signature, $private_key_pem, OPENSSL_ALGO_SHA256);
+        if (!$success) {
+            return false;
+        }
+        
+        $p1363_signature = self::der_to_p1363($signature);
+        if (!$p1363_signature) {
+            return false;
+        }
+        
+        return $input . '.' . self::base64url_encode($p1363_signature);
+    }
+
+    /**
+     * AJAX handler to save or remove push subscription
+     */
+    public function handle_save_push_subscription() {
+        $raw_data = file_get_contents('php://input');
+        if (empty($raw_data)) {
+            wp_send_json_error('Empty payload', 400);
+        }
+        
+        $data = json_decode($raw_data, true);
+        if (!$data || empty($data['endpoint'])) {
+            wp_send_json_error('Invalid subscription data', 400);
+        }
+        
+        $endpoint = sanitize_url($data['endpoint']);
+        $action = isset($data['action']) ? sanitize_key($data['action']) : 'subscribe';
+        
+        $subscriptions = get_option('bitstream_push_subscriptions', []);
+        if (!is_array($subscriptions)) {
+            $subscriptions = [];
+        }
+        
+        if ($action === 'unsubscribe') {
+            $filtered = [];
+            foreach ($subscriptions as $sub) {
+                if (isset($sub['endpoint']) && $sub['endpoint'] !== $endpoint) {
+                    $filtered[] = $sub;
+                }
+            }
+            update_option('bitstream_push_subscriptions', $filtered, false);
+            wp_send_json_success(['message' => 'Successfully unsubscribed']);
+        } else {
+            $exists = false;
+            foreach ($subscriptions as &$sub) {
+                if (isset($sub['endpoint']) && $sub['endpoint'] === $endpoint) {
+                    $sub = $data;
+                    $exists = true;
+                    break;
+                }
+            }
+            if (!$exists) {
+                $subscriptions[] = $data;
+            }
+            
+            if (count($subscriptions) > 5000) {
+                array_shift($subscriptions);
+            }
+            
+            update_option('bitstream_push_subscriptions', $subscriptions, false);
+            wp_send_json_success(['message' => 'Successfully subscribed']);
+        }
+    }
+
+    /**
+     * AJAX handler to get latest notification data for service worker
+     */
+    public function handle_get_latest_notification() {
+        $args = [
+            'post_type' => 'bit',
+            'post_status' => 'publish',
+            'posts_per_page' => 1,
+            'orderby' => 'date',
+            'order' => 'DESC'
+        ];
+        
+        $query = new WP_Query($args);
+        
+        $data = [
+            'title' => get_bloginfo('name'),
+            'body' => 'A new post has been published!',
+            'url' => home_url('/bitstream/'),
+            'icon' => BITSTREAM_PLUGIN_URL . 'assets/images/logo_192.png',
+            'badge' => BITSTREAM_PLUGIN_URL . 'assets/images/logo_192.png'
+        ];
+        
+        if ($query->have_posts()) {
+            $query->the_post();
+            $post_id = get_the_ID();
+            
+            $content = get_the_content();
+            $content = strip_shortcodes($content);
+            $content = strip_tags($content);
+            $content = preg_replace('/\s+/', ' ', $content);
+            $content = trim($content);
+            
+            if (mb_strlen($content) > 120) {
+                $content = mb_substr($content, 0, 117) . '...';
+            }
+            
+            $is_empty_content = empty($content);
+            if ($is_empty_content) {
+                $content = 'New update posted!';
+            }
+            
+            $data['title'] = 'New BitStream Post';
+            $data['body'] = $content;
+            $base_url = class_exists('BitStream_Shortcodes') ? BitStream_Shortcodes::get_feed_page_url() : home_url('/bitstream/');
+            $data['url'] = add_query_arg('highlight_bit', $post_id, $base_url);
+            
+            // Check if it's a ReBit
+            $rebit_url = get_post_meta($post_id, 'bitstream_rebit_url', true);
+            if (!empty($rebit_url)) {
+                $data['title'] = 'New ReBit Post';
+                
+                $rebit_title = get_post_meta($post_id, 'bitstream_rebit_og_title', true);
+                if (empty($rebit_title)) {
+                    $rebit_title = $rebit_url;
+                }
+                
+                if (!$is_empty_content && $content !== 'New update posted!') {
+                    $data['body'] = $content . ' (shared: ' . $rebit_title . ')';
+                } else {
+                    $data['body'] = 'Shared a link: ' . $rebit_title;
+                }
+                
+                // Add OpenGraph image preview if available
+                $rebit_image = get_post_meta($post_id, 'bitstream_rebit_og_image', true);
+                if (!empty($rebit_image)) {
+                    $data['image'] = $rebit_image;
+                }
+            } else {
+                // Normal Bit image attachments preview
+                $thumb_id = get_post_thumbnail_id($post_id);
+                if ($thumb_id) {
+                    $img_src = wp_get_attachment_image_src($thumb_id, 'large');
+                    if ($img_src) {
+                        $data['image'] = $img_src[0];
+                    }
+                } else {
+                    $attachments = get_attached_media('image', $post_id);
+                    if (!empty($attachments)) {
+                        $first = reset($attachments);
+                        $img_src = wp_get_attachment_image_src($first->ID, 'large');
+                        if ($img_src) {
+                            $data['image'] = $img_src[0];
+                        }
+                    }
+                }
+            }
+        }
+        
+        wp_reset_postdata();
+        wp_send_json($data);
+    }
+
+    /**
+     * Hook to transition_post_status to schedule notification dispatch
+     */
+    public function on_post_status_transition($new_status, $old_status, $post) {
+        if ($post->post_type !== 'bit') {
+            return;
+        }
+        
+        if ($new_status === 'publish' && $old_status !== 'publish') {
+            if (get_option('bitstream_enable_push_notifications', '1') !== '1') {
+                return;
+            }
+            
+            wp_schedule_single_event(time(), 'bitstream_send_push_notifications_job', [$post->ID]);
+        }
+    }
+
+    /**
+     * WP Cron job to send push notifications
+     */
+    public function send_push_notifications_cron($post_id) {
+        $subscriptions = get_option('bitstream_push_subscriptions', []);
+        if (empty($subscriptions) || !is_array($subscriptions)) {
+            return;
+        }
+        
+        $keys = self::get_vapid_keys();
+        if (!$keys || empty($keys['public_key']) || empty($keys['private_key'])) {
+            return;
+        }
+        
+        $private_key = $keys['private_key'];
+        $public_key = $keys['public_key'];
+        
+        $subject = get_option('bitstream_push_subject');
+        if (empty($subject)) {
+            $subject = 'mailto:' . get_option('admin_email');
+        }
+        
+        $failed_endpoints = [];
+        $jwt_cache = [];
+        
+        foreach ($subscriptions as $sub) {
+            if (empty($sub['endpoint'])) {
+                continue;
+            }
+            
+            $endpoint = $sub['endpoint'];
+            $parsed = wp_parse_url($endpoint);
+            if (empty($parsed['host']) || empty($parsed['scheme'])) {
+                continue;
+            }
+            
+            $origin = $parsed['scheme'] . '://' . $parsed['host'];
+            
+            if (!isset($jwt_cache[$origin])) {
+                $claims = [
+                    'aud' => $origin,
+                    'exp' => time() + 12 * 3600,
+                    'sub' => $subject
+                ];
+                $jwt_cache[$origin] = self::sign_jwt($private_key, $claims);
+            }
+            
+            $jwt = $jwt_cache[$origin];
+            if (!$jwt) {
+                continue;
+            }
+            
+            $response = self::send_push_request($endpoint, $jwt, $public_key);
+            
+            if (is_wp_error($response)) {
+                continue;
+            }
+            
+            $code = wp_remote_retrieve_response_code($response);
+            if ($code === 410 || $code === 404) {
+                $failed_endpoints[] = $endpoint;
+            }
+        }
+        
+        if (!empty($failed_endpoints)) {
+            $current_subs = get_option('bitstream_push_subscriptions', []);
+            if (is_array($current_subs)) {
+                $filtered = [];
+                foreach ($current_subs as $sub) {
+                    if (isset($sub['endpoint']) && !in_array($sub['endpoint'], $failed_endpoints, true)) {
+                        $filtered[] = $sub;
+                    }
+                }
+                update_option('bitstream_push_subscriptions', $filtered, false);
+            }
+        }
+    }
+
+    /**
+     * Send HTTP POST to push service
+     */
+    private static function send_push_request($endpoint, $jwt, $public_key) {
+        $headers = [
+            'TTL' => '86400',
+            'Urgency' => 'high',
+            'Authorization' => 'vapid t=' . $jwt . ', k=' . $public_key,
+        ];
+        
+        $args = [
+            'headers' => $headers,
+            'body' => '',
+            'timeout' => 10,
+            'redirection' => 5,
+            'httpversion' => '1.1',
+            'blocking' => true,
+        ];
+        
+        return wp_remote_post($endpoint, $args);
     }
 }

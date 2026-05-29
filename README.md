@@ -1,6 +1,6 @@
 # <img src="assets/images/logo_192.png" alt="BitStream Logo" height="40" align="center"> BitStream
 
-**Version 3.1.3** - A Modern Microblogging Platform for WordPress
+**Version 3.2.0** - A Modern Microblogging Platform for WordPress
 
 ![License](https://img.shields.io/badge/license-GPL--2.0%2B-blue.svg)
 ![WordPress](https://img.shields.io/badge/WordPress-5.8%2B-blue.svg)
@@ -14,12 +14,12 @@ BitStream transforms WordPress into a powerful microblogging platform with Twitt
 
 ### Key Highlights
 
-- 📱 **Progressive Web App** - Install as native app on mobile/desktop with robust share sheet integration
+- 📱 **Progressive Web App** - Install as native app on mobile/desktop with robust share sheet integration and Web Push Notifications
 - 🎨 **Modern Social Timeline** - Clean, responsive feed layout replacing the old masonry grid
-- � **Advanced Poster Interface** - Tabbed posting with drafts, scheduling, and rich media
+- 📝 **Advanced Poster Interface** - Tabbed posting with drafts, scheduling, and rich media
 - 🏷️ **Hashtags & Discovery** - Auto-linked tags, trending sidebars, and hashtag feed filtering
-- � **Enhanced ReBit System** - Secure, cached OpenGraph previews with manual overrides
-- ⚙️ **Unified Settings** - Centralized management for all your personalization and mapping needs
+- 🔗 **Enhanced ReBit System** - Secure, cached OpenGraph previews with manual overrides
+- ⚙️ **Unified Settings** - Centralized management for all your personalization, mapping, and notification needs
 
 ## 📋 Table of Contents
 
@@ -42,7 +42,7 @@ BitStream transforms WordPress into a powerful microblogging platform with Twitt
 2. Upload the `bitstream` folder to `/wp-content/plugins/`
 3. Activate the plugin through the 'Plugins' menu in WordPress
 4. Visit Settings → Permalinks and click "Save Changes" to flush rewrite rules
-5. Create a page and add the `[bitstream]` and/or `[bitstream_poster]` shortcodes
+5. Create a page and add the `[bitstream]` shortcode
 
 ### Manual Installation
 
@@ -64,13 +64,9 @@ Create a new page and add the shortcode to display your timeline:
 [bitstream]
 ```
 
-### Create the Posting Interface
+### Posting Interface
 
-Create another page to serve as your dedicated posting area:
-
-```
-[bitstream_poster]
-```
+BitStream features an integrated Composer directly on your main timeline feed. On desktop, this is embedded at the top of the timeline. On mobile, you can use the Quick Action buttons to open the posting workflow in a modal.
 
 ### Install as PWA
 
@@ -82,18 +78,17 @@ On mobile devices, use the "Add to Home Screen" option to install BitStream as a
 
 - **Social-App Style Feed** - Clear, single-column reading experience replacing the old masonry layout
 - **Adaptive Sidebars** - Left filter links, right Quick Actions rails, and responsive stacking across devices
-- **Interactive Cards** - Rich media, quoted bits, audio players, and inline actions
-- **Quick Bit Box** - Instantly post Bits or auto-detected ReBits directly from the sidebar feed
+- **Interactive Cards** - Rich media (including multi-image/video grids with fullscreen lightbox overlays), quoted bits, and inline actions
+- **Composer Box** - Instantly post Bits or auto-detected ReBits directly from the sidebar feed
 - **In-Feed Deletion** - Instantly delete posts if you have the proper capabilities
 
-### 📝 Advanced Poster Interface
+### 📝 Composer Interface
 
-- **Tabbed Workflow** - Seamlessly switch between composing Bits, ReBits, Drafts, and Scheduled posts
-- **Drafts Support** - Save posts mid-thought, auto-save on tab close (`navigator.sendBeacon`), and resume later
+- **Unified Feed Composition** - Compose Bits and ReBits directly from the feed page
+- **Drafts Support** - Save posts mid-thought, auto-save on page/tab close (`navigator.sendBeacon`), and resume later
 - **Robust Scheduling** - Plan ahead with a native datetime picker for future publishing (Bits and ReBits)
-- **Rich Media & Audio** - Drag-and-drop uploads, custom image cropper, and support for audio formats (MP3, OGG, WAV, FLAC, etc.) integrated via native `wp.media`
-- **Publish Previews** - In-window publish result panel showing the exact frontend-rendered card without refreshing
-- **Quick Actions Post-Publish** - Copy permalinks, quickly edit, or jump to the published post straight from the success screen
+- **Rich Media** - Drag-and-drop uploads, attaching up to 10 images or videos per post, custom image cropper, and video support integrated via native `wp.media`
+- **In-Feed Management** - Load, preview, edit, or delete drafts and scheduled items directly from their respective modals on the feed page
 
 ### � Social & Discovery
 
@@ -105,40 +100,64 @@ On mobile devices, use the "Add to Home Screen" option to install BitStream as a
 
 - **Secure OpenGraph Fetcher** - Built-in strict SSRF protection (`wp_safe_remote_get`), timeout retries, URL resolution, and JSON-LD parsing
 - **Fast Previews** - 24-hour transient caching minimizes external requests for ReBit data
-- **Manual Overrides** - Edit the fetched title, description, and image directly in the poster before publishing
+- **Manual Overrides** - Edit the fetched title, description, and image directly in the composer before publishing
 
 ### � Progressive Web App (PWA)
 
 - **Installable** - Add to home screen on mobile and desktop
 - **Offline Aware** - Service worker caching functionality
 - **Advanced Share Parsing** - Better Android share integration, automatically separating text and URLs when combined by specific apps
-- **Contextual Routing** - Quick Actions shortcuts map directly to specific poster tabs
+- **Contextual Routing** - Quick Actions shortcuts map directly to specific composer tabs
+
+### 🔔 Push Notifications
+
+- **PWA Web Push** - Receive push notifications on your device when new Bits or ReBits are published
+- **Self-Hosted VAPID** - Authenticated notifications secured with keys generated directly on your server using OpenSSL — no third-party push services required
+- **Payload-free Dispatch** - Lightweight notification deliveries that fetch the latest post details dynamically, conserving device resources and avoiding complex payload encryption
+
+#### Setup
+
+1. Go to **Settings → Push Notifications** (or open the `[bitstream_settings]` page and click the **Push Notifications** tab)
+2. Click **Generate VAPID Keys** — the plugin uses OpenSSL to create a public/private key pair and stores them in your database
+3. Enable push notifications and save
+
+#### Subscribing a Device
+
+Once VAPID keys are configured, a **Get Notifications** button appears in:
+- The **right-rail sidebar** on the main feed (desktop)
+- The **Quick Actions widget** (mobile / floating menu)
+- The **Push Notifications settings tab** ("Subscribe this Device" button)
+
+#### Android / Mobile Permission Prompt
+
+On Android, browsers block notifications by default at the OS level. BitStream handles this with a three-stage permission flow so the system prompt is correctly surfaced:
+
+1. **`default` (never asked)** — clicking Subscribe triggers `Notification.requestPermission()`, which surfaces the native OS/browser allow-or-block dialog
+2. **`granted`** — subscribe proceeds immediately without an extra prompt
+3. **`denied` (hard-blocked)** — the button changes to **"Notifications Blocked — Enable in Browser Settings"** (shown in orange) with a tooltip explaining how to re-enable them; no silent failure occurs
+
+> **Tip:** If you previously tapped "Block" on the browser prompt, open Chrome → tap the lock icon in the address bar → **Site settings** → **Notifications** → set to **Allow**, then refresh the page.
 
 ## 📝 Shortcodes
 
 ### `[bitstream]` - Display Feed
 
-The main shortcode for displaying your timeline.
+The main shortcode for displaying your microblog timeline. For logged-in users with publishing permissions, it also automatically integrates the inline Composer at the top of the feed (on desktop) and enables the floating Quick Actions menu (on mobile) to compose Bits/ReBits, attach media, save drafts, and schedule posts directly from the frontend.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `posts_per_page` | integer | 10 | Number of posts to load per page |
 | `limit` | integer | - | Limit total posts (disables pagination) |
+| `exact_limit` | integer | - | Render exactly this number of posts in preview mode instead of auto-filling to a cap |
 | `mode` | string | - | Set to `"preview"` for a compact 3-column grid without sidebars |
 | `infinite_scroll` | boolean | false | Enable infinite scroll |
 | `show_load_more` | boolean | true | Show/hide load more button |
 
-### `[bitstream_poster]` - Unified Posting Interface
+### `[bitstream_settings]` - Settings Interface
 
-Renders a custom frontend posting interface with intelligent tabs:
+Renders the tabbed Settings panel on the front-end for logged-in users with the `edit_posts` capability. Enables updating Personalisation options, ReBit Mappings, RSS Feeds, and Advanced tools.
 
-- **Post a Bit**: Compose text, drag & drop media, crop images, upload audio.
-- **Post a ReBit**: Paste a URL, auto-fetch OG data, manually tweak properties.
-- **Scheduled**: Review, preview, edit, or delete upcoming posts.
-- **Drafts**: Save and manage unpublished works in progress.
 
-**Requirements**:
-- User must be logged in with posting capabilities.
 
 ## 🎛️ Administration & Settings
 
@@ -153,7 +172,7 @@ BitStream 3.0 consolidates all administrative panels into a single, clean **Sett
 
 ### Housekeeping Improvements
 
-- **Weekly Media Cleanup**: Automatic pruning of unattached orphaned files from incomplete poster uploads (`bitstream_weekly_media_cleanup_event`).
+- **Weekly Media Cleanup**: Automatic pruning of unattached orphaned files from incomplete composer uploads (`bitstream_weekly_media_cleanup_event`).
 
 ## 🔧 Technical Details
 
@@ -162,13 +181,6 @@ BitStream 3.0 consolidates all administrative panels into a single, clean **Sett
 - **WordPress**: 5.8 or higher
 - **PHP**: 7.4 or higher
 - **Font Awesome**: Recommended for icons (free version)
-
-### Architecture Highlights
-
-- Robust OOP architecture with namespaced classes (`BitStream_*`)
-- Security-first approach with nonces, capability checks, input sanitization, and output escaping
-- Strict SSRF protection on external URL requests
-- Performance optimizations via transient caching, conditional loading, and efficient AJAX endpoints
 
 ## 🤝 Contributing
 

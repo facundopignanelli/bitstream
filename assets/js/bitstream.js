@@ -40,6 +40,567 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 3000);
     }
 
+    const BITSTREAM_IMAGE_UPLOAD_MAX_DIMENSION = 2200;
+    const BITSTREAM_IMAGE_UPLOAD_MAX_BYTES = 2.5 * 1024 * 1024;
+    const BITSTREAM_IMAGE_UPLOAD_QUALITY = 0.86;
+    const BITSTREAM_CHUNKED_UPLOAD_THRESHOLD = 256 * 1024;
+    const BITSTREAM_UPLOAD_CHUNK_SIZE = 512 * 1024;
+
+    function getFileExtension(filename) {
+        const match = String(filename || '').toLowerCase().match(/\.([a-z0-9]+)$/);
+        return match ? match[1] : '';
+    }
+
+    function getUploadMimeType(file) {
+        if (file && file.type) {
+            return file.type;
+        }
+
+        const extension = getFileExtension(file && file.name);
+        if (['jpg', 'jpeg'].includes(extension)) return 'image/jpeg';
+        if (extension === 'png') return 'image/png';
+        if (extension === 'gif') return 'image/gif';
+        if (extension === 'webp') return 'image/webp';
+        if (extension === 'heic') return 'image/heic';
+        if (extension === 'heif') return 'image/heif';
+        if (extension === 'mp4') return 'video/mp4';
+        if (extension === 'mov') return 'video/quicktime';
+        if (extension === 'webm') return 'video/webm';
+
+        return '';
+    }
+
+    function canvasToBlob(canvas, mimeType, quality) {
+        return new Promise(resolve => {
+            canvas.toBlob(blob => resolve(blob), mimeType, quality);
+        });
+    }
+
+    async function loadImageFile(file) {
+        if (window.createImageBitmap) {
+            try {
+                return await createImageBitmap(file, { imageOrientation: 'from-image' });
+            } catch (error) {
+                // Fall back to an HTMLImageElement decode below.
+            }
+        }
+
+        return new Promise((resolve, reject) => {
+            const image = new Image();
+            const objectUrl = URL.createObjectURL(file);
+            image.onload = () => {
+                URL.revokeObjectURL(objectUrl);
+                resolve(image);
+            };
+            image.onerror = () => {
+                URL.revokeObjectURL(objectUrl);
+                reject(new Error('Could not read image.'));
+            };
+            image.src = objectUrl;
+        });
+    }
+
+    function getExistingAttachmentIds(targetInputId) {
+        if (!targetInputId) return [];
+        const inputId = targetInputId.endsWith('s') ? targetInputId : targetInputId + 's';
+        const input = document.getElementById(inputId) || document.querySelector('.' + inputId) || document.querySelector('[name="' + targetInputId.replace('_id', '_ids') + '"]');
+        if (!input || !input.value) return [];
+        return input.value.split(',').map(id => parseInt(id, 10)).filter(Boolean);
+    }
+
+    function getPreviewElement(targetPreviewId) {
+        if (typeof targetPreviewId === 'string') {
+            return document.getElementById(targetPreviewId) || document.querySelector(targetPreviewId);
+        }
+        return targetPreviewId;
+    }
+
+    function getExistingAttachments(previewEl) {
+        if (!previewEl || !previewEl.dataset.attachmentsJson) return [];
+        try {
+            return JSON.parse(previewEl.dataset.attachmentsJson);
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function updateAttachmentsList(previewEl, attachments) {
+        if (!previewEl) return;
+
+        const form = previewEl.closest('form, .bitstream-media-field, .bitstream-composer');
+        if (!form) return;
+
+        const targetInput = form.querySelector('.bs-edit-attachment-id') || form.querySelector('#bitstream-composer-attachment-id');
+        const targetInputs = form.querySelector('.bs-edit-attachment-ids') || form.querySelector('#bitstream-composer-attachment-ids');
+        const removeButton = form.querySelector('.bitstream-media-remove') || form.querySelector('.bitstream-composer-preview-remove[data-composer-remove="media"]');
+        const cropButton = form.querySelector('.bitstream-media-crop') || form.querySelector('.bitstream-composer-preview-edit[data-composer-edit="media"]');
+
+        if (attachments.length > 10) {
+            alert('You can attach up to 10 images or videos.');
+            attachments = attachments.slice(0, 10);
+        }
+
+        const firstId = attachments.length > 0 ? attachments[0].id : 0;
+        const allIds = attachments.map(item => item.id).join(',');
+
+        if (targetInput) {
+            targetInput.value = firstId > 0 ? String(firstId) : '';
+            targetInput.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        if (targetInputs) {
+            targetInputs.value = allIds;
+            targetInputs.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        const dropzone = previewEl.closest('.bitstream-media-dropzone');
+        if (dropzone) {
+            dropzone.classList.toggle('has-media', attachments.length > 0);
+        }
+
+        previewEl.dataset.attachmentsJson = JSON.stringify(attachments);
+        renderMultiplePreviews(previewEl, attachments);
+
+        if (removeButton) {
+            removeButton.classList.toggle('is-hidden', attachments.length === 0);
+        }
+        if (cropButton) {
+            const isSingleImage = attachments.length === 1 && attachments[0].mime && attachments[0].mime.startsWith('image/');
+            cropButton.classList.toggle('is-hidden', !isSingleImage);
+        }
+
+        const previewMedia = form.querySelector('.bitstream-composer-preview-media');
+        const previewArea = form.querySelector('.bitstream-composer-preview-area');
+        if (previewMedia && previewArea) {
+            previewMedia.hidden = attachments.length === 0;
+            const hasVisiblePreviews = Array.from(previewArea.children).some(child => !child.hidden);
+            previewArea.hidden = !hasVisiblePreviews;
+        }
+    }
+
+    function renderMultiplePreviews(previewEl, attachments) {
+        if (!previewEl) return;
+
+        if (!previewEl.dataset.clickBound) {
+            previewEl.dataset.clickBound = '1';
+            previewEl.addEventListener('click', (e) => {
+                const previewItem = e.target.closest('.bitstream-media-preview-item');
+                if (previewItem && !e.target.closest('.bitstream-media-preview-remove-item')) {
+                    e.stopPropagation();
+                    e.preventDefault();
+
+                    const grid = previewItem.closest('.bitstream-media-preview-grid');
+                    if (grid) {
+                        const allItems = Array.from(grid.querySelectorAll('.bitstream-media-preview-item'));
+                        const mediaItems = allItems.filter(item => item.querySelector('img, video'));
+                        if (!mediaItems.includes(previewItem)) return;
+
+                        const mediaList = mediaItems.map(item => {
+                            const el = item.querySelector('img, video');
+                            return {
+                                url: el.src || el.getAttribute('src'),
+                                mime: el.tagName.toLowerCase() === 'video' ? 'video/mp4' : 'image/jpeg'
+                            };
+                        });
+
+                        const clickIndex = mediaItems.indexOf(previewItem);
+                        openLightbox(mediaList, clickIndex);
+                    }
+                }
+            });
+        }
+
+        if (attachments.length === 0) {
+            previewEl.innerHTML = '';
+            previewEl.classList.remove('has-multiple');
+            return;
+        }
+
+        previewEl.innerHTML = '';
+        previewEl.classList.add('has-multiple');
+
+        const grid = document.createElement('div');
+        grid.className = 'bitstream-media-preview-grid';
+
+        const videoElementsToLoad = [];
+
+        attachments.forEach((attachment, index) => {
+            const item = document.createElement('div');
+            item.className = 'bitstream-media-preview-item';
+            item.dataset.index = index;
+            item.dataset.attachmentId = attachment.id;
+
+            const mime = attachment.mime || '';
+            const url = attachment.preview_url || attachment.url || '';
+
+            if (mime.startsWith('image/')) {
+                const img = document.createElement('img');
+                img.src = url;
+                img.alt = '';
+                item.appendChild(img);
+            } else if (mime.startsWith('video/')) {
+                item.classList.add('is-video-item'); // dark placeholder bg until frame loads
+                const video = document.createElement('video');
+                video.preload = 'auto';
+                video.muted = true;
+                video.playsInline = true;
+                video.setAttribute('playsinline', '');
+                
+                // Seek to first frame so mobile browsers paint a thumbnail
+                video.addEventListener('loadedmetadata', function onMeta() {
+                    video.removeEventListener('loadedmetadata', onMeta);
+                    video.currentTime = 0.001;
+                });
+                
+                item.appendChild(video);
+                
+                // Play-icon overlay so the thumbnail is recognisable on mobile
+                const playOverlay = document.createElement('div');
+                playOverlay.className = 'bitstream-media-preview-video-overlay';
+                playOverlay.setAttribute('aria-hidden', 'true');
+                playOverlay.innerHTML = '<i class="fa-solid fa-circle-play"></i>';
+                item.appendChild(playOverlay);
+
+                videoElementsToLoad.push({ el: video, src: url });
+            } else {
+                const fallback = document.createElement('div');
+                fallback.className = 'bitstream-media-fallback-text';
+                fallback.textContent = attachment.filename || 'Media';
+                item.appendChild(fallback);
+            }
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'bitstream-media-preview-remove-item';
+            removeBtn.innerHTML = '&times;';
+            removeBtn.title = 'Remove';
+            removeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                const updated = attachments.filter((_, i) => i !== index);
+                updateAttachmentsList(previewEl, updated);
+            });
+
+            item.appendChild(removeBtn);
+            grid.appendChild(item);
+        });
+
+        previewEl.appendChild(grid);
+
+        // Load videos after elements are connected to the DOM
+        videoElementsToLoad.forEach(item => {
+            item.el.src = item.src;
+            item.el.load();
+        });
+    }
+
+    async function uploadMultipleFiles(files, targetInputId, targetPreviewId, options = {}) {
+        const setStatusFn = options.setStatus || console.log;
+        setStatusFn('', false);
+        
+        if (!bitstream_ajax || !bitstream_ajax.ajax_url || !bitstream_ajax.media_upload_nonce) {
+            setStatusFn('Media upload is unavailable.', true);
+            return;
+        }
+
+        const isRebit = targetInputId && (targetInputId.indexOf('rebit') !== -1);
+        
+        const validFiles = Array.from(files).filter(file => {
+            const mimeType = getUploadMimeType(file);
+            return mimeType.startsWith('image/') || mimeType.startsWith('video/');
+        });
+
+        if (validFiles.length === 0) {
+            setStatusFn('Unsupported file format. Only images and videos are allowed.', true);
+            return;
+        }
+
+        const existingIds = getExistingAttachmentIds(targetInputId);
+        const currentCount = existingIds.length;
+        if (!isRebit && currentCount + validFiles.length > 10) {
+            setStatusFn('You can attach up to 10 images or videos.', true);
+            alert('You can attach up to 10 images or videos.');
+            return;
+        }
+
+        const progressContainer = document.querySelector(`[data-progress-bar="${targetInputId}"]`);
+        const progressBar = progressContainer ? progressContainer.querySelector('.bitstream-media-progress-bar') : null;
+        const progressText = progressContainer ? progressContainer.querySelector('.bitstream-media-progress-text') : null;
+
+        const showProgress = () => {
+            if (!progressContainer) return;
+            progressContainer.classList.remove('is-hidden');
+            if (progressBar) progressBar.style.width = '0%';
+            if (progressText) progressText.textContent = 'Uploading...';
+        };
+
+        const updateProgress = (percent, text) => {
+            if (progressBar) progressBar.style.width = percent + '%';
+            if (progressText && text) progressText.textContent = text;
+        };
+
+        const hideProgress = () => {
+            if (progressContainer) progressContainer.classList.add('is-hidden');
+        };
+
+        showProgress();
+
+        try {
+            const loadedAttachments = [];
+            for (let i = 0; i < validFiles.length; i++) {
+                const file = validFiles[i];
+                updateProgress(5 + (i / validFiles.length) * 90, `Uploading file ${i+1}/${validFiles.length}...`);
+                
+                const uploadFile = await prepareMediaFileForUpload(file);
+                const media = await uploadMediaRequest(uploadFile, (percent, text) => {
+                    const subPercent = 5 + ((i + percent / 100) / validFiles.length) * 90;
+                    updateProgress(subPercent, `Uploading file ${i+1}/${validFiles.length} (${percent}%)...`);
+                });
+
+                loadedAttachments.push({
+                    id: media.id,
+                    url: media.url,
+                    preview_url: media.preview_url || media.url,
+                    mime: media.mime,
+                    filename: file.name
+                });
+            }
+
+            const previewEl = getPreviewElement(targetPreviewId);
+            const existingAttachments = getExistingAttachments(previewEl);
+            let finalAttachments = [];
+            if (isRebit) {
+                finalAttachments = loadedAttachments.slice(0, 1);
+            } else {
+                finalAttachments = [...existingAttachments, ...loadedAttachments].slice(0, 10);
+            }
+
+            updateAttachmentsList(previewEl, finalAttachments);
+            setStatusFn('', false);
+            setTimeout(() => {
+                hideProgress();
+            }, 1000);
+        } catch (error) {
+            hideProgress();
+            setStatusFn(error.message || 'Upload failed.', true);
+        }
+    }
+
+    async function prepareMediaFileForUpload(file) {
+        const mimeType = getUploadMimeType(file);
+        if (!mimeType.startsWith('image/') || mimeType === 'image/gif') {
+            return file;
+        }
+
+        if (file.size <= BITSTREAM_IMAGE_UPLOAD_MAX_BYTES && !['image/heic', 'image/heif'].includes(mimeType)) {
+            return file;
+        }
+
+        try {
+            const image = await loadImageFile(file);
+            const sourceWidth = image.naturalWidth || image.width;
+            const sourceHeight = image.naturalHeight || image.height;
+            const scale = Math.min(1, BITSTREAM_IMAGE_UPLOAD_MAX_DIMENSION / Math.max(sourceWidth, sourceHeight));
+            const targetWidth = Math.max(1, Math.round(sourceWidth * scale));
+            const targetHeight = Math.max(1, Math.round(sourceHeight * scale));
+
+            const canvas = document.createElement('canvas');
+            canvas.width = targetWidth;
+            canvas.height = targetHeight;
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                return file;
+            }
+
+            ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
+            if (typeof image.close === 'function') {
+                image.close();
+            }
+
+            const outputType = mimeType === 'image/png' && file.size <= (6 * 1024 * 1024) ? 'image/png' : 'image/jpeg';
+            const blob = await canvasToBlob(canvas, outputType, outputType === 'image/jpeg' ? BITSTREAM_IMAGE_UPLOAD_QUALITY : undefined);
+            if (!blob || blob.size <= 0 || blob.size >= file.size) {
+                return file;
+            }
+
+            const baseName = String(file.name || 'mobile-upload').replace(/\.[^.]+$/, '');
+            const extension = outputType === 'image/png' ? 'png' : 'jpg';
+            return new File([blob], baseName + '.' + extension, {
+                type: outputType,
+                lastModified: Date.now()
+            });
+        } catch (error) {
+            return file;
+        }
+    }
+
+    function sendAjaxFormData(formData, onProgress) {
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', bitstream_ajax.ajax_url, true);
+            xhr.withCredentials = true;
+
+            if (typeof onProgress === 'function') {
+                xhr.upload.addEventListener('progress', onProgress);
+            }
+
+            xhr.onreadystatechange = () => {
+                if (xhr.readyState !== 4) {
+                    return;
+                }
+
+                if (xhr.status < 200 || xhr.status >= 300) {
+                    reject(new Error('Upload failed.'));
+                    return;
+                }
+
+                try {
+                    const response = JSON.parse(xhr.responseText || '{}');
+                    if (!response.success) {
+                        reject(new Error(response.data || 'Upload failed.'));
+                        return;
+                    }
+                    resolve(response.data || {});
+                } catch (error) {
+                    reject(new Error('Upload failed.'));
+                }
+            };
+
+            xhr.onerror = () => reject(new Error('Upload failed.'));
+            xhr.send(formData);
+        });
+    }
+
+    function createUploadId() {
+        if (window.crypto && crypto.randomUUID) {
+            return crypto.randomUUID();
+        }
+
+        return 'upload-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+    }
+
+    async function uploadMediaRequest(file, updateProgress) {
+        if (file.size <= BITSTREAM_CHUNKED_UPLOAD_THRESHOLD) {
+            const formData = new FormData();
+            formData.append('action', 'bitstream_upload_media');
+            formData.append('nonce', bitstream_ajax.media_upload_nonce);
+            formData.append('media', file);
+
+            return sendAjaxFormData(formData, event => {
+                if (!event.lengthComputable || typeof updateProgress !== 'function') {
+                    return;
+                }
+                const percent = Math.max(1, Math.round((event.loaded / event.total) * 100));
+                updateProgress(percent, 'Uploading... ' + percent + '%');
+            });
+        }
+
+        const totalChunks = Math.ceil(file.size / BITSTREAM_UPLOAD_CHUNK_SIZE);
+        const uploadId = createUploadId();
+        const mimeType = getUploadMimeType(file);
+
+        for (let index = 0; index < totalChunks; index++) {
+            const start = index * BITSTREAM_UPLOAD_CHUNK_SIZE;
+            const end = Math.min(file.size, start + BITSTREAM_UPLOAD_CHUNK_SIZE);
+            const chunk = file.slice(start, end);
+            const formData = new FormData();
+            formData.append('action', 'bitstream_upload_media_chunk');
+            formData.append('nonce', bitstream_ajax.media_upload_nonce);
+            formData.append('upload_id', uploadId);
+            formData.append('chunk_index', String(index));
+            formData.append('total_chunks', String(totalChunks));
+            formData.append('filename', file.name || 'bitstream-upload');
+            formData.append('mime', mimeType);
+            formData.append('chunk', chunk, (file.name || 'bitstream-upload') + '.part');
+
+            const chunkBasePercent = Math.round((index / totalChunks) * 100);
+            const response = await sendAjaxFormData(formData, event => {
+                if (!event.lengthComputable || typeof updateProgress !== 'function') {
+                    return;
+                }
+                const chunkPercent = event.loaded / event.total;
+                const overallPercent = Math.max(1, Math.min(99, Math.round(((index + chunkPercent) / totalChunks) * 100)));
+                updateProgress(overallPercent, 'Uploading... ' + overallPercent + '%');
+            });
+
+            if (response && !response.partial) {
+                if (typeof updateProgress === 'function') {
+                    updateProgress(100, 'Upload complete!');
+                }
+                return response;
+            }
+        }
+
+        throw new Error('Upload did not finish.');
+    }
+
+    function showDeleteConfirmation(message, onConfirm) {
+        let confirmModal = document.querySelector('.bitstream-composer-modal-delete-confirm');
+        if (!confirmModal) {
+            confirmModal = document.createElement('div');
+            confirmModal.className = 'bitstream-composer-modal bitstream-composer-modal-delete-confirm';
+            confirmModal.hidden = true;
+            confirmModal.innerHTML = `
+                <div class="bitstream-composer-modal-backdrop" data-composer-modal-close="delete-confirm"></div>
+                <div class="bitstream-composer-modal-dialog" role="dialog" aria-modal="true" aria-label="Confirm Delete">
+                    <header class="bitstream-composer-modal-header">
+                        <h3>Confirm Delete</h3>
+                        <button type="button" class="bitstream-composer-modal-close" data-composer-modal-close="delete-confirm" aria-label="Close">
+                            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                        </button>
+                    </header>
+                    <div class="bitstream-composer-modal-body">
+                        <p class="bitstream-delete-confirm-message" style="margin: 0; font-size: 0.95rem; color: #4a5568; line-height: 1.5;"></p>
+                    </div>
+                    <footer class="bitstream-composer-modal-footer">
+                        <button type="button" class="bitstream-composer-modal-cancel" data-composer-modal-close="delete-confirm">Cancel</button>
+                        <button type="button" class="bitstream-composer-modal-confirm bitstream-composer-delete-confirm-btn is-delete">Delete</button>
+                    </footer>
+                </div>
+            `;
+            document.body.appendChild(confirmModal);
+
+            const closeModalFunc = () => {
+                confirmModal.hidden = true;
+                document.body.style.overflow = '';
+            };
+
+            // Bind close events
+            confirmModal.querySelectorAll('[data-composer-modal-close="delete-confirm"]').forEach(el => {
+                el.addEventListener('click', closeModalFunc);
+            });
+
+            // ESC key support
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && !confirmModal.hidden) {
+                    closeModalFunc();
+                }
+            });
+        }
+
+        // Set the message
+        const msgEl = confirmModal.querySelector('.bitstream-delete-confirm-message');
+        if (msgEl) {
+            msgEl.textContent = message;
+        }
+
+        // Bind confirm button
+        const confirmBtn = confirmModal.querySelector('.bitstream-composer-delete-confirm-btn');
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+        newConfirmBtn.addEventListener('click', () => {
+            confirmModal.hidden = true;
+            document.body.style.overflow = '';
+            onConfirm();
+        });
+
+        // Show modal and disable scroll
+        confirmModal.hidden = false;
+        document.body.style.overflow = 'hidden';
+    }
+    window.showDeleteConfirmation = showDeleteConfirmation;
+
     function applyMediaDeterrents(scope) {
         const root = scope || document;
         root.querySelectorAll('video, audio').forEach(mediaEl => {
@@ -53,7 +614,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     document.addEventListener('contextmenu', (event) => {
-        const container = event.target.closest('.bitstream-feed, .bitstream-poster');
+        const container = event.target.closest('.bitstream-feed, .bitstream-composer');
         if (!container) {
             return;
         }
@@ -107,15 +668,145 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Continue with the rest of the initialization...
-    function initBitstreamPoster() {
-        const posterRoot = document.querySelector('.bitstream-poster');
-        if (!posterRoot) {
+    function renderMediaPreview(previewEl, attachment) {
+        if (!previewEl) {
             return;
         }
 
-        const statusEl = posterRoot.querySelector('.bitstream-poster-status');
-        const submitNonce = posterRoot.dataset.submitNonce || '';
+        const dropzone = previewEl.closest('.bitstream-media-dropzone');
+        if (dropzone) {
+            dropzone.classList.toggle('has-media', !!attachment);
+        }
+
+        if (!attachment) {
+            previewEl.innerHTML = '';
+            previewEl.removeAttribute('data-attachment-id');
+            previewEl.removeAttribute('data-attachment-url');
+            previewEl.removeAttribute('data-attachment-mime');
+            return;
+        }
+
+        const mimeType = attachment.mime || '';
+        const previewUrl = attachment.preview_url || (attachment.sizes && ((attachment.sizes.large && attachment.sizes.large.url) || (attachment.sizes.medium_large && attachment.sizes.medium_large.url) || (attachment.sizes.medium && attachment.sizes.medium.url))) || attachment.url || '';
+
+        if (attachment.id) {
+            previewEl.dataset.attachmentId = attachment.id;
+        }
+        if (previewUrl) {
+            previewEl.dataset.attachmentUrl = previewUrl;
+        }
+        if (mimeType) {
+            previewEl.dataset.attachmentMime = mimeType;
+        }
+
+        const buildAudioMetaBlock = (item) => {
+            const meta = item.audio_meta || item.meta || (item.media_details && item.media_details.meta) || {};
+            const title = meta.title || item.title || item.filename || 'Audio';
+            const artist = meta.artist || '';
+            const album = meta.album || '';
+
+            if (!title && !artist && !album) {
+                return null;
+            }
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'bitstream-audio-meta';
+
+            if (title) {
+                const titleEl = document.createElement('div');
+                titleEl.className = 'bitstream-audio-title';
+                titleEl.textContent = title;
+                wrapper.appendChild(titleEl);
+            }
+
+            if (artist) {
+                const artistEl = document.createElement('div');
+                artistEl.className = 'bitstream-audio-artist';
+                artistEl.textContent = artist;
+                wrapper.appendChild(artistEl);
+            }
+
+            if (album) {
+                const albumEl = document.createElement('div');
+                albumEl.className = 'bitstream-audio-album';
+                albumEl.textContent = album;
+                wrapper.appendChild(albumEl);
+            }
+
+            return wrapper;
+        };
+
+        if (mimeType.startsWith('image/')) {
+            previewEl.innerHTML = '<img src="' + previewUrl + '" alt="">';
+            return;
+        }
+
+        if (mimeType.startsWith('video/')) {
+            const video = document.createElement('video');
+            video.src = previewUrl;
+            video.controls = true;
+            video.setAttribute('controlsList', 'nodownload noplaybackrate');
+            video.setAttribute('disablepictureinpicture', '');
+            video.disablePictureInPicture = true;
+            previewEl.innerHTML = '';
+            previewEl.appendChild(video);
+            return;
+        }
+
+        if (mimeType.startsWith('audio/')) {
+            const audio = document.createElement('audio');
+            audio.src = previewUrl;
+            audio.controls = true;
+            audio.setAttribute('controlsList', 'nodownload noplaybackrate');
+            const meta = attachment.audio_meta || attachment.meta || (attachment.media_details && attachment.media_details.meta) || {};
+            const artwork = meta.artwork || '';
+            const embed = document.createElement('div');
+            embed.className = 'bitstream-audio-embed';
+
+            if (artwork) {
+                const artworkWrap = document.createElement('div');
+                artworkWrap.className = 'bitstream-audio-artwork-wrap';
+                const img = document.createElement('img');
+                img.className = 'bitstream-audio-artwork';
+                img.src = artwork;
+                img.alt = '';
+                artworkWrap.appendChild(img);
+                embed.appendChild(artworkWrap);
+            } else {
+                embed.classList.add('no-artwork');
+            }
+
+            const player = document.createElement('div');
+            player.className = 'bitstream-audio-player';
+            player.appendChild(audio);
+
+            const metaBlock = buildAudioMetaBlock(attachment);
+            if (metaBlock) {
+                embed.appendChild(metaBlock);
+            }
+
+            embed.appendChild(player);
+
+            previewEl.innerHTML = '';
+            previewEl.appendChild(embed);
+            applyMediaDeterrents(previewEl);
+            return;
+        }
+
+        previewEl.innerHTML = '<p>Selected: ' + (attachment.filename || attachment.title || 'media') + '</p>';
+    }
+
+    // Expose media preview renderer globally so it's accessible outside DOMContentLoaded scope
+
+    // Continue with the rest of the initialization...
+    function initBitstreamPoster() {
+        const composerRoot = document.querySelector('.bitstream-composer');
+        if (!composerRoot) {
+            return;
+        }
+
+        const statusEl = composerRoot.querySelector('.bitstream-composer-status');
+        const submitNonce = composerRoot.dataset.submitNonce || '';
         let refreshRebitPreview = () => { };
         let refreshRebitEditorImagePreview = () => { };
 
@@ -127,6 +818,36 @@ document.addEventListener('DOMContentLoaded', function () {
             statusEl.textContent = message;
             statusEl.classList.toggle('is-error', isError);
             statusEl.classList.toggle('is-success', !isError && !!message);
+
+            // Locate active open modal
+            const activeModal = document.querySelector('.bitstream-composer-modal:not([hidden]), .bitstream-cropper-modal:not([hidden]), .bitstream-rebit-editor-modal:not([hidden])');
+            if (activeModal) {
+                const bodyEl = activeModal.querySelector('.bitstream-composer-modal-body, .bitstream-cropper-body, .bitstream-rebit-editor-body');
+                if (bodyEl) {
+                    let modalStatusEl = bodyEl.querySelector('.bitstream-modal-status');
+                    if (!modalStatusEl) {
+                        modalStatusEl = document.createElement('div');
+                        modalStatusEl.className = 'bitstream-modal-status bitstream-composer-status';
+                        modalStatusEl.setAttribute('aria-live', 'polite');
+                        bodyEl.insertBefore(modalStatusEl, bodyEl.firstChild);
+                    }
+                    modalStatusEl.textContent = message;
+                    modalStatusEl.classList.toggle('is-error', isError);
+                    modalStatusEl.classList.toggle('is-success', !isError && !!message);
+
+                    if (!message) {
+                        modalStatusEl.textContent = '';
+                        modalStatusEl.className = 'bitstream-modal-status bitstream-composer-status';
+                    }
+                }
+            }
+
+            if (!message) {
+                document.querySelectorAll('.bitstream-modal-status').forEach(el => {
+                    el.textContent = '';
+                    el.className = 'bitstream-modal-status bitstream-composer-status';
+                });
+            }
         }
 
         function sanitizeInlinePreviewMarkup(markup) {
@@ -159,12 +880,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            const posterType = form.dataset.posterType || 'bit';
+            const composerType = form.dataset.composerType || 'bit';
             let previewRoot = null;
             let previewCard = null;
 
-            if (posterType === 'rebit') {
-                previewRoot = posterRoot.querySelector('#bitstream-rebit-live-preview');
+            if (composerType === 'rebit') {
+                previewRoot = composerRoot.querySelector('#bitstream-rebit-live-preview');
                 previewCard = previewRoot ? previewRoot.querySelector('.bitstream-rebit-live-preview-card') : null;
             } else {
                 previewRoot = form.querySelector('.bitstream-bit-live-preview');
@@ -172,7 +893,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     previewRoot = document.createElement('div');
                     previewRoot.className = 'bitstream-rebit-live-preview bitstream-bit-live-preview';
                     previewRoot.innerHTML = '<p class="bitstream-rebit-live-preview-label"><strong>Preview</strong></p><div class="bitstream-rebit-live-preview-card"></div>';
-                    const submitButton = form.querySelector('.bitstream-poster-submit');
+                    const submitButton = form.querySelector('.bitstream-composer-submit');
                     if (submitButton && submitButton.parentNode) {
                         submitButton.parentNode.insertBefore(previewRoot, submitButton);
                     } else {
@@ -191,8 +912,8 @@ document.addEventListener('DOMContentLoaded', function () {
             applyMediaDeterrents(previewCard);
         }
 
-        const tabButtons = posterRoot.querySelectorAll('.bitstream-poster-tab');
-        const tabPanels = posterRoot.querySelectorAll('.bitstream-poster-panel');
+        const tabButtons = composerRoot.querySelectorAll('.bitstream-composer-tab');
+        const tabPanels = composerRoot.querySelectorAll('.bitstream-composer-panel');
 
         tabButtons.forEach(button => {
             button.addEventListener('click', () => {
@@ -206,7 +927,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Navigate to the tab via URL so the page reloads with
                 // fresh server-rendered content (up-to-date drafts, scheduled, etc.)
                 const url = new URL(window.location.href);
-                url.searchParams.set('poster_tab', selectedTab);
+                url.searchParams.set('composer_tab', selectedTab);
                 // Strip any stale highlight params when switching tabs
                 url.searchParams.delete('highlight_draft');
                 url.searchParams.delete('highlight_scheduled');
@@ -214,11 +935,11 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
 
-        const scheduleToggles = posterRoot.querySelectorAll('[data-schedule-toggle]');
+        const scheduleToggles = composerRoot.querySelectorAll('[data-schedule-toggle]');
         scheduleToggles.forEach(toggle => {
             const key = toggle.dataset.scheduleToggle;
-            const datetimeInput = posterRoot.querySelector('[data-schedule-input="' + key + '"]');
-            const hiddenInput = posterRoot.querySelector('[data-schedule-hidden="' + key + '"]');
+            const datetimeInput = composerRoot.querySelector('[data-schedule-input="' + key + '"]');
+            const hiddenInput = composerRoot.querySelector('[data-schedule-hidden="' + key + '"]');
 
             if (!datetimeInput) {
                 return;
@@ -253,7 +974,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // Scheduled filter — scoped to the scheduled panel only
-        const scheduledPanel = posterRoot.querySelector('#bitstream-poster-panel-scheduled');
+
+        const scheduledPanel = composerRoot.querySelector('#bitstream-composer-panel-scheduled');
         if (scheduledPanel) {
             const scheduledFilterButtons = scheduledPanel.querySelectorAll('.bitstream-scheduled-filter-btn');
             const scheduledList = scheduledPanel.querySelector('.bitstream-scheduled-list');
@@ -280,7 +1002,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // Drafts filter — scoped to the drafts panel only
-        const draftsPanel = posterRoot.querySelector('#bitstream-poster-panel-drafts');
+        const draftsPanel = composerRoot.querySelector('#bitstream-composer-panel-drafts');
         if (draftsPanel) {
             const draftsFilterButtons = draftsPanel.querySelectorAll('.bitstream-drafts-filter-btn');
             const draftsList = draftsPanel.querySelector('.bitstream-drafts-list');
@@ -306,7 +1028,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
-        posterRoot.addEventListener('click', (event) => {
+        composerRoot.addEventListener('click', (event) => {
             const deleteButton = event.target.closest('.bitstream-scheduled-delete');
             if (!deleteButton) {
                 return;
@@ -329,209 +1051,78 @@ document.addEventListener('DOMContentLoaded', function () {
                 ? 'Delete this draft?'
                 : 'Delete this scheduled Bit before publication?';
 
-            if (!window.confirm(confirmMsg)) {
-                return;
-            }
+            showDeleteConfirmation(confirmMsg, () => {
+                deleteButton.disabled = true;
+                setStatus(isDraft ? 'Deleting draft...' : 'Deleting scheduled Bit...');
 
-            deleteButton.disabled = true;
-            setStatus(isDraft ? 'Deleting draft...' : 'Deleting scheduled Bit...');
+                const payload = new FormData();
+                payload.append('action', 'bitstream_delete_post');
+                payload.append('post_id', String(postId));
+                payload.append('nonce', bitstream_ajax.delete_post_nonce);
 
-            const payload = new FormData();
-            payload.append('action', 'bitstream_delete_post');
-            payload.append('post_id', String(postId));
-            payload.append('nonce', bitstream_ajax.delete_post_nonce);
-
-            fetch(bitstream_ajax.ajax_url, {
-                method: 'POST',
-                credentials: 'same-origin',
-                body: payload
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.success) {
-                        throw new Error(data.data || 'Could not delete.');
-                    }
-
-                    const row = deleteButton.closest('.bitstream-scheduled-item');
-                    if (row) {
-                        row.remove();
-                    }
-
-                    // Check both scheduled and drafts lists for empty state
-                    const parentList = isDraft
-                        ? posterRoot.querySelector('.bitstream-drafts-list')
-                        : posterRoot.querySelector('.bitstream-scheduled-list');
-                    const remainingRows = parentList ? parentList.querySelectorAll('.bitstream-scheduled-item') : [];
-                    if (parentList && remainingRows.length === 0) {
-                        parentList.innerHTML = isDraft
-                            ? '<p>No draft Bits or Rebits yet.</p>'
-                            : '<p>No scheduled Bits or Rebits yet.</p>';
-                    }
-
-                    setStatus(isDraft ? 'Draft deleted.' : 'Scheduled Bit deleted.');
+                fetch(bitstream_ajax.ajax_url, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    body: payload
                 })
-                .catch(error => {
-                    setStatus(error.message || 'Could not delete.', true);
-                    deleteButton.disabled = false;
-                });
+                    .then(response => response.json())
+                    .then(data => {
+                        if (!data.success) {
+                            throw new Error(data.data || 'Could not delete.');
+                        }
+
+                        const row = deleteButton.closest('.bitstream-scheduled-item');
+                        if (row) {
+                            row.remove();
+                        }
+
+                        // Check both scheduled and drafts lists for empty state
+                        const parentList = isDraft
+                            ? composerRoot.querySelector('.bitstream-drafts-list')
+                            : composerRoot.querySelector('.bitstream-scheduled-list');
+                        const remainingRows = parentList ? parentList.querySelectorAll('.bitstream-scheduled-item') : [];
+                        if (parentList && remainingRows.length === 0) {
+                            parentList.innerHTML = isDraft
+                                ? '<p>No draft Bits or Rebits yet.</p>'
+                                : '<p>No scheduled Bits or Rebits yet.</p>';
+                        }
+
+                        setStatus(isDraft ? 'Draft deleted.' : 'Scheduled Bit deleted.');
+                    })
+                    .catch(error => {
+                        setStatus(error.message || 'Could not delete.', true);
+                        deleteButton.disabled = false;
+                    });
+            });
         });
 
-
-
-        function renderMediaPreview(previewEl, attachment) {
-            if (!previewEl) {
-                return;
-            }
-
-            const dropzone = previewEl.closest('.bitstream-media-dropzone');
-            if (dropzone) {
-                dropzone.classList.toggle('has-media', !!attachment);
-            }
-
-            if (!attachment) {
-                previewEl.innerHTML = '';
-                previewEl.removeAttribute('data-attachment-id');
-                previewEl.removeAttribute('data-attachment-url');
-                previewEl.removeAttribute('data-attachment-mime');
-                return;
-            }
-
-            const mimeType = attachment.mime || '';
-            const previewUrl = attachment.preview_url || (attachment.sizes && attachment.sizes.medium && attachment.sizes.medium.url) || attachment.url || '';
-
-            if (attachment.id) {
-                previewEl.dataset.attachmentId = attachment.id;
-            }
-            if (previewUrl) {
-                previewEl.dataset.attachmentUrl = previewUrl;
-            }
-            if (mimeType) {
-                previewEl.dataset.attachmentMime = mimeType;
-            }
-
-            const buildAudioMetaBlock = (item) => {
-                const meta = item.audio_meta || item.meta || (item.media_details && item.media_details.meta) || {};
-                const title = meta.title || item.title || item.filename || 'Audio';
-                const artist = meta.artist || '';
-                const album = meta.album || '';
-
-                if (!title && !artist && !album) {
-                    return null;
-                }
-
-                const wrapper = document.createElement('div');
-                wrapper.className = 'bitstream-audio-meta';
-
-                if (title) {
-                    const titleEl = document.createElement('div');
-                    titleEl.className = 'bitstream-audio-title';
-                    titleEl.textContent = title;
-                    wrapper.appendChild(titleEl);
-                }
-
-                if (artist) {
-                    const artistEl = document.createElement('div');
-                    artistEl.className = 'bitstream-audio-artist';
-                    artistEl.textContent = artist;
-                    wrapper.appendChild(artistEl);
-                }
-
-                if (album) {
-                    const albumEl = document.createElement('div');
-                    albumEl.className = 'bitstream-audio-album';
-                    albumEl.textContent = album;
-                    wrapper.appendChild(albumEl);
-                }
-
-                return wrapper;
-            };
-
-            if (mimeType.startsWith('image/')) {
-                previewEl.innerHTML = '<img src="' + previewUrl + '" alt="">';
-                return;
-            }
-
-            if (mimeType.startsWith('video/')) {
-                const video = document.createElement('video');
-                video.src = previewUrl;
-                video.controls = true;
-                video.setAttribute('controlsList', 'nodownload noplaybackrate');
-                video.setAttribute('disablepictureinpicture', '');
-                video.disablePictureInPicture = true;
-                previewEl.innerHTML = '';
-                previewEl.appendChild(video);
-                return;
-            }
-
-            if (mimeType.startsWith('audio/')) {
-                const audio = document.createElement('audio');
-                audio.src = previewUrl;
-                audio.controls = true;
-                audio.setAttribute('controlsList', 'nodownload noplaybackrate');
-                const meta = attachment.audio_meta || attachment.meta || (attachment.media_details && attachment.media_details.meta) || {};
-                const artwork = meta.artwork || '';
-                const embed = document.createElement('div');
-                embed.className = 'bitstream-audio-embed';
-
-                if (artwork) {
-                    const artworkWrap = document.createElement('div');
-                    artworkWrap.className = 'bitstream-audio-artwork-wrap';
-                    const img = document.createElement('img');
-                    img.className = 'bitstream-audio-artwork';
-                    img.src = artwork;
-                    img.alt = '';
-                    artworkWrap.appendChild(img);
-                    embed.appendChild(artworkWrap);
-                } else {
-                    embed.classList.add('no-artwork');
-                }
-
-                const player = document.createElement('div');
-                player.className = 'bitstream-audio-player';
-                player.appendChild(audio);
-
-                const metaBlock = buildAudioMetaBlock(attachment);
-                if (metaBlock) {
-                    embed.appendChild(metaBlock);
-                }
-
-                embed.appendChild(player);
-
-                previewEl.innerHTML = '';
-                previewEl.appendChild(embed);
-                applyMediaDeterrents(previewEl);
-                return;
-            }
-
-            previewEl.innerHTML = '<p>Selected: ' + (attachment.filename || attachment.title || 'media') + '</p>';
-        }
-
         function bindMediaButtons() {
-            const removeButtons = posterRoot.querySelectorAll('.bitstream-media-remove');
-            const cropLinks = posterRoot.querySelectorAll('.bitstream-media-crop');
-            const audioTagLinks = posterRoot.querySelectorAll('.bitstream-media-audio-tags');
-            const pasteButtons = posterRoot.querySelectorAll('.bitstream-media-paste');
-            const dropzones = posterRoot.querySelectorAll('.bitstream-media-dropzone');
-            const cropperModal = posterRoot.querySelector('.bitstream-cropper-modal');
+            const removeButtons = composerRoot.querySelectorAll('.bitstream-media-remove');
+            const cropLinks = composerRoot.querySelectorAll('.bitstream-media-crop');
+            const audioTagLinks = composerRoot.querySelectorAll('.bitstream-media-audio-tags');
+            const pasteButtons = composerRoot.querySelectorAll('.bitstream-media-paste');
+            const libraryButtons = composerRoot.querySelectorAll('.bitstream-media-library');
+            const dropzones = composerRoot.querySelectorAll('.bitstream-media-dropzone');
+            const cropperModal = composerRoot.querySelector('.bitstream-cropper-modal');
             const cropperImage = cropperModal ? cropperModal.querySelector('.bitstream-cropper-image') : null;
             const cropperSelection = cropperModal ? cropperModal.querySelector('.bitstream-cropper-selection') : null;
             const cropperStage = cropperModal ? cropperModal.querySelector('.bitstream-cropper-stage') : null;
             const cropperApply = cropperModal ? cropperModal.querySelector('.bitstream-cropper-apply') : null;
             const cropperSizeLabel = cropperModal ? cropperModal.querySelector('.bitstream-cropper-size') : null;
             const cropperCloseButtons = cropperModal ? cropperModal.querySelectorAll('[data-cropper-close="true"]') : [];
-            const audioTagsModal = posterRoot.querySelector('.bitstream-audio-tags-modal');
+            const audioTagsModal = composerRoot.querySelector('.bitstream-audio-tags-modal');
             const audioTagsCloseButtons = audioTagsModal ? audioTagsModal.querySelectorAll('[data-audio-tags-close="true"]') : [];
             const audioTagsSelectButton = audioTagsModal ? audioTagsModal.querySelector('.bitstream-audio-tags-select') : null;
             const audioTagsClearButton = audioTagsModal ? audioTagsModal.querySelector('.bitstream-audio-tags-clear') : null;
             const audioTagsSaveButton = audioTagsModal ? audioTagsModal.querySelector('.bitstream-audio-tags-save') : null;
             const audioTagsPreview = audioTagsModal ? audioTagsModal.querySelector('.bitstream-audio-tags-preview') : null;
             const audioTagInputs = audioTagsModal ? audioTagsModal.querySelectorAll('.bitstream-audio-tags-input') : [];
-            const rebitEditorImagePreview = posterRoot.querySelector('.bitstream-rebit-editor-image-preview');
-            const rebitEditorImageSelectButton = posterRoot.querySelector('.bitstream-rebit-editor-image-select');
-            const rebitEditorImageCropButton = posterRoot.querySelector('.bitstream-rebit-editor-image-crop');
-            const rebitEditorImageClearButton = posterRoot.querySelector('.bitstream-rebit-editor-image-clear');
-            const rebitOgImageInput = posterRoot.querySelector('#bitstream-rebit-og-image');
-            const rebitOgImageRemovedInput = posterRoot.querySelector('#bitstream-rebit-og-image-removed');
+            const rebitEditorImagePreview = composerRoot.querySelector('.bitstream-rebit-editor-image-preview');
+            const rebitEditorImageSelectButton = composerRoot.querySelector('.bitstream-rebit-editor-image-select');
+            const rebitEditorImageCropButton = composerRoot.querySelector('.bitstream-rebit-editor-image-crop');
+            const rebitEditorImageClearButton = composerRoot.querySelector('.bitstream-rebit-editor-image-clear');
+            const rebitOgImageInput = composerRoot.querySelector('#bitstream-rebit-og-image');
+            const rebitOgImageRemovedInput = composerRoot.querySelector('#bitstream-rebit-og-image-removed');
             let audioTagsTargetInputId = '';
             let audioTagsTargetPreviewId = '';
             let audioTagsArtworkId = 0;
@@ -541,7 +1132,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             function setRemoveVisibility(targetInputId) {
                 const input = document.getElementById(targetInputId);
-                const removeButton = posterRoot.querySelector('.bitstream-media-remove[data-target-input="' + targetInputId + '"]');
+                const removeButton = composerRoot.querySelector('.bitstream-media-remove[data-target-input="' + targetInputId + '"]');
                 if (!removeButton) {
                     return;
                 }
@@ -551,7 +1142,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             function setCropVisibility(targetInputId, mimeType) {
-                const cropLink = posterRoot.querySelector('.bitstream-media-crop[data-target-input="' + targetInputId + '"]');
+                const cropLink = composerRoot.querySelector('.bitstream-media-crop[data-target-input="' + targetInputId + '"]');
                 if (!cropLink) {
                     return;
                 }
@@ -561,7 +1152,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             function setAudioTagVisibility(targetInputId, mimeType) {
-                const tagLink = posterRoot.querySelector('.bitstream-media-audio-tags[data-target-input="' + targetInputId + '"]');
+                const tagLink = composerRoot.querySelector('.bitstream-media-audio-tags[data-target-input="' + targetInputId + '"]');
                 if (!tagLink) {
                     return;
                 }
@@ -667,6 +1258,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
                 cropperModal.hidden = true;
+                setStatus('');
                 cropperModal.classList.remove('is-square-mode');
                 document.body.classList.remove('bitstream-cropper-open');
                 if (cropperImage) {
@@ -711,6 +1303,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             function openCropper(targetInputId, targetPreviewId, options = {}) {
+                setStatus('');
                 if (!cropperModal || !cropperImage || !cropperStage) {
                     setStatus('Cropper is unavailable on this page.', true);
                     return;
@@ -778,6 +1371,69 @@ document.addEventListener('DOMContentLoaded', function () {
                     document.body.classList.add('bitstream-cropper-open');
                 });
             }
+
+            // Allow other UI modules (e.g. timeline edit modal) to reuse the shared cropper.
+            window.bitstreamOpenCropper = openCropper;
+
+            function openMediaLibrary(targetInputId, targetPreviewId) {
+                if (!window.wp || !wp.media) {
+                    setStatus('Media library is unavailable.', true);
+                    return;
+                }
+
+                const isRebit = targetInputId && (targetInputId.indexOf('rebit') !== -1);
+
+                const frame = wp.media({
+                    title: 'Select media',
+                    button: { text: 'Use media' },
+                    multiple: !isRebit,
+                    library: { type: ['image', 'video'] }
+                });
+
+                frame.on('select', () => {
+                    const selections = frame.state().get('selection').models;
+                    const loadedAttachments = [];
+                    selections.forEach(selection => {
+                        const data = selection.toJSON();
+                        const mime = data.mime || data.type || '';
+                        if (mime.startsWith('image/') || mime.startsWith('video/')) {
+                            loadedAttachments.push({
+                                id: data.id,
+                                url: data.url,
+                                preview_url: data.preview_url || (data.sizes && ((data.sizes.large && data.sizes.large.url) || (data.sizes.medium_large && data.sizes.medium_large.url) || (data.sizes.medium && data.sizes.medium.url))) || data.url,
+                                mime: mime,
+                                filename: data.filename || data.title || ''
+                            });
+                        }
+                    });
+
+                    const previewEl = getPreviewElement(targetPreviewId);
+                    const existingAttachments = getExistingAttachments(previewEl);
+                    let finalAttachments = [];
+                    if (isRebit) {
+                        finalAttachments = loadedAttachments.slice(0, 1);
+                    } else {
+                        finalAttachments = [...existingAttachments, ...loadedAttachments].slice(0, 10);
+                    }
+
+                    updateAttachmentsList(previewEl, finalAttachments);
+                });
+
+                frame.open();
+            }
+
+            libraryButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetInputId = button.dataset.targetInput || '';
+                    const targetPreviewId = button.dataset.targetPreview || '';
+                    if (!targetInputId || !targetPreviewId) {
+                        setStatus('Media target is not configured.', true);
+                        return;
+                    }
+
+                    openMediaLibrary(targetInputId, targetPreviewId);
+                });
+            });
 
             function getPointerPosition(event) {
                 const point = (event.touches && event.touches[0])
@@ -987,6 +1643,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             function handleMediaSelection(targetInputId, targetPreviewId, attachment) {
+                setStatus('');
                 const targetInput = document.getElementById(targetInputId);
                 const targetPreview = document.getElementById(targetPreviewId);
                 if (!targetInput) {
@@ -994,6 +1651,26 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 targetInput.value = attachment.id || '';
+
+                // Keep plural attachment IDs input in sync
+                const targetInputs = document.getElementById(targetInputId + 's');
+                if (targetInputs) {
+                    targetInputs.value = attachment.id ? String(attachment.id) : '';
+                }
+
+                // Keep attachments JSON dataset in sync for previews/confirmations
+                if (targetPreview) {
+                    const attachments = attachment ? [
+                        {
+                            id: attachment.id,
+                            url: attachment.url,
+                            preview_url: attachment.preview_url || (attachment.sizes && ((attachment.sizes.large && attachment.sizes.large.url) || (attachment.sizes.medium_large && attachment.sizes.medium_large.url) || (attachment.sizes.medium && attachment.sizes.medium.url))) || attachment.url,
+                            mime: attachment.mime,
+                            filename: attachment.filename || ''
+                        }
+                    ] : [];
+                    targetPreview.dataset.attachmentsJson = JSON.stringify(attachments);
+                }
 
                 if (targetInputId === 'bitstream-rebit-attachment-id' && rebitOgImageInput) {
                     rebitOgImageInput.value = attachment.url || '';
@@ -1011,116 +1688,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     refreshRebitEditorImagePreview();
                     refreshRebitPreview();
                 }
-            }
-
-            function uploadMediaFile(file, targetInputId, targetPreviewId) {
-                if (!bitstream_ajax || !bitstream_ajax.ajax_url || !bitstream_ajax.media_upload_nonce) {
-                    setStatus('Media upload is unavailable.', true);
-                    return;
-                }
-
-                const progressContainer = document.querySelector(`[data-progress-bar="${targetInputId}"]`);
-                const progressBar = progressContainer ? progressContainer.querySelector('.bitstream-media-progress-bar') : null;
-                const progressText = progressContainer ? progressContainer.querySelector('.bitstream-media-progress-text') : null;
-
-                const showProgress = () => {
-                    if (!progressContainer) {
-                        return;
-                    }
-                    progressContainer.classList.remove('is-hidden');
-                    if (progressBar) progressBar.style.width = '0%';
-                    if (progressText) progressText.textContent = 'Uploading...';
-                };
-
-                const updateProgress = (percent, text) => {
-                    if (progressBar) {
-                        progressBar.style.width = percent + '%';
-                    }
-                    if (progressText && text) {
-                        progressText.textContent = text;
-                    }
-                };
-
-                const hideProgress = () => {
-                    if (progressContainer) {
-                        progressContainer.classList.add('is-hidden');
-                    }
-                };
-
-                showProgress();
-
-                const formData = new FormData();
-                formData.append('action', 'bitstream_upload_media');
-                formData.append('nonce', bitstream_ajax.media_upload_nonce);
-                formData.append('media', file);
-
-                const xhr = new XMLHttpRequest();
-                xhr.open('POST', bitstream_ajax.ajax_url, true);
-                xhr.withCredentials = true;
-
-                xhr.upload.addEventListener('progress', (event) => {
-                    if (event.lengthComputable) {
-                        const percent = Math.max(1, Math.round((event.loaded / event.total) * 100));
-                        updateProgress(percent, 'Uploading... ' + percent + '%');
-                    } else {
-                        updateProgress(50, 'Uploading...');
-                    }
-                });
-
-                xhr.onreadystatechange = () => {
-                    if (xhr.readyState !== 4) {
-                        return;
-                    }
-
-                    if (xhr.status < 200 || xhr.status >= 300) {
-                        hideProgress();
-                        setStatus('Upload failed.', true);
-                        return;
-                    }
-
-                    let response;
-                    try {
-                        response = JSON.parse(xhr.responseText || '{}');
-                    } catch (error) {
-                        hideProgress();
-                        setStatus('Upload failed.', true);
-                        return;
-                    }
-
-                    if (!response.success) {
-                        hideProgress();
-                        setStatus(response.data || 'Upload failed.', true);
-                        return;
-                    }
-
-                    updateProgress(100, 'Upload complete!');
-
-                    const media = response.data || {};
-                    handleMediaSelection(targetInputId, targetPreviewId, {
-                        id: media.id,
-                        url: media.url,
-                        preview_url: media.preview_url || media.url,
-                        mime: media.mime,
-                        audio_meta: media.audio_meta || null,
-                        sizes: {
-                            medium: { url: media.preview_url || media.url }
-                        }
-                    });
-
-                    setTimeout(() => {
-                        hideProgress();
-                    }, 1000);
-                };
-
-                xhr.onerror = () => {
-                    hideProgress();
-                    setStatus('Upload failed.', true);
-                };
-
-                xhr.send(formData);
-            }
-
-            function uploadClipboardImage(targetInputId, targetPreviewId) {
+            }            function uploadClipboardImage(targetInputId, targetPreviewId) {
                 if (!navigator.clipboard || typeof navigator.clipboard.read !== 'function') {
                     setStatus('Clipboard paste is unavailable in this browser.', true);
                     return;
@@ -1142,7 +1710,9 @@ document.addEventListener('DOMContentLoaded', function () {
                             const extension = imageType.indexOf('jpeg') !== -1 ? 'jpg' : (imageType.split('/')[1] || 'png');
                             const filename = 'pasted-image-' + Date.now() + '.' + extension;
                             const file = new File([blob], filename, { type: imageType });
-                            uploadMediaFile(file, targetInputId, targetPreviewId);
+                            uploadMultipleFiles([file], targetInputId, targetPreviewId, {
+                                setStatus: (msg, isError) => setStatus(msg, isError)
+                            });
                             setStatus('Uploading pasted image...');
                         });
                     })
@@ -1153,13 +1723,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
             removeButtons.forEach(button => {
                 button.addEventListener('click', () => {
-                    const targetInput = document.getElementById(button.dataset.targetInput || '');
                     const targetPreview = document.getElementById(button.dataset.targetPreview || '');
-
-                    if (targetInput) {
-                        targetInput.value = '';
+                    if (targetPreview) {
+                        updateAttachmentsList(targetPreview, []);
                     }
-                    renderMediaPreview(targetPreview, null);
 
                     if ((button.dataset.targetInput || '') === 'bitstream-rebit-attachment-id') {
                         if (rebitOgImageRemovedInput) {
@@ -1168,12 +1735,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         refreshRebitEditorImagePreview();
                         refreshRebitPreview();
                     }
-
-                    if (button.dataset.targetInput) {
-                        setRemoveVisibility(button.dataset.targetInput);
-                        setCropVisibility(button.dataset.targetInput, '');
-                        setAudioTagVisibility(button.dataset.targetInput, '');
-                    }
+                    setRemoveVisibility(button.dataset.targetInput || '');
+                    setCropVisibility(button.dataset.targetInput || '', '');
+                    setAudioTagVisibility(button.dataset.targetInput || '', '');
                 });
             });
 
@@ -1197,9 +1761,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
 
                     const targetInputId = link.dataset.targetInput;
-                    const targetPreviewId = link.dataset.targetInput === 'bitstream-bit-attachment-id'
+                    const targetPreviewId = link.dataset.targetPreview || (link.dataset.targetInput === 'bitstream-bit-attachment-id'
                         ? 'bitstream-bit-media-preview'
-                        : 'bitstream-rebit-media-preview';
+                        : 'bitstream-rebit-media-preview');
                     openCropper(targetInputId, targetPreviewId);
                 });
             });
@@ -1477,7 +2041,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
 
-                zone.addEventListener('click', () => {
+                zone.addEventListener('click', (event) => {
+                    // Don't open file picker when clicking on the input itself, or on a preview item/remove button
+                    if (event.target === input) return;
+                    if (event.target.closest('.bitstream-media-preview-item') ||
+                        event.target.closest('.bitstream-media-preview-remove-item')) {
+                        return;
+                    }
                     input.click();
                 });
 
@@ -1494,32 +2064,32 @@ document.addEventListener('DOMContentLoaded', function () {
                     event.preventDefault();
                     zone.classList.remove('is-dragover');
 
-                    const file = event.dataTransfer.files && event.dataTransfer.files[0];
-                    if (!file) {
-                        return;
+                    const files = event.dataTransfer.files;
+                    if (files && files.length > 0) {
+                        uploadMultipleFiles(Array.from(files), targetInputId, targetPreviewId, {
+                            setStatus: (msg, isError) => setStatus(msg, isError)
+                        });
                     }
-
-                    uploadMediaFile(file, targetInputId, targetPreviewId);
                 });
 
                 input.addEventListener('change', () => {
-                    const file = input.files && input.files[0];
-                    if (!file) {
-                        return;
+                    const files = input.files;
+                    if (files && files.length > 0) {
+                        uploadMultipleFiles(Array.from(files), targetInputId, targetPreviewId, {
+                            setStatus: (msg, isError) => setStatus(msg, isError)
+                        });
                     }
-
-                    uploadMediaFile(file, targetInputId, targetPreviewId);
                     input.value = '';
                 });
             });
 
             function getActivePosterMediaTarget() {
-                const activePanel = posterRoot.querySelector('.bitstream-poster-panel.is-active');
+                const activePanel = composerRoot.querySelector('.bitstream-composer-panel.is-active');
                 if (!activePanel) {
                     return null;
                 }
 
-                if (activePanel.id === 'bitstream-poster-panel-rebit') {
+                if (activePanel.id === 'bitstream-composer-panel-rebit') {
                     return {
                         targetInputId: 'bitstream-rebit-attachment-id',
                         targetPreviewId: 'bitstream-rebit-media-preview',
@@ -1527,7 +2097,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     };
                 }
 
-                if (activePanel.id === 'bitstream-poster-panel-bit') {
+                if (activePanel.id === 'bitstream-composer-panel-bit') {
                     return {
                         targetInputId: 'bitstream-bit-attachment-id',
                         targetPreviewId: 'bitstream-bit-media-preview',
@@ -1538,7 +2108,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 return null;
             }
 
-            posterRoot.addEventListener('paste', (event) => {
+            composerRoot.addEventListener('paste', (event) => {
                 const clipboard = event.clipboardData;
                 if (!clipboard || !clipboard.items || !clipboard.items.length) {
                     return;
@@ -1570,26 +2140,98 @@ document.addEventListener('DOMContentLoaded', function () {
                 setStatus('Uploading pasted image...');
             });
 
-            const existingMediaInputs = posterRoot.querySelectorAll('input[name="bit_attachment_id"], input[name="rebit_attachment_id"]');
+            function fetchAttachmentData(attachmentId) {
+                if (!window.bitstream_ajax || !bitstream_ajax.ajax_url || !bitstream_ajax.media_upload_nonce) {
+                    return Promise.reject(new Error('AJAX details unavailable'));
+                }
+
+                const fd = new FormData();
+                fd.append('action', 'bitstream_get_attachment_data');
+                fd.append('nonce', bitstream_ajax.media_upload_nonce);
+                fd.append('attachment_id', String(attachmentId));
+
+                return fetch(bitstream_ajax.ajax_url, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    body: fd
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success) {
+                        throw new Error(data.data || 'Failed to fetch attachment.');
+                    }
+                    return data.data;
+                });
+            }
+
+            const previewMediaThumb = composerRoot.querySelector('.bitstream-composer-preview-media-thumb');
+            const existingMediaIdsInputs = composerRoot.querySelectorAll('input[name="bit_attachment_ids"]');
+            
+            existingMediaIdsInputs.forEach(input => {
+                const val = input.value || '';
+                const ids = val.split(',').map(id => parseInt(id.trim(), 10)).filter(Boolean);
+                if (ids.length === 0) return;
+
+                let previewEl = null;
+                if (input.closest('.bitstream-media-field')) {
+                    previewEl = input.closest('.bitstream-media-field').querySelector('.bitstream-media-preview');
+                } else if (input.id === 'bitstream-composer-attachment-ids') {
+                    previewEl = previewMediaThumb;
+                }
+                if (!previewEl) {
+                    previewEl = composerRoot.querySelector('#bitstream-bit-media-preview');
+                }
+                if (!previewEl) return;
+
+                const promises = ids.map(id => fetchAttachmentData(id).catch(() => null));
+                Promise.all(promises).then(results => {
+                    const validAttachments = results.filter(Boolean);
+                    updateAttachmentsList(previewEl, validAttachments);
+                });
+            });
+
+            const existingMediaInputs = composerRoot.querySelectorAll('input[name="bit_attachment_id"], input[name="rebit_attachment_id"]');
             existingMediaInputs.forEach(input => {
+                const formEl = input.closest('form, .bitstream-media-field, .bitstream-composer');
+                if (formEl) {
+                    const idsInput = formEl.querySelector('input[name="bit_attachment_ids"]');
+                    if (idsInput && idsInput.value) {
+                        return; // already processed via bit_attachment_ids
+                    }
+                }
+
                 const value = parseInt(input.value || '0', 10);
-                if (!value || !window.wp || !wp.media) {
+                if (!value) {
                     setRemoveVisibility(input.id);
                     setCropVisibility(input.id, '');
                     return;
                 }
 
-                const previewSelector = input.name === 'bit_attachment_id'
-                    ? '#bitstream-bit-media-preview'
-                    : '#bitstream-rebit-media-preview';
-                const previewEl = posterRoot.querySelector(previewSelector);
-                const attachment = wp.media.attachment(value);
-                attachment.fetch().then(() => {
-                    renderMediaPreview(previewEl, attachment.toJSON());
-                    setRemoveVisibility(input.id);
-                    setCropVisibility(input.id, attachment.get('mime'));
-                    setAudioTagVisibility(input.id, attachment.get('mime'));
-                }).catch(() => { });
+                let previewEl = null;
+                if (input.closest('.bitstream-media-field')) {
+                    previewEl = input.closest('.bitstream-media-field').querySelector('.bitstream-media-preview');
+                } else if (input.id === 'bitstream-composer-attachment-id') {
+                    previewEl = previewMediaThumb;
+                }
+
+                if (!previewEl) {
+                    const previewSelector = input.name === 'bit_attachment_id'
+                        ? '#bitstream-bit-media-preview'
+                        : '#bitstream-rebit-media-preview';
+                    previewEl = composerRoot.querySelector(previewSelector);
+                }
+
+                if (!previewEl) return;
+
+                fetchAttachmentData(value)
+                    .then(data => {
+                        updateAttachmentsList(previewEl, [data]);
+                    })
+                    .catch(() => {
+                        if (previewEl === previewMediaThumb) {
+                            previewEl.innerHTML = '<span>Media attached (ID: ' + value + ')</span>';
+                        }
+                    });
             });
 
             function setRebitEditorPreviewImage(url) {
@@ -1617,7 +2259,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     const attachment = wp.media.attachment(attachmentId);
                     attachment.fetch().then(() => {
                         const data = attachment.toJSON();
-                        const previewUrl = latestPreviewUrl || (data.sizes && data.sizes.medium && data.sizes.medium.url) || data.url || fallbackUrl;
+                        const previewUrl = latestPreviewUrl || (data.sizes && ((data.sizes.large && data.sizes.large.url) || (data.sizes.medium_large && data.sizes.medium_large.url) || (data.sizes.medium && data.sizes.medium.url))) || data.url || fallbackUrl;
                         setRebitEditorPreviewImage(previewUrl || '');
                         if (rebitEditorImageCropButton) {
                             rebitEditorImageCropButton.disabled = false;
@@ -1779,15 +2421,18 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         function initRebitPreview() {
-            const urlInput = posterRoot.querySelector('#bitstream-rebit-url');
-            const fetchButton = posterRoot.querySelector('.bitstream-fetch-og');
+            const urlInput = composerRoot.querySelector('#bitstream-rebit-url');
+            const fetchButton = composerRoot.querySelector('.bitstream-fetch-og:not(.bitstream-composer-rebit-fetch)');
+            if (!urlInput || !fetchButton) {
+                return;
+            }
             const fetchButtonDefaultLabel = (fetchButton && fetchButton.textContent)
                 ? fetchButton.textContent.trim()
                 : 'Fetch metadata';
-            const editPreviewActions = posterRoot.querySelector('.bitstream-rebit-preview-actions');
-            const editButton = posterRoot.querySelector('.bitstream-rebit-edit-preview');
-            const refreshButton = posterRoot.querySelector('.bitstream-rebit-refresh-preview');
-            const livePreviewRoot = posterRoot.querySelector('#bitstream-rebit-live-preview');
+            const editPreviewActions = composerRoot.querySelector('.bitstream-rebit-preview-actions');
+            const editButton = composerRoot.querySelector('.bitstream-rebit-edit-preview');
+            const refreshButton = composerRoot.querySelector('.bitstream-rebit-refresh-preview');
+            const livePreviewRoot = composerRoot.querySelector('#bitstream-rebit-live-preview');
             const livePreviewLoading = livePreviewRoot ? livePreviewRoot.querySelector('.bitstream-rebit-live-preview-loading') : null;
             const livePreviewCard = livePreviewRoot ? livePreviewRoot.querySelector('.bitstream-rebit-live-preview-card') : null;
             let isRenderingLivePreview = false;
@@ -1796,16 +2441,16 @@ document.addEventListener('DOMContentLoaded', function () {
             let hasPendingPreviewRender = false;
             let commentaryPreviewDebounceTimer = null;
 
-            const commentaryInput = posterRoot.querySelector('#bitstream-rebit-commentary');
-            const titleHidden = posterRoot.querySelector('#bitstream-rebit-og-title');
-            const descHidden = posterRoot.querySelector('#bitstream-rebit-og-desc');
-            const imageHidden = posterRoot.querySelector('#bitstream-rebit-og-image');
-            const imageRemovedHidden = posterRoot.querySelector('#bitstream-rebit-og-image-removed');
-            const attachmentHidden = posterRoot.querySelector('#bitstream-rebit-attachment-id');
-            const editPostHidden = posterRoot.querySelector('#bitstream-poster-panel-rebit input[name="edit_post_id"]');
+            const commentaryInput = composerRoot.querySelector('#bitstream-rebit-commentary');
+            const titleHidden = composerRoot.querySelector('#bitstream-rebit-og-title');
+            const descHidden = composerRoot.querySelector('#bitstream-rebit-og-desc');
+            const imageHidden = composerRoot.querySelector('#bitstream-rebit-og-image');
+            const imageRemovedHidden = composerRoot.querySelector('#bitstream-rebit-og-image-removed');
+            const attachmentHidden = composerRoot.querySelector('#bitstream-rebit-attachment-id');
+            const editPostHidden = composerRoot.querySelector('#bitstream-composer-panel-rebit input[name="edit_post_id"]');
             const isRebitEditMode = !!(editPostHidden && parseInt(editPostHidden.value || '0', 10) > 0);
 
-            const rebitModal = posterRoot.querySelector('.bitstream-rebit-editor-modal');
+            const rebitModal = composerRoot.querySelector('.bitstream-rebit-editor-modal');
             const modalCloseButtons = rebitModal ? rebitModal.querySelectorAll('[data-rebit-editor-close="true"]') : [];
             const modalSaveButton = rebitModal ? rebitModal.querySelector('.bitstream-rebit-editor-save') : null;
             const modalSaveDefaultLabel = (modalSaveButton && modalSaveButton.textContent)
@@ -1895,6 +2540,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
                 rebitModal.hidden = true;
+                setStatus('');
             }
 
             function renderLiveRebitPreview() {
@@ -2007,6 +2653,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (isRenderingLivePreview || !hasFetchedMetadata) {
                         return;
                     }
+                    setStatus('');
                     syncModalFromHidden();
                     if (rebitModal) {
                         rebitModal.hidden = false;
@@ -2135,9 +2782,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // "Save to Drafts" button handler
-        posterRoot.querySelectorAll('.bitstream-poster-save-draft').forEach(draftButton => {
+        composerRoot.querySelectorAll('.bitstream-composer-save-draft').forEach(draftButton => {
             draftButton.addEventListener('click', () => {
-                const form = draftButton.closest('.bitstream-poster-form');
+                const form = draftButton.closest('.bitstream-composer-form');
                 if (!form) {
                     return;
                 }
@@ -2154,9 +2801,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 const originalText = draftButton.textContent;
                 const payload = new FormData(form);
-                payload.append('action', 'bitstream_submit_poster');
+                payload.append('action', 'bitstream_submit_composer');
                 payload.append('nonce', submitNonce);
-                payload.append('poster_type', form.dataset.posterType || 'bit');
+                payload.append('composer_type', form.dataset.composerType || 'bit');
                 payload.append('save_as_draft', '1');
                 const editPostInput = form.querySelector('input[name="edit_post_id"]');
                 payload.set('edit_post_id', editPostInput ? (editPostInput.value || '0') : '0');
@@ -2185,11 +2832,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         const createdPostId = parseInt(responseData.post_id || '0', 10);
 
                         // Redirect to drafts tab to show the saved draft
-                        const posterBaseUrl = (window.bitstream_ajax && bitstream_ajax.poster_url)
-                            ? bitstream_ajax.poster_url
+                        const composerBaseUrl = (window.bitstream_ajax && bitstream_ajax.composer_url)
+                            ? bitstream_ajax.composer_url
                             : window.location.href;
-                        const redirectUrl = new URL(posterBaseUrl, window.location.origin);
-                        redirectUrl.searchParams.set('poster_tab', 'drafts');
+                        const redirectUrl = new URL(composerBaseUrl, window.location.origin);
+                        redirectUrl.searchParams.set('composer_tab', 'drafts');
                         if (createdPostId > 0) {
                             redirectUrl.searchParams.set('highlight_draft', String(createdPostId));
                         }
@@ -2206,7 +2853,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Track form dirty state for auto-save on tab close
         let formIsDirty = false;
         let autoSaveDraftId = 0;
-        posterRoot.querySelectorAll('.bitstream-poster-form textarea, .bitstream-poster-form input[type="text"], .bitstream-poster-form input[type="url"]').forEach(input => {
+        composerRoot.querySelectorAll('.bitstream-composer-form textarea, .bitstream-composer-form input[type="text"], .bitstream-composer-form input[type="url"]').forEach(input => {
             input.addEventListener('input', () => {
                 formIsDirty = true;
             });
@@ -2223,25 +2870,25 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             // Determine active form
-            const activePanel = posterRoot.querySelector('.bitstream-poster-panel.is-active');
+            const activePanel = composerRoot.querySelector('.bitstream-composer-panel.is-active');
             if (!activePanel) {
                 return;
             }
 
-            const form = activePanel.querySelector('.bitstream-poster-form');
+            const form = activePanel.querySelector('.bitstream-composer-form');
             if (!form) {
                 return;
             }
 
             // Check if there's any content to save
-            const posterType = form.dataset.posterType || 'bit';
+            const composerType = form.dataset.composerType || 'bit';
             let hasContent = false;
 
-            if (posterType === 'bit') {
+            if (composerType === 'bit') {
                 const textArea = form.querySelector('#bitstream-bit-content');
                 const attachmentInput = form.querySelector('#bitstream-bit-attachment-id');
                 hasContent = (textArea && textArea.value.trim()) || (attachmentInput && parseInt(attachmentInput.value || '0', 10) > 0);
-            } else if (posterType === 'rebit') {
+            } else if (composerType === 'rebit') {
                 const urlInput = form.querySelector('#bitstream-rebit-url');
                 hasContent = urlInput && urlInput.value.trim();
             }
@@ -2252,9 +2899,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Use sendBeacon for reliable delivery during page unload
             const payload = new FormData(form);
-            payload.append('action', 'bitstream_submit_poster');
+            payload.append('action', 'bitstream_submit_composer');
             payload.append('nonce', submitNonce);
-            payload.append('poster_type', posterType);
+            payload.append('composer_type', composerType);
             payload.append('save_as_draft', '1');
             payload.append('is_auto_draft', '1');
             const editPostInput = form.querySelector('input[name="edit_post_id"]');
@@ -2264,13 +2911,43 @@ document.addEventListener('DOMContentLoaded', function () {
             formIsDirty = false;
         });
 
-        const forms = posterRoot.querySelectorAll('.bitstream-poster-form');
+        const forms = composerRoot.querySelectorAll('.bitstream-composer-form');
+        function isUrlOnly(text) {
+            const trimmed = (text || '').trim();
+            try {
+                const url = new URL(trimmed);
+                return url.protocol === 'http:' || url.protocol === 'https:';
+            } catch {
+                return false;
+            }
+        }
+
         forms.forEach(form => {
+            if (form.closest('.bitstream-composer')) {
+                return;
+            }
+
             form.addEventListener('submit', (event) => {
                 event.preventDefault();
 
                 // Prevent auto-save from firing when publishing
                 formIsDirty = false;
+
+                const hAttachmentId = form.querySelector('#bitstream-composer-attachment-id') || form.querySelector('#bitstream-bit-attachment-id');
+                const hRebitUrl = form.querySelector('#bitstream-composer-rebit-url') || form.querySelector('#bitstream-rebit-url');
+                const hRebitOgTitle = form.querySelector('#bitstream-composer-rebit-og-title') || form.querySelector('#bitstream-rebit-og-title');
+                const hRebitOgDesc = form.querySelector('#bitstream-composer-rebit-og-desc') || form.querySelector('#bitstream-rebit-og-desc');
+                const hRebitOgImage = form.querySelector('#bitstream-composer-rebit-og-image') || form.querySelector('#bitstream-rebit-og-image');
+                const hRebitOgImageRemoved = form.querySelector('#bitstream-composer-rebit-og-image-removed') || form.querySelector('#bitstream-rebit-og-image-removed');
+                const hRebitAttachmentId = form.querySelector('#bitstream-composer-rebit-attachment-id') || form.querySelector('#bitstream-rebit-attachment-id');
+                const textarea = form.querySelector('#bitstream-quick-bit-content') || form.querySelector('#bitstream-bit-content');
+                const submitBtn = form.querySelector('.bitstream-composer-submit');
+                
+                const previewArea = form.querySelector('.bitstream-composer-preview-area') || form.querySelector('.bitstream-media-field');
+                const previewRebit = form.querySelector('.bitstream-composer-preview-rebit') || form.querySelector('#bitstream-rebit-preview');
+                const previewRebitCard = form.querySelector('.bitstream-composer-preview-rebit-card') || form.querySelector('.bit-card');
+                const previewMedia = form.querySelector('.bitstream-composer-preview-media') || form.querySelector('.bitstream-media-preview');
+                const previewMediaThumb = form.querySelector('.bitstream-composer-preview-media-thumb');
 
                 if (!window.bitstream_ajax || !bitstream_ajax.ajax_url) {
                     setStatus('Poster submit endpoint is unavailable.', true);
@@ -2282,18 +2959,19 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
 
-                const submitButton = form.querySelector('.bitstream-poster-submit');
+                const submitButton = form.querySelector('.bitstream-composer-submit');
                 const originalText = submitButton ? submitButton.textContent : '';
                 const payload = new FormData(form);
-                payload.append('action', 'bitstream_submit_poster');
+                payload.append('action', 'bitstream_submit_composer');
                 payload.append('nonce', submitNonce);
-                payload.append('poster_type', form.dataset.posterType || 'bit');
+
+                const composerType = form.dataset.composerType || 'bit';
+                payload.append('composer_type', composerType);
                 const editPostInput = form.querySelector('input[name="edit_post_id"]');
                 payload.set('edit_post_id', editPostInput ? (editPostInput.value || '0') : '0');
 
-                const posterType = form.dataset.posterType || 'bit';
-                const scheduleEnabledInput = form.querySelector('[name="' + posterType + '_schedule_enabled"]');
-                const scheduleDatetimeInput = form.querySelector('[name="' + posterType + '_schedule_datetime"]');
+                const scheduleEnabledInput = form.querySelector('[name="' + composerType + '_schedule_enabled"]');
+                const scheduleDatetimeInput = form.querySelector('[name="' + composerType + '_schedule_datetime"]');
                 if (scheduleEnabledInput && scheduleEnabledInput.value === '1' && scheduleDatetimeInput && !scheduleDatetimeInput.value) {
                     setStatus('Please choose a date and time for the schedule.', true);
                     return;
@@ -2323,12 +3001,28 @@ document.addEventListener('DOMContentLoaded', function () {
                         const createdPostId = parseInt(responseData.post_id || '0', 10);
                         const isScheduled = !!responseData.is_scheduled;
 
+                        if (hAttachmentId) hAttachmentId.value = '';
+                        if (previewMediaThumb) previewMediaThumb.innerHTML = '';
+                        if (previewMedia) previewMedia.hidden = true;
+                        if (hRebitUrl) hRebitUrl.value = '';
+                        if (hRebitOgTitle) hRebitOgTitle.value = '';
+                        if (hRebitOgDesc) hRebitOgDesc.value = '';
+                        if (hRebitOgImage) hRebitOgImage.value = '';
+                        if (hRebitOgImageRemoved) hRebitOgImageRemoved.value = '0';
+                        if (hRebitAttachmentId) hRebitAttachmentId.value = '';
+                        if (previewRebitCard) previewRebitCard.innerHTML = '';
+                        if (previewRebit) previewRebit.hidden = true;
+                        if (previewArea) previewArea.hidden = true;
+                        if (textarea) textarea.value = '';
+                        form.dataset.composerType = 'bit';
+                        if (submitBtn) submitBtn.textContent = 'Post Bit';
+
                         if (isScheduled) {
-                            const posterBaseUrl = (window.bitstream_ajax && bitstream_ajax.poster_url)
-                                ? bitstream_ajax.poster_url
+                            const composerBaseUrl = (window.bitstream_ajax && bitstream_ajax.composer_url)
+                                ? bitstream_ajax.composer_url
                                 : window.location.href;
-                            const redirectUrl = new URL(posterBaseUrl, window.location.origin);
-                            redirectUrl.searchParams.set('poster_tab', 'scheduled');
+                            const redirectUrl = new URL(composerBaseUrl, window.location.origin);
+                            redirectUrl.searchParams.set('composer_tab', 'scheduled');
                             if (createdPostId > 0) {
                                 redirectUrl.searchParams.set('highlight_scheduled', String(createdPostId));
                             }
@@ -2357,11 +3051,1144 @@ document.addEventListener('DOMContentLoaded', function () {
                     });
             });
         });
-
         bindMediaButtons();
         initRebitPreview();
     }
 
+    let openTimelineEditModal = () => false;
+    let openTimelineQuoteModal = () => false;
+
+    function initTimelineEditModal() {
+        const modal = document.getElementById('bs-edit-modal');
+        if (!modal) {
+            return;
+        }
+
+        const modalTitle = modal.querySelector('#bs-edit-modal-title');
+        const loadingState = modal.querySelector('.bs-edit-modal-loading');
+        const loadingMessage = loadingState ? loadingState.querySelector('p') : null;
+        const errorState = modal.querySelector('.bs-edit-modal-error');
+        const errorMessage = modal.querySelector('.bs-edit-modal-error-msg');
+        const bitForm = modal.querySelector('.bs-edit-form-bit');
+        const rebitForm = modal.querySelector('.bs-edit-form-rebit');
+        const linkMetaModal = modal.querySelector('.bs-edit-link-meta-modal');
+        const closeButtons = modal.querySelectorAll('[data-bs-edit-modal-close="true"]');
+        const submitNonce = modal.dataset.submitNonce || (window.bitstream_ajax && bitstream_ajax.composer_submit_nonce) || '';
+        let mediaFrame = null;
+        let activeMediaForm = null;
+        let ogImageFrame = null;
+
+        function setModalVisible(isVisible) {
+            modal.hidden = !isVisible;
+            document.body.style.overflow = isVisible ? 'hidden' : '';
+        }
+
+        function setLoadingState(isLoading, message) {
+            if (loadingState) {
+                loadingState.hidden = !isLoading;
+            }
+            if (loadingMessage) {
+                loadingMessage.textContent = message || 'Loading post…';
+            }
+            if (errorState) {
+                errorState.hidden = true;
+            }
+        }
+
+        function setErrorState(message) {
+            if (loadingState) {
+                loadingState.hidden = true;
+            }
+            if (errorState) {
+                errorState.hidden = false;
+            }
+            if (errorMessage) {
+                errorMessage.textContent = message || 'Could not load post.';
+            }
+        }
+
+        function clearFormFeedback() {
+            if (loadingState) {
+                loadingState.hidden = true;
+            }
+            if (errorState) {
+                errorState.hidden = true;
+            }
+            if (errorMessage) {
+                errorMessage.textContent = '';
+            }
+        }
+
+        function showForm(form) {
+            if (bitForm) {
+                bitForm.hidden = form !== bitForm;
+            }
+            if (rebitForm) {
+                rebitForm.hidden = form !== rebitForm;
+            }
+        }
+
+        function setAttachmentPreview(form, attachmentId, attachmentUrl, attachmentMime, attachments) {
+            if (!form) {
+                return;
+            }
+
+            const previewEl = form.querySelector('.bitstream-media-preview') || form.querySelector('.bitstream-composer-preview-media-thumb');
+            if (!previewEl) {
+                return;
+            }
+
+            if (Array.isArray(attachments)) {
+                updateAttachmentsList(previewEl, attachments);
+            } else if (attachmentId > 0 && attachmentUrl) {
+                const singleAtt = {
+                    id: attachmentId,
+                    url: attachmentUrl,
+                    preview_url: attachmentUrl,
+                    mime: attachmentMime
+                };
+                updateAttachmentsList(previewEl, [singleAtt]);
+            } else {
+                updateAttachmentsList(previewEl, []);
+            }
+        }
+
+        function setLinkMetaPreview() {
+            if (!rebitForm || !linkMetaModal) {
+                return;
+            }
+
+            const urlInput = rebitForm.querySelector('#bs-edit-rebit-url');
+            const attachmentInput = rebitForm.querySelector('input[name="rebit_attachment_id"]');
+            const titleInput = rebitForm.querySelector('input[name="rebit_og_title"]');
+            const descInput = rebitForm.querySelector('input[name="rebit_og_desc"]');
+            const imageInput = rebitForm.querySelector('input[name="rebit_og_image"]');
+            const imageRemovedInput = rebitForm.querySelector('input[name="rebit_og_image_removed"]');
+
+            const modalUrlInput = linkMetaModal.querySelector('#bs-edit-link-meta-url-input');
+            const visibleTitleInput = linkMetaModal.querySelector('#bs-edit-link-meta-title-input');
+            const visibleDescInput = linkMetaModal.querySelector('#bs-edit-link-meta-desc-input');
+            const previewImage = linkMetaModal.querySelector('.bs-edit-og-preview-img');
+            const previewTitle = linkMetaModal.querySelector('.bs-edit-og-preview-title');
+            const previewUrl = linkMetaModal.querySelector('.bs-edit-og-preview-url');
+            const cropImageButton = linkMetaModal.querySelector('.bs-edit-og-image-crop');
+
+            if (modalUrlInput && urlInput) {
+                modalUrlInput.value = urlInput.value || '';
+            }
+            if (visibleTitleInput && titleInput) {
+                visibleTitleInput.value = titleInput.value || '';
+            }
+            if (visibleDescInput && descInput) {
+                visibleDescInput.value = descInput.value || '';
+            }
+
+            const imageUrl = imageInput ? (imageInput.value || '') : '';
+            if (previewImage) {
+                if (imageUrl) {
+                    previewImage.src = imageUrl;
+                    previewImage.hidden = false;
+                } else {
+                    previewImage.src = '';
+                    previewImage.hidden = true;
+                }
+            }
+            if (previewTitle) {
+                previewTitle.textContent = (titleInput && titleInput.value) ? titleInput.value : 'No title yet';
+            }
+            if (previewUrl) {
+                previewUrl.textContent = (urlInput && urlInput.value) ? urlInput.value : '';
+            }
+            if (cropImageButton) {
+                const hasImage = !!imageUrl || (attachmentInput && parseInt(attachmentInput.value || '0', 10) > 0);
+                cropImageButton.classList.toggle('is-hidden', !hasImage);
+            }
+        }
+
+        function syncLinkMetaFields() {
+            if (!rebitForm || !linkMetaModal) {
+                return;
+            }
+
+            const titleInput = rebitForm.querySelector('input[name="rebit_og_title"]');
+            const descInput = rebitForm.querySelector('input[name="rebit_og_desc"]');
+            const imageInput = rebitForm.querySelector('input[name="rebit_og_image"]');
+            const imageRemovedInput = rebitForm.querySelector('input[name="rebit_og_image_removed"]');
+
+            const visibleTitleInput = linkMetaModal.querySelector('#bs-edit-link-meta-title-input');
+            const visibleDescInput = linkMetaModal.querySelector('#bs-edit-link-meta-desc-input');
+
+            if (titleInput && visibleTitleInput) {
+                titleInput.value = visibleTitleInput.value || '';
+            }
+            if (descInput && visibleDescInput) {
+                descInput.value = visibleDescInput.value || '';
+            }
+            if (imageInput && imageRemovedInput) {
+                imageRemovedInput.value = imageInput.value ? '0' : '1';
+            }
+
+            setLinkMetaPreview();
+        }
+
+        function openLinkMetaModal() {
+            if (!linkMetaModal || !rebitForm) {
+                return;
+            }
+
+            setLinkMetaPreview();
+            linkMetaModal.hidden = false;
+        }
+
+        function closeLinkMetaModal() {
+            if (linkMetaModal) {
+                linkMetaModal.hidden = true;
+            }
+        }
+
+        function setQuotePreview(form, quotePostId, quotePreviewHtml) {
+            if (!form) {
+                return;
+            }
+
+            const quoteInput = form.querySelector('.bs-edit-quote-post-id');
+            const quoteWrap = form.querySelector('.bs-edit-quote-preview');
+            const quoteCard = form.querySelector('.bs-edit-quote-preview-card');
+
+            if (quoteInput) {
+                quoteInput.value = quotePostId > 0 ? String(quotePostId) : '0';
+            }
+
+            if (!quoteWrap || !quoteCard) {
+                return;
+            }
+
+            quoteCard.innerHTML = quotePreviewHtml || '';
+            quoteWrap.hidden = !quotePreviewHtml;
+            if (quotePreviewHtml) {
+                applyMediaDeterrents(quoteCard);
+            }
+        }
+
+        function setScheduleState(form, scheduleKey, enabled, datetimeValue) {
+            if (!form) {
+                return;
+            }
+
+            const modeNow = form.querySelector('input[name="' + scheduleKey + '_schedule_mode"][value="now"]');
+            const modeLater = form.querySelector('input[name="' + scheduleKey + '_schedule_mode"][value="later"]');
+            const datetimeInput = form.querySelector('input[name="' + scheduleKey + '_schedule_datetime"]');
+            const enabledInput = form.querySelector('input[name="' + scheduleKey + '_schedule_enabled"]');
+
+            if (modeNow) {
+                modeNow.checked = !enabled;
+            }
+            if (modeLater) {
+                modeLater.checked = !!enabled;
+            }
+            if (datetimeInput) {
+                datetimeInput.disabled = !enabled;
+                datetimeInput.value = enabled ? (datetimeValue || '') : '';
+            }
+            if (enabledInput) {
+                enabledInput.value = enabled ? '1' : '0';
+            }
+        }
+
+        function bindScheduleControls(form) {
+            const composerType = form.dataset.composerType || 'bit';
+            const radios = form.querySelectorAll('input[name="' + composerType + '_schedule_mode"]');
+            const datetimeInput = form.querySelector('input[name="' + composerType + '_schedule_datetime"]');
+            const enabledInput = form.querySelector('input[name="' + composerType + '_schedule_enabled"]');
+
+            if (!radios.length || !datetimeInput) {
+                return;
+            }
+
+            radios.forEach(radio => {
+                radio.addEventListener('change', () => {
+                    const enabled = radio.value === 'later' && radio.checked;
+                    datetimeInput.disabled = !enabled;
+                    if (enabledInput) {
+                        enabledInput.value = enabled ? '1' : '0';
+                    }
+                    if (!enabled) {
+                        datetimeInput.value = '';
+                    }
+                });
+            });
+        }
+
+        function bindMediaControls(form) {
+            const dropzone = form.querySelector('.bitstream-media-dropzone');
+            const fileInput = form.querySelector('.bitstream-media-file');
+            const removeButton = form.querySelector('.bitstream-media-remove');
+            const cropButton = form.querySelector('.bitstream-media-crop');
+            const libraryButton = form.querySelector('.bitstream-media-library');
+            const pasteButton = form.querySelector('.bitstream-media-paste');
+            const targetInput = form.querySelector('.bs-edit-attachment-id');
+            const previewEl = form.querySelector('.bitstream-media-preview');
+
+            if (!targetInput || !previewEl) {
+                return;
+            }
+
+            const targetInputId = targetInput.id || 'bs-edit-bit-attachment-id';
+            const targetPreviewId = previewEl.id || 'bs-edit-bit-media-preview';
+
+            const uploadFiles = (files) => {
+                uploadMultipleFiles(files, targetInputId, targetPreviewId, {
+                    setStatus: (msg, isError) => {
+                        if (isError) {
+                            setErrorState(msg);
+                        } else {
+                            clearFormFeedback();
+                        }
+                    }
+                });
+            };
+
+            // Clipboard paste
+            const pasteImage = () => {
+                if (!navigator.clipboard || typeof navigator.clipboard.read !== 'function') {
+                    setErrorState('Clipboard paste is unavailable in this browser.');
+                    return;
+                }
+
+                navigator.clipboard.read()
+                    .then(items => {
+                        if (!items || !items.length) {
+                            throw new Error('Clipboard is empty.');
+                        }
+
+                        const imageItem = items.find(item => item.types && item.types.some(type => type.indexOf('image/') === 0));
+                        if (!imageItem) {
+                            throw new Error('Clipboard does not contain an image.');
+                        }
+
+                        const imageType = imageItem.types.find(type => type.indexOf('image/') === 0) || 'image/png';
+                        return imageItem.getType(imageType).then(blob => {
+                            const extension = imageType.indexOf('jpeg') !== -1 ? 'jpg' : (imageType.split('/')[1] || 'png');
+                            const filename = 'pasted-image-' + Date.now() + '.' + extension;
+                            const file = new File([blob], filename, { type: imageType });
+                            uploadFiles([file]);
+                        });
+                    })
+                    .catch(error => {
+                        setErrorState(error.message || 'Clipboard permission denied.');
+                    });
+            };
+
+            // Drag and drop events
+            if (dropzone && fileInput) {
+                dropzone.addEventListener('click', (event) => {
+                    // Don't open file picker when clicking on the input itself, or on a preview item/remove button
+                    if (event.target === fileInput) return;
+                    if (event.target.closest('.bitstream-media-preview-item') ||
+                        event.target.closest('.bitstream-media-preview-remove-item')) {
+                        return;
+                    }
+                    fileInput.click();
+                });
+
+                dropzone.addEventListener('dragover', (event) => {
+                    event.preventDefault();
+                    dropzone.classList.add('is-dragover');
+                });
+
+                dropzone.addEventListener('dragleave', () => {
+                    dropzone.classList.remove('is-dragover');
+                });
+
+                dropzone.addEventListener('drop', (event) => {
+                    event.preventDefault();
+                    dropzone.classList.remove('is-dragover');
+
+                    const files = event.dataTransfer.files;
+                    if (files && files.length > 0) {
+                        uploadFiles(Array.from(files));
+                    }
+                });
+
+                fileInput.addEventListener('change', () => {
+                    const files = fileInput.files;
+                    if (files && files.length > 0) {
+                        uploadFiles(Array.from(files));
+                    }
+                    fileInput.value = '';
+                });
+            }
+
+            // Remove button
+            if (removeButton) {
+                removeButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    setAttachmentPreview(form, 0, '', '', []);
+                });
+            }
+
+            // Crop button
+            if (cropButton) {
+                cropButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (cropButton.classList.contains('is-hidden')) return;
+
+                    const openCropperFn = window.bitstreamOpenCropper;
+                    if (openCropperFn) {
+                        openCropperFn(targetInputId, targetPreviewId, {
+                            onComplete: (croppedMedia) => {
+                                setAttachmentPreview(form, croppedMedia.id, croppedMedia.url, croppedMedia.mime);
+                            }
+                        });
+                    } else {
+                        setErrorState('Image cropper is unavailable.');
+                    }
+                });
+            }
+
+            // Media library button
+            if (libraryButton) {
+                libraryButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (!window.wp || !wp.media) {
+                        setErrorState('The media library is unavailable.');
+                        return;
+                    }
+
+                    const isRebit = targetInputId && (targetInputId.indexOf('rebit') !== -1);
+
+                    const frame = wp.media({
+                        title: 'Select media',
+                        button: { text: 'Use media' },
+                        multiple: !isRebit,
+                        library: { type: ['image', 'video'] }
+                    });
+
+                    frame.on('select', () => {
+                        const selections = frame.state().get('selection').models;
+                        const loadedAttachments = [];
+                        selections.forEach(selection => {
+                            const data = selection.toJSON();
+                            const mime = data.mime || data.type || '';
+                            if (mime.startsWith('image/') || mime.startsWith('video/')) {
+                                loadedAttachments.push({
+                                    id: data.id,
+                                    url: data.url,
+                                    preview_url: data.preview_url || (data.sizes && ((data.sizes.large && data.sizes.large.url) || (data.sizes.medium_large && data.sizes.medium_large.url) || (data.sizes.medium && data.sizes.medium.url))) || data.url,
+                                    mime: mime,
+                                    filename: data.filename || data.title || ''
+                                });
+                            }
+                        });
+
+                        const previewEl = getPreviewElement(targetPreviewId);
+                        const existingAttachments = getExistingAttachments(previewEl);
+                        let finalAttachments = [];
+                        if (isRebit) {
+                            finalAttachments = loadedAttachments.slice(0, 1);
+                        } else {
+                            finalAttachments = [...existingAttachments, ...loadedAttachments].slice(0, 10);
+                        }
+
+                        updateAttachmentsList(previewEl, finalAttachments);
+                    });
+
+                    frame.open();
+                });
+            }
+
+            // Paste button
+            if (pasteButton) {
+                pasteButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    pasteImage();
+                });
+            }
+
+            // Textarea paste event
+            const textarea = form.querySelector('.bs-edit-textarea');
+            if (textarea) {
+                textarea.addEventListener('paste', (event) => {
+                    const clipboardData = event.clipboardData || window.clipboardData;
+                    if (!clipboardData || !clipboardData.files || !clipboardData.files.length) {
+                        return;
+                    }
+
+                    const files = clipboardData.files;
+                    const validFiles = Array.from(files).filter(file => file.type.startsWith('image/') || file.type.startsWith('video/'));
+                    if (validFiles.length > 0) {
+                        event.preventDefault();
+                        uploadFiles(validFiles);
+                    }
+                });
+            }
+        }
+
+        function bindLinkMetaControls() {
+            if (!rebitForm || !linkMetaModal || linkMetaModal.dataset.timelineMetaBound === '1') {
+                return;
+            }
+
+            linkMetaModal.dataset.timelineMetaBound = '1';
+
+            const openButton = rebitForm.querySelector('.bs-edit-link-meta-open');
+            const refetchButton = linkMetaModal.querySelector('.bs-edit-link-meta-refetch');
+            const closeButtons = linkMetaModal.querySelectorAll('[data-bs-edit-link-meta-close="true"]');
+            const saveButton = linkMetaModal.querySelector('.bs-edit-link-meta-save');
+            const modalUrlInput = linkMetaModal.querySelector('#bs-edit-link-meta-url-input');
+            const visibleTitleInput = linkMetaModal.querySelector('#bs-edit-link-meta-title-input');
+            const visibleDescInput = linkMetaModal.querySelector('#bs-edit-link-meta-desc-input');
+            const chooseImageButton = linkMetaModal.querySelector('.bs-edit-og-image-select');
+            const cropImageButton = linkMetaModal.querySelector('.bs-edit-og-image-crop');
+            const clearImageButton = linkMetaModal.querySelector('.bs-edit-og-image-clear');
+            const imageInput = rebitForm.querySelector('input[name="rebit_og_image"]');
+            const imageRemovedInput = rebitForm.querySelector('input[name="rebit_og_image_removed"]');
+            const attachmentInput = rebitForm.querySelector('input[name="rebit_attachment_id"]');
+            const mainUrlInput = rebitForm.querySelector('#bs-edit-rebit-url');
+
+            if (openButton) {
+                openButton.addEventListener('click', () => {
+                    if (modalUrlInput && mainUrlInput) {
+                        modalUrlInput.value = mainUrlInput.value || '';
+                    }
+                    openLinkMetaModal();
+                });
+            }
+
+            closeButtons.forEach(button => {
+                button.addEventListener('click', closeLinkMetaModal);
+            });
+
+            if (saveButton) {
+                saveButton.addEventListener('click', () => {
+                    syncLinkMetaFields();
+                    closeLinkMetaModal();
+                });
+            }
+
+            if (refetchButton) {
+                refetchButton.addEventListener('click', () => {
+                    const targetUrl = (mainUrlInput && mainUrlInput.value ? mainUrlInput.value : (modalUrlInput ? modalUrlInput.value : '')).trim();
+                    const editPostInput = rebitForm.querySelector('input[name="edit_post_id"]');
+
+                    if (!targetUrl) {
+                        setErrorState('Add a link URL first.');
+                        return;
+                    }
+
+                    if (!window.bitstream_ajax || !bitstream_ajax.ajax_url || !bitstream_ajax.og_fetch_nonce) {
+                        setErrorState('Metadata fetch is unavailable.');
+                        return;
+                    }
+
+                    refetchButton.disabled = true;
+                    setStatus('Fetching metadata...');
+
+                    const payload = new FormData();
+                    payload.append('action', 'bitstream_fetch_og_data');
+                    payload.append('nonce', bitstream_ajax.og_fetch_nonce);
+                    payload.append('url', targetUrl);
+                    payload.append('post_id', editPostInput ? (editPostInput.value || '0') : '0');
+
+                    fetch(bitstream_ajax.ajax_url, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        body: payload
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (!data.success) {
+                                throw new Error(data.data || 'Could not fetch metadata.');
+                            }
+
+                            const og = data.data || {};
+                            const titleInput = rebitForm.querySelector('input[name="rebit_og_title"]');
+                            const descInput = rebitForm.querySelector('input[name="rebit_og_desc"]');
+
+                            if (titleInput) {
+                                titleInput.value = og.title || '';
+                            }
+                            if (descInput) {
+                                descInput.value = og.description || '';
+                            }
+                            if (imageInput) {
+                                imageInput.value = og.image || '';
+                            }
+                            if (imageRemovedInput) {
+                                imageRemovedInput.value = og.image ? '0' : '1';
+                            }
+                            if (attachmentInput) {
+                                attachmentInput.value = '';
+                            }
+
+                            setLinkMetaPreview();
+                            setStatus(og.cached ? 'Metadata refreshed from cache.' : 'Metadata refreshed.');
+                        })
+                        .catch(error => {
+                            setErrorState(error.message || 'Could not fetch metadata.');
+                        })
+                        .finally(() => {
+                            refetchButton.disabled = false;
+                        });
+                });
+            }
+
+            if (visibleTitleInput) {
+                visibleTitleInput.addEventListener('input', syncLinkMetaFields);
+            }
+
+            if (visibleDescInput) {
+                visibleDescInput.addEventListener('input', syncLinkMetaFields);
+            }
+
+            if (chooseImageButton) {
+                chooseImageButton.addEventListener('click', () => {
+                    if (!window.wp || !wp.media) {
+                        setErrorState('The media library is unavailable.');
+                        return;
+                    }
+
+                    if (!ogImageFrame) {
+                        ogImageFrame = wp.media({
+                            title: 'Select link image',
+                            button: { text: 'Use this image' },
+                            multiple: false,
+                            library: { type: 'image' }
+                        });
+
+                        ogImageFrame.on('select', () => {
+                            const selection = ogImageFrame.state().get('selection').first();
+                            if (!selection) {
+                                return;
+                            }
+
+                            const attachment = selection.toJSON();
+                            const attachmentMime = attachment.mime || attachment.type || '';
+                            setAttachmentPreview(rebitForm, attachment.id || 0, attachment.url || '', attachmentMime);
+                            if (imageInput) {
+                                imageInput.value = attachment.url || '';
+                            }
+                            if (imageRemovedInput) {
+                                imageRemovedInput.value = '0';
+                            }
+                            setLinkMetaPreview();
+                        });
+                    }
+
+                    ogImageFrame.open();
+                });
+            }
+
+            if (cropImageButton) {
+                cropImageButton.addEventListener('click', () => {
+                    const attachmentId = attachmentInput ? parseInt(attachmentInput.value || '0', 10) : 0;
+                    const imageUrl = imageInput ? (imageInput.value || '').trim() : '';
+
+                    const openCropperForAttachment = (preparedAttachmentId) => {
+                        if (!preparedAttachmentId) {
+                            setErrorState('Select an image first.');
+                            return;
+                        }
+
+                        const cropperOpener = (typeof window.bitstreamOpenCropper === 'function')
+                            ? window.bitstreamOpenCropper
+                            : null;
+
+                        if (window.bitstream_ajax && bitstream_ajax.media_crop_nonce && cropperOpener) {
+                            cropperOpener('bitstream-rebit-attachment-id', '', {
+                                attachmentId: preparedAttachmentId,
+                                onComplete: (croppedMedia, croppedUrl) => {
+                                    if (croppedMedia && croppedMedia.id) {
+                                        setAttachmentPreview(rebitForm, croppedMedia.id, croppedUrl || croppedMedia.url || '', croppedMedia.mime || 'image/jpeg');
+                                    }
+                                    if (imageInput) {
+                                        imageInput.value = croppedUrl || (croppedMedia && croppedMedia.url) || '';
+                                    }
+                                    if (imageRemovedInput) {
+                                        imageRemovedInput.value = '0';
+                                    }
+                                    setLinkMetaPreview();
+                                }
+                            });
+                        } else {
+                            setErrorState('Image cropper is unavailable.');
+                        }
+                    };
+
+                    if (attachmentId > 0) {
+                        openCropperForAttachment(attachmentId);
+                        return;
+                    }
+
+                    if (!imageUrl) {
+                        setErrorState('Select an image first.');
+                        return;
+                    }
+
+                    if (!window.bitstream_ajax || !bitstream_ajax.ajax_url || !bitstream_ajax.media_upload_nonce) {
+                        setErrorState('Image cropper is unavailable.');
+                        return;
+                    }
+
+                    cropImageButton.disabled = true;
+                    setStatus('Preparing image for crop...');
+
+                    const payload = new FormData();
+                    payload.append('action', 'bitstream_prepare_rebit_image_for_crop');
+                    payload.append('nonce', bitstream_ajax.media_upload_nonce);
+                    payload.append('image_url', imageUrl);
+
+                    fetch(bitstream_ajax.ajax_url, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        body: payload
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (!data.success) {
+                                throw new Error(data.data || 'Could not prepare image for crop.');
+                            }
+
+                            const prepared = data.data || {};
+                            setAttachmentPreview(rebitForm, prepared.id || 0, prepared.url || imageUrl, prepared.mime || 'image/jpeg');
+                            if (imageInput) {
+                                imageInput.value = prepared.url || imageUrl;
+                            }
+                            if (imageRemovedInput) {
+                                imageRemovedInput.value = '0';
+                            }
+                            openCropperForAttachment(prepared.id || 0);
+                        })
+                        .catch(error => {
+                            setErrorState(error.message || 'Could not prepare image for crop.');
+                        })
+                        .finally(() => {
+                            cropImageButton.disabled = false;
+                        });
+                });
+            }
+
+            if (clearImageButton) {
+                const clearLinkImage = () => {
+                    setAttachmentPreview(rebitForm, 0, '', '');
+                    if (imageInput) {
+                        imageInput.value = '';
+                    }
+                    if (imageRemovedInput) {
+                        imageRemovedInput.value = '1';
+                    }
+                    setLinkMetaPreview();
+                };
+
+                clearImageButton.addEventListener('click', clearLinkImage);
+            }
+        }
+
+        function bindFormOnce(form) {
+            if (!form || form.dataset.timelineModalBound === '1') {
+                return;
+            }
+
+            form.dataset.timelineModalBound = '1';
+            bindScheduleControls(form);
+            bindMediaControls(form);
+            if (form === rebitForm) {
+                bindLinkMetaControls();
+            }
+        }
+
+        function populateBitForm(data, isQuoteMode) {
+            if (!bitForm) {
+                return;
+            }
+
+            bindFormOnce(bitForm);
+            showForm(bitForm);
+
+            const postId = parseInt(data.post_id || '0', 10);
+            const editPostInput = bitForm.querySelector('input[name="edit_post_id"]');
+            const contentInput = bitForm.querySelector('#bs-edit-bit-content');
+            const submitButton = bitForm.querySelector('.bs-edit-submit');
+            const draftButton = bitForm.querySelector('.bs-edit-save-draft');
+            const attachmentId = parseInt(data.attachment_id || '0', 10);
+            const attachmentUrl = data.attachment_url || '';
+            const attachmentMime = data.attachment_mime || '';
+            const quotePostId = parseInt(data.quote_post_id || (isQuoteMode ? postId : 0), 10);
+            const quotePreviewHtml = isQuoteMode ? (data.quote_preview_html || '') : (data.quote_preview_html || '');
+            const scheduleEnabled = (data.post_status === 'future' || data.schedule_enabled === '1');
+            const scheduleDatetime = data.schedule_datetime || '';
+
+            if (modalTitle) {
+                modalTitle.textContent = isQuoteMode ? 'Quote Bit' : 'Edit Bit';
+            }
+
+            if (editPostInput) {
+                editPostInput.value = isQuoteMode ? '0' : String(postId || 0);
+            }
+
+            if (contentInput) {
+                contentInput.value = isQuoteMode ? '' : (data.content || '');
+            }
+
+            setQuotePreview(bitForm, quotePostId, quotePreviewHtml);
+            setAttachmentPreview(bitForm, isQuoteMode ? 0 : attachmentId, isQuoteMode ? '' : attachmentUrl, isQuoteMode ? '' : attachmentMime, isQuoteMode ? [] : (data.attachments || []));
+            setScheduleState(bitForm, 'bit', scheduleEnabled && !isQuoteMode, isQuoteMode ? '' : scheduleDatetime);
+
+            if (submitButton) {
+                submitButton.textContent = isQuoteMode ? 'Post Bit' : 'Update Bit';
+            }
+            if (draftButton) {
+                draftButton.textContent = data.post_status === 'draft' && !isQuoteMode ? 'Update Draft' : 'Save to Drafts';
+            }
+
+            setLoadingState(false);
+            clearFormFeedback();
+            setModalVisible(true);
+        }
+
+        function populateRebitForm(data) {
+            if (!rebitForm) {
+                return;
+            }
+
+            bindFormOnce(rebitForm);
+            showForm(rebitForm);
+
+            const postId = parseInt(data.post_id || '0', 10);
+            const editPostInput = rebitForm.querySelector('input[name="edit_post_id"]');
+            const urlInput = rebitForm.querySelector('#bs-edit-rebit-url');
+            const commentaryInput = rebitForm.querySelector('#bs-edit-rebit-commentary');
+            const ogTitleInput = rebitForm.querySelector('.bs-edit-og-title');
+            const ogDescInput = rebitForm.querySelector('.bs-edit-og-desc');
+            const ogImageInput = rebitForm.querySelector('.bs-edit-og-image');
+            const ogImageRemovedInput = rebitForm.querySelector('.bs-edit-og-image-removed');
+            const submitButton = rebitForm.querySelector('.bs-edit-submit');
+            const draftButton = rebitForm.querySelector('.bs-edit-save-draft');
+            const attachmentId = parseInt(data.attachment_id || '0', 10);
+            const attachmentUrl = data.attachment_url || '';
+            const attachmentMime = data.attachment_mime || '';
+            const scheduleEnabled = (data.post_status === 'future' || data.schedule_enabled === '1');
+            const scheduleDatetime = data.schedule_datetime || '';
+
+            if (modalTitle) {
+                modalTitle.textContent = 'Edit Rebit';
+            }
+
+            if (editPostInput) {
+                editPostInput.value = String(postId || 0);
+            }
+            if (urlInput) {
+                urlInput.value = data.rebit_url || '';
+            }
+            if (commentaryInput) {
+                commentaryInput.value = data.content || '';
+            }
+            if (ogTitleInput) {
+                ogTitleInput.value = data.og_title || '';
+            }
+            if (ogDescInput) {
+                ogDescInput.value = data.og_desc || '';
+            }
+            if (ogImageInput) {
+                ogImageInput.value = data.og_image || '';
+            }
+            if (ogImageRemovedInput) {
+                ogImageRemovedInput.value = '0';
+            }
+
+            setAttachmentPreview(rebitForm, attachmentId, attachmentUrl, attachmentMime);
+            setLinkMetaPreview();
+
+            if (submitButton) {
+                submitButton.textContent = 'Update Rebit';
+            }
+            if (draftButton) {
+                draftButton.textContent = data.post_status === 'draft' ? 'Update Draft' : 'Save to Drafts';
+            }
+
+            setLoadingState(false);
+            clearFormFeedback();
+            setModalVisible(true);
+        }
+
+        function submitModalForm(form, saveAsDraft) {
+            if (!form || !window.bitstream_ajax || !bitstream_ajax.ajax_url) {
+                setErrorState('Poster submit endpoint is unavailable.');
+                return;
+            }
+
+            if (!submitNonce) {
+                setErrorState('Security token missing. Refresh and try again.');
+                return;
+            }
+
+            const composerType = form.dataset.composerType || 'bit';
+            const editPostInput = form.querySelector('input[name="edit_post_id"]');
+            const submitButton = form.querySelector('.bs-edit-submit');
+            const draftButton = form.querySelector('.bs-edit-save-draft');
+            const scheduleEnabledInput = form.querySelector('input[name="' + composerType + '_schedule_enabled"]');
+            const scheduleDatetimeInput = form.querySelector('input[name="' + composerType + '_schedule_datetime"]');
+            const scheduleLater = form.querySelector('input[name="' + composerType + '_schedule_mode"][value="later"]');
+
+            if (scheduleLater && scheduleLater.checked && scheduleDatetimeInput && !scheduleDatetimeInput.value) {
+                setErrorState('Please choose a date and time for the schedule.');
+                return;
+            }
+
+            let effectiveType = composerType;
+            if (composerType === 'bit') {
+                const textarea = form.querySelector('#bs-edit-bit-content');
+                const attachmentInput = form.querySelector('.bs-edit-attachment-id');
+                const quoteInput = form.querySelector('.bs-edit-quote-post-id');
+                const content = textarea ? textarea.value.trim() : '';
+                const hasMedia = attachmentInput && parseInt(attachmentInput.value || '0', 10) > 0;
+                const hasQuote = quoteInput && parseInt(quoteInput.value || '0', 10) > 0;
+
+                if (!saveAsDraft && !content && !hasMedia && !hasQuote) {
+                    setErrorState('Write something or attach media.');
+                    return;
+                }
+
+                if (!saveAsDraft && !hasMedia && !hasQuote && content) {
+                    try {
+                        const url = new URL(content);
+                        if (url.protocol === 'http:' || url.protocol === 'https:') {
+                            effectiveType = 'rebit';
+                        }
+                    } catch {
+                        // Keep it as a Bit.
+                    }
+                }
+            } else {
+                const urlInput = form.querySelector('#bs-edit-rebit-url');
+                const rebitUrl = urlInput ? urlInput.value.trim() : '';
+                if (!saveAsDraft && !rebitUrl) {
+                    setErrorState('Add a link URL.');
+                    return;
+                }
+            }
+
+            if (submitButton) {
+                submitButton.disabled = true;
+            }
+            if (draftButton) {
+                draftButton.disabled = true;
+            }
+            setLoadingState(true, saveAsDraft ? 'Saving draft...' : 'Publishing...');
+
+            const payload = new FormData(form);
+            payload.append('action', 'bitstream_submit_composer');
+            payload.append('nonce', submitNonce);
+            payload.append('composer_type', effectiveType);
+            payload.set('edit_post_id', editPostInput ? (editPostInput.value || '0') : '0');
+
+            if (saveAsDraft) {
+                payload.append('save_as_draft', '1');
+            }
+
+            if (effectiveType === 'rebit' && composerType === 'bit') {
+                const textarea = form.querySelector('#bs-edit-bit-content');
+                const content = textarea ? textarea.value.trim() : '';
+                if (content) {
+                    payload.set('rebit_url', content);
+                    payload.delete('bit_content');
+                }
+            }
+
+            fetch(bitstream_ajax.ajax_url, {
+                method: 'POST',
+                credentials: 'same-origin',
+                body: payload
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) {
+                        throw new Error(data.data || 'Could not save post.');
+                    }
+
+                    const responseData = data.data || {};
+                    const createdPostId = parseInt(responseData.post_id || '0', 10);
+                    const isScheduled = !!responseData.is_scheduled;
+
+                    if (saveAsDraft) {
+                        const composerBaseUrl = (window.bitstream_ajax && bitstream_ajax.composer_url)
+                            ? bitstream_ajax.composer_url
+                            : window.location.href;
+                        const redirectUrl = new URL(composerBaseUrl, window.location.origin);
+                        redirectUrl.searchParams.set('composer_tab', 'drafts');
+                        if (createdPostId > 0) {
+                            redirectUrl.searchParams.set('highlight_draft', String(createdPostId));
+                        }
+                        window.location.href = redirectUrl.toString();
+                        return;
+                    }
+
+                    if (isScheduled) {
+                        const composerBaseUrl = (window.bitstream_ajax && bitstream_ajax.composer_url)
+                            ? bitstream_ajax.composer_url
+                            : window.location.href;
+                        const redirectUrl = new URL(composerBaseUrl, window.location.origin);
+                        redirectUrl.searchParams.set('composer_tab', 'scheduled');
+                        if (createdPostId > 0) {
+                            redirectUrl.searchParams.set('highlight_scheduled', String(createdPostId));
+                        }
+                        window.location.href = redirectUrl.toString();
+                        return;
+                    }
+
+                    const feedBaseUrl = (window.bitstream_ajax && bitstream_ajax.feed_url)
+                        ? bitstream_ajax.feed_url
+                        : (window.location.origin + '/bitstream/');
+                    const feedUrl = new URL(feedBaseUrl, window.location.origin);
+                    if (createdPostId > 0) {
+                        feedUrl.searchParams.set('highlight_bit', String(createdPostId));
+                    }
+                    window.location.href = feedUrl.toString();
+                })
+                .catch(error => {
+                    setErrorState(error.message || 'Could not save post.');
+                    setLoadingState(false);
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                    }
+                    if (draftButton) {
+                        draftButton.disabled = false;
+                    }
+                });
+        }
+
+        openTimelineEditModal = function (postId, postType) {
+            const numericPostId = parseInt(postId || '0', 10);
+            if (!numericPostId || !window.bitstream_ajax || !bitstream_ajax.ajax_url || !submitNonce) {
+                return false;
+            }
+
+            setModalVisible(true);
+            setLoadingState(true, 'Loading post…');
+            clearFormFeedback();
+            showForm(null);
+
+            const payload = new FormData();
+            payload.append('action', 'bitstream_get_post_edit_data');
+            payload.append('nonce', submitNonce);
+            payload.append('post_id', String(numericPostId));
+
+            fetch(bitstream_ajax.ajax_url, {
+                method: 'POST',
+                credentials: 'same-origin',
+                body: payload
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) {
+                        throw new Error(data.data || 'Could not load post data.');
+                    }
+
+                    const responseData = data.data || {};
+                    if (responseData.post_type === 'rebit' || postType === 'rebit') {
+                        populateRebitForm(responseData);
+                    } else {
+                        populateBitForm(responseData, false);
+                    }
+                })
+                .catch(error => {
+                    setErrorState(error.message || 'Could not load post data.');
+                });
+
+            return true;
+        };
+
+        openTimelineQuoteModal = function (postId) {
+            const numericPostId = parseInt(postId || '0', 10);
+            if (!numericPostId || !window.bitstream_ajax || !bitstream_ajax.ajax_url || !submitNonce) {
+                return false;
+            }
+
+            setModalVisible(true);
+            setLoadingState(true, 'Loading quote preview…');
+            clearFormFeedback();
+            showForm(null);
+
+            const payload = new FormData();
+            payload.append('action', 'bitstream_get_quote_preview');
+            payload.append('nonce', submitNonce);
+            payload.append('post_id', String(numericPostId));
+
+            fetch(bitstream_ajax.ajax_url, {
+                method: 'POST',
+                credentials: 'same-origin',
+                body: payload
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) {
+                        throw new Error(data.data || 'Could not load quote preview.');
+                    }
+
+                    const responseData = data.data || {};
+                    populateBitForm({
+                        post_id: numericPostId,
+                        content: '',
+                        quote_post_id: numericPostId,
+                        quote_preview_html: responseData.quote_preview_html || '',
+                        attachment_id: 0,
+                        attachment_url: '',
+                        attachment_mime: '',
+                        post_status: 'publish',
+                        schedule_enabled: '0',
+                        schedule_datetime: ''
+                    }, true);
+                })
+                .catch(error => {
+                    setErrorState(error.message || 'Could not load quote preview.');
+                });
+
+            return true;
+        };
+
+        closeButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                closeLinkMetaModal();
+                modal.hidden = true;
+                document.body.style.overflow = '';
+            });
+        });
+
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                closeLinkMetaModal();
+                modal.hidden = true;
+                document.body.style.overflow = '';
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !modal.hidden) {
+                closeLinkMetaModal();
+                modal.hidden = true;
+                document.body.style.overflow = '';
+            }
+        });
+
+        modal.querySelectorAll('.bs-edit-save-draft').forEach(button => {
+            button.addEventListener('click', () => {
+                const form = button.closest('.bs-edit-form');
+                if (form) {
+                    submitModalForm(form, true);
+                }
+            });
+        });
+
+        modal.querySelectorAll('.bs-edit-form').forEach(form => {
+            bindFormOnce(form);
+            form.addEventListener('submit', (event) => {
+                event.preventDefault();
+                submitModalForm(form, false);
+            });
+        });
+    }
+
+    initTimelineEditModal();
     initBitstreamPoster();
     highlightFromQueryParams();
     applyMediaDeterrents(document);
@@ -2465,9 +4292,22 @@ document.addEventListener('DOMContentLoaded', function () {
         if (quoteButton) {
             event.preventDefault();
             const postId = quoteButton.dataset.postId;
-            const basePosterUrl = (window.bitstream_ajax && bitstream_ajax.poster_url) ? bitstream_ajax.poster_url : (window.location.origin + '/bitstream/');
+            if (postId && typeof openTimelineQuoteModal === 'function' && openTimelineQuoteModal(postId)) {
+                const icon = quoteButton.querySelector('i');
+                if (icon) {
+                    icon.classList.remove('pulse');
+                    void icon.offsetWidth;
+                    icon.classList.add('pulse');
+                    setTimeout(() => icon.classList.remove('pulse'), 300);
+                }
+                return;
+            }
+
+            const basePosterUrl = (window.bitstream_ajax && bitstream_ajax.composer_url)
+                ? bitstream_ajax.composer_url
+                : (window.location.origin + '/bitstream/');
             const quoteUrl = new URL(basePosterUrl, window.location.origin);
-            quoteUrl.searchParams.set('poster_tab', 'bit');
+            quoteUrl.searchParams.set('composer_tab', 'bit');
             quoteUrl.searchParams.set('quote_post_id', postId);
 
             window.location.href = quoteUrl.toString();
@@ -2491,28 +4331,48 @@ document.addEventListener('DOMContentLoaded', function () {
 
         event.preventDefault();
 
-        const postId = parseInt(button.dataset.postId || '0', 10);
-        if (!postId) {
+        const postId = button.dataset.postId;
+        const postType = (button.dataset.postType === 'rebit') ? 'rebit' : 'bit';
+
+        if (typeof openTimelineEditModal === 'function' && openTimelineEditModal(postId, postType)) {
+            const icon = button.querySelector('i');
+            if (icon) {
+                icon.classList.remove('pulse');
+                void icon.offsetWidth;
+                icon.classList.add('pulse');
+                setTimeout(() => icon.classList.remove('pulse'), 300);
+            }
             return;
         }
 
-        const postType = (button.dataset.postType === 'rebit') ? 'rebit' : 'bit';
-        const basePosterUrl = (window.bitstream_ajax && bitstream_ajax.poster_url)
-            ? bitstream_ajax.poster_url
-            : (window.location.origin + '/bitstream/');
-        const editUrl = new URL(basePosterUrl, window.location.origin);
-        editUrl.searchParams.set('poster_tab', postType);
-        editUrl.searchParams.set('edit_post_id', String(postId));
-
-        window.location.href = editUrl.toString();
-
-        const icon = button.querySelector('i');
-        if (icon) {
-            icon.classList.remove('pulse');
-            void icon.offsetWidth;
-            icon.classList.add('pulse');
-            setTimeout(() => icon.classList.remove('pulse'), 300);
+        if (typeof initTimelineEditModal === 'function') {
+            initTimelineEditModal();
+            if (typeof openTimelineEditModal === 'function' && openTimelineEditModal(postId, postType)) {
+                const icon = button.querySelector('i');
+                if (icon) {
+                    icon.classList.remove('pulse');
+                    void icon.offsetWidth;
+                    icon.classList.add('pulse');
+                    setTimeout(() => icon.classList.remove('pulse'), 300);
+                }
+                return;
+            }
         }
+
+        const composer = document.querySelector('.bitstream-composer');
+        if (composer && typeof composer.bitstreamLoadPostIntoComposer === 'function') {
+            composer.bitstreamLoadPostIntoComposer(postId);
+            const icon = button.querySelector('i');
+            if (icon) {
+                icon.classList.remove('pulse');
+                void icon.offsetWidth;
+                icon.classList.add('pulse');
+                setTimeout(() => icon.classList.remove('pulse'), 300);
+            }
+            return;
+        }
+
+        window.alert('The BitStream editor is unavailable on this page. Refresh and try again.');
     });
 
     // Delete button functionality (delegated for dynamically loaded cards)
@@ -2534,48 +4394,45 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const confirmed = window.confirm('Are you sure you want to delete this Bit? This action cannot be undone.');
-        if (!confirmed) {
-            return;
-        }
+        showDeleteConfirmation('Are you sure you want to delete this Bit? This action cannot be undone.', () => {
+            button.classList.add('is-active');
 
-        button.classList.add('is-active');
+            const payload = new FormData();
+            payload.append('action', 'bitstream_delete_post');
+            payload.append('post_id', postId);
+            payload.append('nonce', bitstream_ajax.delete_post_nonce);
 
-        const payload = new FormData();
-        payload.append('action', 'bitstream_delete_post');
-        payload.append('post_id', postId);
-        payload.append('nonce', bitstream_ajax.delete_post_nonce);
-
-        fetch(bitstream_ajax.ajax_url, {
-            method: 'POST',
-            credentials: 'same-origin',
-            body: payload
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (!data.success) {
-                    throw new Error(data.data || 'Could not delete post.');
-                }
-
-                const card = button.closest('.bit-card');
-                if (card) {
-                    const lockedHeight = card.offsetHeight;
-                    card.style.minHeight = lockedHeight + 'px';
-                    card.classList.add('bit-card-delete-pending');
-                    card.innerHTML = '<div class="bit-delete-toast">Deleted successfully</div>';
-
-                    setTimeout(() => {
-                        card.classList.add('bit-card-delete-fade');
-                        setTimeout(() => {
-                            card.remove();
-                        }, 350);
-                    }, 3000);
-                }
+            fetch(bitstream_ajax.ajax_url, {
+                method: 'POST',
+                credentials: 'same-origin',
+                body: payload
             })
-            .catch(error => {
-                alert(error.message || 'Could not delete post.');
-                button.classList.remove('is-active');
-            });
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) {
+                        throw new Error(data.data || 'Could not delete post.');
+                    }
+
+                    const card = button.closest('.bit-card');
+                    if (card) {
+                        const lockedHeight = card.offsetHeight;
+                        card.style.minHeight = lockedHeight + 'px';
+                        card.classList.add('bit-card-delete-pending');
+                        card.innerHTML = '<div class="bit-delete-toast">Deleted successfully</div>';
+
+                        setTimeout(() => {
+                            card.classList.add('bit-card-delete-fade');
+                            setTimeout(() => {
+                                card.remove();
+                            }, 350);
+                        }, 3000);
+                    }
+                })
+                .catch(error => {
+                    alert(error.message || 'Could not delete post.');
+                    button.classList.remove('is-active');
+                });
+        });
     });
 
     // Floating BitStream menu functionality
@@ -2742,7 +4599,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function getCardTextTitle(mediaEl) {
-        const card = mediaEl.closest('.bit-card, .bitstream-media-preview, .bitstream-poster');
+        const card = mediaEl.closest('.bit-card, .bitstream-media-preview, .bitstream-composer');
         if (!card) {
             return '';
         }
@@ -2830,8 +4687,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (tagName === 'video') {
-            const posterSrc = mediaEl.getAttribute('poster') || '';
-            const fallbackImage = mediaEl.closest('.bit-card, .bitstream-media-preview, .bitstream-poster')
+            const composerSrc = mediaEl.getAttribute('composer') || '';
+            const fallbackImage = mediaEl.closest('.bit-card, .bitstream-media-preview, .bitstream-composer')
                 ?.querySelector('img')
                 ?.getAttribute('src') || '';
             const bitContentTitle = sanitizeVideoTitleFromBitContent(getCardTextTitle(mediaEl), mediaEl);
@@ -2842,7 +4699,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 title,
                 artist: siteName,
                 album: 'BitStream',
-                artwork: buildArtworkList(posterSrc || fallbackImage),
+                artwork: buildArtworkList(composerSrc || fallbackImage),
             };
         }
 
@@ -2901,6 +4758,30 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    function adjustCardMediaDimensions(scope = document) {
+        scope.querySelectorAll('.bit-card-content img:not(.emoji):not(.bitstream-gallery-media), .bit-rebit-preview img:not(.emoji):not(.bitstream-gallery-media), .bitstream-quoted-preview img:not(.emoji):not(.bitstream-gallery-media), .bitstream-composer-preview-media-thumb img:not(.emoji):not(.bitstream-gallery-media)').forEach(img => {
+            const processImage = () => {
+                const width = img.naturalWidth;
+                const height = img.naturalHeight;
+                if (width && height) {
+                    if (height / width > 1.2) {
+                        img.classList.add('bit-image-portrait');
+                        img.classList.remove('bit-image-landscape');
+                    } else {
+                        img.classList.add('bit-image-landscape');
+                        img.classList.remove('bit-image-portrait');
+                    }
+                }
+            };
+
+            if (img.complete) {
+                processImage();
+            } else {
+                img.addEventListener('load', processImage);
+            }
+        });
+    }
+
     function initMediaSession(scope = document) {
         if (!scope || !scope.querySelectorAll) {
             return;
@@ -2932,11 +4813,13 @@ document.addEventListener('DOMContentLoaded', function () {
     // Run on page load
     makeEmbedsResponsive();
     initMediaSession(document);
+    adjustCardMediaDimensions(document);
 
     // Run when new content is loaded (for infinite scroll)
     const observer = new MutationObserver(() => {
         makeEmbedsResponsive();
         initMediaSession(document);
+        adjustCardMediaDimensions(document);
         initFloatingMenu(); // Re-init floating menu if new content added
         initCommentToggles(); // Re-init comment toggles for new content
     });
@@ -3135,7 +5018,57 @@ document.addEventListener('DOMContentLoaded', function () {
     if (loadMoreButton) {
         loadMoreButton.addEventListener('click', loadNextPage);
     }
+
+    // Expose helpers globally
+    window.getExistingAttachments = getExistingAttachments;
+    window.updateAttachmentsList = updateAttachmentsList;
+    window.uploadMultipleFiles = uploadMultipleFiles;
 });
+
+// Expose media preview renderer globally so it's accessible by all components/scopes
+function renderComposerMediaPreview(previewEl, attachment) {
+    if (!previewEl) {
+        return;
+    }
+
+    const dropzone = previewEl.closest('.bitstream-media-dropzone');
+    if (dropzone) {
+        dropzone.classList.toggle('has-media', !!attachment);
+    }
+
+    if (!attachment) {
+        previewEl.innerHTML = '';
+        previewEl.removeAttribute('data-attachment-id');
+        previewEl.removeAttribute('data-attachment-url');
+        previewEl.removeAttribute('data-attachment-mime');
+        return;
+    }
+
+    const mimeType = attachment.mime || '';
+    const previewUrl = attachment.preview_url || attachment.url || '';
+
+    if (attachment.id) {
+        previewEl.dataset.attachmentId = attachment.id;
+    }
+    if (previewUrl) {
+        previewEl.dataset.attachmentUrl = previewUrl;
+    }
+    if (mimeType) {
+        previewEl.dataset.attachmentMime = mimeType;
+    }
+
+    if (mimeType.startsWith('image/')) {
+        previewEl.innerHTML = '<img src="' + previewUrl + '" alt="">';
+        return;
+    }
+
+    if (mimeType.startsWith('video/')) {
+        previewEl.innerHTML = '<video src="' + previewUrl + '" controls controlsList="nodownload noplaybackrate" disablepictureinpicture></video>';
+        return;
+    }
+
+    previewEl.innerHTML = '<p>Selected: ' + (attachment.filename || attachment.title || 'media') + '</p>';
+}
 
 // Consolidated comment styling function
 function applyCommentStyles() {
@@ -3198,79 +5131,1081 @@ jQuery(document).ready(function ($) {
         });
     });
 
-    // Quick Post form handler
-    const quickPostForms = document.querySelectorAll('.bitstream-sidebar-quick-post-form');
-    quickPostForms.forEach(form => {
-        const statusEl = form.querySelector('.bitstream-sidebar-quick-post-status');
-        const submitBtn = form.querySelector('[type="submit"]');
+    // ── Composer (modal-based) ────────────────────────────────────
+    // Intercept clicks on quick action triggers
+    document.addEventListener('click', (e) => {
+        const trigger = e.target.closest('[data-composer-modal-trigger]');
+        if (!trigger) return;
+
+        const modalName = trigger.dataset.composerModalTrigger;
+        const composer = document.querySelector('.bitstream-composer');
+        const feedBaseUrl = (window.bitstream_ajax && bitstream_ajax.feed_url)
+            ? bitstream_ajax.feed_url
+            : (window.location.origin + '/bitstream/');
+        const feedUrl = new URL(feedBaseUrl, window.location.origin);
+
+        if (composer) {
+            e.preventDefault();
+            const isMobile = window.innerWidth < 1024;
+            if (isMobile) {
+                composer.hidden = false;
+            }
+            composer.dataset.quickActionSource = modalName;
+
+            if (modalName === 'new-bit') {
+                const textarea = composer.querySelector('#bitstream-quick-bit-content');
+                if (textarea) {
+                    textarea.focus();
+                    if (!isMobile) {
+                        textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }
+            } else if (modalName === 'new-rebit') {
+                const rebitBtn = composer.querySelector('[data-composer-modal="rebit"]');
+                if (rebitBtn) {
+                    rebitBtn.click();
+                    if (!isMobile) {
+                        rebitBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }
+            } else {
+                // Close any open modals first
+                composer.querySelectorAll('.bitstream-composer-modal').forEach(m => m.hidden = true);
+                const modal = composer.querySelector('.bitstream-composer-modal-' + modalName);
+                if (modal) {
+                    modal.hidden = false;
+                    const statusEl = composer.querySelector('.bitstream-sidebar-composer-status');
+                    if (statusEl) statusEl.textContent = '';
+                }
+            }
+        } else {
+            e.preventDefault();
+            if (modalName === 'new-bit') {
+                feedUrl.searchParams.set('composer_tab', 'bit');
+            } else if (modalName === 'new-rebit') {
+                feedUrl.searchParams.set('composer_tab', 'rebit');
+            } else if (modalName === 'drafts') {
+                feedUrl.searchParams.set('show_drafts', '1');
+            } else if (modalName === 'scheduled-list') {
+                feedUrl.searchParams.set('show_scheduled', '1');
+            }
+            window.location.href = feedUrl.toString();
+        }
+    });
+
+    document.querySelectorAll('.bitstream-composer').forEach(composerRoot => {
+        const form = composerRoot.querySelector('.bitstream-sidebar-composer-form');
+        if (!form) return;
+
+        const statusEl = composerRoot.querySelector('.bitstream-sidebar-composer-status');
+        const submitBtn = form.querySelector('.bitstream-composer-submit');
+        const textarea = form.querySelector('#bitstream-quick-bit-content');
+        const submitNonce = composerRoot.dataset.submitNonce || '';
+
+        // Hidden inputs
+        const hAttachmentId = form.querySelector('#bitstream-composer-attachment-id');
+        const hAttachmentIds = form.querySelector('#bitstream-composer-attachment-ids');
+        const modalAttachmentId = composerRoot.querySelector('#bitstream-composer-modal-media-attachment-id');
+        const modalAttachmentIds = composerRoot.querySelector('#bitstream-composer-modal-media-attachment-ids');
+        if (hAttachmentId && modalAttachmentId && hAttachmentId.value && !modalAttachmentId.value) {
+            modalAttachmentId.value = hAttachmentId.value;
+        }
+        if (hAttachmentIds && modalAttachmentIds && hAttachmentIds.value && !modalAttachmentIds.value) {
+            modalAttachmentIds.value = hAttachmentIds.value;
+        }
+        const hRebitUrl = form.querySelector('#bitstream-composer-rebit-url');
+        const hRebitOgTitle = form.querySelector('#bitstream-composer-rebit-og-title');
+        const hRebitOgDesc = form.querySelector('#bitstream-composer-rebit-og-desc');
+        const hRebitOgImage = form.querySelector('#bitstream-composer-rebit-og-image');
+        const hRebitOgImageRemoved = form.querySelector('#bitstream-composer-rebit-og-image-removed');
+        const hRebitAttachmentId = form.querySelector('#bitstream-composer-rebit-attachment-id');
+        const hScheduleEnabled = form.querySelector('#bitstream-composer-schedule-enabled');
+        const hScheduleDatetime = form.querySelector('#bitstream-composer-schedule-datetime');
+        const hEditPostId = form.querySelector('#bitstream-composer-edit-post-id');
+        let renderRebitLivePreview, updateModalImagePreview;
+
+        // Preview containers
+        const previewArea = form.querySelector('.bitstream-composer-preview-area');
+        const previewRebit = form.querySelector('.bitstream-composer-preview-rebit');
+        const previewRebitCard = form.querySelector('.bitstream-composer-preview-rebit-card');
+        const previewMedia = form.querySelector('.bitstream-composer-preview-media');
+        const previewMediaThumb = form.querySelector('.bitstream-composer-preview-media-thumb');
+        const previewSchedule = form.querySelector('.bitstream-composer-preview-schedule');
+        const previewScheduleDate = form.querySelector('.bitstream-composer-preview-schedule-date');
+        const previewDraft = null;
+        const previewDraftLabel = null;
+
+        // Save Draft Button
+        const composerSaveDraftBtn = null;
+        const composerSaveDraftActionBtn = form.querySelector('.bitstream-composer-save-draft-action');
 
         function setStatus(msg, isError = false) {
             if (!statusEl) return;
             statusEl.textContent = msg;
             statusEl.style.color = isError ? '#cc0000' : '#2c6e49';
-        }
 
-        // Detect if content is just a URL (with optional whitespace)
-        function isUrlOnly(text) {
-            const trimmed = text.trim();
-            try {
-                const url = new URL(trimmed);
-                return url.protocol === 'http:' || url.protocol === 'https:';
-            } catch {
-                return false;
+            // Locate active open modal
+            const activeModal = document.querySelector('.bitstream-composer-modal:not([hidden]), .bitstream-cropper-modal:not([hidden]), .bitstream-rebit-editor-modal:not([hidden])');
+            if (activeModal) {
+                const bodyEl = activeModal.querySelector('.bitstream-composer-modal-body, .bitstream-cropper-body, .bitstream-rebit-editor-body');
+                if (bodyEl) {
+                    let modalStatusEl = bodyEl.querySelector('.bitstream-modal-status');
+                    if (!modalStatusEl) {
+                        modalStatusEl = document.createElement('div');
+                        modalStatusEl.className = 'bitstream-modal-status bitstream-composer-status';
+                        modalStatusEl.setAttribute('aria-live', 'polite');
+                        bodyEl.insertBefore(modalStatusEl, bodyEl.firstChild);
+                    }
+                    modalStatusEl.textContent = msg;
+                    modalStatusEl.classList.toggle('is-error', isError);
+                    modalStatusEl.classList.toggle('is-success', !isError && !!msg);
+
+                    if (!msg) {
+                        modalStatusEl.textContent = '';
+                        modalStatusEl.className = 'bitstream-modal-status bitstream-composer-status';
+                    }
+                }
+            }
+
+            if (!msg) {
+                document.querySelectorAll('.bitstream-modal-status').forEach(el => {
+                    el.textContent = '';
+                    el.className = 'bitstream-modal-status bitstream-composer-status';
+                });
             }
         }
 
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
+        function syncPreviewArea() {
+            const hasRebit = previewRebit && !previewRebit.hidden;
+            const hasMedia = previewMedia && !previewMedia.hidden;
+            const hasSched = previewSchedule && !previewSchedule.hidden;
+            const hasDraft = previewDraft && !previewDraft.hidden;
+            if (previewArea) previewArea.hidden = !(hasRebit || hasMedia || hasSched || hasDraft);
+            if (textarea) textarea.required = !(hasRebit || hasMedia);
+        }
 
-            const textarea = form.querySelector('textarea[name="bit_content"]');
-            const content = textarea ? textarea.value : '';
-            const isRebit = isUrlOnly(content);
+        // Modal open/close helpers
+        function openModal(name) {
+            setStatus('');
+            const modal = composerRoot.querySelector('.bitstream-composer-modal-' + name);
+            if (modal) {
+                modal.hidden = false;
+                const isMobile = window.innerWidth < 1024;
+                if (isMobile) {
+                    composerRoot.hidden = false;
+                }
 
-            setStatus(isRebit ? 'Posting ReBit...' : 'Posting...');
+                if (name === 'media') {
+                    const mMediaPreview = modal.querySelector('#bitstream-composer-modal-media-preview');
+                    if (mMediaPreview && previewMediaThumb) {
+                        const currentAttachments = getExistingAttachments(previewMediaThumb);
+                        updateAttachmentsList(mMediaPreview, currentAttachments);
+                    }
+                }
+
+                if (name === 'rebit') {
+                    const mRebitUrl = modal.querySelector('#bitstream-composer-modal-rebit-url');
+                    const mRebitFetch = modal.querySelector('.bitstream-composer-rebit-fetch');
+                    const rebitMetaModal = composerRoot.querySelector('.bitstream-composer-modal-rebit-meta');
+                    
+                    if (hRebitUrl && mRebitUrl) {
+                        mRebitUrl.value = hRebitUrl.value || '';
+                    }
+                    
+                    if (hRebitUrl && hRebitUrl.value) {
+                        const mRebitTitle = rebitMetaModal ? rebitMetaModal.querySelector('#bitstream-composer-modal-rebit-og-title') : null;
+                        const mRebitDesc = rebitMetaModal ? rebitMetaModal.querySelector('#bitstream-composer-modal-rebit-og-desc') : null;
+                        
+                        if (mRebitTitle && hRebitOgTitle) {
+                            mRebitTitle.value = hRebitOgTitle.value || '';
+                        }
+                        if (mRebitDesc && hRebitOgDesc) {
+                            mRebitDesc.value = hRebitOgDesc.value || '';
+                        }
+                        
+                        if (mRebitFetch) {
+                            mRebitFetch.classList.add('is-edit-mode');
+                            mRebitFetch.textContent = 'Edit metadata';
+                        }
+                        
+                        if (renderRebitLivePreview) {
+                            renderRebitLivePreview(hRebitUrl.value);
+                        }
+                    } else {
+                        if (mRebitFetch) {
+                            mRebitFetch.classList.remove('is-edit-mode');
+                            mRebitFetch.textContent = 'Fetch metadata';
+                        }
+                        const mRebitPreviewRoot = modal.querySelector('.bitstream-composer-rebit-live-preview');
+                        const mRebitPreviewCard = modal.querySelector('.bitstream-composer-rebit-live-preview-card');
+                        if (mRebitPreviewRoot) mRebitPreviewRoot.hidden = true;
+                        if (mRebitPreviewCard) mRebitPreviewCard.innerHTML = '';
+                    }
+                }
+
+                if (name === 'rebit-meta') {
+                    if (typeof updateModalImagePreview === 'function') {
+                        updateModalImagePreview();
+                    }
+                }
+            }
+        }
+        function closeModal(name, keepPosterOpen = false) {
+            setStatus('');
+            if (name === 'composer') {
+                composerRoot.hidden = true;
+                delete composerRoot.dataset.quickActionSource;
+                // Also close any open sub-modals
+                composerRoot.querySelectorAll('.bitstream-composer-modal').forEach(m => m.hidden = true);
+            } else {
+                const modal = composerRoot.querySelector('.bitstream-composer-modal-' + name);
+                if (modal) {
+                    modal.hidden = true;
+                    const isMobile = window.innerWidth < 1024;
+                    const quickActionSource = composerRoot.dataset.quickActionSource || '';
+                    const shouldCloseComposer = isMobile && !keepPosterOpen && (
+                        name === 'drafts'
+                        || name === 'scheduled-list'
+                        || (name === 'rebit' && quickActionSource === 'new-rebit')
+                    );
+                    if (shouldCloseComposer) {
+                        composerRoot.hidden = true;
+                        delete composerRoot.dataset.quickActionSource;
+                    }
+                }
+            }
+        }
+
+        // Wire action buttons
+        composerRoot.querySelectorAll('.bitstream-composer-action-btn[data-composer-modal]').forEach(btn => {
+            btn.addEventListener('click', () => openModal(btn.dataset.composerModal));
+        });
+
+        // Wire all close triggers
+        composerRoot.querySelectorAll('[data-composer-modal-close]').forEach(el => {
+            el.addEventListener('click', () => closeModal(el.dataset.composerModalClose));
+        });
+
+        // Wire preview edit buttons
+        composerRoot.querySelectorAll('.bitstream-composer-preview-edit[data-composer-edit]').forEach(btn => {
+            btn.addEventListener('click', () => openModal(btn.dataset.composerEdit));
+        });
+
+        // Wire preview remove buttons
+        composerRoot.querySelectorAll('.bitstream-composer-preview-remove[data-composer-remove]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const type = btn.dataset.composerRemove;
+                if (type === 'rebit') {
+                    if (hRebitUrl) hRebitUrl.value = '';
+                    if (hRebitOgTitle) hRebitOgTitle.value = '';
+                    if (hRebitOgDesc) hRebitOgDesc.value = '';
+                    if (hRebitOgImage) hRebitOgImage.value = '';
+                    if (hRebitOgImageRemoved) hRebitOgImageRemoved.value = '0';
+                    if (hRebitAttachmentId) hRebitAttachmentId.value = '';
+                    if (previewRebit) previewRebit.hidden = true;
+                    if (previewRebitCard) previewRebitCard.innerHTML = '';
+                    form.dataset.composerType = 'bit';
+                    if (textarea) textarea.required = true;
+                }
+                if (type === 'media') {
+                    if (previewMediaThumb) {
+                        updateAttachmentsList(previewMediaThumb, []);
+                    } else {
+                        if (hAttachmentId) hAttachmentId.value = '';
+                        if (hAttachmentIds) hAttachmentIds.value = '';
+                        if (previewMedia) previewMedia.hidden = true;
+                    }
+                }
+                if (type === 'schedule') {
+                    if (hScheduleEnabled) hScheduleEnabled.value = '0';
+                    if (hScheduleDatetime) hScheduleDatetime.value = '';
+                    if (previewSchedule) previewSchedule.hidden = true;
+                    if (submitBtn) {
+                        const isEdit = hEditPostId && hEditPostId.value !== '0';
+                        if (isEdit) {
+                            submitBtn.textContent = 'Publish Draft';
+                        } else {
+                            const isRebit = form.dataset.composerType === 'rebit';
+                            submitBtn.textContent = isRebit ? 'Publish Rebit' : 'Post Bit';
+                        }
+                    }
+                }
+                if (type === 'draft') {
+                    if (hEditPostId) hEditPostId.value = '0';
+                    if (previewDraft) previewDraft.hidden = true;
+                    if (composerSaveDraftBtn) composerSaveDraftBtn.style.display = 'none';
+                    if (submitBtn) {
+                        const isRebit = form.dataset.composerType === 'rebit';
+                        submitBtn.textContent = isRebit ? 'Publish Rebit' : 'Post Bit';
+                    }
+                }
+                syncPreviewArea();
+            });
+        });
+
+        // DRY Helper: Load draft or scheduled post into composer
+        function loadPostIntoComposer(postId) {
+            composerRoot.hidden = false;
+            if (!window.bitstream_ajax) return;
+            delete composerRoot.dataset.quickActionSource;
+
+            setStatus('Loading post...');
             if (submitBtn) submitBtn.disabled = true;
 
-            const fd = new FormData(form);
-            fd.append('action', 'bitstream_submit_poster');
-            fd.append('nonce', form.dataset.submitNonce);
+            const fd = new FormData();
+            fd.append('action', 'bitstream_get_post_data');
+            fd.append('nonce', submitNonce);
+            fd.append('post_id', String(postId));
 
-            if (isRebit) {
-                fd.append('poster_type', 'rebit');
-                fd.append('rebit_url', content.trim());
-                fd.delete('bit_content');
-            } else {
-                fd.append('poster_type', 'bit');
+            fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success) throw new Error(data.data || 'Could not load post data.');
+                    const d = data.data || {};
+
+                    if (textarea) textarea.value = d.content || '';
+                    if (hEditPostId) hEditPostId.value = String(postId);
+
+                    if (d.is_rebit && d.rebit_url) {
+                        if (hRebitUrl) hRebitUrl.value = d.rebit_url;
+                        if (hRebitOgTitle) hRebitOgTitle.value = d.og_title || '';
+                        if (hRebitOgDesc) hRebitOgDesc.value = d.og_desc || '';
+                        if (hRebitOgImage) hRebitOgImage.value = d.og_image || '';
+                        if (hRebitAttachmentId && d.attachment_id) hRebitAttachmentId.value = String(d.attachment_id);
+                        if (hRebitOgImageRemoved) hRebitOgImageRemoved.value = '0';
+                        form.dataset.composerType = 'rebit';
+                        if (textarea) textarea.required = false;
+                        if (previewRebitCard) previewRebitCard.innerHTML = d.media_preview_html || '<p style="font-size:0.85rem;color:#555;">Rebit: ' + d.rebit_url + '</p>';
+                        if (previewRebit) previewRebit.hidden = false;
+
+                        // Prefill Rebit Modal fields
+                        const mRebitUrl = composerRoot.querySelector('#bitstream-composer-modal-rebit-url');
+                        const mRebitTitle = composerRoot.querySelector('#bitstream-composer-modal-rebit-og-title');
+                        const mRebitDesc = composerRoot.querySelector('#bitstream-composer-modal-rebit-og-desc');
+                        const mRebitFetch = composerRoot.querySelector('.bitstream-composer-rebit-fetch');
+
+                        if (mRebitUrl) mRebitUrl.value = d.rebit_url;
+                        if (mRebitTitle) mRebitTitle.value = d.og_title || '';
+                        if (mRebitDesc) mRebitDesc.value = d.og_desc || '';
+
+                        if (mRebitFetch) {
+                            mRebitFetch.classList.add('is-edit-mode');
+                            mRebitFetch.textContent = 'Edit metadata';
+                        }
+
+                        if (typeof renderRebitLivePreview === 'function') {
+                            renderRebitLivePreview(d.rebit_url);
+                        }
+                    } else {
+                        form.dataset.composerType = 'bit';
+                        if (hRebitUrl) hRebitUrl.value = '';
+                        if (hRebitOgTitle) hRebitOgTitle.value = '';
+                        if (hRebitOgDesc) hRebitOgDesc.value = '';
+                        if (hRebitOgImage) hRebitOgImage.value = '';
+                        if (hRebitAttachmentId) hRebitAttachmentId.value = '';
+                        if (hRebitOgImageRemoved) hRebitOgImageRemoved.value = '0';
+                        if (previewRebit) previewRebit.hidden = true;
+                        if (previewRebitCard) previewRebitCard.innerHTML = '';
+                        if (textarea) textarea.required = true;
+                    }
+
+                    const previewEl = previewMediaThumb || form.querySelector('.bitstream-media-preview');
+                    const hAttachmentIds = form.querySelector('#bitstream-composer-attachment-ids');
+                    if (d.attachment_id && parseInt(d.attachment_id, 10) > 0 && !d.is_rebit) {
+                        if (hAttachmentId) hAttachmentId.value = String(d.attachment_id);
+                        if (hAttachmentIds && d.attachment_ids) hAttachmentIds.value = d.attachment_ids;
+                        if (previewEl) {
+                            if (d.attachments && d.attachments.length > 0) {
+                                updateAttachmentsList(previewEl, d.attachments);
+                            } else if (d.attachment_url && d.attachment_mime) {
+                                const singleAtt = {
+                                    id: parseInt(d.attachment_id, 10),
+                                    url: d.attachment_url,
+                                    preview_url: d.attachment_url,
+                                    mime: d.attachment_mime
+                                };
+                                updateAttachmentsList(previewEl, [singleAtt]);
+                            } else {
+                                previewEl.innerHTML = d.media_preview_html || '<span>Media attached (ID: ' + d.attachment_id + ')</span>';
+                            }
+                        }
+                        if (previewMedia) previewMedia.hidden = false;
+                    } else {
+                        if (hAttachmentId) hAttachmentId.value = '';
+                        if (hAttachmentIds) hAttachmentIds.value = '';
+                        if (previewEl) updateAttachmentsList(previewEl, []);
+                        if (previewMedia) previewMedia.hidden = true;
+                    }
+
+                    if (d.schedule_enabled === '1' && d.schedule_datetime) {
+                        if (hScheduleEnabled) hScheduleEnabled.value = '1';
+                        if (hScheduleDatetime) hScheduleDatetime.value = d.schedule_datetime;
+                        if (previewScheduleDate) previewScheduleDate.textContent = new Date(d.schedule_datetime).toLocaleString();
+                        if (previewSchedule) previewSchedule.hidden = false;
+                    } else {
+                        if (hScheduleEnabled) hScheduleEnabled.value = '0';
+                        if (hScheduleDatetime) hScheduleDatetime.value = '';
+                        if (previewSchedule) previewSchedule.hidden = true;
+                    }
+
+                    const isScheduled = d.schedule_enabled === '1';
+                    if (previewDraftLabel) {
+                        previewDraftLabel.textContent = isScheduled ? 'Editing Scheduled #' + postId : 'Editing Draft #' + postId;
+                    }
+                    if (previewDraft) previewDraft.hidden = false;
+
+                    if (submitBtn) {
+                        submitBtn.textContent = isScheduled ? 'Update Scheduled Post' : 'Publish Draft';
+                    }
+
+                    if (composerSaveDraftBtn) {
+                        composerSaveDraftBtn.style.display = isScheduled ? 'none' : 'block';
+                    }
+
+                    syncPreviewArea();
+                    setStatus('Post loaded.');
+                })
+                .catch(err => setStatus(err.message || 'Could not load post.', true))
+                .finally(() => { if (submitBtn) submitBtn.disabled = false; });
+        }
+        composerRoot.bitstreamLoadPostIntoComposer = loadPostIntoComposer;
+
+        // ── REBIT MODAL ──
+        const rebitModal = composerRoot.querySelector('.bitstream-composer-modal-rebit');
+        const rebitMetaModal = composerRoot.querySelector('.bitstream-composer-modal-rebit-meta');
+        if (rebitModal && rebitMetaModal) {
+            const mRebitUrl = rebitModal.querySelector('#bitstream-composer-modal-rebit-url');
+            const mRebitFetch = rebitModal.querySelector('.bitstream-composer-rebit-fetch');
+            const mRebitPreviewRoot = rebitModal.querySelector('.bitstream-composer-rebit-live-preview');
+            const mRebitPreviewLoading = rebitModal.querySelector('.bitstream-composer-rebit-live-preview-loading');
+            const mRebitPreviewCard = rebitModal.querySelector('.bitstream-composer-rebit-live-preview-card');
+            const mRebitDone = rebitModal.querySelector('.bitstream-composer-rebit-done');
+
+            // Metadata edit modal controls (now in rebitMetaModal)
+            const mRebitTitle = rebitMetaModal.querySelector('#bitstream-composer-modal-rebit-og-title');
+            const mRebitDesc = rebitMetaModal.querySelector('#bitstream-composer-modal-rebit-og-desc');
+            const mRebitImageChange = rebitMetaModal.querySelector('.bitstream-composer-rebit-image-change');
+            const mRebitImageRemove = rebitMetaModal.querySelector('.bitstream-composer-rebit-image-remove');
+            const mRebitMetaDone = rebitMetaModal.querySelector('.bitstream-composer-rebit-meta-done');
+
+            const mRebitImagePreviewWrapper = rebitMetaModal.querySelector('.bitstream-composer-rebit-image-preview-wrapper');
+            const mRebitImagePreviewEl = rebitMetaModal.querySelector('.bitstream-composer-rebit-image-preview-el');
+
+            updateModalImagePreview = function() {
+                const imageUrl = hRebitOgImage ? hRebitOgImage.value : '';
+                const isRemoved = hRebitOgImageRemoved ? hRebitOgImageRemoved.value === '1' : false;
+                if (imageUrl && !isRemoved) {
+                    if (mRebitImagePreviewEl) mRebitImagePreviewEl.src = imageUrl;
+                    if (mRebitImagePreviewWrapper) mRebitImagePreviewWrapper.hidden = false;
+                    if (mRebitImageRemove) mRebitImageRemove.hidden = false;
+                } else {
+                    if (mRebitImagePreviewEl) mRebitImagePreviewEl.src = '';
+                    if (mRebitImagePreviewWrapper) mRebitImagePreviewWrapper.hidden = true;
+                    if (mRebitImageRemove) mRebitImageRemove.hidden = true;
+                }
+            };
+
+            renderRebitLivePreview = function(url) {
+                if (!mRebitPreviewRoot || !window.bitstream_ajax) return;
+                mRebitPreviewRoot.hidden = false;
+                if (mRebitPreviewLoading) mRebitPreviewLoading.hidden = false;
+
+                const fd = new FormData();
+                fd.append('action', 'bitstream_render_rebit_preview');
+                fd.append('nonce', bitstream_ajax.og_fetch_nonce);
+                fd.append('rebit_url', url);
+                fd.append('rebit_commentary', textarea ? textarea.value : '');
+                fd.append('rebit_og_title', mRebitTitle ? mRebitTitle.value : '');
+                fd.append('rebit_og_desc', mRebitDesc ? mRebitDesc.value : '');
+                fd.append('rebit_og_image', hRebitOgImage ? hRebitOgImage.value : '');
+                fd.append('rebit_og_image_removed', hRebitOgImageRemoved ? hRebitOgImageRemoved.value : '0');
+                fd.append('rebit_attachment_id', hRebitAttachmentId ? hRebitAttachmentId.value : '');
+
+                fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (!data.success) throw new Error(data.data || 'Preview failed.');
+                        const resp = data.data || {};
+                        if (mRebitPreviewCard) mRebitPreviewCard.innerHTML = resp.rendered_html || '';
+                        if (previewRebitCard) previewRebitCard.innerHTML = resp.rendered_html || '';
+                        if (mRebitPreviewLoading) mRebitPreviewLoading.hidden = true;
+                        if (resp.og && hRebitOgImage) {
+                            hRebitOgImage.value = resp.og.image || '';
+                        }
+                        updateModalImagePreview();
+                    })
+                    .catch(() => { if (mRebitPreviewLoading) mRebitPreviewLoading.hidden = true; });
+            };
+
+            let livePreviewDebounce;
+            const triggerLivePreview = () => {
+                const url = mRebitUrl ? mRebitUrl.value.trim() : '';
+                if (url) {
+                    clearTimeout(livePreviewDebounce);
+                    livePreviewDebounce = setTimeout(() => renderRebitLivePreview(url), 500);
+                }
+            };
+
+            if (mRebitTitle) mRebitTitle.addEventListener('input', triggerLivePreview);
+            if (mRebitDesc) mRebitDesc.addEventListener('input', triggerLivePreview);
+
+            let rebitMediaFrame;
+            if (mRebitImageChange) {
+                mRebitImageChange.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (rebitMediaFrame) { rebitMediaFrame.open(); return; }
+                    rebitMediaFrame = wp.media({ title: 'Select Preview Image', button: { text: 'Use this image' }, multiple: false });
+                    rebitMediaFrame.on('select', () => {
+                        const attachment = rebitMediaFrame.state().get('selection').first().toJSON();
+                        if (hRebitAttachmentId) hRebitAttachmentId.value = attachment.id;
+                        if (hRebitOgImage) hRebitOgImage.value = attachment.url;
+                        if (hRebitOgImageRemoved) hRebitOgImageRemoved.value = '0';
+                        updateModalImagePreview();
+                        triggerLivePreview();
+                    });
+                    rebitMediaFrame.open();
+                });
             }
 
-            fetch(bitstream_ajax.ajax_url, {
-                method: 'POST',
-                body: fd
-            })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        setStatus(isRebit ? 'ReBit posted!' : 'Posted!');
-                        form.reset();
-                        const responseData = data.data || {};
-                        const createdPostId = parseInt(responseData.post_id || '0', 10);
+            if (mRebitImageRemove) {
+                mRebitImageRemove.addEventListener('click', () => {
+                    if (hRebitAttachmentId) hRebitAttachmentId.value = '';
+                    if (hRebitOgImage) hRebitOgImage.value = '';
+                    if (hRebitOgImageRemoved) hRebitOgImageRemoved.value = '1';
+                    updateModalImagePreview();
+                    triggerLivePreview();
+                });
+            }
+
+            if (mRebitFetch) {
+                mRebitFetch.addEventListener('click', () => {
+                    if (mRebitFetch.classList.contains('is-edit-mode')) {
+                        openModal('rebit-meta');
+                        return;
+                    }
+                    const url = mRebitUrl ? mRebitUrl.value.trim() : '';
+                    if (!url) { setStatus('Enter a URL first.', true); return; }
+                    if (!window.bitstream_ajax || !bitstream_ajax.og_fetch_nonce) { setStatus('Metadata fetcher unavailable.', true); return; }
+
+                    mRebitFetch.disabled = true;
+                    mRebitFetch.textContent = 'Fetching...';
+
+                    const fd = new FormData();
+                    fd.append('action', 'bitstream_fetch_og_data');
+                    fd.append('nonce', bitstream_ajax.og_fetch_nonce);
+                    fd.append('url', url);
+                    fd.append('post_id', '0');
+
+                    fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
+                        .then(r => r.json())
+                        .then(data => {
+                            if (!data.success) throw new Error(data.data || 'Fetch failed.');
+                            const meta = data.data || {};
+                            if (mRebitTitle) mRebitTitle.value = meta.title || '';
+                            if (mRebitDesc) mRebitDesc.value = meta.description || '';
+                            renderRebitLivePreview(url);
+                            setStatus('Metadata loaded.');
+                            mRebitFetch.classList.add('is-edit-mode');
+                            mRebitFetch.textContent = 'Edit metadata';
+                        })
+                        .catch(err => setStatus(err.message || 'Fetch failed.', true))
+                        .finally(() => { 
+                            mRebitFetch.disabled = false; 
+                            if (!mRebitFetch.classList.contains('is-edit-mode')) {
+                                mRebitFetch.textContent = 'Fetch metadata';
+                            }
+                        });
+                });
+            }
+
+            if (mRebitUrl) {
+                mRebitUrl.addEventListener('input', () => {
+                    mRebitFetch.classList.remove('is-edit-mode');
+                    mRebitFetch.textContent = 'Fetch metadata';
+                    if (mRebitPreviewRoot) mRebitPreviewRoot.hidden = true;
+                    if (mRebitPreviewCard) mRebitPreviewCard.innerHTML = '';
+                    if (mRebitTitle) mRebitTitle.value = '';
+                    if (mRebitDesc) mRebitDesc.value = '';
+                });
+            }
+
+            if (mRebitMetaDone) {
+                mRebitMetaDone.addEventListener('click', () => {
+                    const url = mRebitUrl ? mRebitUrl.value.trim() : '';
+                    renderRebitLivePreview(url);
+                    closeModal('rebit-meta');
+                });
+            }
+
+            if (mRebitDone) {
+                mRebitDone.addEventListener('click', () => {
+                    const url = mRebitUrl ? mRebitUrl.value.trim() : '';
+                    if (!url) { setStatus('Enter and fetch a URL first.', true); return; }
+
+                    if (hRebitUrl) hRebitUrl.value = url;
+                    if (hRebitOgTitle) hRebitOgTitle.value = mRebitTitle ? mRebitTitle.value : '';
+                    if (hRebitOgDesc) hRebitOgDesc.value = mRebitDesc ? mRebitDesc.value : '';
+                    form.dataset.composerType = 'rebit';
+                    if (textarea) textarea.required = false;
+
+                    if (previewRebitCard && mRebitPreviewCard) {
+                        previewRebitCard.innerHTML = mRebitPreviewCard.innerHTML || ('<p style="font-size:0.85rem;color:#555;">Rebit: ' + url + '</p>');
+                    }
+                    if (previewRebit) previewRebit.hidden = false;
+                    syncPreviewArea();
+                    delete composerRoot.dataset.quickActionSource;
+                    closeModal('rebit', true);
+                    setStatus('Rebit attached.');
+                });
+            }
+        }
+
+        // ── MEDIA MODAL ──
+        const mediaModal = composerRoot.querySelector('.bitstream-composer-modal-media');
+        if (mediaModal) {
+            const mMediaDone = mediaModal.querySelector('.bitstream-composer-media-done');
+            const mMediaAttInput = mediaModal.querySelector('#bitstream-composer-modal-media-attachment-id');
+            const mMediaPreview = mediaModal.querySelector('#bitstream-composer-modal-media-preview');
+
+            if (mMediaDone) {
+                mMediaDone.addEventListener('click', () => {
+                    const attachments = getExistingAttachments(mMediaPreview);
+                    if (attachments.length === 0) { setStatus('Upload or select media first.', true); return; }
+
+                    if (previewMediaThumb) {
+                        updateAttachmentsList(previewMediaThumb, attachments);
+                    } else {
+                        const attachId = attachments[0].id;
+                        const attachIds = attachments.map(item => item.id).join(',');
+                        if (hAttachmentId) hAttachmentId.value = String(attachId);
+                        if (hAttachmentIds) hAttachmentIds.value = attachIds;
+                        if (previewMedia) previewMedia.hidden = false;
+                    }
+
+                    syncPreviewArea();
+                    closeModal('media');
+                    setStatus('Media attached.');
+                });
+            }
+        }
+
+        // ── DRAFTS MODAL ──
+        const draftsModal = composerRoot.querySelector('.bitstream-composer-modal-drafts');
+        if (draftsModal) {
+            const draftFilterBtns = draftsModal.querySelectorAll('.bitstream-composer-drafts-filter-btn');
+            const draftItems = draftsModal.querySelectorAll('.bitstream-composer-draft-item');
+            draftFilterBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const filter = btn.dataset.filter || 'all';
+                    draftFilterBtns.forEach(b => b.classList.toggle('is-active', b === btn));
+                    draftItems.forEach(item => {
+                        const type = item.dataset.type || 'bit';
+                        item.style.display = (filter === 'all' || filter === type) ? '' : 'none';
+                    });
+                });
+            });
+
+            draftsModal.addEventListener('click', (event) => {
+                const btn = event.target.closest('.bitstream-composer-draft-load');
+                if (btn && draftsModal.contains(btn)) {
+                    event.preventDefault();
+                    const postId = btn.dataset.postId;
+                    if (postId) {
+                        loadPostIntoComposer(postId);
+                        closeModal('drafts', true);
+                    }
+                }
+            });
+
+            draftsModal.querySelectorAll('.bitstream-composer-draft-delete').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const postId = btn.dataset.postId;
+                    if (!postId || !window.bitstream_ajax) return;
+
+                    showDeleteConfirmation('Delete this draft?', () => {
+                        btn.disabled = true;
+                        const fd = new FormData();
+                        fd.append('action', 'bitstream_delete_post');
+                        fd.append('nonce', bitstream_ajax.delete_post_nonce);
+                        fd.append('post_id', postId);
+
+                        fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
+                            .then(r => r.json())
+                            .then(data => {
+                                if (!data.success) throw new Error(data.data || 'Delete failed.');
+                                const item = btn.closest('.bitstream-composer-draft-item');
+                                if (item) item.remove();
+                                
+                                // Check if empty
+                                const list = draftsModal.querySelector('.bitstream-composer-drafts-list');
+                                const remaining = list ? list.querySelectorAll('.bitstream-composer-draft-item') : [];
+                                if (list && remaining.length === 0) {
+                                    list.innerHTML = '<p class="bitstream-composer-drafts-empty">No drafts yet.</p>';
+                                }
+                                setStatus('Draft deleted.');
+                            })
+                            .catch(err => { setStatus(err.message || 'Delete failed.', true); btn.disabled = false; });
+                    });
+                });
+            });
+
+
+        }
+
+        // ── SAVE CURRENT BIT TO DRAFTS ACTION BUTTON ──
+        if (composerSaveDraftActionBtn) {
+            composerSaveDraftActionBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (!window.bitstream_ajax || !submitNonce) { setStatus('Cannot save draft.', true); return; }
+
+                const content = textarea ? textarea.value.trim() : '';
+                const hasRebit = hRebitUrl && hRebitUrl.value.trim();
+                const hasMedia = hAttachmentId && parseInt(hAttachmentId.value || '0', 10) > 0;
+                if (!content && !hasRebit && !hasMedia) { setStatus('Nothing to save.', true); return; }
+
+                composerSaveDraftActionBtn.disabled = true;
+                const originalHtml = composerSaveDraftActionBtn.innerHTML;
+                composerSaveDraftActionBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>';
+                setStatus('Saving draft...');
+
+                const fd = new FormData(form);
+                fd.append('action', 'bitstream_submit_composer');
+                fd.append('nonce', submitNonce);
+                fd.append('composer_type', form.dataset.composerType || 'bit');
+                fd.append('save_as_draft', '1');
+
+                fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (!data.success) throw new Error(data.data || 'Save failed.');
+                        setStatus(data.data?.message || 'Saved as draft.');
+                        
                         const feedBaseUrl = (window.bitstream_ajax && bitstream_ajax.feed_url)
                             ? bitstream_ajax.feed_url
                             : (window.location.origin + '/bitstream/');
-                        const feedUrl = new URL(feedBaseUrl, window.location.origin);
+                        const redirectUrl = new URL(feedBaseUrl, window.location.origin);
+                        redirectUrl.searchParams.set('show_drafts', '1');
+                        const createdPostId = parseInt(data.data?.post_id || '0', 10);
                         if (createdPostId > 0) {
-                            feedUrl.searchParams.set('highlight_bit', String(createdPostId));
+                            redirectUrl.searchParams.set('highlight_draft', String(createdPostId));
                         }
-                        setTimeout(() => {
-                            window.location.href = feedUrl.toString();
-                        }, 500);
+                        window.location.href = redirectUrl.toString();
+                    })
+                    .catch(err => {
+                        setStatus(err.message || 'Save failed.', true);
+                        composerSaveDraftActionBtn.disabled = false;
+                        composerSaveDraftActionBtn.innerHTML = originalHtml;
+                    });
+            });
+        }
+
+        // ── SCHEDULE MODAL ──
+        const scheduleModal = composerRoot.querySelector('.bitstream-composer-modal-schedule');
+        if (scheduleModal) {
+            const schedRadios = scheduleModal.querySelectorAll('input[name="bitstream_qp_schedule_mode"]');
+            const schedDatetime = scheduleModal.querySelector('.bitstream-composer-schedule-datetime-input');
+            const schedDone = scheduleModal.querySelector('.bitstream-composer-schedule-done');
+
+            schedRadios.forEach(radio => {
+                radio.addEventListener('change', () => {
+                    if (schedDatetime) schedDatetime.disabled = (radio.value !== 'later');
+                });
+            });
+
+            if (schedDone) {
+                schedDone.addEventListener('click', () => {
+                    const mode = scheduleModal.querySelector('input[name="bitstream_qp_schedule_mode"]:checked');
+                    if (mode && mode.value === 'later') {
+                        const dt = schedDatetime ? schedDatetime.value : '';
+                        if (!dt) { setStatus('Pick a date and time.', true); return; }
+                        if (hScheduleEnabled) hScheduleEnabled.value = '1';
+                        if (hScheduleDatetime) hScheduleDatetime.value = dt;
+                        if (previewScheduleDate) previewScheduleDate.textContent = new Date(dt).toLocaleString();
+                        if (previewSchedule) previewSchedule.hidden = false;
+                        if (submitBtn) {
+                            const isEdit = hEditPostId && hEditPostId.value !== '0';
+                            submitBtn.textContent = isEdit ? 'Update Scheduled Post' : 'Schedule Bit';
+                        }
                     } else {
-                        setStatus(data.data || 'Failed to post.', true);
-                        if (submitBtn) submitBtn.disabled = false;
+                        if (hScheduleEnabled) hScheduleEnabled.value = '0';
+                        if (hScheduleDatetime) hScheduleDatetime.value = '';
+                        if (previewSchedule) previewSchedule.hidden = true;
+                        if (submitBtn) {
+                            const isEdit = hEditPostId && hEditPostId.value !== '0';
+                            submitBtn.textContent = isEdit ? 'Publish Draft' : 'Post Bit';
+                        }
                     }
+                    syncPreviewArea();
+                    closeModal('schedule');
+                });
+            }
+        }
+
+        // ── SCHEDULED LIST MODAL ──
+        const scheduledListModal = composerRoot.querySelector('.bitstream-composer-modal-scheduled-list');
+        if (scheduledListModal) {
+            const schedFilterBtns = scheduledListModal.querySelectorAll('.bitstream-composer-scheduled-filter-btn');
+            const schedItems = scheduledListModal.querySelectorAll('.bitstream-composer-scheduled-item');
+            schedFilterBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const filter = btn.dataset.filter || 'all';
+                    schedFilterBtns.forEach(b => b.classList.toggle('is-active', b === btn));
+                    schedItems.forEach(item => {
+                        const type = item.dataset.type || 'bit';
+                        item.style.display = (filter === 'all' || filter === type) ? '' : 'none';
+                    });
+                });
+            });
+
+            scheduledListModal.querySelectorAll('.bitstream-composer-scheduled-load').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const postId = btn.dataset.postId;
+                    if (postId) {
+                        loadPostIntoComposer(postId);
+                        closeModal('scheduled-list', true);
+                    }
+                });
+            });
+
+            scheduledListModal.querySelectorAll('.bitstream-composer-scheduled-delete').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const postId = btn.dataset.postId;
+                    if (!postId || !window.bitstream_ajax) return;
+
+                    showDeleteConfirmation('Delete this scheduled post?', () => {
+                        btn.disabled = true;
+                        const fd = new FormData();
+                        fd.append('action', 'bitstream_delete_post');
+                        fd.append('nonce', bitstream_ajax.delete_post_nonce);
+                        fd.append('post_id', postId);
+
+                        fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
+                            .then(r => r.json())
+                            .then(data => {
+                                if (!data.success) throw new Error(data.data || 'Delete failed.');
+                                const item = btn.closest('.bitstream-composer-scheduled-item');
+                                if (item) item.remove();
+                                
+                                // Check if empty
+                                const list = scheduledListModal.querySelector('.bitstream-composer-scheduled-list');
+                                const remaining = list ? list.querySelectorAll('.bitstream-composer-scheduled-item') : [];
+                                if (list && remaining.length === 0) {
+                                    list.innerHTML = '<p class="bitstream-composer-scheduled-empty">No scheduled Bits or Rebits yet.</p>';
+                                }
+                                setStatus('Scheduled post deleted.');
+                            })
+                            .catch(err => { setStatus(err.message || 'Delete failed.', true); btn.disabled = false; });
+                    });
+                });
+            });
+        }
+
+        // ── COMPOSER SAVE DRAFT BUTTON ──
+        if (composerSaveDraftBtn) {
+            composerSaveDraftBtn.addEventListener('click', () => {
+                if (!window.bitstream_ajax || !submitNonce) { setStatus('Cannot save draft.', true); return; }
+
+                const content = textarea ? textarea.value.trim() : '';
+                const hasRebit = hRebitUrl && hRebitUrl.value.trim();
+                if (!content && !hasRebit) { setStatus('Nothing to save.', true); return; }
+
+                composerSaveDraftBtn.disabled = true;
+                composerSaveDraftBtn.textContent = 'Saving...';
+                setStatus('Saving draft...');
+
+                const fd = new FormData(form);
+                fd.append('action', 'bitstream_submit_composer');
+                fd.append('nonce', submitNonce);
+                fd.append('composer_type', form.dataset.composerType || 'bit');
+                fd.append('save_as_draft', '1');
+
+                fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (!data.success) throw new Error(data.data || 'Save failed.');
+                        setStatus(data.data?.message || 'Saved as draft.');
+                        
+                        const feedBaseUrl = (window.bitstream_ajax && bitstream_ajax.feed_url)
+                            ? bitstream_ajax.feed_url
+                            : (window.location.origin + '/bitstream/');
+                        const redirectUrl = new URL(feedBaseUrl, window.location.origin);
+                        redirectUrl.searchParams.set('show_drafts', '1');
+                        const createdPostId = parseInt(data.data?.post_id || '0', 10);
+                        if (createdPostId > 0) {
+                            redirectUrl.searchParams.set('highlight_draft', String(createdPostId));
+                        }
+                        window.location.href = redirectUrl.toString();
+                    })
+                    .catch(err => {
+                        setStatus(err.message || 'Save failed.', true);
+                        composerSaveDraftBtn.disabled = false;
+                        composerSaveDraftBtn.textContent = 'Save Draft';
+                    });
+            });
+        }
+
+        // Check page load URL parameters to open modals or focus composer elements
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('show_drafts') || urlParams.get('composer_tab') === 'drafts') {
+            openModal('drafts');
+        }
+        if (urlParams.has('show_scheduled') || urlParams.get('composer_tab') === 'scheduled') {
+            openModal('scheduled-list');
+        }
+        if (urlParams.has('show_rebit') || urlParams.get('composer_tab') === 'rebit') {
+            const rebitBtn = composerRoot.querySelector('[data-composer-modal="rebit"]');
+            if (rebitBtn) {
+                setTimeout(() => {
+                    const isMobile = window.innerWidth < 1024;
+                    if (isMobile) {
+                        composerRoot.dataset.quickActionSource = 'new-rebit';
+                    }
+                    rebitBtn.click();
+                    if (!isMobile) {
+                        rebitBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 100);
+            }
+        }
+        if (urlParams.has('focus_composer') || urlParams.get('composer_tab') === 'bit') {
+            const isMobile = window.innerWidth < 1024;
+            if (isMobile) {
+                composerRoot.hidden = false;
+            }
+            if (textarea) {
+                setTimeout(() => {
+                    textarea.focus();
+                    if (!isMobile) {
+                        textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 100);
+            }
+        }
+
+        // Open quote modal when ?quote_post_id=N is in the URL
+        const quotePostIdFromUrl = parseInt(urlParams.get('quote_post_id') || '0', 10);
+        if (quotePostIdFromUrl > 0 && typeof openTimelineQuoteModal === 'function') {
+            setTimeout(() => openTimelineQuoteModal(quotePostIdFromUrl), 150);
+        }
+
+        // Auto-save Composer form content when the user navigates away (mirrors composer shortcode beforeunload)
+        let composerFormIsDirty = false;
+        if (textarea) {
+            textarea.addEventListener('input', () => { composerFormIsDirty = true; });
+        }
+        window.addEventListener('beforeunload', () => {
+            if (!composerFormIsDirty) return;
+            if (!window.bitstream_ajax || !bitstream_ajax.ajax_url || !submitNonce) return;
+
+            const content = textarea ? textarea.value.trim() : '';
+            const hasRebit = hRebitUrl && hRebitUrl.value.trim();
+            const hasMedia = hAttachmentId && parseInt(hAttachmentId.value || '0', 10) > 0;
+            if (!content && !hasRebit && !hasMedia) return;
+
+            const fd = new FormData(form);
+            fd.append('action', 'bitstream_submit_composer');
+            fd.append('nonce', submitNonce);
+            fd.append('composer_type', form.dataset.composerType || 'bit');
+            fd.append('save_as_draft', '1');
+            fd.append('is_auto_draft', '1');
+
+            navigator.sendBeacon(bitstream_ajax.ajax_url, fd);
+            composerFormIsDirty = false;
+        });
+
+        const initialRebitUrl = hRebitUrl ? hRebitUrl.value.trim() : '';
+        if (initialRebitUrl) {
+            if (previewRebitCard) {
+                previewRebitCard.innerHTML = '<p style="font-size:0.85rem;color:#555;">Rebit: ' + initialRebitUrl + '</p>';
+            }
+            if (previewRebit) previewRebit.hidden = false;
+            form.dataset.composerType = 'rebit';
+            if (textarea) textarea.required = false;
+            syncPreviewArea();
+        }
+
+        const initialAttachmentId = hAttachmentId ? hAttachmentId.value.trim() : '';
+        if (initialAttachmentId && initialAttachmentId !== '0') {
+            if (previewMediaThumb) {
+                previewMediaThumb.innerHTML = '<span>Loading preview...</span>';
+            }
+            if (previewMedia) previewMedia.hidden = false;
+            syncPreviewArea();
+        }
+
+        const initialEditPostId = hEditPostId ? parseInt(hEditPostId.value || '0', 10) : 0;
+        if (initialEditPostId > 0) {
+            loadPostIntoComposer(initialEditPostId);
+        }
+
+        // ── FORM SUBMIT ──
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (!window.bitstream_ajax || !submitNonce) { setStatus('Submit unavailable.', true); return; }
+
+            const composerType = form.dataset.composerType || 'bit';
+            const content = textarea ? textarea.value.trim() : '';
+            const hasMedia = hAttachmentId && parseInt(hAttachmentId.value || '0', 10) > 0;
+            const hasRebit = hRebitUrl && hRebitUrl.value.trim();
+
+            let effectiveType = composerType;
+            if (composerType === 'bit' && !hasMedia && !hasRebit && content) {
+                try {
+                    const u = new URL(content);
+                    if (u.protocol === 'http:' || u.protocol === 'https:') effectiveType = 'rebit';
+                } catch {}
+            }
+
+            if (effectiveType === 'bit' && !content && !hasMedia) { setStatus('Write something or attach media.', true); return; }
+
+            setStatus(effectiveType === 'rebit' ? 'Posting ReBit...' : 'Posting...');
+            if (submitBtn) submitBtn.disabled = true;
+
+            const fd = new FormData(form);
+            fd.append('action', 'bitstream_submit_composer');
+            fd.append('nonce', submitNonce);
+            fd.append('composer_type', effectiveType);
+
+            if (effectiveType === 'rebit' && !hasRebit && content) {
+                fd.set('rebit_url', content);
+                fd.delete('bit_content');
+            }
+
+            fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success) throw new Error(data.data || 'Post failed.');
+
+                    const responseData = data.data || {};
+                    setStatus(responseData.message || 'Posted!');
+
+                    const createdPostId = parseInt(responseData.post_id || '0', 10);
+                    const isScheduled = !!responseData.is_scheduled;
+
+                    if (isScheduled) {
+                        const composerBaseUrl = (window.bitstream_ajax && bitstream_ajax.composer_url)
+                            ? bitstream_ajax.composer_url
+                            : (window.location.origin + '/bitstream/');
+                        const redirectUrl = new URL(composerBaseUrl, window.location.origin);
+                        redirectUrl.searchParams.set('show_scheduled', '1');
+                        if (createdPostId > 0) {
+                            redirectUrl.searchParams.set('highlight_scheduled', String(createdPostId));
+                        }
+                        window.location.href = redirectUrl.toString();
+                        return;
+                    }
+
+                    const feedBaseUrl = (window.bitstream_ajax && bitstream_ajax.feed_url)
+                        ? bitstream_ajax.feed_url
+                        : (window.location.origin + '/bitstream/');
+                    const feedUrl = new URL(feedBaseUrl, window.location.origin);
+                    if (createdPostId > 0) {
+                        feedUrl.searchParams.set('highlight_bit', String(createdPostId));
+                    }
+                    window.location.href = feedUrl.toString();
                 })
                 .catch(err => {
-                    setStatus('Network error.', true);
+                    setStatus(err.message || 'Network error.', true);
                     if (submitBtn) submitBtn.disabled = false;
                 });
         });
@@ -3479,4 +6414,485 @@ jQuery(document).ready(function ($) {
             });
         });
     });
+
+    // ═══ FULLSCREEN LIGHTBOX CONTROLLER ═══
+    let lightboxEl = null;
+    let lightboxMediaList = [];
+    let lightboxCurrentIndex = 0;
+
+    function initLightbox() {
+        if (document.querySelector('.bitstream-lightbox')) {
+            return;
+        }
+
+        lightboxEl = document.createElement('div');
+        lightboxEl.className = 'bitstream-lightbox';
+        lightboxEl.setAttribute('aria-hidden', 'true');
+        lightboxEl.innerHTML = `
+            <button class="bitstream-lightbox-close" aria-label="Close lightbox"><i class="fa-solid fa-xmark"></i></button>
+            <button class="bitstream-lightbox-nav bitstream-lightbox-nav-prev" aria-label="Previous"><i class="fa-solid fa-chevron-left"></i></button>
+            <div class="bitstream-lightbox-stage"></div>
+            <button class="bitstream-lightbox-nav bitstream-lightbox-nav-next" aria-label="Next"><i class="fa-solid fa-chevron-right"></i></button>
+            <div class="bitstream-lightbox-counter"></div>
+        `;
+
+        document.body.appendChild(lightboxEl);
+
+        lightboxEl.querySelector('.bitstream-lightbox-close').addEventListener('click', closeLightbox);
+        lightboxEl.querySelector('.bitstream-lightbox-nav-prev').addEventListener('click', prevLightboxItem);
+        lightboxEl.querySelector('.bitstream-lightbox-nav-next').addEventListener('click', nextLightboxItem);
+        
+        lightboxEl.addEventListener('click', (e) => {
+            if (e.target === lightboxEl || e.target.classList.contains('bitstream-lightbox-stage')) {
+                closeLightbox();
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (!lightboxEl.classList.contains('is-open')) return;
+            if (e.key === 'Escape') closeLightbox();
+            if (e.key === 'ArrowLeft') prevLightboxItem();
+            if (e.key === 'ArrowRight') nextLightboxItem();
+        });
+    }
+
+    function openLightbox(mediaList, startIndex) {
+        initLightbox();
+        lightboxMediaList = mediaList;
+        lightboxCurrentIndex = startIndex;
+        
+        lightboxEl.style.display = 'flex';
+        lightboxEl.offsetHeight; // Force reflow
+        lightboxEl.classList.add('is-open');
+        lightboxEl.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+
+        showLightboxItem(lightboxCurrentIndex);
+    }
+
+    function closeLightbox() {
+        if (!lightboxEl) return;
+        lightboxEl.classList.remove('is-open');
+        lightboxEl.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+        const stage = lightboxEl.querySelector('.bitstream-lightbox-stage');
+        if (stage) {
+            const video = stage.querySelector('video');
+            if (video) video.pause();
+        }
+        setTimeout(() => {
+            lightboxEl.style.display = 'none';
+        }, 250);
+    }
+
+    function showLightboxItem(index) {
+        if (!lightboxEl || lightboxMediaList.length === 0) return;
+        
+        if (index < 0) index = lightboxMediaList.length - 1;
+        if (index >= lightboxMediaList.length) index = 0;
+        lightboxCurrentIndex = index;
+
+        const media = lightboxMediaList[lightboxCurrentIndex];
+        const stage = lightboxEl.querySelector('.bitstream-lightbox-stage');
+        const counter = lightboxEl.querySelector('.bitstream-lightbox-counter');
+        const prevBtn = lightboxEl.querySelector('.bitstream-lightbox-nav-prev');
+        const nextBtn = lightboxEl.querySelector('.bitstream-lightbox-nav-next');
+
+        stage.innerHTML = '';
+
+        if (media.mime.startsWith('image/')) {
+            const img = document.createElement('img');
+            img.src = media.url;
+            img.className = 'bitstream-lightbox-media';
+            img.alt = '';
+            stage.appendChild(img);
+        } else if (media.mime.startsWith('video/')) {
+            const video = document.createElement('video');
+            video.src = media.url;
+            video.className = 'bitstream-lightbox-media';
+            video.controls = true;
+            video.autoplay = true;
+            video.setAttribute('controlsList', 'nodownload');
+            video.setAttribute('playsinline', '');
+
+            const resizeVideo = () => {
+                if (!video.videoWidth || !video.videoHeight) return;
+                const stageEl = video.closest('.bitstream-lightbox-stage');
+                if (!stageEl) return;
+
+                const stageWidth = stageEl.clientWidth;
+                const stageHeight = stageEl.clientHeight;
+                if (!stageWidth || !stageHeight) return;
+
+                const videoRatio = video.videoWidth / video.videoHeight;
+                const stageRatio = stageWidth / stageHeight;
+
+                if (videoRatio > stageRatio) {
+                    video.style.setProperty('width', '100%', 'important');
+                    video.style.setProperty('height', 'auto', 'important');
+                } else {
+                    video.style.setProperty('width', 'auto', 'important');
+                    video.style.setProperty('height', '100%', 'important');
+                }
+            };
+
+            video.addEventListener('loadedmetadata', resizeVideo);
+            window.addEventListener('resize', resizeVideo);
+
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    mutation.removedNodes.forEach((node) => {
+                        if (node === video) {
+                            window.removeEventListener('resize', resizeVideo);
+                            observer.disconnect();
+                        }
+                    });
+                });
+            });
+            observer.observe(stage, { childList: true });
+
+            stage.appendChild(video);
+        }
+
+        counter.textContent = `${lightboxCurrentIndex + 1} / ${lightboxMediaList.length}`;
+        
+        const hasMultiple = lightboxMediaList.length > 1;
+        prevBtn.style.display = hasMultiple ? 'flex' : 'none';
+        nextBtn.style.display = hasMultiple ? 'flex' : 'none';
+    }
+
+    function prevLightboxItem() {
+        showLightboxItem(lightboxCurrentIndex - 1);
+    }
+
+    function nextLightboxItem() {
+        showLightboxItem(lightboxCurrentIndex + 1);
+    }
+
+    document.body.addEventListener('click', (e) => {
+        // 1. Timeline Gallery item clicks
+        const item = e.target.closest('.bitstream-gallery-media, .bitstream-gallery-overlay, .bitstream-gallery-item-has-overlay');
+        if (item) {
+            const gallery = item.closest('.bitstream-gallery');
+            if (gallery) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const mediaElements = gallery.querySelectorAll('.bitstream-gallery-media');
+                const mediaList = Array.from(mediaElements).map(el => {
+                    return {
+                        url: el.src || el.getAttribute('src'),
+                        mime: el.dataset.mime || (el.tagName.toLowerCase() === 'video' ? 'video/mp4' : 'image/jpeg')
+                    };
+                });
+
+                let clickIndex = parseInt(item.dataset.index || item.querySelector('[data-index]')?.dataset.index || '0', 10);
+                if (isNaN(clickIndex)) clickIndex = 0;
+
+                openLightbox(mediaList, clickIndex);
+                return;
+            }
+        }
+
+        // 2. Composer/Modal Preview item clicks
+        const previewItem = e.target.closest('.bitstream-media-preview-item');
+        if (previewItem && !e.target.closest('.bitstream-media-preview-remove-item')) {
+            const grid = previewItem.closest('.bitstream-media-preview-grid');
+            if (grid) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const allItems = Array.from(grid.querySelectorAll('.bitstream-media-preview-item'));
+                const mediaItems = allItems.filter(item => item.querySelector('img, video'));
+                if (!mediaItems.includes(previewItem)) return;
+
+                const mediaList = mediaItems.map(item => {
+                    const el = item.querySelector('img, video');
+                    return {
+                        url: el.src || el.getAttribute('src'),
+                        mime: el.tagName.toLowerCase() === 'video' ? 'video/mp4' : 'image/jpeg'
+                    };
+                });
+
+                const clickIndex = mediaItems.indexOf(previewItem);
+                openLightbox(mediaList, clickIndex);
+            }
+        }
+    });
+
+    // --- PWA Push Notifications Toggle Logic ---
+    const subscribeButtons = document.querySelectorAll('.bitstream-push-subscribe-btn');
+    const widgetContainers = document.querySelectorAll('.bitstream-push-widget-container');
+    const unsupportedDiv = document.getElementById('bitstream-push-device-unsupported');
+
+    if (subscribeButtons.length > 0) {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+            if (unsupportedDiv) unsupportedDiv.style.display = 'block';
+            subscribeButtons.forEach(btn => { btn.style.display = 'none'; });
+            widgetContainers.forEach(container => { container.style.display = 'none'; });
+        } else {
+            // Show the public widget containers
+            widgetContainers.forEach(container => { container.style.display = 'block'; });
+
+            // Reflect blocked state immediately so user knows before clicking
+            if (Notification.permission === 'denied') {
+                subscribeButtons.forEach(btn => {
+                    updateSubscriptionButton(btn, false, true);
+                    btn.disabled = false;
+                });
+            }
+
+            // Use getRegistration to support accessing the Service Worker registration from wp-admin (outside SW scope)
+            let getRegistrationPromise;
+            if (navigator.serviceWorker.controller) {
+                getRegistrationPromise = navigator.serviceWorker.getRegistration();
+            } else {
+                getRegistrationPromise = navigator.serviceWorker.getRegistration('/bitstream/');
+            }
+
+            getRegistrationPromise.then(function(registration) {
+                if (!registration) {
+                    console.log("BitStream SW registration not found. Registering dynamically for scope /bitstream/...");
+                    // Construct service worker URL from localized data
+                    const baseHomeUrl = bitstream_ajax.feed_url.replace(/\/bitstream\/?$/, '/');
+                    const swUrl = baseHomeUrl + '?bitstream_sw=main';
+                    
+                    return navigator.serviceWorker.register(swUrl, {
+                        scope: '/bitstream/',
+                        updateViaCache: 'none'
+                    }).then(function(newReg) {
+                        console.log("BitStream SW registered dynamically from current page.");
+                        return newReg;
+                    }).catch(function(err) {
+                        console.warn("BitStream SW dynamic registration failed:", err);
+                        return null;
+                    });
+                }
+                return registration;
+            }).then(function(registration) {
+                if (!registration) {
+                    // Update buttons to show active status check error
+                    subscribeButtons.forEach(btn => {
+                        btn.disabled = false;
+                        if (btn.classList.contains('bitstream-filter-link')) {
+                            const span = btn.querySelector('span');
+                            if (span) span.textContent = 'SW Active Check Failed';
+                        } else {
+                            btn.textContent = 'Service Worker inactive. Visit homepage feed once.';
+                            btn.style.background = '#666';
+                        }
+                    });
+                    return;
+                }
+
+                registration.pushManager.getSubscription().then(function(subscription) {
+                    let isSubscribed = !(subscription === null);
+                    subscribeButtons.forEach(btn => {
+                        updateSubscriptionButton(btn, isSubscribed);
+                        btn.disabled = false;
+                    });
+
+                    subscribeButtons.forEach(btn => {
+                        btn.addEventListener('click', function(e) {
+                            if (btn.tagName.toLowerCase() === 'a') {
+                                e.preventDefault();
+                            }
+                            
+                            // Disable all buttons during operation
+                            subscribeButtons.forEach(b => { b.disabled = true; });
+
+                            if (isSubscribed) {
+                                // Unsubscribe
+                                subscription.unsubscribe().then(function(successful) {
+                                    if (successful) {
+                                        sendSubscriptionToServer(subscription, 'unsubscribe', function(res) {
+                                            if (res.success) {
+                                                isSubscribed = false;
+                                                subscribeButtons.forEach(b => {
+                                                    updateSubscriptionButton(b, false);
+                                                    b.disabled = false;
+                                                });
+                                            } else {
+                                                alert('Failed to remove subscription from server.');
+                                                subscribeButtons.forEach(b => { b.disabled = false; });
+                                            }
+                                        });
+                                    } else {
+                                        alert('Failed to unsubscribe from device.');
+                                        subscribeButtons.forEach(b => { b.disabled = false; });
+                                    }
+                                }).catch(function(err) {
+                                    console.error('Error unsubscribing:', err);
+                                    subscribeButtons.forEach(b => { b.disabled = false; });
+                                });
+                            } else {
+                                // --- Subscribe flow with explicit permission request ---
+                                //
+                                // On Android, the browser may have notifications blocked at the
+                                // OS or site level.  Calling pushManager.subscribe() directly
+                                // without a prior Notification.requestPermission() means the
+                                // OS prompt is never shown and the subscribe silently fails.
+                                // We request permission explicitly first so the system prompt
+                                // appears, then bail early with a helpful message if denied.
+
+                                if (Notification.permission === 'denied') {
+                                    // Already hard-blocked — user must go to browser/OS settings
+                                    subscribeButtons.forEach(b => {
+                                        updateSubscriptionButton(b, false, true);
+                                        b.disabled = false;
+                                    });
+                                    return;
+                                }
+
+                                const doSubscribe = function() {
+                                    const vapidKeyB64 = btn.getAttribute('data-vapid-public');
+                                    if (!vapidKeyB64) {
+                                        alert('VAPID public key not configured.');
+                                        subscribeButtons.forEach(b => { b.disabled = false; });
+                                        return;
+                                    }
+
+                                    try {
+                                        const applicationServerKey = urlBase64ToUint8Array(vapidKeyB64);
+                                        registration.pushManager.subscribe({
+                                            userVisibleOnly: true,
+                                            applicationServerKey: applicationServerKey
+                                        }).then(function(newSubscription) {
+                                            sendSubscriptionToServer(newSubscription, 'subscribe', function(res) {
+                                                if (res.success) {
+                                                    isSubscribed = true;
+                                                    subscription = newSubscription;
+                                                    subscribeButtons.forEach(b => {
+                                                        updateSubscriptionButton(b, true);
+                                                        b.disabled = false;
+                                                    });
+                                                } else {
+                                                    alert('Subscription registration failed on server.');
+                                                    newSubscription.unsubscribe();
+                                                    subscribeButtons.forEach(b => { b.disabled = false; });
+                                                }
+                                            });
+                                        }).catch(function(err) {
+                                            console.error('Failed to subscribe:', err);
+                                            // If the error is a permission error, update button to blocked state
+                                            if (err.name === 'NotAllowedError') {
+                                                subscribeButtons.forEach(b => {
+                                                    updateSubscriptionButton(b, false, true);
+                                                    b.disabled = false;
+                                                });
+                                            } else {
+                                                alert('Subscription failed: ' + err.message);
+                                                subscribeButtons.forEach(b => { b.disabled = false; });
+                                            }
+                                        });
+                                    } catch (e) {
+                                        console.error('VAPID key parsing error:', e);
+                                        subscribeButtons.forEach(b => { b.disabled = false; });
+                                    }
+                                };
+
+                                if (Notification.permission === 'granted') {
+                                    // Permission already granted — go straight to subscribe
+                                    doSubscribe();
+                                } else {
+                                    // permission === 'default': ask the user via the OS prompt
+                                    Notification.requestPermission().then(function(result) {
+                                        if (result === 'granted') {
+                                            doSubscribe();
+                                        } else {
+                                            // User dismissed or denied the prompt
+                                            subscribeButtons.forEach(b => {
+                                                updateSubscriptionButton(b, false, result === 'denied');
+                                                b.disabled = false;
+                                            });
+                                        }
+                                    });
+                                }
+                            }
+                        });
+                    });
+                }).catch(function(err) {
+                    console.error('Error getting subscription:', err);
+                });
+            });
+        }
+    }
+
+    function updateSubscriptionButton(btn, isSubscribed, isBlocked) {
+        const span = btn.querySelector('span');
+        const icon = btn.querySelector('i');
+        
+        if (isBlocked) {
+            // Notifications are blocked at OS/browser level
+            if (btn.classList.contains('bitstream-filter-link')) {
+                if (span) span.textContent = 'Notifications Blocked';
+                if (icon) icon.className = 'fa-solid fa-bell-slash';
+                btn.style.background = '';
+                btn.title = 'Notifications are blocked. Go to your browser\'s site settings to re-enable them.';
+            } else {
+                btn.textContent = 'Notifications Blocked — Enable in Browser Settings';
+                btn.style.background = '#e67e22';
+                btn.title = 'Tap to learn how to re-enable notifications for this site in your browser settings.';
+            }
+            return;
+        }
+
+        if (btn.classList.contains('bitstream-filter-link')) {
+            // Public sidebar / mobile tab button
+            if (span) {
+                span.textContent = isSubscribed ? 'Mute Notifications' : 'Get Notifications';
+            }
+            if (icon) {
+                icon.className = isSubscribed ? 'fa-solid fa-bell-slash' : 'fa-solid fa-bell';
+            }
+            btn.style.background = '';
+            btn.title = '';
+        } else {
+            // Admin settings button
+            if (isSubscribed) {
+                btn.textContent = 'Unsubscribe this Device';
+                btn.style.background = '#dc3545';
+            } else {
+                btn.textContent = 'Subscribe this Device';
+                btn.style.background = 'var(--wp--preset--color--accent-1, #2c6e49)';
+            }
+            btn.title = '';
+        }
+    }
+
+    function sendSubscriptionToServer(subscription, action, callback) {
+        const payload = subscription.toJSON();
+        payload.action = action;
+
+        fetch(bitstream_ajax.ajax_url + '?action=bitstream_save_push_subscription', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(data => {
+            callback(data);
+        })
+        .catch(error => {
+            console.error('Error saving subscription:', error);
+            callback({ success: false });
+        });
+    }
+
+    function urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding)
+            .replace(/\-/g, '+')
+            .replace(/_/g, '/');
+
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    }
 });
