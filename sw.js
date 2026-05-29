@@ -1,5 +1,5 @@
 // BitStream Service Worker - PWA Support
-const CACHE_NAME = 'bitstream-v3.2.0';
+const CACHE_NAME = 'bitstream-v3.2.1';
 const ASSETS_TO_CACHE = [
   '/bitstream/',
   '/bitstream/new-bit/',
@@ -52,7 +52,10 @@ self.addEventListener('fetch', event => {
   }
   
   // Intercept POST requests to share target to show upload progress
-  if (event.request.method === 'POST' && event.request.url.includes('/bitstream/new-bit/?share=1')) {
+  if (event.request.method === 'POST' && 
+      (event.request.url.includes('/bitstream/new-bit/') || 
+       event.request.url.endsWith('/bitstream/new-bit') || 
+       event.request.url.includes('/bitstream/new-bit?'))) {
     console.log('BitStream SW: Intercepting share target POST to show progress');
     event.respondWith(handleShareTargetPost(event.request));
     return;
@@ -149,9 +152,10 @@ async function handleShareTargetPost(request) {
   
   // Send a message to the client to start showing progress
   if (progressWindow) {
+    const fileCount = formData.getAll('media[]').length || formData.getAll('media').length || 0;
     progressWindow.postMessage({
       type: 'UPLOAD_START',
-      fileCount: formData.getAll('media[]').length
+      fileCount: fileCount
     });
   }
   

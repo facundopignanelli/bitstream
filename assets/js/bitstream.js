@@ -6235,17 +6235,43 @@ jQuery(document).ready(function ($) {
             body: formData
         })
             .then(response => {
-                if (response.ok) {
+                if (response.ok || response.redirected) {
                     // Set flag to reopen this specific comment section after reload
                     sessionStorage.setItem('bitstream_open_comments', 'comments-' + postId);
                     window.location.reload();
                 } else {
-                    alert('Error posting comment. Please try again.');
-                    if (submitBtn) {
-                        submitBtn.disabled = false;
-                        if (submitBtn.tagName === 'INPUT') submitBtn.value = originalBtnText;
-                        else submitBtn.textContent = originalBtnText;
-                    }
+                    console.error('Comment submission failed: status', response.status, response.statusText);
+                    response.text().then(htmlText => {
+                        let errorMessage = 'Error posting comment. Please try again.';
+                        try {
+                            const parser = new DOMParser();
+                            const doc = parser.parseFromString(htmlText, 'text/html');
+                            const wpDieMsg = doc.querySelector('.wp-die-message p, #error-page p, body p');
+                            if (wpDieMsg && wpDieMsg.textContent.trim()) {
+                                errorMessage = wpDieMsg.textContent.trim();
+                            } else {
+                                const bodyText = doc.body ? doc.body.textContent.trim() : '';
+                                if (bodyText && bodyText.length < 250) {
+                                    errorMessage = bodyText;
+                                }
+                            }
+                        } catch (e) {
+                            console.error('Error parsing error HTML:', e);
+                        }
+                        alert(errorMessage);
+                        if (submitBtn) {
+                            submitBtn.disabled = false;
+                            if (submitBtn.tagName === 'INPUT') submitBtn.value = originalBtnText;
+                            else submitBtn.textContent = originalBtnText;
+                        }
+                    }).catch(() => {
+                        alert('Error posting comment. Please try again.');
+                        if (submitBtn) {
+                            submitBtn.disabled = false;
+                            if (submitBtn.tagName === 'INPUT') submitBtn.value = originalBtnText;
+                            else submitBtn.textContent = originalBtnText;
+                        }
+                    });
                 }
             })
             .catch(error => {
