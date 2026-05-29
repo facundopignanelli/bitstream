@@ -1652,6 +1652,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 targetInput.value = attachment.id || '';
 
+                // Keep plural attachment IDs input in sync
+                const targetInputs = document.getElementById(targetInputId + 's');
+                if (targetInputs) {
+                    targetInputs.value = attachment.id ? String(attachment.id) : '';
+                }
+
+                // Keep attachments JSON dataset in sync for previews/confirmations
+                if (targetPreview) {
+                    const attachments = attachment ? [
+                        {
+                            id: attachment.id,
+                            url: attachment.url,
+                            preview_url: attachment.preview_url || (attachment.sizes && ((attachment.sizes.large && attachment.sizes.large.url) || (attachment.sizes.medium_large && attachment.sizes.medium_large.url) || (attachment.sizes.medium && attachment.sizes.medium.url))) || attachment.url,
+                            mime: attachment.mime,
+                            filename: attachment.filename || ''
+                        }
+                    ] : [];
+                    targetPreview.dataset.attachmentsJson = JSON.stringify(attachments);
+                }
+
                 if (targetInputId === 'bitstream-rebit-attachment-id' && rebitOgImageInput) {
                     rebitOgImageInput.value = attachment.url || '';
                 }
