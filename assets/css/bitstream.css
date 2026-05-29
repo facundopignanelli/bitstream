@@ -444,6 +444,8 @@
     object-fit: cover !important;
     margin: 0 !important;
     display: block !important;
+    border-radius: 0 !important;
+    -webkit-mask-image: none !important;
 }
 
 
@@ -4889,6 +4891,8 @@ iframe[src*="youtube-nocookie.com"] {
     object-fit: cover !important;
     margin: 0 !important;
     display: block !important;
+    border-radius: 0 !important;
+    -webkit-mask-image: none !important;
 }
 
 .bitstream-media-preview-remove-item {

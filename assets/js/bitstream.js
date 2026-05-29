@@ -180,6 +180,35 @@ document.addEventListener('DOMContentLoaded', function () {
     function renderMultiplePreviews(previewEl, attachments) {
         if (!previewEl) return;
 
+        if (!previewEl.dataset.clickBound) {
+            previewEl.dataset.clickBound = '1';
+            previewEl.addEventListener('click', (e) => {
+                const previewItem = e.target.closest('.bitstream-media-preview-item');
+                if (previewItem && !e.target.closest('.bitstream-media-preview-remove-item')) {
+                    e.stopPropagation();
+                    e.preventDefault();
+
+                    const grid = previewItem.closest('.bitstream-media-preview-grid');
+                    if (grid) {
+                        const allItems = Array.from(grid.querySelectorAll('.bitstream-media-preview-item'));
+                        const mediaItems = allItems.filter(item => item.querySelector('img, video'));
+                        if (!mediaItems.includes(previewItem)) return;
+
+                        const mediaList = mediaItems.map(item => {
+                            const el = item.querySelector('img, video');
+                            return {
+                                url: el.src || el.getAttribute('src'),
+                                mime: el.tagName.toLowerCase() === 'video' ? 'video/mp4' : 'image/jpeg'
+                            };
+                        });
+
+                        const clickIndex = mediaItems.indexOf(previewItem);
+                        openLightbox(mediaList, clickIndex);
+                    }
+                }
+            });
+        }
+
         if (attachments.length === 0) {
             previewEl.innerHTML = '';
             previewEl.classList.remove('has-multiple');
@@ -1993,9 +2022,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 zone.addEventListener('click', (event) => {
-                    // Don't open file picker when clicking on the input itself, or inside the preview area
+                    // Don't open file picker when clicking on the input itself, or on a preview item/remove button
                     if (event.target === input) return;
-                    if (event.target.closest('.bitstream-media-preview') ||
+                    if (event.target.closest('.bitstream-media-preview-item') ||
                         event.target.closest('.bitstream-media-preview-remove-item')) {
                         return;
                     }
@@ -3333,9 +3362,9 @@ document.addEventListener('DOMContentLoaded', function () {
             // Drag and drop events
             if (dropzone && fileInput) {
                 dropzone.addEventListener('click', (event) => {
-                    // Don't open file picker when clicking on the input itself, or inside the preview area
+                    // Don't open file picker when clicking on the input itself, or on a preview item/remove button
                     if (event.target === fileInput) return;
-                    if (event.target.closest('.bitstream-media-preview') ||
+                    if (event.target.closest('.bitstream-media-preview-item') ||
                         event.target.closest('.bitstream-media-preview-remove-item')) {
                         return;
                     }
