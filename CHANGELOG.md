@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.2.2] - 2026-XX-XX
 
 ### Added
-- Added client-side PWA Share Target upload progress tracking using IndexedDB and Service Worker redirection, replacing the native browser splash screen with visual upload feedback.
+- Added client-side PWA Share Target upload progress tracking using IndexedDB and Service Worker redirection, replacing the native browser splash screen with visual upload feedback. Optimized video/large file upload speeds by increasing the chunked upload threshold and size to 5MB, reducing WordPress bootstrap round-trip requests by up to 90%.
 
 ### Fixed
 - Fixed hashtag processing inside AJAX requests so that hashtags inside dynamically loaded feed cards (infinite scroll / load more) are rendered as clickable links.

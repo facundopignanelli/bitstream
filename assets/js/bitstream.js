@@ -43,8 +43,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const BITSTREAM_IMAGE_UPLOAD_MAX_DIMENSION = 2200;
     const BITSTREAM_IMAGE_UPLOAD_MAX_BYTES = 2.5 * 1024 * 1024;
     const BITSTREAM_IMAGE_UPLOAD_QUALITY = 0.86;
-    const BITSTREAM_CHUNKED_UPLOAD_THRESHOLD = 256 * 1024;
-    const BITSTREAM_UPLOAD_CHUNK_SIZE = 512 * 1024;
+    const BITSTREAM_CHUNKED_UPLOAD_THRESHOLD = 5 * 1024 * 1024;
+    const BITSTREAM_UPLOAD_CHUNK_SIZE = 5 * 1024 * 1024;
 
     function getFileExtension(filename) {
         const match = String(filename || '').toLowerCase().match(/\.([a-z0-9]+)$/);
@@ -6322,6 +6322,25 @@ jQuery(document).ready(function ($) {
                         }
                         form.dataset.composerType = 'rebit';
                         if (textarea) textarea.required = false;
+                        
+                        // Open the Rebit modal
+                        const rebitBtn = composerRoot.querySelector('[data-composer-modal="rebit"]');
+                        if (rebitBtn) {
+                            rebitBtn.click();
+                        }
+                        
+                        // Populate and fetch inside the Rebit modal
+                        const mRebitUrl = composerRoot.querySelector('#bitstream-composer-modal-rebit-url');
+                        if (mRebitUrl) {
+                            mRebitUrl.value = finalUrl;
+                        }
+                        const mRebitFetch = composerRoot.querySelector('.bitstream-composer-rebit-fetch');
+                        if (mRebitFetch) {
+                            setTimeout(() => {
+                                mRebitFetch.click();
+                            }, 100);
+                        }
+                        
                         if (typeof renderRebitLivePreview === 'function') {
                             renderRebitLivePreview(finalUrl);
                         }
@@ -6342,8 +6361,11 @@ jQuery(document).ready(function ($) {
                             uploadMultipleFiles(payload.mediaFiles, 'bitstream-composer-modal-media-attachment-id', 'bitstream-composer-modal-media-preview', {
                                 setStatus: (msg, isError) => setStatus(msg, isError)
                             }).then(() => {
-                                // Automatically attach and close the media modal when finished
-                                if (mMediaDone) {
+                                // Verify that attachments were actually uploaded (avoids errors on aborted/failed uploads)
+                                const mediaModal = composerRoot.querySelector('.bitstream-composer-modal-media');
+                                const mMediaPreview = mediaModal ? mediaModal.querySelector('#bitstream-composer-modal-media-preview') : null;
+                                const attachments = mMediaPreview ? getExistingAttachments(mMediaPreview) : [];
+                                if (attachments.length > 0 && mMediaDone) {
                                     mMediaDone.click();
                                 }
                             }).catch(err => {
