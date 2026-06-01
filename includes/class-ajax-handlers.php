@@ -1435,6 +1435,11 @@ class BitStream_Ajax_Handlers
             'order' => 'DESC'
         ];
 
+        $highlight_id = isset($_POST['highlight_bit']) ? intval($_POST['highlight_bit']) : 0;
+        if ($highlight_id > 0) {
+            $query_args['post__not_in'] = [$highlight_id];
+        }
+
         if ($selected_type === 'bits') {
             $query_args['meta_query'] = [
                 'relation' => 'OR',

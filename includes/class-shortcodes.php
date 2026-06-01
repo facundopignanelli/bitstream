@@ -975,6 +975,11 @@ class BitStream_Shortcodes
             $query_args['s'] = $selected_search;
         }
 
+        $highlight_id = isset($_GET['highlight_bit']) ? intval($_GET['highlight_bit']) : 0;
+        if ($highlight_id > 0) {
+            $query_args['post__not_in'] = [$highlight_id];
+        }
+
         // Hashtag content filter — applied via posts_where
         if (!empty($selected_hashtag)) {
             $hashtag_term = $selected_hashtag;
@@ -991,6 +996,14 @@ class BitStream_Shortcodes
         // Remove the hashtag where filter after query
         if (!empty($selected_hashtag) && isset($bitstream_hashtag_where)) {
             remove_filter('posts_where', $bitstream_hashtag_where);
+        }
+
+        if ($highlight_id > 0 && intval($paged) === 1) {
+            $hl_post = get_post($highlight_id);
+            if ($hl_post && $hl_post->post_type === 'bit' && $hl_post->post_status === 'publish') {
+                $q->posts = array_merge([$hl_post], $q->posts);
+                $q->post_count = count($q->posts);
+            }
         }
 
         $max = $q->max_num_pages;
@@ -1228,7 +1241,7 @@ class BitStream_Shortcodes
         }
 
         if ($q->have_posts()) {
-            echo '<div class="' . $feed_classes . '" data-page="' . $current_page . '" data-max-page="' . $max . '" data-infinite-scroll="' . ($infinite_scroll ? 'true' : 'false') . '" data-filter-type="' . esc_attr($selected_type) . '" data-filter-month="' . esc_attr($selected_month) . '" data-filter-search="' . esc_attr($selected_search) . '" data-filter-hashtag="' . esc_attr($selected_hashtag) . '">';
+            echo '<div class="' . $feed_classes . '" data-page="' . $current_page . '" data-max-page="' . $max . '" data-infinite-scroll="' . ($infinite_scroll ? 'true' : 'false') . '" data-filter-type="' . esc_attr($selected_type) . '" data-filter-month="' . esc_attr($selected_month) . '" data-filter-search="' . esc_attr($selected_search) . '" data-filter-hashtag="' . esc_attr($selected_hashtag) . '" data-highlight-bit="' . esc_attr($highlight_id) . '">';
             while ($q->have_posts()) {
                 $q->the_post();
                 echo bitstream_render_card(get_the_ID());

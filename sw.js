@@ -1,5 +1,5 @@
 // BitStream Service Worker - PWA Support
-const CACHE_NAME = 'bitstream-v3.2.1';
+const CACHE_NAME = 'bitstream-v3.2.2';
 const ASSETS_TO_CACHE = [
   '/bitstream/',
   '/bitstream/new-bit/',
@@ -135,63 +135,61 @@ self.addEventListener('fetch', event => {
   // Let other requests pass through normally
 });
 
-// Handle share target POST requests with upload progress
+// Handle share target POST requests by saving payload to IndexedDB and redirecting
 async function handleShareTargetPost(request) {
-  // Get the form data from the request
-  const formData = await request.formData();
-  
-  // Open a client window to show progress
-  const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-  let progressWindow = null;
-  
-  // Try to focus an existing window or open a new one
-  if (clients.length > 0) {
-    progressWindow = clients[0];
-    await progressWindow.focus();
-  }
-  
-  // Send a message to the client to start showing progress
-  if (progressWindow) {
-    const fileCount = formData.getAll('media[]').length || formData.getAll('media').length || 0;
-    progressWindow.postMessage({
-      type: 'UPLOAD_START',
-      fileCount: fileCount
-    });
-  }
-  
-  // Perform the actual upload
   try {
-    const response = await fetch(request.url, {
-      method: 'POST',
-      body: formData
+    const formData = await request.formData();
+    
+    // Extract text/media values
+    const title = formData.get('title') || '';
+    const text = formData.get('text') || '';
+    const url = formData.get('url') || '';
+    const mediaFiles = formData.getAll('media[]').concat(formData.getAll('media')).filter(val => val instanceof File || val instanceof Blob);
+    
+    const sharedId = 'share-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9);
+    
+    // Save to IndexedDB
+    await new Promise((resolve, reject) => {
+      const dbRequest = indexedDB.open('bitstream-pwa-share-db', 1);
+      dbRequest.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains('shared-payloads')) {
+          db.createObjectStore('shared-payloads');
+        }
+      };
+      dbRequest.onsuccess = (event) => {
+        const db = event.target.result;
+        const transaction = db.transaction('shared-payloads', 'readwrite');
+        const store = transaction.objectStore('shared-payloads');
+        
+        // Clear old entries
+        store.clear();
+        
+        const payload = {
+          title: title,
+          text: text,
+          url: url,
+          mediaFiles: mediaFiles,
+          timestamp: Date.now()
+        };
+        
+        const putRequest = store.put(payload, sharedId);
+        putRequest.onsuccess = () => resolve();
+        putRequest.onerror = (e) => reject(e.target.error);
+      };
+      dbRequest.onerror = (event) => reject(event.target.error);
     });
     
-    // Follow the redirect
-    if (response.redirected || response.status === 302) {
-      const redirectUrl = response.url || response.headers.get('Location');
-      
-      if (progressWindow) {
-        progressWindow.postMessage({
-          type: 'UPLOAD_COMPLETE',
-          redirectUrl: redirectUrl
-        });
-      }
-      
-      return Response.redirect(redirectUrl, 302);
-    }
+    // Redirect to the GET route with share parameters
+    const redirectUrl = new URL(request.url);
+    redirectUrl.search = `?share_target=1&shared_id=${sharedId}`;
     
-    return response;
+    console.log('BitStream SW: Stored share payload, redirecting to:', redirectUrl.toString());
+    return Response.redirect(redirectUrl.toString(), 303);
   } catch (error) {
-    console.error('BitStream SW: Upload error:', error);
-    
-    if (progressWindow) {
-      progressWindow.postMessage({
-        type: 'UPLOAD_ERROR',
-        error: error.message
-      });
-    }
-    
-    return new Response('Upload failed', { status: 500 });
+    console.error('BitStream SW: Share target handling error, falling back to network fetch:', error);
+    // Fall back to direct fetch of the POST request
+    return fetch(request);
   }
 }
 

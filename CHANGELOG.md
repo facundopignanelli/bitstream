@@ -3,6 +3,20 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.2] - 2026-XX-XX
+
+### Added
+- Added client-side PWA Share Target upload progress tracking using IndexedDB and Service Worker redirection, replacing the native browser splash screen with visual upload feedback.
+
+### Fixed
+- Fixed hashtag processing inside AJAX requests so that hashtags inside dynamically loaded feed cards (infinite scroll / load more) are rendered as clickable links.
+- Fixed `highlight_bit` behavior when pagination/infinite scroll is active by prepending the highlighted post to page 1 and excluding it from subsequent pagination requests.
+- Fixed one-time URL parameters (such as highlight targets, modal triggers, and shared data) persisting after page reload by clearing them from the browser history after processing.
+
+### Changed
+- Optimized the composer auto-save draft behavior to prevent duplicate drafts from being created upon successful post publishing or manual draft saving.
+- Added a discard changes confirmation modal when attempting to close the composer modal, rebit modal, or edit modal with unsaved changes.
+
 ## [3.2.1] - 2026-05-29
 
 ### Fixed
