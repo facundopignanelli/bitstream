@@ -6336,6 +6336,8 @@ jQuery(document).ready(function ($) {
                         }
                         const mRebitFetch = composerRoot.querySelector('.bitstream-composer-rebit-fetch');
                         if (mRebitFetch) {
+                            mRebitFetch.classList.remove('is-edit-mode');
+                            mRebitFetch.textContent = 'Fetch metadata';
                             setTimeout(() => {
                                 mRebitFetch.click();
                             }, 100);
