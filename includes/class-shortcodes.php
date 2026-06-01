@@ -1792,6 +1792,15 @@ class BitStream_Shortcodes
             return;
         }
 
+        // --- Application Cache & Updates Section ---
+        echo '<div class="bitstream-settings-section" style="margin-bottom: 2rem;">';
+        echo '<h2 style="margin-top: 0;">Application Cache & Updates</h2>';
+        echo '<p>Forces the PWA to check for updates, clears the client-side service worker cache, and hard reloads the application to ensure you are running the latest version.</p>';
+        echo '<button type="button" id="bitstream-force-update-btn" style="background: var(--wp--preset--color--accent-1, #2c6e49); color: #fff; border: none; border-radius: 10px; padding: 0.6rem 1.5rem; cursor: pointer; font-weight: 600; font-size: 0.95rem; display: inline-flex; align-items: center; gap: 8px;">';
+        echo '<i class="fa-solid fa-rotate" aria-hidden="true"></i> Force App Update';
+        echo '</button>';
+        echo '</div>';
+
         // --- Debug Logs Section ---
         echo '<div class="bitstream-settings-section">';
         echo '<h2 style="margin-top: 0;">Debug Logs</h2>';

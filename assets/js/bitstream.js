@@ -6690,7 +6690,7 @@ jQuery(document).ready(function ($) {
         })();
     }
 
-    // ── Settings Tab Switching ──────────────────────────────────────────
+    // ── Settings Tab Switching & Force Update ───────────────────────────
     const settingsRoot = document.querySelector('.bitstream-settings');
     if (settingsRoot) {
         const settingsTabButtons = settingsRoot.querySelectorAll('.bitstream-settings-tab');
@@ -6709,6 +6709,45 @@ jQuery(document).ready(function ($) {
                 window.location.href = url.toString();
             });
         });
+
+        // Handle Force App Update
+        const forceUpdateBtn = document.getElementById('bitstream-force-update-btn');
+        if (forceUpdateBtn) {
+            forceUpdateBtn.addEventListener('click', async () => {
+                const originalHtml = forceUpdateBtn.innerHTML;
+                forceUpdateBtn.disabled = true;
+                forceUpdateBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Updating...';
+
+                try {
+                    // 1. Unregister all service workers
+                    if ('serviceWorker' in navigator) {
+                        const registrations = await navigator.serviceWorker.getRegistrations();
+                        for (const registration of registrations) {
+                            await registration.unregister();
+                        }
+                    }
+
+                    // 2. Clear all caches
+                    if ('caches' in window) {
+                        const cacheNames = await caches.keys();
+                        for (const name of cacheNames) {
+                            await caches.delete(name);
+                        }
+                    }
+
+                    forceUpdateBtn.innerHTML = '<i class="fa-solid fa-check" aria-hidden="true"></i> Updated! Reloading...';
+                    setTimeout(() => {
+                        // Reload the page from the server
+                        window.location.reload();
+                    }, 1000);
+                } catch (error) {
+                    console.error('BitStream PWA force update failed:', error);
+                    forceUpdateBtn.disabled = false;
+                    forceUpdateBtn.innerHTML = originalHtml;
+                    alert('Update failed: ' + error.message);
+                }
+            });
+        }
     }
 
     // ── Copy-to-Clipboard for Settings RSS Feeds ────────────────────────
