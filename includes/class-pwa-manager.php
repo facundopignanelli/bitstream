@@ -18,6 +18,7 @@ class BitStream_PWA_Manager {
         add_action('init', [$this, 'add_service_worker_rewrite']);
         add_action('init', [$this, 'add_shortcut_rewrite']);
         add_action('template_redirect', [$this, 'serve_service_worker']);
+        add_action('template_redirect', [$this, 'serve_manifest']);
         add_action('template_redirect', [$this, 'handle_shortcut_requests']);
         add_filter('query_vars', [$this, 'add_query_vars']);
         add_action('template_redirect', [$this, 'handle_debug_requests']);
@@ -67,9 +68,15 @@ class BitStream_PWA_Manager {
         
         if ($is_bit_archive || $has_feed_shortcode || $is_bitstream_page) {
             $base = BITSTREAM_PLUGIN_URL;
-            $manifest_url = $base . 'manifest.json';
+            $manifest_url = add_query_arg('bitstream_manifest', '1', home_url('/'));
             // Use a query-var endpoint to avoid redirect chains on /sw.js when rewrites are unavailable.
             $sw_url = add_query_arg('bitstream_sw', 'main', home_url('/'));
+            
+            $app_title = 'BitStream';
+            $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
+            if (strpos($host, 'beta') !== false) {
+                $app_title = 'BS BETA';
+            }
             
             echo '<link rel="manifest" href="'.esc_url($manifest_url).'">';
             echo '<link rel="apple-touch-icon" href="'.esc_url($base . 'assets/images/logo_192.png').'">';
@@ -77,7 +84,7 @@ class BitStream_PWA_Manager {
             echo '<meta name="mobile-web-app-capable" content="yes">';
             echo '<meta name="apple-mobile-web-app-capable" content="yes">';
             echo '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">';
-            echo '<meta name="apple-mobile-web-app-title" content="BitStream">';
+            echo '<meta name="apple-mobile-web-app-title" content="'.esc_attr($app_title).'">';
             
             echo '<script>
             if("serviceWorker" in navigator) {
@@ -343,6 +350,7 @@ class BitStream_PWA_Manager {
     public function add_query_vars($vars) {
         $vars[] = 'bitstream_sw';
         $vars[] = 'bitstream_action';
+        $vars[] = 'bitstream_manifest';
         return $vars;
     }
 
@@ -409,6 +417,43 @@ class BitStream_PWA_Manager {
             echo '// Service Worker file not found';
             exit;
         }
+    }
+
+    /**
+     * Serve Dynamic Manifest file
+     */
+    public function serve_manifest() {
+        if (!get_query_var('bitstream_manifest')) {
+            return;
+        }
+
+        status_header(200);
+        header('Content-Type: application/manifest+json; charset=utf-8');
+        header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
+        header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
+        header('Access-Control-Allow-Origin: *');
+
+        $manifest_path = BITSTREAM_PLUGIN_PATH . 'manifest.json';
+        $manifest_data = [];
+        if (file_exists($manifest_path)) {
+            $manifest_content = file_get_contents($manifest_path);
+            $manifest_data = json_decode($manifest_content, true);
+        }
+
+        // Check if host contains "beta"
+        $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
+        if (strpos($host, 'beta') !== false) {
+            if (isset($manifest_data['name'])) {
+                $manifest_data['name'] = 'BS BETA';
+            }
+            if (isset($manifest_data['short_name'])) {
+                $manifest_data['short_name'] = 'BS BETA';
+            }
+        }
+
+        echo wp_json_encode($manifest_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        exit;
     }
 
     /**
