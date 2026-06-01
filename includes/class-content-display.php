@@ -497,7 +497,7 @@ class BitStream_Content_Display
         }
 
         // Skip inside admin / block editor
-        if (is_admin()) {
+        if (is_admin() && !wp_doing_ajax()) {
             return $content;
         }
 

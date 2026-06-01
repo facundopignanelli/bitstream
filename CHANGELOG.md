@@ -3,6 +3,22 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.2] - 2026-XX-XX
+
+### Added
+- Added client-side PWA Share Target upload progress tracking using IndexedDB and Service Worker redirection, replacing the native browser splash screen with visual upload feedback. Optimized video/large file upload speeds by increasing the chunked upload threshold and size to 5MB, reducing WordPress bootstrap round-trip requests by up to 90%.
+- Added dynamic PWA manifest and HTML title adjustment that updates the application name, short name, and `apple-mobile-web-app-title` meta tag to "BS BETA" when the site is accessed or installed from beta domains (e.g., `beta.facundopignanelli.local` or `beta.facundopignanelli.com`).
+- Added a "Force App Update" action under the Advanced settings tab that programmatically unregisters all active service workers, clears the browser's CacheStorage, and reloads the application to force the latest client-side assets to download from the server.
+
+### Fixed
+- Fixed hashtag processing inside AJAX requests so that hashtags inside dynamically loaded feed cards (infinite scroll / load more) are rendered as clickable links.
+- Fixed `highlight_bit` behavior when pagination/infinite scroll is active by prepending the highlighted post to page 1 and excluding it from subsequent pagination requests.
+- Fixed one-time URL parameters (such as highlight targets, modal triggers, and shared data) persisting after page reload by clearing them from the browser history after processing.
+
+### Changed
+- Optimized the composer auto-save draft behavior to prevent duplicate drafts from being created upon successful post publishing or manual draft saving.
+- Added a discard changes confirmation modal when attempting to close the composer modal, rebit modal, or edit modal with unsaved changes.
+
 ## [3.2.1] - 2026-05-29
 
 ### Fixed

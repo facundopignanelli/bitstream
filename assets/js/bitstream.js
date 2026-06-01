@@ -43,8 +43,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const BITSTREAM_IMAGE_UPLOAD_MAX_DIMENSION = 2200;
     const BITSTREAM_IMAGE_UPLOAD_MAX_BYTES = 2.5 * 1024 * 1024;
     const BITSTREAM_IMAGE_UPLOAD_QUALITY = 0.86;
-    const BITSTREAM_CHUNKED_UPLOAD_THRESHOLD = 256 * 1024;
-    const BITSTREAM_UPLOAD_CHUNK_SIZE = 512 * 1024;
+    const BITSTREAM_CHUNKED_UPLOAD_THRESHOLD = 5 * 1024 * 1024;
+    const BITSTREAM_UPLOAD_CHUNK_SIZE = 5 * 1024 * 1024;
 
     function getFileExtension(filename) {
         const match = String(filename || '').toLowerCase().match(/\.([a-z0-9]+)$/);
@@ -600,6 +600,74 @@ document.addEventListener('DOMContentLoaded', function () {
         document.body.style.overflow = 'hidden';
     }
     window.showDeleteConfirmation = showDeleteConfirmation;
+
+    function showDiscardConfirmation(message, onConfirm) {
+        let confirmModal = document.querySelector('.bitstream-composer-modal-discard-confirm');
+        if (!confirmModal) {
+            confirmModal = document.createElement('div');
+            confirmModal.className = 'bitstream-composer-modal bitstream-composer-modal-discard-confirm';
+            confirmModal.hidden = true;
+            confirmModal.innerHTML = `
+                <div class="bitstream-composer-modal-backdrop" data-composer-modal-close="discard-confirm"></div>
+                <div class="bitstream-composer-modal-dialog" role="dialog" aria-modal="true" aria-label="Discard Changes">
+                    <header class="bitstream-composer-modal-header">
+                        <h3>Discard Changes</h3>
+                        <button type="button" class="bitstream-composer-modal-close" data-composer-modal-close="discard-confirm" aria-label="Close">
+                            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                        </button>
+                    </header>
+                    <div class="bitstream-composer-modal-body">
+                        <p class="bitstream-discard-confirm-message" style="margin: 0; font-size: 0.95rem; color: #4a5568; line-height: 1.5;"></p>
+                    </div>
+                    <footer class="bitstream-composer-modal-footer">
+                        <button type="button" class="bitstream-composer-modal-cancel" data-composer-modal-close="discard-confirm">Cancel</button>
+                        <button type="button" class="bitstream-composer-modal-confirm bitstream-composer-discard-confirm-btn is-delete">Discard</button>
+                    </footer>
+                </div>
+            `;
+            document.body.appendChild(confirmModal);
+
+            const closeModalFunc = () => {
+                confirmModal.hidden = true;
+                document.body.style.overflow = '';
+            };
+
+            // Bind close events
+            confirmModal.querySelectorAll('[data-composer-modal-close="discard-confirm"]').forEach(el => {
+                el.addEventListener('click', closeModalFunc);
+            });
+
+            // ESC key support
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && !confirmModal.hidden) {
+                    closeModalFunc();
+                }
+            });
+        }
+
+        // Set the message
+        const msgEl = confirmModal.querySelector('.bitstream-discard-confirm-message');
+        if (msgEl) {
+            msgEl.textContent = message;
+        }
+
+        // Bind confirm button
+        const confirmBtn = confirmModal.querySelector('.bitstream-composer-discard-confirm-btn');
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+        newConfirmBtn.addEventListener('click', () => {
+            confirmModal.hidden = true;
+            document.body.style.overflow = '';
+            onConfirm();
+        });
+
+        // Show modal and disable scroll
+        confirmModal.hidden = false;
+        document.body.style.overflow = 'hidden';
+    }
+    window.showDiscardConfirmation = showDiscardConfirmation;
+
 
     function applyMediaDeterrents(scope) {
         const root = scope || document;
@@ -3077,6 +3145,23 @@ document.addEventListener('DOMContentLoaded', function () {
         let mediaFrame = null;
         let activeMediaForm = null;
         let ogImageFrame = null;
+        let editFormIsDirty = false;
+        let isPopulating = false;
+
+        function attemptCloseEditModal() {
+            if (editFormIsDirty) {
+                showDiscardConfirmation('Are you sure you want to discard your changes?', () => {
+                    editFormIsDirty = false;
+                    closeLinkMetaModal();
+                    modal.hidden = true;
+                    document.body.style.overflow = '';
+                });
+            } else {
+                closeLinkMetaModal();
+                modal.hidden = true;
+                document.body.style.overflow = '';
+            }
+        }
 
         function setModalVisible(isVisible) {
             modal.hidden = !isVisible;
@@ -3131,6 +3216,9 @@ document.addEventListener('DOMContentLoaded', function () {
         function setAttachmentPreview(form, attachmentId, attachmentUrl, attachmentMime, attachments) {
             if (!form) {
                 return;
+            }
+            if (!isPopulating) {
+                editFormIsDirty = true;
             }
 
             const previewEl = form.querySelector('.bitstream-media-preview') || form.querySelector('.bitstream-composer-preview-media-thumb');
@@ -3250,6 +3338,9 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!form) {
                 return;
             }
+            if (!isPopulating) {
+                editFormIsDirty = true;
+            }
 
             const quoteInput = form.querySelector('.bs-edit-quote-post-id');
             const quoteWrap = form.querySelector('.bs-edit-quote-preview');
@@ -3273,6 +3364,9 @@ document.addEventListener('DOMContentLoaded', function () {
         function setScheduleState(form, scheduleKey, enabled, datetimeValue) {
             if (!form) {
                 return;
+            }
+            if (!isPopulating) {
+                editFormIsDirty = true;
             }
 
             const modeNow = form.querySelector('input[name="' + scheduleKey + '_schedule_mode"][value="now"]');
@@ -4010,6 +4104,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     const createdPostId = parseInt(responseData.post_id || '0', 10);
                     const isScheduled = !!responseData.is_scheduled;
 
+                    editFormIsDirty = false;
+
                     if (saveAsDraft) {
                         const composerBaseUrl = (window.bitstream_ajax && bitstream_ajax.composer_url)
                             ? bitstream_ajax.composer_url
@@ -4085,11 +4181,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
 
                     const responseData = data.data || {};
+                    isPopulating = true;
                     if (responseData.post_type === 'rebit' || postType === 'rebit') {
                         populateRebitForm(responseData);
                     } else {
                         populateBitForm(responseData, false);
                     }
+                    isPopulating = false;
+                    editFormIsDirty = false;
                 })
                 .catch(error => {
                     setErrorState(error.message || 'Could not load post data.');
@@ -4126,6 +4225,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
 
                     const responseData = data.data || {};
+                    isPopulating = true;
                     populateBitForm({
                         post_id: numericPostId,
                         content: '',
@@ -4138,6 +4238,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         schedule_enabled: '0',
                         schedule_datetime: ''
                     }, true);
+                    isPopulating = false;
+                    editFormIsDirty = false;
                 })
                 .catch(error => {
                     setErrorState(error.message || 'Could not load quote preview.');
@@ -4148,25 +4250,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
         closeButtons.forEach(button => {
             button.addEventListener('click', () => {
-                closeLinkMetaModal();
-                modal.hidden = true;
-                document.body.style.overflow = '';
+                attemptCloseEditModal();
             });
         });
 
         modal.addEventListener('click', (event) => {
             if (event.target === modal) {
-                closeLinkMetaModal();
-                modal.hidden = true;
-                document.body.style.overflow = '';
+                attemptCloseEditModal();
             }
         });
 
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape' && !modal.hidden) {
-                closeLinkMetaModal();
-                modal.hidden = true;
-                document.body.style.overflow = '';
+                attemptCloseEditModal();
             }
         });
 
@@ -4184,6 +4280,22 @@ document.addEventListener('DOMContentLoaded', function () {
             form.addEventListener('submit', (event) => {
                 event.preventDefault();
                 submitModalForm(form, false);
+            });
+        });
+
+        // Track dirty fields for the edit modal
+        modal.querySelectorAll('textarea, input[type="text"], input[type="url"]').forEach(input => {
+            input.addEventListener('input', () => {
+                if (!isPopulating) {
+                    editFormIsDirty = true;
+                }
+            });
+        });
+        modal.querySelectorAll('input[type="radio"], input[type="datetime-local"]').forEach(input => {
+            input.addEventListener('change', () => {
+                if (!isPopulating) {
+                    editFormIsDirty = true;
+                }
             });
         });
     }
@@ -4954,6 +5066,7 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('filter_month', feed.dataset.filterMonth || '');
         formData.append('filter_search', feed.dataset.filterSearch || '');
         formData.append('filter_hashtag', feed.dataset.filterHashtag || '');
+        formData.append('highlight_bit', feed.dataset.highlightBit || '0');
 
         fetch(bitstream_ajax.ajax_url, {
             method: 'POST',
@@ -5350,16 +5463,76 @@ jQuery(document).ready(function ($) {
                 }
             }
         }
+        function clearComposer() {
+            if (form) form.reset();
+            if (hAttachmentId) hAttachmentId.value = '';
+            if (hAttachmentIds) hAttachmentIds.value = '';
+            if (previewMediaThumb) previewMediaThumb.innerHTML = '';
+            if (previewMedia) previewMedia.hidden = true;
+            if (hRebitUrl) hRebitUrl.value = '';
+            if (hRebitOgTitle) hRebitOgTitle.value = '';
+            if (hRebitOgDesc) hRebitOgDesc.value = '';
+            if (hRebitOgImage) hRebitOgImage.value = '';
+            if (hRebitOgImageRemoved) hRebitOgImageRemoved.value = '0';
+            if (hRebitAttachmentId) hRebitAttachmentId.value = '';
+            if (previewRebitCard) previewRebitCard.innerHTML = '';
+            if (previewRebit) previewRebit.hidden = true;
+            if (previewArea) previewArea.hidden = true;
+            if (textarea) textarea.value = '';
+            if (hScheduleEnabled) hScheduleEnabled.value = '0';
+            if (hScheduleDatetime) hScheduleDatetime.value = '';
+            if (previewSchedule) previewSchedule.hidden = true;
+            if (previewDraft) previewDraft.hidden = true;
+            if (hEditPostId) hEditPostId.value = '0';
+            form.dataset.composerType = 'bit';
+            if (submitBtn) submitBtn.textContent = 'Post Bit';
+            if (composerSaveDraftActionBtn) {
+                composerSaveDraftActionBtn.style.display = 'block';
+            }
+            setStatus('');
+            syncPreviewArea();
+        }
+
         function closeModal(name, keepPosterOpen = false) {
             setStatus('');
             if (name === 'composer') {
+                const content = textarea ? textarea.value.trim() : '';
+                const hasRebit = hRebitUrl && hRebitUrl.value.trim();
+                const hasMedia = hAttachmentId && parseInt(hAttachmentId.value || '0', 10) > 0;
+                if (content || hasRebit || hasMedia) {
+                    showDiscardConfirmation('Are you sure you want to discard your draft?', () => {
+                        composerFormIsDirty = false;
+                        composerRoot.hidden = true;
+                        delete composerRoot.dataset.quickActionSource;
+                        composerRoot.querySelectorAll('.bitstream-composer-modal').forEach(m => m.hidden = true);
+                        clearComposer();
+                    });
+                    return;
+                }
                 composerRoot.hidden = true;
                 delete composerRoot.dataset.quickActionSource;
-                // Also close any open sub-modals
                 composerRoot.querySelectorAll('.bitstream-composer-modal').forEach(m => m.hidden = true);
             } else {
                 const modal = composerRoot.querySelector('.bitstream-composer-modal-' + name);
                 if (modal) {
+                    if (name === 'rebit') {
+                        const mRebitUrl = modal.querySelector('#bitstream-composer-modal-rebit-url');
+                        const urlVal = mRebitUrl ? mRebitUrl.value.trim() : '';
+                        const currentUrl = hRebitUrl ? hRebitUrl.value.trim() : '';
+                        if (urlVal && urlVal !== currentUrl) {
+                            showDiscardConfirmation('Are you sure you want to discard this ReBit link?', () => {
+                                modal.hidden = true;
+                                const isMobile = window.innerWidth < 1024;
+                                const quickActionSource = composerRoot.dataset.quickActionSource || '';
+                                const shouldCloseComposer = isMobile && !keepPosterOpen && quickActionSource === 'new-rebit';
+                                if (shouldCloseComposer) {
+                                    composerRoot.hidden = true;
+                                    delete composerRoot.dataset.quickActionSource;
+                                }
+                            });
+                            return;
+                        }
+                    }
                     modal.hidden = true;
                     const isMobile = window.innerWidth < 1024;
                     const quickActionSource = composerRoot.dataset.quickActionSource || '';
@@ -5375,6 +5548,7 @@ jQuery(document).ready(function ($) {
                 }
             }
         }
+
 
         // Wire action buttons
         composerRoot.querySelectorAll('.bitstream-composer-action-btn[data-composer-modal]').forEach(btn => {
@@ -6025,6 +6199,9 @@ jQuery(document).ready(function ($) {
                         if (!data.success) throw new Error(data.data || 'Save failed.');
                         setStatus(data.data?.message || 'Saved as draft.');
                         
+                        // Prevent beforeunload auto-save from also firing during redirect
+                        composerFormIsDirty = false;
+
                         const feedBaseUrl = (window.bitstream_ajax && bitstream_ajax.feed_url)
                             ? bitstream_ajax.feed_url
                             : (window.location.origin + '/bitstream/');
@@ -6086,6 +6263,128 @@ jQuery(document).ready(function ($) {
         const quotePostIdFromUrl = parseInt(urlParams.get('quote_post_id') || '0', 10);
         if (quotePostIdFromUrl > 0 && typeof openTimelineQuoteModal === 'function') {
             setTimeout(() => openTimelineQuoteModal(quotePostIdFromUrl), 150);
+        }
+
+        // Handle PWA share target redirection payload
+        if (urlParams.has('share_target') && urlParams.has('shared_id')) {
+            const sharedId = urlParams.get('shared_id');
+            const dbRequest = indexedDB.open('bitstream-pwa-share-db', 1);
+            dbRequest.onsuccess = (event) => {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains('shared-payloads')) {
+                    return;
+                }
+                const transaction = db.transaction('shared-payloads', 'readonly');
+                const store = transaction.objectStore('shared-payloads');
+                const getRequest = store.get(sharedId);
+                getRequest.onsuccess = () => {
+                    const payload = getRequest.result;
+                    if (!payload) return;
+
+                    // helper to extract final URL
+                    const extractShareUrl = (url, text, title) => {
+                        if (url && url.startsWith('http')) return url;
+                        if (text && text.startsWith('http')) return text;
+                        const allContent = [url, text, title].filter(Boolean).join(' ');
+                        const match = allContent.match(/https?:\/\/[^\s]+/);
+                        return match ? match[0] : '';
+                    };
+
+                    // helper to clean shared text
+                    const cleanShareText = (text, finalUrl) => {
+                        if (!text) return '';
+                        let clean = text;
+                        if (finalUrl) {
+                            clean = clean.replace(finalUrl, '');
+                        }
+                        return clean.replace(/\s+/g, ' ').trim();
+                    };
+
+                    const finalUrl = extractShareUrl(payload.url, payload.text, payload.title);
+                    const cleanText = cleanShareText(payload.text, finalUrl);
+
+                    // Ensure composer modal is open on mobile
+                    const isMobile = window.innerWidth < 1024;
+                    if (isMobile) {
+                        composerRoot.hidden = false;
+                    }
+
+                    // Populate text content
+                    if (cleanText && textarea) {
+                        textarea.value = cleanText;
+                        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+
+                    // Populate Rebit URL if present
+                    if (finalUrl) {
+                        if (hRebitUrl) {
+                            hRebitUrl.value = finalUrl;
+                        }
+                        form.dataset.composerType = 'rebit';
+                        if (textarea) textarea.required = false;
+                        
+                        // Open the Rebit modal
+                        const rebitBtn = composerRoot.querySelector('[data-composer-modal="rebit"]');
+                        if (rebitBtn) {
+                            rebitBtn.click();
+                        }
+                        
+                        // Populate and fetch inside the Rebit modal
+                        const mRebitUrl = composerRoot.querySelector('#bitstream-composer-modal-rebit-url');
+                        if (mRebitUrl) {
+                            mRebitUrl.value = finalUrl;
+                        }
+                        const mRebitFetch = composerRoot.querySelector('.bitstream-composer-rebit-fetch');
+                        if (mRebitFetch) {
+                            mRebitFetch.classList.remove('is-edit-mode');
+                            mRebitFetch.textContent = 'Fetch metadata';
+                            setTimeout(() => {
+                                mRebitFetch.click();
+                            }, 100);
+                        }
+                        
+                        if (typeof renderRebitLivePreview === 'function') {
+                            renderRebitLivePreview(finalUrl);
+                        }
+                        syncPreviewArea();
+                    }
+
+                    // Upload shared files if any
+                    if (payload.mediaFiles && payload.mediaFiles.length > 0) {
+                        // Open the media modal to show upload progress
+                        if (typeof openModal === 'function') {
+                            openModal('media');
+                        }
+                        
+                        const mediaModal = composerRoot.querySelector('.bitstream-composer-modal-media');
+                        const mMediaDone = mediaModal ? mediaModal.querySelector('.bitstream-composer-media-done') : null;
+                        
+                        if (typeof uploadMultipleFiles === 'function') {
+                            uploadMultipleFiles(payload.mediaFiles, 'bitstream-composer-modal-media-attachment-id', 'bitstream-composer-modal-media-preview', {
+                                setStatus: (msg, isError) => setStatus(msg, isError)
+                            }).then(() => {
+                                // Verify that attachments were actually uploaded (avoids errors on aborted/failed uploads)
+                                const mediaModal = composerRoot.querySelector('.bitstream-composer-modal-media');
+                                const mMediaPreview = mediaModal ? mediaModal.querySelector('#bitstream-composer-modal-media-preview') : null;
+                                const attachments = mMediaPreview ? getExistingAttachments(mMediaPreview) : [];
+                                if (attachments.length > 0 && mMediaDone) {
+                                    mMediaDone.click();
+                                }
+                            }).catch(err => {
+                                console.error('BitStream: PWA shared media upload failed:', err);
+                            });
+                        }
+                    }
+
+                    // Delete processed payload from IndexedDB
+                    try {
+                        const deleteTx = db.transaction('shared-payloads', 'readwrite');
+                        deleteTx.objectStore('shared-payloads').delete(sharedId);
+                    } catch (e) {
+                        console.warn('BitStream: Failed to delete processed PWA share payload:', e);
+                    }
+                };
+            };
         }
 
         // Auto-save Composer form content when the user navigates away (mirrors composer shortcode beforeunload)
@@ -6178,6 +6477,9 @@ jQuery(document).ready(function ($) {
 
                     const responseData = data.data || {};
                     setStatus(responseData.message || 'Posted!');
+
+                    // Prevent beforeunload auto-save from also firing during redirect
+                    composerFormIsDirty = false;
 
                     const createdPostId = parseInt(responseData.post_id || '0', 10);
                     const isScheduled = !!responseData.is_scheduled;
@@ -6388,7 +6690,7 @@ jQuery(document).ready(function ($) {
         })();
     }
 
-    // ── Settings Tab Switching ──────────────────────────────────────────
+    // ── Settings Tab Switching & Force Update ───────────────────────────
     const settingsRoot = document.querySelector('.bitstream-settings');
     if (settingsRoot) {
         const settingsTabButtons = settingsRoot.querySelectorAll('.bitstream-settings-tab');
@@ -6407,6 +6709,45 @@ jQuery(document).ready(function ($) {
                 window.location.href = url.toString();
             });
         });
+
+        // Handle Force App Update
+        const forceUpdateBtn = document.getElementById('bitstream-force-update-btn');
+        if (forceUpdateBtn) {
+            forceUpdateBtn.addEventListener('click', async () => {
+                const originalHtml = forceUpdateBtn.innerHTML;
+                forceUpdateBtn.disabled = true;
+                forceUpdateBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Updating...';
+
+                try {
+                    // 1. Unregister all service workers
+                    if ('serviceWorker' in navigator) {
+                        const registrations = await navigator.serviceWorker.getRegistrations();
+                        for (const registration of registrations) {
+                            await registration.unregister();
+                        }
+                    }
+
+                    // 2. Clear all caches
+                    if ('caches' in window) {
+                        const cacheNames = await caches.keys();
+                        for (const name of cacheNames) {
+                            await caches.delete(name);
+                        }
+                    }
+
+                    forceUpdateBtn.innerHTML = '<i class="fa-solid fa-check" aria-hidden="true"></i> Updated! Reloading...';
+                    setTimeout(() => {
+                        // Reload the page from the server
+                        window.location.reload();
+                    }, 1000);
+                } catch (error) {
+                    console.error('BitStream PWA force update failed:', error);
+                    forceUpdateBtn.disabled = false;
+                    forceUpdateBtn.innerHTML = originalHtml;
+                    alert('Update failed: ' + error.message);
+                }
+            });
+        }
     }
 
     // ── Copy-to-Clipboard for Settings RSS Feeds ────────────────────────
@@ -6921,4 +7262,42 @@ jQuery(document).ready(function ($) {
         }
         return outputArray;
     }
+
+    // Clean up one-time URL parameters so they don't persist on page reload
+    function cleanupUrlParams() {
+        if (typeof window.history.replaceState !== 'function') {
+            return;
+        }
+        const url = new URL(window.location.href);
+        const paramsToRemove = [
+            'highlight_bit',
+            'highlight_draft',
+            'highlight_scheduled',
+            'open_comments',
+            'show_drafts',
+            'show_scheduled',
+            'show_rebit',
+            'focus_composer',
+            'quote_post_id',
+            'composer_tab',
+            'url',
+            'shared_url',
+            'shared_title',
+            'shared_text',
+            'share_target',
+            'shared_id'
+        ];
+        let urlChanged = false;
+        paramsToRemove.forEach(param => {
+            if (url.searchParams.has(param)) {
+                url.searchParams.delete(param);
+                urlChanged = true;
+            }
+        });
+        if (urlChanged) {
+            const newUrl = url.pathname + (url.search ? url.search : '') + url.hash;
+            window.history.replaceState({}, document.title, newUrl);
+        }
+    }
+    setTimeout(cleanupUrlParams, 300);
 });

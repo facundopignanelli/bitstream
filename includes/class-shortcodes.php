@@ -975,6 +975,11 @@ class BitStream_Shortcodes
             $query_args['s'] = $selected_search;
         }
 
+        $highlight_id = isset($_GET['highlight_bit']) ? intval($_GET['highlight_bit']) : 0;
+        if ($highlight_id > 0) {
+            $query_args['post__not_in'] = [$highlight_id];
+        }
+
         // Hashtag content filter — applied via posts_where
         if (!empty($selected_hashtag)) {
             $hashtag_term = $selected_hashtag;
@@ -991,6 +996,14 @@ class BitStream_Shortcodes
         // Remove the hashtag where filter after query
         if (!empty($selected_hashtag) && isset($bitstream_hashtag_where)) {
             remove_filter('posts_where', $bitstream_hashtag_where);
+        }
+
+        if ($highlight_id > 0 && intval($paged) === 1) {
+            $hl_post = get_post($highlight_id);
+            if ($hl_post && $hl_post->post_type === 'bit' && $hl_post->post_status === 'publish') {
+                $q->posts = array_merge([$hl_post], $q->posts);
+                $q->post_count = count($q->posts);
+            }
         }
 
         $max = $q->max_num_pages;
@@ -1228,7 +1241,7 @@ class BitStream_Shortcodes
         }
 
         if ($q->have_posts()) {
-            echo '<div class="' . $feed_classes . '" data-page="' . $current_page . '" data-max-page="' . $max . '" data-infinite-scroll="' . ($infinite_scroll ? 'true' : 'false') . '" data-filter-type="' . esc_attr($selected_type) . '" data-filter-month="' . esc_attr($selected_month) . '" data-filter-search="' . esc_attr($selected_search) . '" data-filter-hashtag="' . esc_attr($selected_hashtag) . '">';
+            echo '<div class="' . $feed_classes . '" data-page="' . $current_page . '" data-max-page="' . $max . '" data-infinite-scroll="' . ($infinite_scroll ? 'true' : 'false') . '" data-filter-type="' . esc_attr($selected_type) . '" data-filter-month="' . esc_attr($selected_month) . '" data-filter-search="' . esc_attr($selected_search) . '" data-filter-hashtag="' . esc_attr($selected_hashtag) . '" data-highlight-bit="' . esc_attr($highlight_id) . '">';
             while ($q->have_posts()) {
                 $q->the_post();
                 echo bitstream_render_card(get_the_ID());
@@ -1778,6 +1791,15 @@ class BitStream_Shortcodes
             echo '<p>You do not have permission to access advanced settings.</p>';
             return;
         }
+
+        // --- Application Cache & Updates Section ---
+        echo '<div class="bitstream-settings-section" style="margin-bottom: 2rem;">';
+        echo '<h2 style="margin-top: 0;">Application Cache & Updates</h2>';
+        echo '<p>Forces the PWA to check for updates, clears the client-side service worker cache, and hard reloads the application to ensure you are running the latest version.</p>';
+        echo '<button type="button" id="bitstream-force-update-btn" style="background: var(--wp--preset--color--accent-1, #2c6e49); color: #fff; border: none; border-radius: 10px; padding: 0.6rem 1.5rem; cursor: pointer; font-weight: 600; font-size: 0.95rem; display: inline-flex; align-items: center; gap: 8px;">';
+        echo '<i class="fa-solid fa-rotate" aria-hidden="true"></i> Force App Update';
+        echo '</button>';
+        echo '</div>';
 
         // --- Debug Logs Section ---
         echo '<div class="bitstream-settings-section">';
