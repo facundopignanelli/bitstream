@@ -3,7 +3,7 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.2.2] - 2026-XX-XX
+## [3.2.2] - 2026-06-01
 
 ### Added
 - Added client-side PWA Share Target upload progress tracking using IndexedDB and Service Worker redirection, replacing the native browser splash screen with visual upload feedback. Optimized video/large file upload speeds by increasing the chunked upload threshold and size to 5MB, reducing WordPress bootstrap round-trip requests by up to 90%.
