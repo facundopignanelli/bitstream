@@ -1,17 +1,53 @@
 // BitStream Service Worker - PWA Support
 const CACHE_NAME = 'bitstream-v3.3.0';
+
+const siteUrl = typeof BITSTREAM_SITE_URL !== 'undefined' ? BITSTREAM_SITE_URL : '/bitstream/';
+const FEED_PATH = (function() {
+  try {
+    return new URL(siteUrl, self.location.origin).pathname;
+  } catch (e) {
+    return '/bitstream/';
+  }
+})();
+
+const SUB_PATH = (function() {
+  try {
+    const path = new URL(siteUrl, self.location.origin).pathname;
+    const idx = path.lastIndexOf('bitstream/');
+    if (idx !== -1) {
+      return path.substring(0, idx);
+    }
+    return '/';
+  } catch (e) {
+    return '/';
+  }
+})();
+
+// Helper to check if request is for the main feed page
+function isFeedPage(urlStr) {
+  try {
+    const requestUrl = new URL(urlStr);
+    const feedUrl = new URL(siteUrl, self.location.origin);
+    const reqPath = requestUrl.pathname.replace(/\/$/, '');
+    const feedPath = feedUrl.pathname.replace(/\/$/, '');
+    return reqPath === feedPath || reqPath === feedPath + '/index.php';
+  } catch (e) {
+    return false;
+  }
+}
+
 const ASSETS_TO_CACHE = [
-  '/bitstream/',
-  '/bitstream/new-bit/',
-  '/bitstream/new-rebit/',
-  '/wp-content/plugins/bitstream/assets/css/bitstream.css',
-  '/wp-content/plugins/bitstream/assets/js/bitstream.js',
-  '/wp-content/plugins/bitstream/manifest.json',
-  '/wp-content/plugins/bitstream/assets/images/logo_192.png',
-  '/wp-content/plugins/bitstream/assets/images/logo_512.png',
-  '/wp-content/plugins/bitstream/assets/images/bitstream.svg',
-  '/wp-content/plugins/bitstream/assets/images/new-bit-192.png',
-  '/wp-content/plugins/bitstream/assets/images/new-rebit-192.png'
+  FEED_PATH,
+  FEED_PATH + 'new-bit/',
+  FEED_PATH + 'new-rebit/',
+  SUB_PATH + 'wp-content/plugins/bitstream/assets/css/bitstream.css',
+  SUB_PATH + 'wp-content/plugins/bitstream/assets/js/bitstream.js',
+  SUB_PATH + 'wp-content/plugins/bitstream/manifest.json',
+  SUB_PATH + 'wp-content/plugins/bitstream/assets/images/logo_192.png',
+  SUB_PATH + 'wp-content/plugins/bitstream/assets/images/logo_512.png',
+  SUB_PATH + 'wp-content/plugins/bitstream/assets/images/bitstream.svg',
+  SUB_PATH + 'wp-content/plugins/bitstream/assets/images/new-bit-192.png',
+  SUB_PATH + 'wp-content/plugins/bitstream/assets/images/new-rebit-192.png'
 ];
 
 self.addEventListener('install', event => {
@@ -68,19 +104,19 @@ self.addEventListener('fetch', event => {
   }
 
   // Network-first for BitStream page navigations to avoid serving stale HTML with expired nonces
-  if (event.request.mode === 'navigate' && event.request.url.includes('/bitstream/')) {
+  if (event.request.mode === 'navigate' && isFeedPage(event.request.url)) {
     event.respondWith(
       fetch(event.request)
         .then(response => {
           if (response && response.status === 200 && response.type === 'basic') {
             const responseToCache = response.clone();
             caches.open(CACHE_NAME).then(cache => {
-              cache.put('/bitstream/', responseToCache);
+              cache.put(FEED_PATH, responseToCache);
             });
           }
           return response;
         })
-        .catch(() => caches.match('/bitstream/'))
+        .catch(() => caches.match(FEED_PATH))
     );
     return;
   }
@@ -128,15 +164,17 @@ self.addEventListener('fetch', event => {
     return;
   }
   
+  const isPluginAsset = event.request.url.includes('/wp-content/plugins/bitstream/');
+  const isAjax = event.request.url.includes('/wp-admin/admin-ajax.php');
+  
   // Handle BitStream requests specifically - avoid other plugin conflicts
-  if ((event.request.url.includes('/bitstream/') || 
-       event.request.url.includes('/wp-content/plugins/bitstream/')) && 
+  if ((event.request.url.includes(FEED_PATH) || isPluginAsset) && 
       !event.request.url.includes('/pup-coupons/') &&
-      (event.request.url.match(/\/bitstream\/?/) || 
-       (event.request.url.includes('/bitstream/new-bit/') ||
-        event.request.url.includes('/bitstream/new-rebit/')) ||
-       event.request.url.includes('/wp-content/plugins/bitstream/') ||
-       event.request.url.includes('/wp-admin/admin-ajax.php'))) {
+      (isFeedPage(event.request.url) || 
+       (event.request.url.includes(FEED_PATH + 'new-bit/') ||
+        event.request.url.includes(FEED_PATH + 'new-rebit/')) ||
+       isPluginAsset ||
+       isAjax)) {
     
     event.respondWith(
       caches.match(event.request)
@@ -159,7 +197,7 @@ self.addEventListener('fetch', event => {
               caches.open(CACHE_NAME)
                 .then(cache => {
                   // Cache plugin assets only (avoid caching dynamic HTML with nonces)
-                  if (event.request.url.includes('/wp-content/plugins/bitstream/')) {
+                  if (isPluginAsset) {
                     cache.put(event.request, responseToCache);
                   }
                 });
@@ -168,9 +206,8 @@ self.addEventListener('fetch', event => {
         })
         .catch(() => {
           // Offline fallback for feed navigation
-          if (event.request.mode === 'navigate' && 
-              event.request.url.includes('/bitstream/')) {
-            return caches.match('/bitstream/');
+          if (event.request.mode === 'navigate' && isFeedPage(event.request.url)) {
+            return caches.match(FEED_PATH);
           }
         })
     );
@@ -239,7 +276,6 @@ async function handleShareTargetPost(request) {
 // Push notification listener (payload-free style)
 self.addEventListener('push', event => {
   const ajaxUrl = typeof BITSTREAM_AJAX_URL !== 'undefined' ? BITSTREAM_AJAX_URL : '/wp-admin/admin-ajax.php';
-  const siteUrl = typeof BITSTREAM_SITE_URL !== 'undefined' ? BITSTREAM_SITE_URL : '/bitstream/';
   
   event.waitUntil(
     fetch(`${ajaxUrl}?action=bitstream_get_latest_notification`)
@@ -248,8 +284,8 @@ self.addEventListener('push', event => {
         const title = data.title || 'New BitStream Post';
         const options = {
           body: data.body || 'A new bit has been posted!',
-          icon: data.icon || '/wp-content/plugins/bitstream/assets/images/logo_192.png',
-          badge: data.badge || '/wp-content/plugins/bitstream/assets/images/logo_192.png',
+          icon: data.icon || (SUB_PATH + 'wp-content/plugins/bitstream/assets/images/logo_192.png'),
+          badge: data.badge || (SUB_PATH + 'wp-content/plugins/bitstream/assets/images/logo_192.png'),
           image: data.image || undefined,
           data: {
             url: data.url || siteUrl
@@ -261,8 +297,8 @@ self.addEventListener('push', event => {
         console.error('BitStream SW: Push fetch failed:', err);
         return self.registration.showNotification('New BitStream Update', {
           body: 'A new post is available on BitStream.',
-          icon: '/wp-content/plugins/bitstream/assets/images/logo_192.png',
-          badge: '/wp-content/plugins/bitstream/assets/images/logo_192.png',
+          icon: SUB_PATH + 'wp-content/plugins/bitstream/assets/images/logo_192.png',
+          badge: SUB_PATH + 'wp-content/plugins/bitstream/assets/images/logo_192.png',
           data: {
             url: siteUrl
           }
@@ -274,7 +310,6 @@ self.addEventListener('push', event => {
 // Handle notification click to navigate/focus
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-  const siteUrl = typeof BITSTREAM_SITE_URL !== 'undefined' ? BITSTREAM_SITE_URL : '/bitstream/';
   let targetUrl = event.notification.data && event.notification.data.url ? event.notification.data.url : siteUrl;
   
   event.waitUntil(
@@ -282,7 +317,7 @@ self.addEventListener('notificationclick', event => {
       .then(windowClients => {
         for (let i = 0; i < windowClients.length; i++) {
           const client = windowClients[i];
-          if (client.url.includes('/bitstream/') && 'focus' in client) {
+          if (client.url.includes(FEED_PATH) && 'focus' in client) {
             if ('navigate' in client) {
               client.navigate(targetUrl);
             }
