@@ -3863,6 +3863,10 @@ iframe[src*="youtube-nocookie.com"] {
         gap: 0.75rem !important;
     }
 
+    .bit-card-footer-main-actions {
+        gap: 0.5rem !important;
+    }
+
     .bit-meta {
         font-size: 0.8rem !important;
     }

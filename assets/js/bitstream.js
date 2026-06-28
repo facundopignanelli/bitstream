@@ -4496,7 +4496,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const url = shareButton.dataset.url;
             const title = shareButton.dataset.title || '';
             if (navigator.share) {
-                navigator.share({ title, url }).catch(() => {});
+                navigator.share({ title, url }).finally(() => shareButton.blur());
             } else {
                 navigator.clipboard.writeText(url);
                 const icon = shareButton.querySelector('i');
