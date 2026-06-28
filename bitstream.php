@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BitStream
  * Description: A lightweight microblogging platform for WordPress with PWA support, masonry layout, and social sharing.
- * Version: 3.2.2
+ * Version: 3.2.3
  * Author: Facundo Pignanelli
  * Text Domain: bitstream
  * Requires at least: 5.8
@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('BITSTREAM_VERSION', '3.2.2');
+define('BITSTREAM_VERSION', '3.2.3');
 define('BITSTREAM_PLUGIN_PATH', plugin_dir_path(__FILE__));
 define('BITSTREAM_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -237,11 +237,11 @@ function bitstream_render_nested_quoted_card($post_id)
     if (!($quoted_post instanceof WP_Post) || $quoted_post->post_type !== 'bit' || $quoted_post->post_status !== 'publish') {
         ob_start();
 ?>
-        <article id="bit-quoted-missing-<?php echo esc_attr($post_id); ?>" class="bit-card bit-card-quoted-nested bit-card-quoted-unavailable" style="margin:0;padding:1rem;width:100%;max-width:none;box-sizing:border-box;border:1px solid #ddd;border-radius:15px;background:#fff;">
+        <div id="bit-quoted-missing-<?php echo esc_attr($post_id); ?>" class="bit-card bit-card-quoted-nested bit-card-quoted-unavailable" style="margin:0;padding:1rem;width:100%;max-width:none;box-sizing:border-box;border:1px solid #ddd;border-radius:15px;background:#fff;">
             <div class="bit-card-content" style="font-size:0.95rem;line-height:1.5;margin:0;">
                 <p style="margin:0;color:var(--wp--preset--color--secondary,#666);">Original Bit unavailable.</p>
             </div>
-        </article>
+        </div>
         <?php
         return ob_get_clean();
     }
@@ -265,7 +265,7 @@ function bitstream_render_nested_quoted_card($post_id)
 
     ob_start();
 ?>
-    <article id="bit-quoted-<?php echo esc_attr($post_id); ?>" class="bit-card bit-card-quoted-nested" style="margin:0;padding:1.5rem;width:100%;max-width:none;box-sizing:border-box;border:1px solid #ddd;border-radius:15px;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+    <div id="bit-quoted-<?php echo esc_attr($post_id); ?>" class="bit-card bit-card-quoted-nested" style="margin:0;padding:1.5rem;width:100%;max-width:none;box-sizing:border-box;border:1px solid #ddd;border-radius:15px;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,0.05);">
         <header class="bit-card-header" style="display:flex;align-items:center;margin-bottom:1rem;">
             <div class="bit-meta" style="font-size:0.875rem;color:var(--wp--preset--color--secondary,#666);">
                 <span class="bit-timestamp" tabindex="0" data-timestamp-tooltip="<?php echo esc_attr($timestamp_tooltip); ?>" title="<?php echo esc_attr($timestamp_tooltip); ?>"><?php echo esc_html($timestamp); ?></span>
@@ -277,7 +277,7 @@ function bitstream_render_nested_quoted_card($post_id)
         </div>
 
         <?php echo $rebit_markup; ?>
-    </article>
+    </div>
     <?php
 
     return ob_get_clean();

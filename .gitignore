@@ -1,6 +1,7 @@
 # Local editor settings
 .vscode/
 .agents/
+.github
 scratch
 
 # Composer + local dev dependencies

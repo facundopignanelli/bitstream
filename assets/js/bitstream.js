@@ -46,6 +46,20 @@ document.addEventListener('DOMContentLoaded', function () {
     const BITSTREAM_CHUNKED_UPLOAD_THRESHOLD = 5 * 1024 * 1024;
     const BITSTREAM_UPLOAD_CHUNK_SIZE = 5 * 1024 * 1024;
 
+    function updateQuickActionCounter(triggerName) {
+        document.querySelectorAll('[data-composer-modal-trigger="' + triggerName + '"]').forEach(trigger => {
+            const span = trigger.querySelector('span');
+            if (span) {
+                const match = span.textContent.match(/\((\d+)\)/);
+                if (match) {
+                    const currentCount = parseInt(match[1], 10);
+                    const newCount = Math.max(0, currentCount - 1);
+                    span.textContent = span.textContent.replace(/\(\d+\)/, '(' + newCount + ')');
+                }
+            }
+        });
+    }
+
     function getFileExtension(filename) {
         const match = String(filename || '').toLowerCase().match(/\.([a-z0-9]+)$/);
         return match ? match[1] : '';
@@ -203,7 +217,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         });
 
                         const clickIndex = mediaItems.indexOf(previewItem);
-                        openLightbox(mediaList, clickIndex);
+                        if (typeof window.bitstreamOpenLightbox === 'function') {
+                            window.bitstreamOpenLightbox(mediaList, clickIndex);
+                        } else if (typeof openLightbox === 'function') {
+                            openLightbox(mediaList, clickIndex);
+                        }
                     }
                 }
             });
@@ -244,15 +262,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 video.muted = true;
                 video.playsInline = true;
                 video.setAttribute('playsinline', '');
-                
+
                 // Seek to first frame so mobile browsers paint a thumbnail
                 video.addEventListener('loadedmetadata', function onMeta() {
                     video.removeEventListener('loadedmetadata', onMeta);
                     video.currentTime = 0.001;
                 });
-                
+
                 item.appendChild(video);
-                
+
                 // Play-icon overlay so the thumbnail is recognisable on mobile
                 const playOverlay = document.createElement('div');
                 playOverlay.className = 'bitstream-media-preview-video-overlay';
@@ -276,9 +294,72 @@ document.addEventListener('DOMContentLoaded', function () {
             removeBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 e.preventDefault();
-                const updated = attachments.filter((_, i) => i !== index);
-                updateAttachmentsList(previewEl, updated);
+                const removeAction = () => {
+                    const currentAttachments = getExistingAttachments(previewEl);
+                    let targetIdx = index;
+                    if (currentAttachments[targetIdx] && currentAttachments[targetIdx].id === attachment.id) {
+                        // Match by index
+                    } else {
+                        targetIdx = currentAttachments.findIndex(att => att.id === attachment.id);
+                    }
+
+                    if (targetIdx !== -1) {
+                        const updated = currentAttachments.filter((_, i) => i !== targetIdx);
+                        updateAttachmentsList(previewEl, updated);
+                    }
+                };
+
+                if (typeof showDeleteConfirmation === 'function') {
+                    showDeleteConfirmation('Are you sure you want to remove this media?', removeAction);
+                } else if (confirm('Are you sure you want to remove this media?')) {
+                    removeAction();
+                }
             });
+
+            if (mime.startsWith('image/')) {
+                const cropBtn = document.createElement('button');
+                cropBtn.type = 'button';
+                cropBtn.className = 'bitstream-media-preview-crop-item';
+                cropBtn.innerHTML = '<i class="fa-solid fa-crop-simple" aria-hidden="true"></i>';
+                cropBtn.title = 'Crop image';
+                cropBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+
+                    const form = previewEl.closest('form, .bitstream-media-field, .bitstream-composer');
+                    if (!form) return;
+
+                    const targetInput = form.querySelector('.bs-edit-attachment-id') || form.querySelector('#bitstream-composer-attachment-id');
+                    if (!targetInput) return;
+
+                    if (typeof window.bitstreamOpenCropper === 'function') {
+                        window.bitstreamOpenCropper(targetInput.id, previewEl.id, {
+                            attachmentId: attachment.id,
+                            onComplete: (croppedMedia, url) => {
+                                const currentAttachments = getExistingAttachments(previewEl);
+                                let targetIdx = index;
+                                if (currentAttachments[targetIdx] && currentAttachments[targetIdx].id === attachment.id) {
+                                    // Match by index
+                                } else {
+                                    targetIdx = currentAttachments.findIndex(att => att.id === attachment.id);
+                                }
+
+                                if (targetIdx !== -1) {
+                                    currentAttachments[targetIdx] = {
+                                        id: croppedMedia.id,
+                                        url: croppedMedia.url,
+                                        preview_url: croppedMedia.url,
+                                        mime: croppedMedia.mime,
+                                        filename: currentAttachments[targetIdx].filename || ''
+                                    };
+                                    updateAttachmentsList(previewEl, currentAttachments);
+                                }
+                            }
+                        });
+                    }
+                });
+                item.appendChild(cropBtn);
+            }
 
             item.appendChild(removeBtn);
             grid.appendChild(item);
@@ -296,14 +377,14 @@ document.addEventListener('DOMContentLoaded', function () {
     async function uploadMultipleFiles(files, targetInputId, targetPreviewId, options = {}) {
         const setStatusFn = options.setStatus || console.log;
         setStatusFn('', false);
-        
+
         if (!bitstream_ajax || !bitstream_ajax.ajax_url || !bitstream_ajax.media_upload_nonce) {
             setStatusFn('Media upload is unavailable.', true);
             return;
         }
 
         const isRebit = targetInputId && (targetInputId.indexOf('rebit') !== -1);
-        
+
         const validFiles = Array.from(files).filter(file => {
             const mimeType = getUploadMimeType(file);
             return mimeType.startsWith('image/') || mimeType.startsWith('video/');
@@ -348,12 +429,12 @@ document.addEventListener('DOMContentLoaded', function () {
             const loadedAttachments = [];
             for (let i = 0; i < validFiles.length; i++) {
                 const file = validFiles[i];
-                updateProgress(5 + (i / validFiles.length) * 90, `Uploading file ${i+1}/${validFiles.length}...`);
-                
+                updateProgress(5 + (i / validFiles.length) * 90, `Uploading file ${i + 1}/${validFiles.length}...`);
+
                 const uploadFile = await prepareMediaFileForUpload(file);
                 const media = await uploadMediaRequest(uploadFile, (percent, text) => {
                     const subPercent = 5 + ((i + percent / 100) / validFiles.length) * 90;
-                    updateProgress(subPercent, `Uploading file ${i+1}/${validFiles.length} (${percent}%)...`);
+                    updateProgress(subPercent, `Uploading file ${i + 1}/${validFiles.length} (${percent}%)...`);
                 });
 
                 loadedAttachments.push({
@@ -1155,6 +1236,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                 : '<p>No scheduled Bits or Rebits yet.</p>';
                         }
 
+                        updateQuickActionCounter(isDraft ? 'drafts' : 'scheduled-list');
                         setStatus(isDraft ? 'Draft deleted.' : 'Scheduled Bit deleted.');
                     })
                     .catch(error => {
@@ -1756,7 +1838,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     refreshRebitEditorImagePreview();
                     refreshRebitPreview();
                 }
-            }            function uploadClipboardImage(targetInputId, targetPreviewId) {
+            } function uploadClipboardImage(targetInputId, targetPreviewId) {
                 if (!navigator.clipboard || typeof navigator.clipboard.read !== 'function') {
                     setStatus('Clipboard paste is unavailable in this browser.', true);
                     return;
@@ -2223,18 +2305,18 @@ document.addEventListener('DOMContentLoaded', function () {
                     credentials: 'same-origin',
                     body: fd
                 })
-                .then(r => r.json())
-                .then(data => {
-                    if (!data.success) {
-                        throw new Error(data.data || 'Failed to fetch attachment.');
-                    }
-                    return data.data;
-                });
+                    .then(r => r.json())
+                    .then(data => {
+                        if (!data.success) {
+                            throw new Error(data.data || 'Failed to fetch attachment.');
+                        }
+                        return data.data;
+                    });
             }
 
             const previewMediaThumb = composerRoot.querySelector('.bitstream-composer-preview-media-thumb');
             const existingMediaIdsInputs = composerRoot.querySelectorAll('input[name="bit_attachment_ids"]');
-            
+
             existingMediaIdsInputs.forEach(input => {
                 const val = input.value || '';
                 const ids = val.split(',').map(id => parseInt(id.trim(), 10)).filter(Boolean);
@@ -3010,7 +3092,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const hRebitAttachmentId = form.querySelector('#bitstream-composer-rebit-attachment-id') || form.querySelector('#bitstream-rebit-attachment-id');
                 const textarea = form.querySelector('#bitstream-quick-bit-content') || form.querySelector('#bitstream-bit-content');
                 const submitBtn = form.querySelector('.bitstream-composer-submit');
-                
+
                 const previewArea = form.querySelector('.bitstream-composer-preview-area') || form.querySelector('.bitstream-media-field');
                 const previewRebit = form.querySelector('.bitstream-composer-preview-rebit') || form.querySelector('#bitstream-rebit-preview');
                 const previewRebitCard = form.querySelector('.bitstream-composer-preview-rebit-card') || form.querySelector('.bit-card');
@@ -3615,6 +3697,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         uploadFiles(validFiles);
                     }
                 });
+
+                // Mobile only: grow textarea as user types
+                if (window.matchMedia('(max-width: 1023px)').matches) {
+                    textarea.addEventListener('input', () => bsMobileAutoResize(textarea));
+                }
             }
         }
 
@@ -3922,6 +4009,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (contentInput) {
                 contentInput.value = isQuoteMode ? '' : (data.content || '');
+                if (window.matchMedia('(max-width: 1023px)').matches) {
+                    bsMobileAutoResize(contentInput);
+                }
             }
 
             setQuotePreview(bitForm, quotePostId, quotePreviewHtml);
@@ -5136,6 +5226,7 @@ document.addEventListener('DOMContentLoaded', function () {
     window.getExistingAttachments = getExistingAttachments;
     window.updateAttachmentsList = updateAttachmentsList;
     window.uploadMultipleFiles = uploadMultipleFiles;
+    window.updateQuickActionCounter = updateQuickActionCounter;
 });
 
 // Expose media preview renderer globally so it's accessible by all components/scopes
@@ -5306,6 +5397,16 @@ jQuery(document).ready(function ($) {
         }
     });
 
+    // Mobile-only textarea auto-grow: starts at 160px, grows as user types.
+    // Uses inline flex-basis instead of height so that the flexbox engine
+    // can shrink the textarea down when the preview area needs space.
+    function bsMobileAutoResize(el) {
+        el.style.height = 'auto';
+        const baseHeight = Math.max(el.scrollHeight, 160);
+        el.style.height = '';
+        el.style.setProperty('flex-basis', baseHeight + 'px', 'important');
+    }
+
     document.querySelectorAll('.bitstream-composer').forEach(composerRoot => {
         const form = composerRoot.querySelector('.bitstream-sidebar-composer-form');
         if (!form) return;
@@ -5314,6 +5415,11 @@ jQuery(document).ready(function ($) {
         const submitBtn = form.querySelector('.bitstream-composer-submit');
         const textarea = form.querySelector('#bitstream-quick-bit-content');
         const submitNonce = composerRoot.dataset.submitNonce || '';
+
+        // Mobile only: grow textarea as user types
+        if (textarea && window.matchMedia('(max-width: 1023px)').matches) {
+            textarea.addEventListener('input', () => bsMobileAutoResize(textarea));
+        }
 
         // Hidden inputs
         const hAttachmentId = form.querySelector('#bitstream-composer-attachment-id');
@@ -5339,6 +5445,8 @@ jQuery(document).ready(function ($) {
 
         // Preview containers
         const previewArea = form.querySelector('.bitstream-composer-preview-area');
+        const previewCarousel = form.querySelector('.bitstream-composer-preview-carousel');
+        const previewDotsEl = form.querySelector('.bitstream-composer-preview-dots');
         const previewRebit = form.querySelector('.bitstream-composer-preview-rebit');
         const previewRebitCard = form.querySelector('.bitstream-composer-preview-rebit-card');
         const previewMedia = form.querySelector('.bitstream-composer-preview-media');
@@ -5347,6 +5455,9 @@ jQuery(document).ready(function ($) {
         const previewScheduleDate = form.querySelector('.bitstream-composer-preview-schedule-date');
         const previewDraft = null;
         const previewDraftLabel = null;
+
+        // Carousel scroll listener reference so we can remove it when re-syncing
+        let _carouselScrollHandler = null;
 
         // Save Draft Button
         const composerSaveDraftBtn = null;
@@ -5395,6 +5506,61 @@ jQuery(document).ready(function ($) {
             const hasDraft = previewDraft && !previewDraft.hidden;
             if (previewArea) previewArea.hidden = !(hasRebit || hasMedia || hasSched || hasDraft);
             if (textarea) textarea.required = !(hasRebit || hasMedia);
+
+            // Carousel dot indicators — only on mobile/tablet (<1024px)
+            if (!previewCarousel || !previewDotsEl) return;
+
+            // Remove old scroll listener before potentially re-attaching
+            if (_carouselScrollHandler) {
+                previewCarousel.removeEventListener('scroll', _carouselScrollHandler);
+                _carouselScrollHandler = null;
+            }
+
+            const isMobileCarousel = window.innerWidth < 1024;
+            const bothPresent = hasRebit && hasMedia;
+
+            if (!isMobileCarousel || !bothPresent) {
+                // Desktop or only one card: hide dots, no snap needed
+                previewDotsEl.hidden = true;
+                previewDotsEl.innerHTML = '';
+                return;
+            }
+
+            // Both cards present on mobile/tablet: build dots
+            const cards = [previewRebit, previewMedia];
+            const labels = ['Rebit', 'Media'];
+
+            previewDotsEl.innerHTML = '';
+            previewDotsEl.hidden = false;
+            previewDotsEl.setAttribute('aria-hidden', 'true');
+
+            cards.forEach(function (card, i) {
+                const dot = document.createElement('button');
+                dot.type = 'button';
+                dot.className = 'bitstream-composer-preview-dot' + (i === 0 ? ' is-active' : '');
+                dot.setAttribute('aria-label', 'Go to ' + labels[i]);
+                dot.addEventListener('click', function () {
+                    previewCarousel.scrollTo({ left: card.offsetLeft, behavior: 'smooth' });
+                });
+                previewDotsEl.appendChild(dot);
+            });
+
+            // Keep active dot in sync as user swipes
+            const dots = previewDotsEl.querySelectorAll('.bitstream-composer-preview-dot');
+            let _rafId = null;
+            _carouselScrollHandler = function () {
+                if (_rafId) return;
+                _rafId = requestAnimationFrame(function () {
+                    _rafId = null;
+                    const scrollLeft = previewCarousel.scrollLeft;
+                    const width = previewCarousel.offsetWidth;
+                    const activeIndex = width > 0 ? Math.round(scrollLeft / width) : 0;
+                    dots.forEach(function (d, i) {
+                        d.classList.toggle('is-active', i === activeIndex);
+                    });
+                });
+            };
+            previewCarousel.addEventListener('scroll', _carouselScrollHandler, { passive: true });
         }
 
         // Modal open/close helpers
@@ -5420,27 +5586,27 @@ jQuery(document).ready(function ($) {
                     const mRebitUrl = modal.querySelector('#bitstream-composer-modal-rebit-url');
                     const mRebitFetch = modal.querySelector('.bitstream-composer-rebit-fetch');
                     const rebitMetaModal = composerRoot.querySelector('.bitstream-composer-modal-rebit-meta');
-                    
+
                     if (hRebitUrl && mRebitUrl) {
                         mRebitUrl.value = hRebitUrl.value || '';
                     }
-                    
+
                     if (hRebitUrl && hRebitUrl.value) {
                         const mRebitTitle = rebitMetaModal ? rebitMetaModal.querySelector('#bitstream-composer-modal-rebit-og-title') : null;
                         const mRebitDesc = rebitMetaModal ? rebitMetaModal.querySelector('#bitstream-composer-modal-rebit-og-desc') : null;
-                        
+
                         if (mRebitTitle && hRebitOgTitle) {
                             mRebitTitle.value = hRebitOgTitle.value || '';
                         }
                         if (mRebitDesc && hRebitOgDesc) {
                             mRebitDesc.value = hRebitOgDesc.value || '';
                         }
-                        
+
                         if (mRebitFetch) {
                             mRebitFetch.classList.add('is-edit-mode');
                             mRebitFetch.textContent = 'Edit metadata';
                         }
-                        
+
                         if (renderRebitLivePreview) {
                             renderRebitLivePreview(hRebitUrl.value);
                         }
@@ -5765,7 +5931,7 @@ jQuery(document).ready(function ($) {
             const mRebitImagePreviewWrapper = rebitMetaModal.querySelector('.bitstream-composer-rebit-image-preview-wrapper');
             const mRebitImagePreviewEl = rebitMetaModal.querySelector('.bitstream-composer-rebit-image-preview-el');
 
-            updateModalImagePreview = function() {
+            updateModalImagePreview = function () {
                 const imageUrl = hRebitOgImage ? hRebitOgImage.value : '';
                 const isRemoved = hRebitOgImageRemoved ? hRebitOgImageRemoved.value === '1' : false;
                 if (imageUrl && !isRemoved) {
@@ -5779,7 +5945,7 @@ jQuery(document).ready(function ($) {
                 }
             };
 
-            renderRebitLivePreview = function(url) {
+            renderRebitLivePreview = function (url) {
                 if (!mRebitPreviewRoot || !window.bitstream_ajax) return;
                 mRebitPreviewRoot.hidden = false;
                 if (mRebitPreviewLoading) mRebitPreviewLoading.hidden = false;
@@ -5883,8 +6049,8 @@ jQuery(document).ready(function ($) {
                             mRebitFetch.textContent = 'Edit metadata';
                         })
                         .catch(err => setStatus(err.message || 'Fetch failed.', true))
-                        .finally(() => { 
-                            mRebitFetch.disabled = false; 
+                        .finally(() => {
+                            mRebitFetch.disabled = false;
                             if (!mRebitFetch.classList.contains('is-edit-mode')) {
                                 mRebitFetch.textContent = 'Fetch metadata';
                             }
@@ -6009,13 +6175,14 @@ jQuery(document).ready(function ($) {
                                 if (!data.success) throw new Error(data.data || 'Delete failed.');
                                 const item = btn.closest('.bitstream-composer-draft-item');
                                 if (item) item.remove();
-                                
+
                                 // Check if empty
                                 const list = draftsModal.querySelector('.bitstream-composer-drafts-list');
                                 const remaining = list ? list.querySelectorAll('.bitstream-composer-draft-item') : [];
                                 if (list && remaining.length === 0) {
                                     list.innerHTML = '<p class="bitstream-composer-drafts-empty">No drafts yet.</p>';
                                 }
+                                updateQuickActionCounter('drafts');
                                 setStatus('Draft deleted.');
                             })
                             .catch(err => { setStatus(err.message || 'Delete failed.', true); btn.disabled = false; });
@@ -6053,7 +6220,7 @@ jQuery(document).ready(function ($) {
                     .then(data => {
                         if (!data.success) throw new Error(data.data || 'Save failed.');
                         setStatus(data.data?.message || 'Saved as draft.');
-                        
+
                         const feedBaseUrl = (window.bitstream_ajax && bitstream_ajax.feed_url)
                             ? bitstream_ajax.feed_url
                             : (window.location.origin + '/bitstream/');
@@ -6159,13 +6326,14 @@ jQuery(document).ready(function ($) {
                                 if (!data.success) throw new Error(data.data || 'Delete failed.');
                                 const item = btn.closest('.bitstream-composer-scheduled-item');
                                 if (item) item.remove();
-                                
+
                                 // Check if empty
                                 const list = scheduledListModal.querySelector('.bitstream-composer-scheduled-list');
                                 const remaining = list ? list.querySelectorAll('.bitstream-composer-scheduled-item') : [];
                                 if (list && remaining.length === 0) {
                                     list.innerHTML = '<p class="bitstream-composer-scheduled-empty">No scheduled Bits or Rebits yet.</p>';
                                 }
+                                updateQuickActionCounter('scheduled-list');
                                 setStatus('Scheduled post deleted.');
                             })
                             .catch(err => { setStatus(err.message || 'Delete failed.', true); btn.disabled = false; });
@@ -6198,7 +6366,7 @@ jQuery(document).ready(function ($) {
                     .then(data => {
                         if (!data.success) throw new Error(data.data || 'Save failed.');
                         setStatus(data.data?.message || 'Saved as draft.');
-                        
+
                         // Prevent beforeunload auto-save from also firing during redirect
                         composerFormIsDirty = false;
 
@@ -6322,13 +6490,13 @@ jQuery(document).ready(function ($) {
                         }
                         form.dataset.composerType = 'rebit';
                         if (textarea) textarea.required = false;
-                        
+
                         // Open the Rebit modal
                         const rebitBtn = composerRoot.querySelector('[data-composer-modal="rebit"]');
                         if (rebitBtn) {
                             rebitBtn.click();
                         }
-                        
+
                         // Populate and fetch inside the Rebit modal
                         const mRebitUrl = composerRoot.querySelector('#bitstream-composer-modal-rebit-url');
                         if (mRebitUrl) {
@@ -6342,7 +6510,7 @@ jQuery(document).ready(function ($) {
                                 mRebitFetch.click();
                             }, 100);
                         }
-                        
+
                         if (typeof renderRebitLivePreview === 'function') {
                             renderRebitLivePreview(finalUrl);
                         }
@@ -6355,10 +6523,10 @@ jQuery(document).ready(function ($) {
                         if (typeof openModal === 'function') {
                             openModal('media');
                         }
-                        
+
                         const mediaModal = composerRoot.querySelector('.bitstream-composer-modal-media');
                         const mMediaDone = mediaModal ? mediaModal.querySelector('.bitstream-composer-media-done') : null;
-                        
+
                         if (typeof uploadMultipleFiles === 'function') {
                             uploadMultipleFiles(payload.mediaFiles, 'bitstream-composer-modal-media-attachment-id', 'bitstream-composer-modal-media-preview', {
                                 setStatus: (msg, isError) => setStatus(msg, isError)
@@ -6452,7 +6620,7 @@ jQuery(document).ready(function ($) {
                 try {
                     const u = new URL(content);
                     if (u.protocol === 'http:' || u.protocol === 'https:') effectiveType = 'rebit';
-                } catch {}
+                } catch { }
             }
 
             if (effectiveType === 'bit' && !content && !hasMedia) { setStatus('Write something or attach media.', true); return; }
@@ -6808,7 +6976,7 @@ jQuery(document).ready(function ($) {
         lightboxEl.querySelector('.bitstream-lightbox-close').addEventListener('click', closeLightbox);
         lightboxEl.querySelector('.bitstream-lightbox-nav-prev').addEventListener('click', prevLightboxItem);
         lightboxEl.querySelector('.bitstream-lightbox-nav-next').addEventListener('click', nextLightboxItem);
-        
+
         lightboxEl.addEventListener('click', (e) => {
             if (e.target === lightboxEl || e.target.classList.contains('bitstream-lightbox-stage')) {
                 closeLightbox();
@@ -6827,7 +6995,7 @@ jQuery(document).ready(function ($) {
         initLightbox();
         lightboxMediaList = mediaList;
         lightboxCurrentIndex = startIndex;
-        
+
         lightboxEl.style.display = 'flex';
         lightboxEl.offsetHeight; // Force reflow
         lightboxEl.classList.add('is-open');
@@ -6836,6 +7004,7 @@ jQuery(document).ready(function ($) {
 
         showLightboxItem(lightboxCurrentIndex);
     }
+    window.bitstreamOpenLightbox = openLightbox;
 
     function closeLightbox() {
         if (!lightboxEl) return;
@@ -6854,7 +7023,7 @@ jQuery(document).ready(function ($) {
 
     function showLightboxItem(index) {
         if (!lightboxEl || lightboxMediaList.length === 0) return;
-        
+
         if (index < 0) index = lightboxMediaList.length - 1;
         if (index >= lightboxMediaList.length) index = 0;
         lightboxCurrentIndex = index;
@@ -6922,7 +7091,7 @@ jQuery(document).ready(function ($) {
         }
 
         counter.textContent = `${lightboxCurrentIndex + 1} / ${lightboxMediaList.length}`;
-        
+
         const hasMultiple = lightboxMediaList.length > 1;
         prevBtn.style.display = hasMultiple ? 'flex' : 'none';
         nextBtn.style.display = hasMultiple ? 'flex' : 'none';
@@ -6937,8 +7106,26 @@ jQuery(document).ready(function ($) {
     }
 
     document.body.addEventListener('click', (e) => {
-        // 1. Timeline Gallery item clicks
-        const item = e.target.closest('.bitstream-gallery-media, .bitstream-gallery-overlay, .bitstream-gallery-item-has-overlay');
+        // 1. Timeline Gallery / Single Media item clicks
+        let item = e.target.closest('.bitstream-gallery-media, .bitstream-gallery-overlay, .bitstream-gallery-item-has-overlay');
+        let isSingleMedia = false;
+
+        if (!item) {
+            const singleMedia = e.target.closest([
+                '.bit-card-content img:not(.emoji)',
+                '.bit-card-content video',
+                '.bit-rebit-preview img:not(.emoji)',
+                '.bit-rebit-preview video',
+                '.bitstream-quoted-preview img:not(.emoji)',
+                '.bitstream-quoted-preview video'
+            ].join(','));
+
+            if (singleMedia && !singleMedia.closest('.bitstream-gallery') && !singleMedia.closest('.bitstream-media-preview-item')) {
+                item = singleMedia;
+                isSingleMedia = true;
+            }
+        }
+
         if (item) {
             const gallery = item.closest('.bitstream-gallery');
             if (gallery) {
@@ -6957,6 +7144,26 @@ jQuery(document).ready(function ($) {
                 if (isNaN(clickIndex)) clickIndex = 0;
 
                 openLightbox(mediaList, clickIndex);
+                return;
+            } else if (isSingleMedia) {
+                if (item.tagName.toLowerCase() === 'video' && item.hasAttribute('controls')) {
+                    const rect = item.getBoundingClientRect();
+                    const clickY = e.clientY - rect.top;
+                    const controlsHeight = 50; // estimate of native control bar height
+                    if (clickY > rect.height - controlsHeight) {
+                        return;
+                    }
+                }
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                const mediaList = [{
+                    url: item.src || item.getAttribute('src') || item.currentSrc,
+                    mime: item.dataset.mime || (item.tagName.toLowerCase() === 'video' ? 'video/mp4' : 'image/jpeg')
+                }];
+
+                openLightbox(mediaList, 0);
                 return;
             }
         }
@@ -7017,26 +7224,26 @@ jQuery(document).ready(function ($) {
                 getRegistrationPromise = navigator.serviceWorker.getRegistration('/bitstream/');
             }
 
-            getRegistrationPromise.then(function(registration) {
+            getRegistrationPromise.then(function (registration) {
                 if (!registration) {
                     console.log("BitStream SW registration not found. Registering dynamically for scope /bitstream/...");
                     // Construct service worker URL from localized data
                     const baseHomeUrl = bitstream_ajax.feed_url.replace(/\/bitstream\/?$/, '/');
                     const swUrl = baseHomeUrl + '?bitstream_sw=main';
-                    
+
                     return navigator.serviceWorker.register(swUrl, {
                         scope: '/bitstream/',
                         updateViaCache: 'none'
-                    }).then(function(newReg) {
+                    }).then(function (newReg) {
                         console.log("BitStream SW registered dynamically from current page.");
                         return newReg;
-                    }).catch(function(err) {
+                    }).catch(function (err) {
                         console.warn("BitStream SW dynamic registration failed:", err);
                         return null;
                     });
                 }
                 return registration;
-            }).then(function(registration) {
+            }).then(function (registration) {
                 if (!registration) {
                     // Update buttons to show active status check error
                     subscribeButtons.forEach(btn => {
@@ -7052,7 +7259,7 @@ jQuery(document).ready(function ($) {
                     return;
                 }
 
-                registration.pushManager.getSubscription().then(function(subscription) {
+                registration.pushManager.getSubscription().then(function (subscription) {
                     let isSubscribed = !(subscription === null);
                     subscribeButtons.forEach(btn => {
                         updateSubscriptionButton(btn, isSubscribed);
@@ -7060,19 +7267,19 @@ jQuery(document).ready(function ($) {
                     });
 
                     subscribeButtons.forEach(btn => {
-                        btn.addEventListener('click', function(e) {
+                        btn.addEventListener('click', function (e) {
                             if (btn.tagName.toLowerCase() === 'a') {
                                 e.preventDefault();
                             }
-                            
+
                             // Disable all buttons during operation
                             subscribeButtons.forEach(b => { b.disabled = true; });
 
                             if (isSubscribed) {
                                 // Unsubscribe
-                                subscription.unsubscribe().then(function(successful) {
+                                subscription.unsubscribe().then(function (successful) {
                                     if (successful) {
-                                        sendSubscriptionToServer(subscription, 'unsubscribe', function(res) {
+                                        sendSubscriptionToServer(subscription, 'unsubscribe', function (res) {
                                             if (res.success) {
                                                 isSubscribed = false;
                                                 subscribeButtons.forEach(b => {
@@ -7088,7 +7295,7 @@ jQuery(document).ready(function ($) {
                                         alert('Failed to unsubscribe from device.');
                                         subscribeButtons.forEach(b => { b.disabled = false; });
                                     }
-                                }).catch(function(err) {
+                                }).catch(function (err) {
                                     console.error('Error unsubscribing:', err);
                                     subscribeButtons.forEach(b => { b.disabled = false; });
                                 });
@@ -7111,7 +7318,7 @@ jQuery(document).ready(function ($) {
                                     return;
                                 }
 
-                                const doSubscribe = function() {
+                                const doSubscribe = function () {
                                     const vapidKeyB64 = btn.getAttribute('data-vapid-public');
                                     if (!vapidKeyB64) {
                                         alert('VAPID public key not configured.');
@@ -7124,8 +7331,8 @@ jQuery(document).ready(function ($) {
                                         registration.pushManager.subscribe({
                                             userVisibleOnly: true,
                                             applicationServerKey: applicationServerKey
-                                        }).then(function(newSubscription) {
-                                            sendSubscriptionToServer(newSubscription, 'subscribe', function(res) {
+                                        }).then(function (newSubscription) {
+                                            sendSubscriptionToServer(newSubscription, 'subscribe', function (res) {
                                                 if (res.success) {
                                                     isSubscribed = true;
                                                     subscription = newSubscription;
@@ -7139,7 +7346,7 @@ jQuery(document).ready(function ($) {
                                                     subscribeButtons.forEach(b => { b.disabled = false; });
                                                 }
                                             });
-                                        }).catch(function(err) {
+                                        }).catch(function (err) {
                                             console.error('Failed to subscribe:', err);
                                             // If the error is a permission error, update button to blocked state
                                             if (err.name === 'NotAllowedError') {
@@ -7163,7 +7370,7 @@ jQuery(document).ready(function ($) {
                                     doSubscribe();
                                 } else {
                                     // permission === 'default': ask the user via the OS prompt
-                                    Notification.requestPermission().then(function(result) {
+                                    Notification.requestPermission().then(function (result) {
                                         if (result === 'granted') {
                                             doSubscribe();
                                         } else {
@@ -7178,7 +7385,7 @@ jQuery(document).ready(function ($) {
                             }
                         });
                     });
-                }).catch(function(err) {
+                }).catch(function (err) {
                     console.error('Error getting subscription:', err);
                 });
             });
@@ -7188,7 +7395,7 @@ jQuery(document).ready(function ($) {
     function updateSubscriptionButton(btn, isSubscribed, isBlocked) {
         const span = btn.querySelector('span');
         const icon = btn.querySelector('i');
-        
+
         if (isBlocked) {
             // Notifications are blocked at OS/browser level
             if (btn.classList.contains('bitstream-filter-link')) {
@@ -7238,14 +7445,14 @@ jQuery(document).ready(function ($) {
             },
             body: JSON.stringify(payload)
         })
-        .then(response => response.json())
-        .then(data => {
-            callback(data);
-        })
-        .catch(error => {
-            console.error('Error saving subscription:', error);
-            callback({ success: false });
-        });
+            .then(response => response.json())
+            .then(data => {
+                callback(data);
+            })
+            .catch(error => {
+                console.error('Error saving subscription:', error);
+                callback({ success: false });
+            });
     }
 
     function urlBase64ToUint8Array(base64String) {

@@ -1,5 +1,5 @@
 // BitStream Service Worker - PWA Support
-const CACHE_NAME = 'bitstream-v3.2.2';
+const CACHE_NAME = 'bitstream-v3.2.3';
 const ASSETS_TO_CACHE = [
   '/bitstream/',
   '/bitstream/new-bit/',
@@ -81,6 +81,49 @@ self.addEventListener('fetch', event => {
           return response;
         })
         .catch(() => caches.match('/bitstream/'))
+    );
+    return;
+  }
+  
+  // Cache fonts, FontAwesome CDN assets, and other common WordPress static resources (dashicons, etc.)
+  const url = new URL(event.request.url);
+  const isFont = event.request.destination === 'font' || url.pathname.match(/\.(?:woff2?|ttf|otf|eot)(?:\?|$)/i);
+  const isFontAwesome = url.hostname.includes('fontawesome.com') || url.hostname.includes('use.fontawesome.com') || url.pathname.includes('font-awesome') || url.pathname.includes('fontawesome');
+  const isStaticAsset = url.pathname.match(/\.(?:css|js)(?:\?|$)/i) && 
+                        (url.pathname.includes('/wp-content/') || url.pathname.includes('/wp-includes/'));
+
+  if (event.request.method === 'GET' && (isFont || isFontAwesome || isStaticAsset)) {
+    event.respondWith(
+      caches.match(event.request)
+        .then(cachedResponse => {
+          if (cachedResponse) {
+            // For CSS/JS assets, update in background (Stale-While-Revalidate)
+            if (!isFont) {
+              fetch(event.request.clone())
+                .then(networkResponse => {
+                  if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque' || networkResponse.type === 'cors')) {
+                    caches.open(CACHE_NAME).then(cache => {
+                      cache.put(event.request, networkResponse.clone());
+                    });
+                  }
+                })
+                .catch(() => {/* Ignore background fetch failures */});
+            }
+            return cachedResponse;
+          }
+          
+          // Cache-First fallback to network
+          return fetch(event.request.clone())
+            .then(networkResponse => {
+              if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque' || networkResponse.type === 'cors')) {
+                const responseToCache = networkResponse.clone();
+                caches.open(CACHE_NAME).then(cache => {
+                  cache.put(event.request, responseToCache);
+                });
+              }
+              return networkResponse;
+            });
+        })
     );
     return;
   }

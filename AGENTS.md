@@ -67,3 +67,54 @@ Use `bitstream-composer-modal-dialog-wide` on the dialog div for wider modals (e
 | Animation | `0.25s cubic-bezier(0.16, 1, 0.3, 1)` spring, from `scale(0.96) translateY(12px)` |
 
 The timeline edit modal (`.bs-edit-modal-*`) follows the same visual tokens but uses its own prefixed classes. Its forms contain an inner `.bs-edit-modal-body` (scrollable) and `.bs-edit-modal-footer` (sticky) matching the pattern above.
+
+## Mobile: Screen vs Modal
+
+On mobile (`< 1024px`) BitStream has two distinct UI metaphors. **Always pick the right one** when adding new UI.
+
+### Decision rule
+
+| Is this a… | Mobile rendering |
+|---|---|
+| **Primary task** — composing, editing a bit, cropping an image, browsing drafts / scheduled list | **Screen** |
+| **Sub-task / configuration picker** — schedule time, upload media, add rebit URL, edit OG metadata | **Modal popup** |
+| **Media viewer** — lightbox | Full-viewport (always, unchanged) |
+
+### Screen (full-viewport slide-up)
+Used when the UI is a destination the user navigates *to*, not a quick picker layered over an existing task.
+
+- Takes over the entire viewport — no visible page behind it.
+- No rounded corners, no backdrop, no shadow.
+- Entry animation: `bitstreamMobileModalIn` (slide up from bottom, `0.28s cubic-bezier(0.32, 0.94, 0.6, 1)`).
+- Current screens: **Composer**, **Edit Bit**, **Cropper**, **Drafts list**, **Scheduled list**.
+
+### Modal popup (centred, blurred backdrop)
+Used when the UI is a configuration step within an already-active task (e.g. picking a schedule time while composing).
+
+- Floats centred with a blurred backdrop over the current screen.
+- `border-radius: 20px`, `box-shadow: 0 24px 60px rgba(0,0,0,0.18)`.
+- Entry animation: `bitstreamModalIn` (spring scale, `0.25s cubic-bezier(0.16, 1, 0.3, 1)`).
+- Current popups: **Rebit**, **Rebit metadata**, **Media upload**, **Schedule**, any future picker inside the composer.
+
+### Animation keyframes (do not add new ones without reason)
+| Keyframe | Use |
+|---|---|
+| `bitstreamMobileModalIn` | Screen slide-up (screens, top-level full-viewport) |
+| `bitstreamModalIn` | Modal popup spring (centred popups, sub-modals) |
+| `bitstreamFadeIn` | Simple opacity fade (backdrops, misc) |
+
+### Z-index ladder
+Keep the comment block in `bitstream.css` (`/* Z-INDEX LADDER */`) up to date. Current layers:
+
+| z-index | Element |
+|---|---|
+| 999 999 | `.bitstream-lightbox` |
+| 100 010 | `.bitstream-cropper-modal` |
+| 100 001 | Composer sub-modal popup (mobile) |
+| 100 000 | `.bitstream-composer` (mobile host) |
+| 99 990 | `.bs-edit-modal` |
+| 10 000 | `.bitstream-rebit-editor-modal` (WP Admin only) |
+| 9 999 | tooltips / dropdowns |
+
+### Drafts & Scheduled list — special note
+These live inside `.bitstream-composer` (which acts as a transparent host on mobile) but render as screens, not popups. The CSS overrides in `@media (max-width: 1023px)` under the "Drafts & Scheduled List → SCREEN pattern" comment remove the popup styling and apply the screen pattern. Closing either screen also closes the composer host (intentional — see `closeModal()` in `bitstream.js`).
