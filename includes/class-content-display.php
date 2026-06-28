@@ -428,7 +428,7 @@ class BitStream_Content_Display
             }
 
             if (!empty($nested_card)) {
-                $quoted_box = '<div class="bitstream-quoted-preview">' . $nested_card . '</div>';
+                $quoted_box = '<div class="bitstream-quoted-preview" data-permalink="' . esc_url(add_query_arg('highlight_bit', $quoted_id, home_url('/bitstream/'))) . '">' . $nested_card . '</div>';
                 $GLOBALS['bitstream_is_rendering_quote'] = true;
                 $content = $content . $quoted_box; // Put quoted content after new content (social media style)
                 unset($GLOBALS['bitstream_is_rendering_quote']);

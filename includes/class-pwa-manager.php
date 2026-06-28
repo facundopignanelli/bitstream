@@ -311,16 +311,17 @@ class BitStream_PWA_Manager {
         add_rewrite_rule('^sw\.js$', 'index.php?bitstream_sw=main', 'top');
         
         // Flush rewrite rules if they haven't been flushed for this version
-        if (!get_option('bitstream_sw_rewrite_flushed_v3.2.3')) {
+        if (!get_option('bitstream_sw_rewrite_flushed_v3.3.0')) {
             flush_rewrite_rules(false);
-            update_option('bitstream_sw_rewrite_flushed_v3.2.3', true);
+            update_option('bitstream_sw_rewrite_flushed_v3.3.0', true);
+            delete_option('bitstream_sw_rewrite_flushed_v3.2.3'); // Remove old flag
             delete_option('bitstream_sw_rewrite_flushed_v3.2.2'); // Remove old flag
             delete_option('bitstream_sw_rewrite_flushed_v3.2.1'); // Remove old flag
             delete_option('bitstream_sw_rewrite_flushed_v3.2.0'); // Remove old flag
             delete_option('bitstream_sw_rewrite_flushed_v2'); // Remove old flag
             delete_option('bitstream_sw_rewrite_flushed'); // Remove old flag
             if (defined('WP_DEBUG') && WP_DEBUG) {
-                error_log('BitStream: Service Worker rewrite rules flushed (v3.2.3)');
+                error_log('BitStream: Service Worker rewrite rules flushed (v3.3.0)');
             }
         }
     }
@@ -333,15 +334,16 @@ class BitStream_PWA_Manager {
         add_rewrite_rule('^bitstream/new-rebit/?$', 'index.php?bitstream_action=new-rebit', 'top');
         
         // Ensure rewrite rules are flushed when this version loads
-        if (!get_option('bitstream_rewrite_flushed_v3.2.3')) {
+        if (!get_option('bitstream_rewrite_flushed_v3.3.0')) {
             flush_rewrite_rules(false);
-            update_option('bitstream_rewrite_flushed_v3.2.3', true);
+            update_option('bitstream_rewrite_flushed_v3.3.0', true);
+            delete_option('bitstream_rewrite_flushed_v3.2.3'); // Remove old flag
             delete_option('bitstream_rewrite_flushed_v3.2.2'); // Remove old flag
             delete_option('bitstream_rewrite_flushed_v3.2.1'); // Remove old flag
             delete_option('bitstream_rewrite_flushed_v3.2.0'); // Remove old flag
             delete_option('bitstream_rewrite_flushed_v2.3.0'); // Remove old flag
             if (defined('WP_DEBUG') && WP_DEBUG) {
-                error_log('BitStream: Rewrite rules flushed for v3.2.3 (share target support)');
+                error_log('BitStream: Rewrite rules flushed for v3.3.0 (share target support)');
             }
         }
     }

@@ -1,6 +1,5 @@
 # <img src="assets/images/logo_192.png" alt="BitStream Logo" height="40" align="center"> BitStream
-
-**Version 3.2.0** - A Modern Microblogging Platform for WordPress
+A Modern Microblogging Platform for WordPress.
 
 ![License](https://img.shields.io/badge/license-GPL--2.0%2B-blue.svg)
 ![WordPress](https://img.shields.io/badge/WordPress-5.8%2B-blue.svg)

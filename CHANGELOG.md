@@ -3,6 +3,16 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.0] - 2026-XX-XX
+
+### Added
+- Added click navigation support for quoted bit previews, allowing users to click a quoted bit on their timeline feed to highlight and scroll to it directly on the feed.
+- Added a native share button (share-nodes icon) next to the permalink copy-link button on each bit card. On supported browsers/devices (mobile PWA, etc.) it opens the OS share sheet; on unsupported browsers it falls back to copying the link to the clipboard.
+
+### Fixed
+
+### Changed
+
 ## [3.2.3] - 2026-06-28
 
 ### Added

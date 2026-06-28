@@ -1517,6 +1517,7 @@ a.bitstream-filter-chip:hover {
 
 .bit-like.pulse,
 .bit-permalink i.pulse,
+.bit-share i.pulse,
 .bit-edit i.pulse {
     animation: bitstream-pulse 0.3s ease-in-out;
 }
@@ -1593,6 +1594,16 @@ a.bitstream-filter-chip:hover {
 
 .bit-permalink:focus,
 .bit-permalink:hover {
+    color: var(--wp--preset--color--primary, #000);
+}
+
+/* Share button hover effect */
+.bit-share {
+    transition: color 0.2s ease;
+}
+
+.bit-share:focus,
+.bit-share:hover {
     color: var(--wp--preset--color--primary, #000);
 }
 
@@ -3771,6 +3782,16 @@ iframe[src*="youtube-nocookie.com"] {
     border: 1px solid #e0e0e0;
     box-sizing: border-box;
     overflow: visible;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.bitstream-quoted-preview[data-permalink] {
+    cursor: pointer;
+}
+
+.bitstream-quoted-preview[data-permalink]:hover {
+    background-color: #f3f4f6;
+    border-color: #d1d5db;
 }
 
 .bitstream-quoted-preview .bit-card-quoted-nested {

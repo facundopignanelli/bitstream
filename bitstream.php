@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BitStream
  * Description: A lightweight microblogging platform for WordPress with PWA support, masonry layout, and social sharing.
- * Version: 3.2.3
+ * Version: 3.3.0
  * Author: Facundo Pignanelli
  * Text Domain: bitstream
  * Requires at least: 5.8
@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('BITSTREAM_VERSION', '3.2.3');
+define('BITSTREAM_VERSION', '3.3.0');
 define('BITSTREAM_PLUGIN_PATH', plugin_dir_path(__FILE__));
 define('BITSTREAM_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -439,7 +439,7 @@ if (!function_exists('bitstream_render_card')) {
         <?php echo $rebit_markup; ?>
 
         <?php if (!empty($quoted_markup)): ?>
-            <div class="bitstream-quoted-preview">
+            <div class="bitstream-quoted-preview" data-permalink="<?php echo esc_url(add_query_arg('highlight_bit', $quoted_id, home_url('/bitstream/'))); ?>">
                 <?php echo $quoted_markup; ?>
             </div>
         <?php
@@ -472,6 +472,9 @@ if (!function_exists('bitstream_render_card')) {
                 </button>
                 <button class="bit-permalink bit-action" data-url="<?php echo esc_url(get_permalink($post_id)); ?>" style="background:none;border:none;cursor:pointer;" title="Copy link: <?php echo esc_attr(get_permalink($post_id)); ?>">
                     <i class="fa-solid fa-up-right-from-square"></i>
+                </button>
+                <button class="bit-share bit-action" data-url="<?php echo esc_url(get_permalink($post_id)); ?>" data-title="<?php echo esc_attr(get_the_title($post_id)); ?>" style="background:none;border:none;cursor:pointer;" title="Share this bit">
+                    <i class="fa-solid fa-share-nodes"></i>
                 </button>
             </div>
             <?php if ($show_admin_actions): ?>

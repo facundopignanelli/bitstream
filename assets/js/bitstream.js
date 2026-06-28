@@ -4490,6 +4490,26 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        const shareButton = event.target.closest('.bit-share');
+        if (shareButton) {
+            event.preventDefault();
+            const url = shareButton.dataset.url;
+            const title = shareButton.dataset.title || '';
+            if (navigator.share) {
+                navigator.share({ title, url }).catch(() => {});
+            } else {
+                navigator.clipboard.writeText(url);
+                const icon = shareButton.querySelector('i');
+                if (icon) {
+                    icon.classList.remove('pulse');
+                    void icon.offsetWidth;
+                    icon.classList.add('pulse');
+                    setTimeout(() => icon.classList.remove('pulse'), 300);
+                }
+            }
+            return;
+        }
+
         const quoteButton = event.target.closest('.bit-quote');
         if (quoteButton) {
             event.preventDefault();
@@ -7469,6 +7489,30 @@ jQuery(document).ready(function ($) {
         }
         return outputArray;
     }
+
+    // Clicking a quoted bit takes you to that bit
+    document.addEventListener('click', (event) => {
+        const quotedPreview = event.target.closest('.bitstream-quoted-preview');
+        if (quotedPreview) {
+            // Do not navigate if user clicked on an interactive element inside
+            const interactive = event.target.closest('a, button, input, textarea, select, option, audio, video, iframe, [role="button"]');
+            if (interactive) {
+                return;
+            }
+
+            // Do not navigate if the user is selecting text
+            const selection = window.getSelection();
+            if (selection && selection.toString().trim() !== '') {
+                return;
+            }
+
+            const permalink = quotedPreview.dataset.permalink;
+            if (permalink) {
+                event.preventDefault();
+                window.location.href = permalink;
+            }
+        }
+    });
 
     // Clean up one-time URL parameters so they don't persist on page reload
     function cleanupUrlParams() {
