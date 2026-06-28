@@ -19,8 +19,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Integrated the media crop and delete actions directly onto the preview cards (with a crop button on the top-left and a remove button on the top-right of each item, complete with hover/active transitions and a deletion confirmation dialog) and removed the duplicate crop and remove buttons from the general media uploader control bar.
 - Unified the mobile UI overlay behaviors to follow a strict "screen vs. modal" pattern: primary entry tasks like Drafts and Scheduled lists now render as full-screen slide-up views rather than centered popups. Unified duplicate keyframe animations under a single `bitstreamModalIn` name and documented the global z-index ladder.
 
-
-
 ## [3.2.2] - 2026-06-01
 
 ### Added
