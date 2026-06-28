@@ -3,7 +3,25 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.2.2] - 2026-XX-XX
+## [3.2.3] - 2026-06-28
+
+### Added
+- Added support for the pop up gallery view (fullscreen lightbox) for single media bits, allowing users to zoom in and expand single images and videos directly from the timeline and nested previews.
+- Added caching for FontAwesome CDN assets, webfont files, and other WordPress core static stylesheets/scripts to the PWA Service Worker to prevent button icons and assets from reloading on every app open.
+
+### Fixed
+- Fixed drafts and scheduled posts counters in the quick actions section not updating dynamically when a draft or scheduled post is deleted.
+- Fixed a JavaScript `ReferenceError` when clicking on media items within the composer's preview area on mobile and tablet viewports.
+- Fixed quoted bit cards breaking out of their parent bit's layout by changing the nested quoted card wrapper from `<article>` to `<div>`. Browsers auto-close an outer `<article>` when they encounter a nested `<article>` open tag, causing the quoted card to render as a sibling in the feed instead of inside the quoting bit.
+
+### Changed
+- Implemented a card carousel system for Rebit and Media previews on mobile and tablet viewports so they share a single slot and can be swiped between, keeping the composer layout compact.
+- Integrated the media crop and delete actions directly onto the preview cards (with a crop button on the top-left and a remove button on the top-right of each item, complete with hover/active transitions and a deletion confirmation dialog) and removed the duplicate crop and remove buttons from the general media uploader control bar.
+- Unified the mobile UI overlay behaviors to follow a strict "screen vs. modal" pattern: primary entry tasks like Drafts and Scheduled lists now render as full-screen slide-up views rather than centered popups. Unified duplicate keyframe animations under a single `bitstreamModalIn` name and documented the global z-index ladder.
+
+
+
+## [3.2.2] - 2026-06-01
 
 ### Added
 - Added client-side PWA Share Target upload progress tracking using IndexedDB and Service Worker redirection, replacing the native browser splash screen with visual upload feedback. Optimized video/large file upload speeds by increasing the chunked upload threshold and size to 5MB, reducing WordPress bootstrap round-trip requests by up to 90%.
