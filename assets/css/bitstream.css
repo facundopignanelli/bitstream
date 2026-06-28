@@ -1459,7 +1459,13 @@ a.bitstream-filter-chip:hover {
     transition: color 0.2s ease;
 }
 
-.bit-action:hover i {
+@media (hover: hover) {
+    .bit-action:hover i {
+        color: var(--wp--preset--color--accent-2, #044389);
+    }
+}
+
+.bit-action:active i {
     color: var(--wp--preset--color--accent-2, #044389);
 }
 

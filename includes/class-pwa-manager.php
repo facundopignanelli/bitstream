@@ -72,6 +72,13 @@ class BitStream_PWA_Manager {
             // Use a query-var endpoint to avoid redirect chains on /sw.js when rewrites are unavailable.
             $sw_url = add_query_arg('bitstream_sw', 'main', home_url('/'));
             
+            $scope_path = wp_make_link_relative(home_url('/bitstream/'));
+            if (empty($scope_path)) {
+                $scope_path = '/bitstream/';
+            } else {
+                $scope_path = '/' . ltrim($scope_path, '/');
+            }
+            
             $app_title = 'BitStream';
             $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
             if (strpos($host, 'beta') !== false) {
@@ -124,7 +131,7 @@ class BitStream_PWA_Manager {
                     
                     // Then register the new service worker with correct scope
                     navigator.serviceWorker.register(resolvedSwUrl.pathname + resolvedSwUrl.search, {
-                        scope: "/bitstream/",
+                        scope: "'.esc_js($scope_path).'",
                         updateViaCache: "none"
                     }).then(function(registration) {
                         console.log("BitStream PWA registered with scope:", registration.scope);
@@ -445,8 +452,85 @@ class BitStream_PWA_Manager {
             $manifest_data = json_decode($manifest_content, true);
         }
 
+        // Dynamically compute paths based on home_url() and BITSTREAM_PLUGIN_URL
+        $home_url = home_url('/');
+        $site_path = wp_make_link_relative($home_url);
+        if (empty($site_path)) {
+            $site_path = '/';
+        } else {
+            $site_path = '/' . ltrim($site_path, '/');
+        }
+        
+        // Scope should cover the entire WordPress site to capture any deep link (e.g. single posts)
+        $manifest_data['scope'] = $site_path;
+        
+        // Start URL should be the composer/feed URL relative to the domain
+        $composer_url = $this->get_composer_url(['pwa' => '1']);
+        $start_url = wp_make_link_relative($composer_url);
+        if (empty($start_url)) {
+            $start_url = '/bitstream/?pwa=1';
+        } else {
+            $start_url = '/' . ltrim($start_url, '/');
+        }
+        $manifest_data['start_url'] = $start_url;
+
+        // Share target action should be the new-bit URL
+        if (isset($manifest_data['share_target'])) {
+            $new_bit_url = wp_make_link_relative(home_url('/bitstream/new-bit/'));
+            if (empty($new_bit_url)) {
+                $new_bit_url = '/bitstream/new-bit/';
+            } else {
+                $new_bit_url = '/' . ltrim($new_bit_url, '/');
+            }
+            $manifest_data['share_target']['action'] = $new_bit_url;
+        }
+
+        // Shortcuts
+        if (isset($manifest_data['shortcuts']) && is_array($manifest_data['shortcuts'])) {
+            foreach ($manifest_data['shortcuts'] as &$shortcut) {
+                if (isset($shortcut['url'])) {
+                    if (strpos($shortcut['url'], 'new-bit') !== false) {
+                        $new_bit_url = wp_make_link_relative(home_url('/bitstream/new-bit/'));
+                        $shortcut['url'] = empty($new_bit_url) ? '/bitstream/new-bit/' : '/' . ltrim($new_bit_url, '/');
+                    } elseif (strpos($shortcut['url'], 'new-rebit') !== false) {
+                        $new_rebit_url = wp_make_link_relative(home_url('/bitstream/new-rebit/'));
+                        $shortcut['url'] = empty($new_rebit_url) ? '/bitstream/new-rebit/' : '/' . ltrim($new_rebit_url, '/');
+                    }
+                }
+                if (isset($shortcut['icons']) && is_array($shortcut['icons'])) {
+                    foreach ($shortcut['icons'] as &$icon) {
+                        if (isset($icon['src'])) {
+                            $basename = basename($icon['src']);
+                            $icon_url = wp_make_link_relative(BITSTREAM_PLUGIN_URL . 'assets/images/' . $basename);
+                            $icon['src'] = empty($icon_url) ? '/wp-content/plugins/bitstream/assets/images/' . $basename : '/' . ltrim($icon_url, '/');
+                        }
+                    }
+                }
+            }
+        }
+
+        // Main icons
+        if (isset($manifest_data['icons']) && is_array($manifest_data['icons'])) {
+            foreach ($manifest_data['icons'] as &$icon) {
+                if (isset($icon['src'])) {
+                    $basename = basename($icon['src']);
+                    $icon_url = wp_make_link_relative(BITSTREAM_PLUGIN_URL . 'assets/images/' . $basename);
+                    $icon['src'] = empty($icon_url) ? '/wp-content/plugins/bitstream/assets/images/' . $basename : '/' . ltrim($icon_url, '/');
+                }
+            }
+        }
+
+        // Link Handling & Launch Control
+        $manifest_data['handle_links'] = 'preferred';
+        $manifest_data['launch_handler'] = [
+            'client_mode' => 'navigate-existing'
+        ];
+
         // Check if host contains "beta"
-        $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
+        $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['SERVER_NAME'] : '';
+        if (empty($host) && isset($_SERVER['HTTP_HOST'])) {
+            $host = $_SERVER['HTTP_HOST'];
+        }
         if (strpos($host, 'beta') !== false) {
             if (isset($manifest_data['name'])) {
                 $manifest_data['name'] = 'BS BETA';

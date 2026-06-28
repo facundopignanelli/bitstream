@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added click navigation support for quoted bit previews, allowing users to click a quoted bit on their timeline feed to highlight and scroll to it directly on the feed.
 - Added a native share button (share-nodes icon) next to the permalink copy-link button on each bit card. On supported browsers/devices (mobile PWA, etc.) it opens the OS share sheet; on unsupported browsers it falls back to copying the link to the clipboard.
+- Added PWA deep-linking support via `handle_links` and `launch_handler` settings in the web app manifest, allowing links to individual bits (or any page under the site) to open directly in the installed PWA. Dynamically resolved the PWA scope, start_url, share_target, shortcuts, and icon paths in both the served manifest and Service Worker registration to support any custom WordPress subdirectory installation.
 
 ### Fixed
 

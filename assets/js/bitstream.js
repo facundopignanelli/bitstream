@@ -4495,17 +4495,19 @@ document.addEventListener('DOMContentLoaded', function () {
             event.preventDefault();
             const url = shareButton.dataset.url;
             const title = shareButton.dataset.title || '';
+            
+            const icon = shareButton.querySelector('i');
+            if (icon) {
+                icon.classList.remove('pulse');
+                void icon.offsetWidth;
+                icon.classList.add('pulse');
+                setTimeout(() => icon.classList.remove('pulse'), 300);
+            }
+
             if (navigator.share) {
                 navigator.share({ title, url }).finally(() => shareButton.blur());
             } else {
                 navigator.clipboard.writeText(url);
-                const icon = shareButton.querySelector('i');
-                if (icon) {
-                    icon.classList.remove('pulse');
-                    void icon.offsetWidth;
-                    icon.classList.add('pulse');
-                    setTimeout(() => icon.classList.remove('pulse'), 300);
-                }
             }
             return;
         }
