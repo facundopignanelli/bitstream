@@ -5562,6 +5562,8 @@ iframe[src*="youtube-nocookie.com"] {
     padding: 1.5rem !important;
     border-radius: 15px !important;
     width: 500px !important;
+    min-width: 500px !important;
+    max-width: 500px !important;
     box-sizing: border-box !important;
 }
 

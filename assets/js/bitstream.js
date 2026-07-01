@@ -4549,9 +4549,9 @@ document.addEventListener('DOMContentLoaded', function () {
     async function captureBitCard(card) {
         await loadHtmlToImage();
         
-        // Create a 0x0 container to render the clone in the active viewport layout without visual shift
+        // Create a 500px-wide container to render the clone in the active viewport layout without visual shift
         const wrapper = document.createElement('div');
-        wrapper.style.cssText = 'position: absolute; top: 0; left: 0; width: 0; height: 0; overflow: hidden; z-index: -9999; pointer-events: none;';
+        wrapper.style.cssText = 'position: absolute; top: 0; left: 0; width: 500px; height: 0; overflow: hidden; z-index: -9999; pointer-events: none;';
         
         const clone = card.cloneNode(true);
         clone.classList.add('bit-card-capturing');
