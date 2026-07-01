@@ -3162,6 +3162,13 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (hRebitAttachmentId) hRebitAttachmentId.value = '';
                         if (previewRebitCard) previewRebitCard.innerHTML = '';
                         if (previewRebit) previewRebit.hidden = true;
+                        if (responseData.custom_moods) {
+                            customMoods = responseData.custom_moods;
+                        }
+                        if (hMoodEmoji) hMoodEmoji.value = '';
+                        if (hMoodEmotion) hMoodEmotion.value = '';
+                        if (previewMood) previewMood.hidden = true;
+                        activeEditMoodForm = null;
                         if (previewArea) previewArea.hidden = true;
                         if (textarea) textarea.value = '';
                         form.dataset.composerType = 'bit';
@@ -4018,6 +4025,30 @@ document.addEventListener('DOMContentLoaded', function () {
             setAttachmentPreview(bitForm, isQuoteMode ? 0 : attachmentId, isQuoteMode ? '' : attachmentUrl, isQuoteMode ? '' : attachmentMime, isQuoteMode ? [] : (data.attachments || []));
             setScheduleState(bitForm, 'bit', scheduleEnabled && !isQuoteMode, isQuoteMode ? '' : scheduleDatetime);
 
+            // Mood integration
+            const moodEmojiInput = bitForm.querySelector('.bs-edit-mood-emoji');
+            const moodEmotionInput = bitForm.querySelector('.bs-edit-mood-emotion');
+            const moodBtn = bitForm.querySelector('.bs-edit-mood-btn');
+            const moodLabel = bitForm.querySelector('.bs-edit-mood-label');
+            const moodRemove = bitForm.querySelector('.bs-edit-mood-remove');
+
+            const moodEmoji = isQuoteMode ? '' : (data.mood_emoji || '');
+            const moodEmotion = isQuoteMode ? '' : (data.mood_emotion || '');
+
+            if (moodEmojiInput) moodEmojiInput.value = moodEmoji;
+            if (moodEmotionInput) moodEmotionInput.value = moodEmotion;
+
+            if (moodBtn && moodLabel && moodRemove) {
+                if (moodEmotion) {
+                    moodLabel.textContent = `${moodEmoji} Feeling ${moodEmotion}`;
+                    parseEmojis(moodLabel);
+                    moodRemove.style.display = 'inline-block';
+                } else {
+                    moodLabel.textContent = 'Add Mood';
+                    moodRemove.style.display = 'none';
+                }
+            }
+
             if (submitButton) {
                 submitButton.textContent = isQuoteMode ? 'Post Bit' : 'Update Bit';
             }
@@ -4083,6 +4114,30 @@ document.addEventListener('DOMContentLoaded', function () {
             setAttachmentPreview(rebitForm, attachmentId, attachmentUrl, attachmentMime);
             setLinkMetaPreview();
 
+            // Mood integration
+            const moodEmojiInput = rebitForm.querySelector('.bs-edit-mood-emoji');
+            const moodEmotionInput = rebitForm.querySelector('.bs-edit-mood-emotion');
+            const moodBtn = rebitForm.querySelector('.bs-edit-mood-btn');
+            const moodLabel = rebitForm.querySelector('.bs-edit-mood-label');
+            const moodRemove = rebitForm.querySelector('.bs-edit-mood-remove');
+
+            const moodEmoji = data.mood_emoji || '';
+            const moodEmotion = data.mood_emotion || '';
+
+            if (moodEmojiInput) moodEmojiInput.value = moodEmoji;
+            if (moodEmotionInput) moodEmotionInput.value = moodEmotion;
+
+            if (moodBtn && moodLabel && moodRemove) {
+                if (moodEmotion) {
+                    moodLabel.textContent = `${moodEmoji} Feeling ${moodEmotion}`;
+                    parseEmojis(moodLabel);
+                    moodRemove.style.display = 'inline-block';
+                } else {
+                    moodLabel.textContent = 'Add Mood';
+                    moodRemove.style.display = 'none';
+                }
+            }
+
             if (submitButton) {
                 submitButton.textContent = 'Update Rebit';
             }
@@ -4124,11 +4179,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 const textarea = form.querySelector('#bs-edit-bit-content');
                 const attachmentInput = form.querySelector('.bs-edit-attachment-id');
                 const quoteInput = form.querySelector('.bs-edit-quote-post-id');
+                const moodInput = form.querySelector('.bs-edit-mood-emotion');
                 const content = textarea ? textarea.value.trim() : '';
                 const hasMedia = attachmentInput && parseInt(attachmentInput.value || '0', 10) > 0;
                 const hasQuote = quoteInput && parseInt(quoteInput.value || '0', 10) > 0;
+                const hasMood = moodInput && moodInput.value.trim();
 
-                if (!saveAsDraft && !content && !hasMedia && !hasQuote) {
+                if (!saveAsDraft && !content && !hasMedia && !hasQuote && !hasMood) {
                     setErrorState('Write something or attach media.');
                     return;
                 }
@@ -4473,41 +4530,269 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     });
 
-    // Copy Link and Quote buttons use delegated handling so dynamically loaded cards work too.
-    document.addEventListener('click', (event) => {
-        const permalinkButton = event.target.closest('.bit-permalink');
-        if (permalinkButton) {
-            event.preventDefault();
-            const url = permalinkButton.dataset.url;
-            navigator.clipboard.writeText(url);
-            const icon = permalinkButton.querySelector('i');
-            if (icon) {
-                icon.classList.remove('pulse');
-                void icon.offsetWidth;
-                icon.classList.add('pulse');
-                setTimeout(() => icon.classList.remove('pulse'), 300);
-            }
-            return;
-        }
+    // Share and Quote buttons use delegated handling so dynamically loaded cards work too.
 
+    // --- html-to-image dynamic loader ---
+    let _htmlToImageLoaded = false;
+    function loadHtmlToImage() {
+        return new Promise((resolve, reject) => {
+            if (_htmlToImageLoaded && window.htmlToImage) { resolve(); return; }
+            const s = document.createElement('script');
+            s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js';
+            s.onload = () => { _htmlToImageLoaded = true; resolve(); };
+            s.onerror = () => reject(new Error('Failed to load html-to-image'));
+            document.head.appendChild(s);
+        });
+    }
+
+    // --- Capture card as PNG blob ---
+    async function captureBitCard(card) {
+        await loadHtmlToImage();
+        
+        // Create a 0x0 container to render the clone in the active viewport layout without visual shift
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'position: absolute; top: 0; left: 0; width: 0; height: 0; overflow: hidden; z-index: -9999; pointer-events: none;';
+        
+        const clone = card.cloneNode(true);
+        clone.classList.add('bit-card-capturing');
+        clone.style.margin = '0';
+        
+        wrapper.appendChild(clone);
+        document.body.appendChild(wrapper);
+        
+        // Small delay so CSS transitions settle before capture
+        await new Promise(r => setTimeout(r, 60));
+        let blob;
+        try {
+            let fontEmbedCSS = '';
+            try {
+                fontEmbedCSS = await window.htmlToImage.getFontEmbedCSS(clone);
+            } catch (fontErr) {
+                console.warn('BitStream: Could not pre-embed some fonts due to CORS/network security rules.', fontErr);
+            }
+
+            blob = await window.htmlToImage.toBlob(clone, {
+                pixelRatio: 2,
+                skipFonts: fontEmbedCSS ? false : true,
+                backgroundColor: '#ffffff',
+                fontEmbedCSS: fontEmbedCSS || undefined,
+            });
+        } finally {
+            wrapper.remove();
+        }
+        return blob;
+    }
+
+    // --- Fallback download/copy modal for desktop ---
+    function showShareImageModal(blob, title, url) {
+        const existing = document.getElementById('bitstream-share-image-modal');
+        if (existing) existing.remove();
+
+        const imgUrl = URL.createObjectURL(blob);
+        const modal = document.createElement('div');
+        modal.id = 'bitstream-share-image-modal';
+        modal.className = 'bitstream-composer-modal bitstream-composer-modal-share-image';
+
+        modal.innerHTML = `
+            <div class="bitstream-composer-modal-backdrop" data-composer-modal-close="share-image"></div>
+            <div class="bitstream-composer-modal-dialog" role="dialog" aria-modal="true" aria-label="Share Image">
+                <header class="bitstream-composer-modal-header">
+                    <h3>Share Image</h3>
+                    <button type="button" class="bitstream-composer-modal-close" data-composer-modal-close="share-image" aria-label="Close">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                    </button>
+                </header>
+                <div class="bitstream-composer-modal-body">
+                    <div class="bitstream-share-image-preview">
+                        <img src="${imgUrl}" alt="Post preview">
+                    </div>
+                </div>
+                <footer class="bitstream-composer-modal-footer">
+                    <button type="button" class="bitstream-composer-modal-cancel" data-composer-modal-close="share-image">Cancel</button>
+                    <button type="button" id="bitstream-share-copy-link" class="bitstream-composer-modal-confirm" style="background:#64748b;box-shadow:none;">
+                        <i class="fa-solid fa-link" style="margin-right:0.4rem;"></i>Copy Link
+                    </button>
+                    <button type="button" id="bitstream-share-download" class="bitstream-composer-modal-confirm">
+                        <i class="fa-solid fa-download" style="margin-right:0.4rem;"></i>Download
+                    </button>
+                </footer>
+            </div>`;
+
+        document.body.appendChild(modal);
+        requestAnimationFrame(() => modal.removeAttribute('hidden'));
+
+        modal.querySelector('#bitstream-share-download').addEventListener('click', () => {
+            const a = document.createElement('a');
+            a.href = imgUrl;
+            a.download = `bit-${Date.now()}.png`;
+            a.click();
+        });
+
+        const copyBtn = modal.querySelector('#bitstream-share-copy-link');
+        copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(url).then(() => {
+                copyBtn.innerHTML = '<i class="fa-solid fa-check" style="margin-right:0.4rem;"></i>Copied!';
+                setTimeout(() => {
+                    copyBtn.innerHTML = '<i class="fa-solid fa-link" style="margin-right:0.4rem;"></i>Copy Link';
+                }, 1800);
+            });
+        });
+
+        modal.querySelectorAll('[data-composer-modal-close="share-image"]').forEach(el => {
+            el.addEventListener('click', () => {
+                modal.setAttribute('hidden', '');
+                setTimeout(() => { modal.remove(); URL.revokeObjectURL(imgUrl); }, 300);
+            });
+        });
+    }
+
+    // --- Share options modal (link vs image choice) ---
+    function openShareOptionsModal(card, title, url, shareButton) {
+        const existing = document.getElementById('bitstream-share-options-modal');
+        if (existing) existing.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'bitstream-share-options-modal';
+        modal.className = 'bitstream-composer-modal bitstream-composer-modal-share-options';
+        modal.innerHTML = `
+            <div class="bitstream-composer-modal-backdrop" data-composer-modal-close="share-options"></div>
+            <div class="bitstream-composer-modal-dialog" role="dialog" aria-modal="true" aria-label="Share">
+                <header class="bitstream-composer-modal-header">
+                    <h3>Share</h3>
+                    <button type="button" class="bitstream-composer-modal-close" data-composer-modal-close="share-options" aria-label="Close">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                    </button>
+                </header>
+                <div class="bitstream-composer-modal-body">
+                    <div class="bitstream-share-options-list">
+                        <button type="button" class="bitstream-share-option-btn" id="bitstream-share-link-btn">
+                            <i class="fa-solid fa-link"></i>
+                            <div class="bitstream-share-option-details">
+                                <span class="bitstream-share-option-title">Share Link</span>
+                                <span class="bitstream-share-option-desc">Share or copy the post URL</span>
+                            </div>
+                        </button>
+                        <button type="button" class="bitstream-share-option-btn" id="bitstream-share-image-btn">
+                            <i class="fa-solid fa-image"></i>
+                            <div class="bitstream-share-option-details">
+                                <span class="bitstream-share-option-title">Share as Image</span>
+                                <span class="bitstream-share-option-desc">Generate a card image for stories &amp; statuses</span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+
+        document.body.appendChild(modal);
+        requestAnimationFrame(() => modal.removeAttribute('hidden'));
+
+        const closeModal = () => {
+            modal.setAttribute('hidden', '');
+            setTimeout(() => modal.remove(), 300);
+        };
+
+        modal.querySelectorAll('[data-composer-modal-close="share-options"]').forEach(el => {
+            el.addEventListener('click', closeModal);
+        });
+
+        // Share Link
+        modal.querySelector('#bitstream-share-link-btn').addEventListener('click', async () => {
+            closeModal();
+            if (navigator.share) {
+                try { await navigator.share({ title, url }); } catch (_) { /* cancelled */ }
+            } else {
+                await navigator.clipboard.writeText(url);
+                // Brief toast feedback using the share button icon
+                const shareBtn = card.querySelector('.bit-share i');
+                if (shareBtn) {
+                    const orig = shareBtn.className;
+                    shareBtn.className = 'fa-solid fa-check';
+                    setTimeout(() => { shareBtn.className = orig; }, 1500);
+                }
+            }
+        });
+
+        // Share as Image
+        modal.querySelector('#bitstream-share-image-btn').addEventListener('click', async () => {
+            const imgBtn = modal.querySelector('#bitstream-share-image-btn i');
+            if (imgBtn) imgBtn.className = 'fa-solid fa-spinner fa-spin';
+
+            // Check for a server-cached image first
+            const cachedUrl = shareButton.dataset.shareImage;
+            let blob;
+
+            if (cachedUrl) {
+                try {
+                    const resp = await fetch(cachedUrl);
+                    if (resp.ok) {
+                        blob = await resp.blob();
+                    }
+                } catch (_) { /* fall through to fresh render */ }
+            }
+
+            if (!blob) {
+                // No cache — render fresh
+                try {
+                    blob = await captureBitCard(card);
+                } catch (err) {
+                    closeModal();
+                    console.error('BitStream: card capture failed', err);
+                    return;
+                }
+
+                // Upload to server in background (fire-and-forget)
+                if (window.bitstream_ajax && window.bitstream_ajax.ajax_url) {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const fd = new FormData();
+                        fd.append('action', 'bitstream_save_share_image');
+                        fd.append('nonce', bitstream_ajax.save_share_image_nonce);
+                        fd.append('post_id', shareButton.dataset.postId || '');
+                        fd.append('image_data', reader.result);
+                        fetch(bitstream_ajax.ajax_url, { method: 'POST', body: fd })
+                            .then(r => r.json())
+                            .then(json => {
+                                if (json.success && json.data && json.data.url) {
+                                    // Update the button so subsequent shares use the cache
+                                    shareButton.dataset.shareImage = json.data.url;
+                                }
+                            })
+                            .catch(() => {});
+                    };
+                    reader.readAsDataURL(blob);
+                }
+            }
+
+            closeModal();
+
+            // Copy URL to clipboard so it's ready to paste as a link sticker in Instagram, etc.
+            try { await navigator.clipboard.writeText(url); } catch (_) { /* clipboard may be unavailable */ }
+
+            const file = new File([blob], `bitstream-${Date.now()}.png`, { type: 'image/png' });
+
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({ files: [file], title, url });
+                    return;
+                } catch (e) {
+                    if (e.name === 'AbortError') return;
+                    // fall through to modal fallback
+                }
+            }
+
+            showShareImageModal(blob, title, url);
+        });
+    }
+
+    document.addEventListener('click', (event) => {
         const shareButton = event.target.closest('.bit-share');
         if (shareButton) {
             event.preventDefault();
             const url = shareButton.dataset.url;
             const title = shareButton.dataset.title || '';
-            
-            const icon = shareButton.querySelector('i');
-            if (icon) {
-                icon.classList.remove('pulse');
-                void icon.offsetWidth;
-                icon.classList.add('pulse');
-                setTimeout(() => icon.classList.remove('pulse'), 300);
-            }
-
-            if (navigator.share) {
-                navigator.share({ title, url }).finally(() => shareButton.blur());
-            } else {
-                navigator.clipboard.writeText(url);
+            const card = shareButton.closest('.bit-card');
+            if (card) {
+                openShareOptionsModal(card, title, url, shareButton);
             }
             return;
         }
@@ -5034,10 +5319,28 @@ document.addEventListener('DOMContentLoaded', function () {
         scope.querySelectorAll('audio, video').forEach(bindMediaSessionForElement);
     }
 
+    function parseEmojis(container) {
+        if (typeof twemoji === 'undefined' || !container) return;
+        twemoji.parse(container, {
+            folder: 'svg',
+            ext: '.svg'
+        });
+    }
+    window.parseEmojis = parseEmojis;
+
+    function parseTimelineCards() {
+        document.querySelectorAll('.bit-card:not([data-emoji-parsed])').forEach(card => {
+            card.setAttribute('data-emoji-parsed', 'true');
+            parseEmojis(card);
+        });
+    }
+    window.parseTimelineCards = parseTimelineCards;
+
     // Run on page load
     makeEmbedsResponsive();
     initMediaSession(document);
     adjustCardMediaDimensions(document);
+    parseTimelineCards();
 
     // Run when new content is loaded (for infinite scroll)
     const observer = new MutationObserver(() => {
@@ -5046,6 +5349,7 @@ document.addEventListener('DOMContentLoaded', function () {
         adjustCardMediaDimensions(document);
         initFloatingMenu(); // Re-init floating menu if new content added
         initCommentToggles(); // Re-init comment toggles for new content
+        parseTimelineCards();
     });
 
     observer.observe(document.body, {
@@ -5339,6 +5643,22 @@ function applyCommentStyles() {
 jQuery(document).ready(function ($) {
     applyCommentStyles();
 
+    // Toggle full timestamp next to relative timestamp on click
+    document.addEventListener('click', (e) => {
+        const timestampEl = e.target.closest('.bit-timestamp');
+        if (timestampEl) {
+            e.preventDefault();
+            const fullSpan = timestampEl.querySelector('.bit-timestamp-full');
+            if (fullSpan) {
+                if (fullSpan.style.display === 'none') {
+                    fullSpan.style.display = 'inline';
+                } else {
+                    fullSpan.style.display = 'none';
+                }
+            }
+        }
+    });
+
     // Hashtag-aware search: redirect #tag searches to hashtag filter
     document.querySelectorAll('.bitstream-filter-search').forEach(form => {
         form.addEventListener('submit', (e) => {
@@ -5414,6 +5734,8 @@ jQuery(document).ready(function ($) {
                 feedUrl.searchParams.set('show_drafts', '1');
             } else if (modalName === 'scheduled-list') {
                 feedUrl.searchParams.set('show_scheduled', '1');
+            } else if (modalName === 'settings') {
+                feedUrl.searchParams.set('show_settings', '1');
             }
             window.location.href = feedUrl.toString();
         }
@@ -5463,6 +5785,8 @@ jQuery(document).ready(function ($) {
         const hScheduleEnabled = form.querySelector('#bitstream-composer-schedule-enabled');
         const hScheduleDatetime = form.querySelector('#bitstream-composer-schedule-datetime');
         const hEditPostId = form.querySelector('#bitstream-composer-edit-post-id');
+        const hMoodEmoji = form.querySelector('#bitstream-composer-mood-emoji');
+        const hMoodEmotion = form.querySelector('#bitstream-composer-mood-emotion');
         let renderRebitLivePreview, updateModalImagePreview;
 
         // Preview containers
@@ -5475,6 +5799,13 @@ jQuery(document).ready(function ($) {
         const previewMediaThumb = form.querySelector('.bitstream-composer-preview-media-thumb');
         const previewSchedule = form.querySelector('.bitstream-composer-preview-schedule');
         const previewScheduleDate = form.querySelector('.bitstream-composer-preview-schedule-date');
+        const previewMood = form.querySelector('.bitstream-composer-preview-mood');
+        const previewMoodText = form.querySelector('.bitstream-composer-preview-mood-text');
+
+        // Mood modal elements
+        const moodModal = composerRoot.querySelector('.bitstream-composer-modal-mood');
+        let customMoods = (window.bitstream_ajax && bitstream_ajax.custom_moods) || [];
+        let activeEditMoodForm = null;
         const previewDraft = null;
         const previewDraftLabel = null;
 
@@ -5525,9 +5856,10 @@ jQuery(document).ready(function ($) {
             const hasRebit = previewRebit && !previewRebit.hidden;
             const hasMedia = previewMedia && !previewMedia.hidden;
             const hasSched = previewSchedule && !previewSchedule.hidden;
+            const hasMood = previewMood && !previewMood.hidden;
             const hasDraft = previewDraft && !previewDraft.hidden;
-            if (previewArea) previewArea.hidden = !(hasRebit || hasMedia || hasSched || hasDraft);
-            if (textarea) textarea.required = !(hasRebit || hasMedia);
+            if (previewArea) previewArea.hidden = !(hasRebit || hasMedia || hasSched || hasDraft || hasMood);
+            if (textarea) textarea.required = !(hasRebit || hasMedia || hasMood);
 
             // Carousel dot indicators — only on mobile/tablet (<1024px)
             if (!previewCarousel || !previewDotsEl) return;
@@ -5596,6 +5928,12 @@ jQuery(document).ready(function ($) {
                     composerRoot.hidden = false;
                 }
 
+                if (name === 'settings') {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('show_settings', '1');
+                    window.history.replaceState({}, '', url.toString());
+                }
+
                 if (name === 'media') {
                     const mMediaPreview = modal.querySelector('#bitstream-composer-modal-media-preview');
                     if (mMediaPreview && previewMediaThumb) {
@@ -5649,6 +5987,39 @@ jQuery(document).ready(function ($) {
                         updateModalImagePreview();
                     }
                 }
+
+                if (name === 'mood') {
+                    const currentEmoji = activeEditMoodForm 
+                        ? (activeEditMoodForm.querySelector('.bs-edit-mood-emoji').value || '') 
+                        : (hMoodEmoji.value || '');
+                    const currentEmotion = activeEditMoodForm 
+                        ? (activeEditMoodForm.querySelector('.bs-edit-mood-emotion').value || '') 
+                        : (hMoodEmotion.value || '');
+
+                    modal.querySelectorAll('.bitstream-mood-btn').forEach(btn => btn.classList.remove('is-active'));
+                    
+                    const customEmojiInput = modal.querySelector('#bitstream-mood-custom-emoji');
+                    const customEmotionInput = modal.querySelector('#bitstream-mood-custom-emotion');
+                    if (customEmojiInput) customEmojiInput.value = '';
+                    if (customEmotionInput) customEmotionInput.value = '';
+
+                    let foundPredefined = false;
+                    if (currentEmotion) {
+                        modal.querySelectorAll('.bitstream-mood-btn').forEach(btn => {
+                            if (btn.dataset.emotion.toLowerCase() === currentEmotion.toLowerCase() && btn.dataset.emoji === currentEmoji) {
+                                btn.classList.add('is-active');
+                                foundPredefined = true;
+                            }
+                        });
+
+                        if (!foundPredefined) {
+                            if (customEmojiInput) customEmojiInput.value = currentEmoji;
+                            if (customEmotionInput) customEmotionInput.value = currentEmotion;
+                        }
+                    }
+
+                    renderSavedMoods();
+                }
             }
         }
         function clearComposer() {
@@ -5671,6 +6042,10 @@ jQuery(document).ready(function ($) {
             if (hScheduleDatetime) hScheduleDatetime.value = '';
             if (previewSchedule) previewSchedule.hidden = true;
             if (previewDraft) previewDraft.hidden = true;
+            if (hMoodEmoji) hMoodEmoji.value = '';
+            if (hMoodEmotion) hMoodEmotion.value = '';
+            if (previewMood) previewMood.hidden = true;
+            activeEditMoodForm = null;
             if (hEditPostId) hEditPostId.value = '0';
             form.dataset.composerType = 'bit';
             if (submitBtn) submitBtn.textContent = 'Post Bit';
@@ -5727,11 +6102,19 @@ jQuery(document).ready(function ($) {
                     const shouldCloseComposer = isMobile && !keepPosterOpen && (
                         name === 'drafts'
                         || name === 'scheduled-list'
+                        || name === 'settings'
                         || (name === 'rebit' && quickActionSource === 'new-rebit')
                     );
                     if (shouldCloseComposer) {
                         composerRoot.hidden = true;
                         delete composerRoot.dataset.quickActionSource;
+                    }
+
+                    if (name === 'settings') {
+                        const url = new URL(window.location.href);
+                        url.searchParams.delete('show_settings');
+                        url.searchParams.delete('settings_tab');
+                        window.history.replaceState({}, '', url.toString());
                     }
                 }
             }
@@ -5801,9 +6184,440 @@ jQuery(document).ready(function ($) {
                         submitBtn.textContent = isRebit ? 'Publish Rebit' : 'Post Bit';
                     }
                 }
+                if (type === 'mood') {
+                    if (hMoodEmoji) hMoodEmoji.value = '';
+                    if (hMoodEmotion) hMoodEmotion.value = '';
+                    if (previewMood) previewMood.hidden = true;
+                    activeEditMoodForm = null;
+                }
                 syncPreviewArea();
             });
         });
+
+        // ==========================================
+        // Mood Modal Implementation
+        // ==========================================
+
+        const moodPredefinedButtons = moodModal ? moodModal.querySelectorAll('.bitstream-mood-btn') : [];
+        const customEmojiInput = moodModal ? moodModal.querySelector('#bitstream-mood-custom-emoji') : null;
+        const customEmotionInput = moodModal ? moodModal.querySelector('#bitstream-mood-custom-emotion') : null;
+        const moodDoneBtn = moodModal ? moodModal.querySelector('.bitstream-composer-mood-done') : null;
+
+        const savedMoodsGrid = moodModal ? moodModal.querySelector('.bitstream-saved-moods-grid') : null;
+        const savedMoodsEditList = moodModal ? moodModal.querySelector('.bitstream-saved-moods-edit-list') : null;
+        const manageMoodsBtn = moodModal ? moodModal.querySelector('.bitstream-manage-moods-btn') : null;
+        let isManagingMoods = false;
+        let moodEditsMap = {};
+
+        if (moodModal) {
+            parseEmojis(moodModal);
+        }
+
+        function renderSavedMoods() {
+            if (!savedMoodsGrid || !savedMoodsEditList) return;
+
+            if (manageMoodsBtn) {
+                if (customMoods.length === 0) {
+                    manageMoodsBtn.style.display = 'none';
+                    isManagingMoods = false;
+                } else {
+                    manageMoodsBtn.style.display = 'flex';
+                    manageMoodsBtn.innerHTML = isManagingMoods 
+                        ? '<i class="fa-solid fa-check"></i> Done' 
+                        : '<i class="fa-solid fa-gear"></i> Manage';
+                }
+            }
+
+            if (isManagingMoods) {
+                savedMoodsGrid.style.display = 'none';
+                savedMoodsEditList.style.display = 'flex';
+                savedMoodsEditList.innerHTML = '';
+
+                customMoods.forEach((mood, index) => {
+                    const row = document.createElement('div');
+                    row.className = 'bitstream-mood-manage-item';
+                    row.innerHTML = `
+                        <div class="bitstream-mood-manage-info" style="display: flex; gap: 6px; align-items: center; flex: 1; margin-right: 10px;">
+                            <input type="text" class="bs-mood-edit-emoji" data-index="${index}" value="${mood.emoji}" style="width: 36px; text-align: center; font-size: 1.1rem; height: 32px; border: 1.5px solid #e2e8f0; border-radius: 8px; background: #fff; padding: 0; box-sizing: border-box;">
+                            <input type="text" class="bs-mood-edit-emotion" data-index="${index}" value="${mood.emotion}" style="flex: 1; height: 32px; border: 1.5px solid #e2e8f0; border-radius: 8px; background: #fff; padding: 0 8px; box-sizing: border-box; font-size: 0.85rem;">
+                        </div>
+                        <div class="bitstream-mood-manage-actions">
+                            <button type="button" class="bitstream-mood-sort-btn bs-mood-up" data-index="${index}" ${index === 0 ? 'disabled' : ''} title="Move Up"><i class="fa-solid fa-arrow-up"></i></button>
+                            <button type="button" class="bitstream-mood-sort-btn bs-mood-down" data-index="${index}" ${index === customMoods.length - 1 ? 'disabled' : ''} title="Move Down"><i class="fa-solid fa-arrow-down"></i></button>
+                            <button type="button" class="bitstream-mood-delete-btn bs-mood-delete" data-index="${index}" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    `;
+                    savedMoodsEditList.appendChild(row);
+                });
+
+                let focusOldEmoji = '';
+                let focusOldEmotion = '';
+
+                savedMoodsEditList.querySelectorAll('.bs-mood-edit-emoji, .bs-mood-edit-emotion').forEach(input => {
+                    input.addEventListener('focus', () => {
+                        const idx = parseInt(input.dataset.index, 10);
+                        focusOldEmoji = customMoods[idx].emoji;
+                        focusOldEmotion = customMoods[idx].emotion;
+                    });
+
+                    input.addEventListener('change', () => {
+                        const idx = parseInt(input.dataset.index, 10);
+                        const oldKey = `${focusOldEmoji}|${focusOldEmotion}`;
+
+                        if (input.classList.contains('bs-mood-edit-emoji')) {
+                            const val = input.value;
+                            const emojiRegex = /(?:\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Regional_Indicator})[\p{Emoji}\p{Extended_Pictographic}\u200d\uFE0F]*/gu;
+                            const matches = val.match(emojiRegex);
+                            const sanitized = matches ? matches[0] : '';
+                            input.value = sanitized;
+                            customMoods[idx].emoji = sanitized;
+                        } else {
+                            customMoods[idx].emotion = input.value.trim();
+                        }
+
+                        const newEmoji = customMoods[idx].emoji;
+                        const newEmotion = customMoods[idx].emotion;
+
+                        if (newEmotion && (focusOldEmoji !== newEmoji || focusOldEmotion !== newEmotion)) {
+                            moodEditsMap[oldKey] = { emoji: newEmoji, emotion: newEmotion };
+                        }
+                    });
+                });
+
+                savedMoodsEditList.querySelectorAll('.bs-mood-up').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const idx = parseInt(btn.dataset.index, 10);
+                        if (idx > 0) {
+                            const temp = customMoods[idx];
+                            customMoods[idx] = customMoods[idx - 1];
+                            customMoods[idx - 1] = temp;
+                            renderSavedMoods();
+                        }
+                    });
+                });
+
+                savedMoodsEditList.querySelectorAll('.bs-mood-down').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const idx = parseInt(btn.dataset.index, 10);
+                        if (idx < customMoods.length - 1) {
+                            const temp = customMoods[idx];
+                            customMoods[idx] = customMoods[idx + 1];
+                            customMoods[idx + 1] = temp;
+                            renderSavedMoods();
+                        }
+                    });
+                });
+
+                savedMoodsEditList.querySelectorAll('.bs-mood-delete').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const idx = parseInt(btn.dataset.index, 10);
+                        customMoods.splice(idx, 1);
+                        renderSavedMoods();
+                    });
+                });
+
+            } else {
+                savedMoodsGrid.style.display = 'grid';
+                savedMoodsEditList.style.display = 'none';
+                savedMoodsGrid.innerHTML = '';
+
+                const currentEmoji = activeEditMoodForm 
+                    ? (activeEditMoodForm.querySelector('.bs-edit-mood-emoji').value || '') 
+                    : (hMoodEmoji.value || '');
+                const currentEmotion = activeEditMoodForm 
+                    ? (activeEditMoodForm.querySelector('.bs-edit-mood-emotion').value || '') 
+                    : (hMoodEmotion.value || '');
+
+                customMoods.forEach(mood => {
+                    const isActive = mood.emotion.toLowerCase() === currentEmotion.toLowerCase() && mood.emoji === currentEmoji;
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'bitstream-mood-btn' + (isActive ? ' is-active' : '');
+                    btn.dataset.emoji = mood.emoji;
+                    btn.dataset.emotion = mood.emotion;
+                    btn.style.cssText = 'display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease;';
+                    btn.innerHTML = `
+                        <span style="font-size: 1.8rem; margin-bottom: 4px;">${mood.emoji}</span>
+                        <span style="font-size: 0.85rem; font-weight: 500; color: #475569;">${mood.emotion}</span>
+                    `;
+                    
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        moodModal.querySelectorAll('.bitstream-mood-btn').forEach(b => b.classList.remove('is-active'));
+                        btn.classList.add('is-active');
+                        if (customEmojiInput) customEmojiInput.value = '';
+                        if (customEmotionInput) customEmotionInput.value = '';
+                    });
+
+                    savedMoodsGrid.appendChild(btn);
+                });
+                parseEmojis(savedMoodsGrid);
+            }
+        }
+
+        if (manageMoodsBtn) {
+            manageMoodsBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (isManagingMoods) {
+                    isManagingMoods = false;
+                    renderSavedMoods();
+                    syncCustomMoodsToServer();
+                } else {
+                    isManagingMoods = true;
+                    moodEditsMap = {};
+                    renderSavedMoods();
+                }
+            });
+        }
+
+        function propagateMoodEditsToTimeline(edits) {
+            if (!edits || Object.keys(edits).length === 0) return;
+
+            document.querySelectorAll('.bit-card').forEach(card => {
+                const headerMoodEl = card.querySelector('.bit-mood-status');
+                if (headerMoodEl) {
+                    const strong = headerMoodEl.querySelector('strong');
+                    const emotion = strong ? strong.textContent.trim() : '';
+                    const text = headerMoodEl.textContent;
+                    for (const oldKey in edits) {
+                        const [oldEmoji, oldEmotion] = oldKey.split('|');
+                        if (emotion.toLowerCase() === oldEmotion.toLowerCase() || text.includes(oldEmotion)) {
+                            headerMoodEl.innerHTML = `is feeling ${edits[oldKey].emoji} <strong style="color:var(--wp--preset--color--accent-1, #2c6e49);">${edits[oldKey].emotion}</strong>`;
+                            parseEmojis(headerMoodEl);
+                        }
+                    }
+                }
+
+                const pureMoodEl = card.querySelector('.bit-card-pure-mood');
+                if (pureMoodEl) {
+                    const strong = pureMoodEl.querySelector('.bit-pure-mood-text strong');
+                    const emojiSpan = pureMoodEl.querySelector('.bit-pure-mood-emoji');
+                    const emotion = strong ? strong.textContent.trim() : '';
+                    
+                    let updated = false;
+                    for (const oldKey in edits) {
+                        const [oldEmoji, oldEmotion] = oldKey.split('|');
+                        if (emotion.toLowerCase() === oldEmotion.toLowerCase()) {
+                            if (strong) strong.textContent = edits[oldKey].emotion;
+                            if (emojiSpan) {
+                                emojiSpan.textContent = edits[oldKey].emoji;
+                                updated = true;
+                            }
+                        }
+                    }
+                    if (updated) {
+                        parseEmojis(pureMoodEl);
+                    }
+                }
+            });
+        }
+
+        function syncCustomMoodsToServer() {
+            if (!window.bitstream_ajax || !bitstream_ajax.ajax_url || !submitNonce) return;
+
+            const syncPayload = new FormData();
+            syncPayload.append('action', 'bitstream_save_custom_moods');
+            syncPayload.append('nonce', submitNonce);
+            syncPayload.append('moods', JSON.stringify(customMoods));
+            syncPayload.append('edits', JSON.stringify(moodEditsMap));
+
+            fetch(bitstream_ajax.ajax_url, {
+                method: 'POST',
+                credentials: 'same-origin',
+                body: syncPayload
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.data && data.data.custom_moods) {
+                    customMoods = data.data.custom_moods;
+                    propagateMoodEditsToTimeline(moodEditsMap);
+                    moodEditsMap = {};
+                }
+            })
+            .catch(err => console.error('BitStream: Error syncing custom moods:', err));
+        }
+
+        moodPredefinedButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                moodModal.querySelectorAll('.bitstream-mood-btn').forEach(b => b.classList.remove('is-active'));
+                btn.classList.add('is-active');
+                if (customEmojiInput) customEmojiInput.value = '';
+                if (customEmotionInput) customEmotionInput.value = '';
+            });
+        });
+
+        const clearHighlights = () => {
+            moodModal.querySelectorAll('.bitstream-mood-btn').forEach(b => b.classList.remove('is-active'));
+        };
+        if (customEmojiInput) {
+            // Create a small tooltip element
+            const tip = document.createElement('div');
+            tip.className = 'bitstream-emoji-tip';
+            tip.style.cssText = 'position: absolute; background: var(--wp--preset--color--accent-1, #2c6e49); color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 500; pointer-events: none; z-index: 1000000; display: none; white-space: nowrap; box-shadow: 0 4px 10px rgba(0,0,0,0.15);';
+            
+            const isWindows = navigator.userAgent.toLowerCase().includes('win');
+            if (isWindows) {
+                tip.innerHTML = 'Press <kbd style="background: #475569; padding: 1px 4px; border-radius: 3px; font-family: inherit;">Win</kbd> + <kbd style="background: #475569; padding: 1px 4px; border-radius: 3px; font-family: inherit;">.</kbd> to open emojis';
+            } else {
+                tip.innerHTML = 'Use keyboard emoji key';
+            }
+            
+            document.body.appendChild(tip);
+
+            customEmojiInput.addEventListener('focus', () => {
+                const rect = customEmojiInput.getBoundingClientRect();
+                tip.style.left = `${rect.left + window.scrollX + (rect.width / 2) - (tip.offsetWidth / 2)}px`;
+                tip.style.top = `${rect.top + window.scrollY - tip.offsetHeight - 8}px`;
+                tip.style.display = 'block';
+                // Adjust if left goes out of viewport bounds
+                const tipRect = tip.getBoundingClientRect();
+                if (tipRect.left < 10) {
+                    tip.style.left = '10px';
+                } else if (tipRect.right > window.innerWidth - 10) {
+                    tip.style.left = `${window.innerWidth - tipRect.width - 10}px`;
+                }
+            });
+
+            customEmojiInput.addEventListener('blur', () => {
+                tip.style.display = 'none';
+            });
+            
+            // Clean up tooltip if modal is closed
+            composerRoot.querySelectorAll('[data-composer-modal-close="mood"]').forEach(closeBtn => {
+                closeBtn.addEventListener('click', () => {
+                    tip.style.display = 'none';
+                });
+            });
+
+            customEmojiInput.addEventListener('input', () => {
+                clearHighlights();
+                const val = customEmojiInput.value;
+                // Match flags, ZWJ sequences, skin tones, or basic pictographics
+                const emojiRegex = /(?:\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Regional_Indicator})[\p{Emoji}\p{Extended_Pictographic}\u200d\uFE0F]*/gu;
+                const matches = val.match(emojiRegex);
+                customEmojiInput.value = matches ? matches[0] : '';
+            });
+        }
+        if (customEmotionInput) customEmotionInput.addEventListener('input', clearHighlights);
+
+        if (moodDoneBtn) {
+            moodDoneBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                let emoji = '';
+                let emotion = '';
+
+                const activeBtn = moodModal.querySelector('.bitstream-mood-btn.is-active');
+                if (activeBtn) {
+                    emoji = activeBtn.dataset.emoji || '';
+                    emotion = activeBtn.dataset.emotion || '';
+                } else {
+                    emoji = customEmojiInput ? customEmojiInput.value.trim() : '';
+                    emotion = customEmotionInput ? customEmotionInput.value.trim() : '';
+                }
+
+                if (emotion && !emoji) {
+                    emoji = '😊';
+                }
+
+                if (activeEditMoodForm) {
+                    const editEmojiInput = activeEditMoodForm.querySelector('.bs-edit-mood-emoji');
+                    const editEmotionInput = activeEditMoodForm.querySelector('.bs-edit-mood-emotion');
+                    const editMoodLabel = activeEditMoodForm.querySelector('.bs-edit-mood-label');
+                    const editMoodRemove = activeEditMoodForm.querySelector('.bs-edit-mood-remove');
+
+                    if (editEmojiInput) editEmojiInput.value = emoji;
+                    if (editEmotionInput) editEmotionInput.value = emotion;
+
+                    if (editMoodLabel && editMoodRemove) {
+                        if (emotion) {
+                            editMoodLabel.textContent = `${emoji} Feeling ${emotion}`;
+                            parseEmojis(editMoodLabel);
+                            editMoodRemove.style.display = 'inline-block';
+                        } else {
+                            editMoodLabel.textContent = 'Add Mood';
+                            editMoodRemove.style.display = 'none';
+                        }
+                    }
+                    activeEditMoodForm = null;
+                } else {
+                    if (hMoodEmoji) hMoodEmoji.value = emoji;
+                    if (hMoodEmotion) hMoodEmotion.value = emotion;
+
+                    if (previewMood && previewMoodText) {
+                        if (emotion) {
+                            previewMoodText.textContent = `${emoji} Feeling ${emotion}`;
+                            parseEmojis(previewMoodText);
+                            previewMood.hidden = false;
+                        } else {
+                            previewMoodText.textContent = '';
+                            previewMood.hidden = true;
+                        }
+                    }
+                    syncPreviewArea();
+                }
+
+                closeModal('mood');
+            });
+        }
+
+        if (previewMood) {
+            const editBtn = previewMood.querySelector('.bitstream-composer-preview-edit');
+            const removeBtn = previewMood.querySelector('.bitstream-composer-preview-remove');
+
+            if (editBtn) {
+                editBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    activeEditMoodForm = null;
+                    openModal('mood');
+                });
+            }
+
+            if (removeBtn) {
+                removeBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (hMoodEmoji) hMoodEmoji.value = '';
+                    if (hMoodEmotion) hMoodEmotion.value = '';
+                    previewMood.hidden = true;
+                    syncPreviewArea();
+                });
+            }
+        }
+
+        const wireTimelineEditMoodButtons = (editForm) => {
+            const editMoodBtn = editForm.querySelector('.bs-edit-mood-btn');
+            const editMoodRemove = editForm.querySelector('.bs-edit-mood-remove');
+
+            if (editMoodBtn) {
+                editMoodBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    activeEditMoodForm = editForm;
+                    openModal('mood');
+                });
+            }
+
+            if (editMoodRemove) {
+                editMoodRemove.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const editEmojiInput = editForm.querySelector('.bs-edit-mood-emoji');
+                    const editEmotionInput = editForm.querySelector('.bs-edit-mood-emotion');
+                    const editMoodLabel = editForm.querySelector('.bs-edit-mood-label');
+
+                    if (editEmojiInput) editEmojiInput.value = '';
+                    if (editEmotionInput) editEmotionInput.value = '';
+                    if (editMoodLabel) editMoodLabel.textContent = 'Add Mood';
+                    editMoodRemove.style.display = 'none';
+                });
+            }
+        };
+
+        const editFormBit = document.querySelector('.bs-edit-form-bit');
+        const editFormRebit = document.querySelector('.bs-edit-form-rebit');
+        if (editFormBit) wireTimelineEditMoodButtons(editFormBit);
+        if (editFormRebit) wireTimelineEditMoodButtons(editFormRebit);
 
         // DRY Helper: Load draft or scheduled post into composer
         function loadPostIntoComposer(postId) {
@@ -6419,6 +7233,9 @@ jQuery(document).ready(function ($) {
         if (urlParams.has('show_scheduled') || urlParams.get('composer_tab') === 'scheduled') {
             openModal('scheduled-list');
         }
+        if (urlParams.has('show_settings') || urlParams.get('composer_tab') === 'settings') {
+            openModal('settings');
+        }
         if (urlParams.has('show_rebit') || urlParams.get('composer_tab') === 'rebit') {
             const rebitBtn = composerRoot.querySelector('[data-composer-modal="rebit"]');
             if (rebitBtn) {
@@ -6636,6 +7453,7 @@ jQuery(document).ready(function ($) {
             const content = textarea ? textarea.value.trim() : '';
             const hasMedia = hAttachmentId && parseInt(hAttachmentId.value || '0', 10) > 0;
             const hasRebit = hRebitUrl && hRebitUrl.value.trim();
+            const hasMood = hMoodEmotion && hMoodEmotion.value.trim();
 
             let effectiveType = composerType;
             if (composerType === 'bit' && !hasMedia && !hasRebit && content) {
@@ -6645,7 +7463,7 @@ jQuery(document).ready(function ($) {
                 } catch { }
             }
 
-            if (effectiveType === 'bit' && !content && !hasMedia) { setStatus('Write something or attach media.', true); return; }
+            if (effectiveType === 'bit' && !content && !hasMedia && !hasMood) { setStatus('Write something or attach media.', true); return; }
 
             setStatus(effectiveType === 'rebit' ? 'Posting ReBit...' : 'Posting...');
             if (submitBtn) submitBtn.disabled = true;
@@ -6893,10 +7711,31 @@ jQuery(document).ready(function ($) {
                     return;
                 }
 
-                // Navigate via URL so the page reloads with fresh data
+                // Toggle active class on tab buttons
+                settingsTabButtons.forEach(btn => {
+                    btn.classList.remove('is-active');
+                    btn.setAttribute('aria-selected', 'false');
+                });
+                button.classList.add('is-active');
+                button.setAttribute('aria-selected', 'true');
+
+                // Toggle visibility on settings panels
+                const panels = settingsRoot.querySelectorAll('.bitstream-settings-panel');
+                panels.forEach(panel => {
+                    if (panel.id === `bitstream-settings-panel-${selectedTab}`) {
+                        panel.classList.add('is-active');
+                        panel.hidden = false;
+                    } else {
+                        panel.classList.remove('is-active');
+                        panel.hidden = true;
+                    }
+                });
+
+                // Update URL parameter in history without reloading
                 const url = new URL(window.location.href);
                 url.searchParams.set('settings_tab', selectedTab);
-                window.location.href = url.toString();
+                url.searchParams.set('show_settings', '1');
+                window.history.replaceState({}, '', url.toString());
             });
         });
 

@@ -1572,13 +1572,7 @@ a.bitstream-filter-chip:hover {
     transition: opacity 0.16s ease, visibility 0.16s ease;
 }
 
-.bit-timestamp[data-timestamp-tooltip]:hover::after,
-.bit-timestamp[data-timestamp-tooltip]:hover::before,
-.bit-timestamp[data-timestamp-tooltip]:focus::after,
-.bit-timestamp[data-timestamp-tooltip]:focus::before {
-    opacity: 1;
-    visibility: visible;
-}
+
 
 
 /* Like button animation and active state */
@@ -2070,16 +2064,16 @@ video {
 
 /* Settings Tabs */
 .bitstream-settings {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 1.5rem;
-    border: 1px solid #ddd;
-    border-radius: 15px;
-    background: #fff;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    font-family: inherit;
     font-size: 0.95rem;
     line-height: 1.5;
-    color: #333;
+    color: #1e293b;
     box-sizing: border-box;
 }
 
@@ -2092,57 +2086,91 @@ video {
 .bitstream-settings h1,
 .bitstream-settings h2,
 .bitstream-settings h3 {
-    font-weight: 600;
-    color: #222;
+    font-weight: 700;
+    color: #0f172a;
     line-height: 1.3;
 }
 
 .bitstream-settings h2 {
-    font-size: 1.25rem;
-    margin: 0 0 0.75rem;
+    font-size: 1.2rem;
+    margin: 0 0 0.5rem;
 }
 
 .bitstream-settings p {
     font-weight: 400;
-    color: #555;
+    color: #475569;
+    margin: 0 0 1rem;
 }
 
+/* Premium horizontal scrollable tab list */
 .bitstream-settings-tabs {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 0.75rem;
+    display: flex;
+    overflow-x: auto;
+    border-bottom: 2px solid #e2e8f0;
+    gap: 1.5rem;
     margin-bottom: 1.5rem;
-    align-items: stretch;
+    padding-bottom: 0px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.bitstream-settings-tabs::-webkit-scrollbar {
+    display: none;
 }
 
 .bitstream-settings-tab {
-    border: 1px solid #ccc;
-    border-radius: 15px;
-    background: #fff;
-    color: #222;
-    padding: 0.7rem 0.9rem;
+    border: none !important;
+    border-bottom: 3px solid transparent !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    color: #64748b;
+    padding: 0.75rem 0.25rem;
     cursor: pointer;
     font-weight: 600;
-    text-align: center;
     font-size: 0.95rem;
-    transition: all 0.15s ease;
+    transition: all 0.2s ease;
     font-family: inherit;
-    line-height: 1.4;
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 0.4rem;
+    gap: 0.5rem;
+    white-space: nowrap;
+    outline: none !important;
+    box-shadow: none !important;
 }
 
 .bitstream-settings-tab:hover {
-    border-color: var(--wp--preset--color--accent-1, #2c6e49);
-    background: rgba(44, 110, 73, 0.06);
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    border-bottom-color: rgba(44, 110, 73, 0.3) !important;
+    background: transparent !important;
 }
 
 .bitstream-settings-tab.is-active {
-    border-color: var(--wp--preset--color--accent-1, #2c6e49);
-    background: var(--wp--preset--color--accent-1, #2c6e49);
-    color: #fff;
+    color: var(--wp--preset--color--accent-1, #2c6e49) !important;
+    border: none !important;
+    border-bottom: 3px solid var(--wp--preset--color--accent-1, #2c6e49) !important;
+    background: transparent !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.bitstream-settings-tab:focus,
+.bitstream-settings-tab:active,
+.bitstream-settings-tab:focus-visible {
+    outline: none !important;
+    border: none !important;
+    border-bottom: 3px solid transparent !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+.bitstream-settings-tab.is-active:focus,
+.bitstream-settings-tab.is-active:active,
+.bitstream-settings-tab.is-active:focus-visible {
+    outline: none !important;
+    border: none !important;
+    border-bottom: 3px solid var(--wp--preset--color--accent-1, #2c6e49) !important;
+    box-shadow: none !important;
+    background: transparent !important;
 }
 
 .bitstream-settings-panel {
@@ -2154,9 +2182,9 @@ video {
 }
 
 .bitstream-settings-section {
-    margin-bottom: 2rem;
-    padding-bottom: 2rem;
-    border-bottom: 1px solid #eee;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1.5px solid #e2e8f0;
 }
 
 .bitstream-settings-section:last-child {
@@ -2166,42 +2194,57 @@ video {
 }
 
 .bitstream-settings-section h3 {
-    margin: 0 0 0.75rem;
-    font-size: 1.15rem;
+    margin: 0 0 0.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
 }
 
 .bitstream-settings-section p {
     margin: 0 0 1rem;
-    color: #555;
-    font-size: 0.95rem;
+    color: #475569;
+    font-size: 0.9rem;
 }
 
-/* Frontend-compatible form controls inside settings */
+/* Premium Form Controls matching design tokens */
 .bitstream-settings input[type="text"],
 .bitstream-settings input[type="url"],
 .bitstream-settings input[type="email"],
 .bitstream-settings textarea,
 .bitstream-settings select {
     width: 100%;
-    padding: 0.5rem 0.7rem;
-    border: 1px solid #ccc;
-    border-radius: 8px;
+    padding: 0.65rem 0.85rem;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
     font-size: 0.95rem;
     font-family: inherit;
     line-height: 1.5;
-    background: #fff;
-    color: #333;
+    background: #f8fafc;
+    color: #0f172a;
     box-sizing: border-box;
-    transition: border-color 0.15s ease;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .bitstream-settings input[type="text"]:focus,
 .bitstream-settings input[type="url"]:focus,
 .bitstream-settings textarea:focus,
 .bitstream-settings select:focus {
+    background: #fff;
     border-color: var(--wp--preset--color--accent-1, #2c6e49);
     outline: none;
-    box-shadow: 0 0 0 2px rgba(44, 110, 73, 0.15);
+    box-shadow: 0 0 0 3px rgba(44, 110, 73, 0.13);
+}
+
+.bitstream-settings-field {
+    margin-bottom: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.bitstream-settings-field label {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #334155;
 }
 
 /* Override WP admin .wrap inside settings panels */
@@ -2212,217 +2255,257 @@ video {
     width: auto;
 }
 
-/* Hide redundant h1 headings from admin page includes (e.g. rebit mappings) */
-.bitstream-settings .wrap>h1:first-child {
-    display: none;
-}
-
-/* Hide redundant description after h1 in rebit mappings */
+.bitstream-settings .wrap>h1:first-child,
 .bitstream-settings .wrap>h1:first-child+p.description {
     display: none;
 }
 
-/* Buttons inside settings */
-.bitstream-settings .button,
-.bitstream-settings .button-primary,
-.bitstream-settings .button-secondary,
-.bitstream-settings .button-small,
-.bitstream-settings .button-link-delete,
+/* Buttons matching design tokens */
 .bitstream-settings button[type="submit"],
-.bitstream-settings input[type="submit"] {
-    display: inline-block;
-    padding: 0.5rem 1rem;
-    border: 1px solid #ccc;
-    border-radius: 8px;
+.bitstream-settings input[type="submit"],
+.bitstream-settings .button-primary,
+.bitstream-settings .bitstream-copy-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.25rem;
+    border: none;
+    border-radius: 10px;
     font-size: 0.9rem;
     font-weight: 600;
     font-family: inherit;
     cursor: pointer;
     text-decoration: none;
-    line-height: 1.4;
-    transition: all 0.15s ease;
-    background: #f9f9f9;
-    color: #333;
-    text-align: center;
+    background: var(--wp--preset--color--accent-1, #2c6e49);
+    color: #fff !important;
+    box-shadow: 0 4px 14px rgba(44, 110, 73, 0.22);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     white-space: nowrap;
 }
 
-.bitstream-settings .button-primary,
-.bitstream-settings input[type="submit"].button-primary {
-    background: var(--wp--preset--color--accent-1, #2c6e49);
-    color: #fff;
-    border-color: transparent;
-}
-
+.bitstream-settings button[type="submit"]:hover,
+.bitstream-settings input[type="submit"]:hover,
 .bitstream-settings .button-primary:hover,
-.bitstream-settings input[type="submit"].button-primary:hover {
-    opacity: 0.9;
+.bitstream-settings .bitstream-copy-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(44, 110, 73, 0.28);
+    opacity: 0.95;
 }
 
-.bitstream-settings .button-secondary {
-    background: #f9f9f9;
-    color: #333;
+.bitstream-settings button[type="submit"]:active,
+.bitstream-settings input[type="submit"]:active,
+.bitstream-settings .button-primary:active,
+.bitstream-settings .bitstream-copy-btn:active {
+    transform: translateY(0);
+}
+
+/* Secondary Button design tokens */
+.bitstream-settings .button-secondary,
+.bitstream-settings .button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.25rem;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    text-decoration: none;
+    background: #fff;
+    color: #475569 !important;
+    transition: all 0.2s ease;
+    white-space: nowrap;
 }
 
 .bitstream-settings .button-secondary:hover,
 .bitstream-settings .button:hover {
-    background: #eee;
-    border-color: #aaa;
+    border-color: #cbd5e1;
+    background: #f8fafc;
+    color: #0f172a !important;
 }
 
-.bitstream-settings .button-small {
-    padding: 0.3rem 0.7rem;
-    font-size: 0.85rem;
-}
-
-.bitstream-settings .button-link-delete {
-    background: none;
-    border: none;
-    color: #dc3545 !important;
-    padding: 0.3rem 0.5rem;
-    font-weight: 600;
-}
-
-.bitstream-settings .button-link-delete:hover {
-    text-decoration: underline;
-    background: none;
-    border: none;
-}
-
-/* Cards inside settings (rebit mappings) */
-.bitstream-settings .card {
-    background: #f9f9f9;
-    border: 1px solid #eee;
+/* Specific view link button (RSS Feeds) */
+.bitstream-settings a[target="_blank"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.65rem 1.25rem;
+    border: 1.5px solid #e2e8f0;
     border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    background: #fff;
+    color: #475569;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.bitstream-settings a[target="_blank"]:hover {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+    color: #0f172a;
+}
+
+/* Small tag styling for Service links (Feedly, Pocket etc.) */
+.bitstream-settings a[href*="feedly.com"],
+.bitstream-settings a[href*="inoreader.com"],
+.bitstream-settings a[href*="newsblur.com"],
+.bitstream-settings a[href*="getpocket.com"] {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8rem;
+    border-radius: 8px;
+}
+
+/* Preset Quick Add styling */
+.bitstream-presets-row {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+}
+
+.bitstream-presets-select-wrap {
+    flex: 1;
+    min-width: 200px;
+}
+
+.bitstream-presets-select-wrap label {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #475569;
+    display: inline-block;
+    margin-bottom: 0.25rem;
+}
+
+.bitstream-presets-select-wrap br {
+    display: none;
+}
+
+.bitstream-presets-btn-wrap {
+    flex: 0 0 auto;
+}
+
+/* Cards inside settings */
+.bitstream-settings .card {
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 16px;
     padding: 1.25rem;
-    margin-bottom: 1rem;
+    margin-bottom: 1.25rem;
+    box-shadow: none;
 }
 
 .bitstream-settings .card .title {
     margin-top: 0;
-    margin-bottom: 0.75rem;
-    font-size: 1.05rem;
-    font-weight: 600;
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #0f172a;
 }
 
-/* Flex containers in mappings */
-/* !important needed to override inline <style> from admin-rebit-mappings-interface.php */
+/* Flex containers in layouts */
 .bitstream-settings .flex-container {
-    display: flex !important;
-    flex-wrap: wrap !important;
-    gap: 1rem !important;
-    margin-bottom: 1rem !important;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
 }
 
 .bitstream-settings .flex-item {
-    flex: 1 !important;
-    min-width: 0 !important;
+    flex: 1;
+    min-width: 280px;
 }
 
-/* Force all inline min-width elements to fit */
-.bitstream-settings .card div[style*="min-width"] {
-    min-width: 0 !important;
-}
-
-.bitstream-settings .card div[style*="flex"] {
-    min-width: 0 !important;
-}
-
-/* Mapping rows — each is its own card */
-/* !important needed to override inline <style> from admin-rebit-mappings-interface.php */
+/* Mapping rows */
 .bitstream-settings .mapping-row {
-    display: flex !important;
-    flex-direction: column !important;
-    flex-wrap: nowrap !important;
-    gap: 0.5rem !important;
-    padding: 1rem !important;
-    margin-bottom: 0 !important;
-    border: 1px solid #e0e0e0 !important;
-    border-radius: 12px !important;
-    background: #fafafa !important;
-    width: auto !important;
-}
-
-/* Kill the <br> tags after labels that create huge gaps */
-.bitstream-settings .mapping-row br,
-.bitstream-settings .mapping-field br {
-    display: none !important;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 16px;
+    background: #fff;
+    width: 100%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.01);
 }
 
 .bitstream-settings .mapping-field {
-    flex: none !important;
-    width: 100% !important;
-    min-width: 0 !important;
+    flex: 1 1 180px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
 }
 
 .bitstream-settings .mapping-field label {
-    display: block;
-    margin-bottom: 0.3rem;
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
+    color: #475569;
 }
 
 .bitstream-settings .mapping-field.preview-field {
-    flex: none !important;
-    width: 100% !important;
-    min-width: 0 !important;
+    flex: 1.5 1 200px;
 }
 
-/* Hide the empty &nbsp; label in the actions field */
 .bitstream-settings .mapping-field.actions-field {
-    flex: none !important;
-    width: 100% !important;
-    min-width: 0 !important;
-    display: flex;
-    align-items: center;
+    flex: 0 0 auto;
+    justify-content: flex-end;
+    align-self: flex-end;
 }
 
-.bitstream-settings .mapping-field.actions-field>label {
-    display: none !important;
-}
-
-/* Remove button as an actual button */
+/* Remove button in mappings */
 .bitstream-settings .mapping-field.actions-field .button-link-delete {
-    display: inline-block !important;
-    width: 100%;
-    padding: 0.45rem 1rem !important;
-    background: #dc3545 !important;
-    color: #fff !important;
-    border: none !important;
-    border-radius: 8px !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    background: #fee2e2 !important;
+    color: #ef4444 !important;
+    border: 1.5px solid #fca5a5 !important;
+    border-radius: 10px !important;
+    padding: 0.55rem 1.15rem !important;
     font-weight: 600;
     font-size: 0.85rem;
     cursor: pointer;
-    text-align: center;
-    text-decoration: none !important;
+    transition: all 0.2s ease;
 }
 
-/* Mapping preview */
+.bitstream-settings .mapping-field.actions-field .button-link-delete:hover {
+    background: #fecaca !important;
+    border-color: #f87171 !important;
+    color: #b91c1c !important;
+}
+
+/* Mapping preview badge */
 .bitstream-settings .mapping-preview {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.6rem 0.8rem;
-    background: #fff;
-    border: 1px solid #eee;
-    border-radius: 8px;
-    margin-top: 0.25rem;
+    padding: 0.55rem 0.75rem;
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
     font-size: 0.9rem;
+    color: #0f172a;
+    height: 38px;
 }
 
 .bitstream-settings .mapping-preview i {
     color: var(--wp--preset--color--accent-1, #2c6e49);
 }
 
-/* Mappings container — 2-column grid on desktop */
 .bitstream-settings .mappings-container {
     width: 100%;
-    max-width: none;
 }
 
 .bitstream-settings #mappings-container {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 1rem;
     background: transparent;
     border: none;
@@ -2430,75 +2513,82 @@ video {
     padding: 0;
 }
 
-/* Submit buttons area */
-.bitstream-settings .submit {
-    margin-top: 1rem;
+@media (min-width: 1024px) {
+    .bitstream-settings #mappings-container {
+        grid-template-columns: 1fr 1fr;
+    }
 }
 
 /* Tables inside settings (debug logs) */
 .bitstream-settings table {
     width: 100%;
     border-collapse: collapse;
+    font-size: 0.85rem;
 }
 
 .bitstream-settings table th,
 .bitstream-settings table td {
-    padding: 0.5rem;
+    padding: 0.6rem;
     text-align: left;
-    border-bottom: 1px solid #f0f0f0;
-    font-weight: 400;
+    border-bottom: 1px solid #f1f5f9;
 }
 
 .bitstream-settings table th {
     font-weight: 600;
-    background: #f9f9f9;
-    border-bottom-color: #ddd;
+    color: #475569;
+    background: #f8fafc;
+    border-bottom: 1.5px solid #e2e8f0;
 }
 
-.bitstream-settings .widefat {
-    border: 1px solid #eee;
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-/* Notices inside settings */
+/* Notices and Alerts */
 .bitstream-settings .notice,
 .bitstream-settings .updated,
-.bitstream-settings .error {
-    padding: 0.75rem 1rem;
-    margin-bottom: 1rem;
-    border-radius: 8px;
+.bitstream-settings .error,
+.bitstream-settings-welcome {
+    padding: 1rem;
+    margin-bottom: 1.25rem;
+    border-radius: 12px;
     border: none;
-    border-left: 4px solid #2c6e49;
+    border-left: 4px solid var(--wp--preset--color--accent-1, #2c6e49);
     background: #f0f9f4;
+    color: #14532d;
+}
+
+.bitstream-settings-welcome h3 {
+    margin-top: 0;
+    margin-bottom: 0.35rem;
+    color: #14532d;
 }
 
 .bitstream-settings .notice-success,
 .bitstream-settings .updated {
     border-left-color: #2c6e49;
     background: #f0f9f4;
+    color: #14532d;
 }
 
 .bitstream-settings .notice-error,
 .bitstream-settings .error {
     border-left-color: #dc3545;
     background: #fff5f5;
+    color: #7f1d1d;
 }
 
 .bitstream-settings .notice-info {
-    border-left-color: #0073aa;
-    background: #e7f3ff;
+    border-left-color: #3b82f6;
+    background: #eff6ff;
+    color: #1e3a8a;
 }
 
 /* Description text */
 .bitstream-settings .description,
 .bitstream-settings small.description {
-    color: #888;
+    color: #64748b;
     font-size: 0.85rem;
     font-weight: 400;
 }
 
-/* Form table from WP admin */
+/* Form table */
 .bitstream-settings .form-table {
     width: 100%;
     border-collapse: collapse;
@@ -2516,18 +2606,18 @@ video {
     padding: 0.75rem 0;
 }
 
-/* Icon input container */
+/* Icon picker input container */
 .bitstream-settings .icon-input-container {
     position: relative;
 }
 
 .bitstream-settings .icon-picker-button {
     position: absolute;
-    right: 6px;
+    right: 8px;
     top: 50%;
     transform: translateY(-50%);
-    background: #f0f0f1;
-    border: 1px solid #ccc;
+    background: #e2e8f0;
+    border: none;
     border-radius: 6px;
     padding: 4px 8px;
     cursor: pointer;
@@ -2536,47 +2626,255 @@ video {
     display: flex;
     align-items: center;
     justify-content: center;
+    color: #475569;
+    transition: all 0.2s ease;
 }
 
-/* Responsive */
-@media (max-width: 600px) {
-    .bitstream-settings {
-        padding: 1rem;
-        border-radius: 10px;
-    }
+.bitstream-settings .icon-picker-button:hover {
+    background: #cbd5e1;
+    color: #0f172a;
+}
 
+/* Mobile responsive modifications */
+@media (max-width: 1023px) {
     .bitstream-settings-tabs {
-        grid-template-columns: repeat(4, 1fr);
-        gap: 0.5rem;
+        gap: 1rem;
+    }
+    
+    .bitstream-settings-tab {
+        padding: 0.65rem 0.25rem;
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 600px) {
+    .bitstream-settings-tabs {
+        display: flex !important;
+        gap: 0 !important;
+        width: 100% !important;
     }
 
     .bitstream-settings-tab {
         font-size: 0;
-        padding: 0.7rem;
+        padding: 0.75rem 0.5rem;
         gap: 0;
+        flex: 1 !important;
+        justify-content: center !important;
     }
 
     .bitstream-settings-tab i {
-        font-size: 1.1rem;
+        font-size: 1.25rem;
     }
 
-    .bitstream-settings .flex-container {
-        flex-direction: column !important;
-    }
-
-    .bitstream-settings #mappings-container {
-        grid-template-columns: 1fr;
-    }
-
-    /* Uniform button width on mobile */
     .bitstream-settings .button,
     .bitstream-settings .button-primary,
     .bitstream-settings .button-secondary,
     .bitstream-settings button[type="submit"],
-    .bitstream-settings input[type="submit"] {
+    .bitstream-settings input[type="submit"],
+    .bitstream-settings a[target="_blank"] {
         width: 100%;
         text-align: center;
     }
+}
+
+/* Custom dialog width for settings modal on desktop */
+@media (min-width: 1024px) {
+    section.bitstream-composer div.bitstream-composer-modal-settings > div.bitstream-composer-modal-dialog.bitstream-composer-modal-dialog-wide {
+        max-width: min(95vw, 780px) !important;
+    }
+}
+
+/* ── Icon Picker Modal Styling ─────────────────────────────────────── */
+#icon-picker-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.45) !important; /* Slate dark transparent backdrop */
+    backdrop-filter: blur(4px) !important;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 999999;
+}
+
+#icon-picker-modal.show {
+    display: flex !important;
+}
+
+.icon-picker-content {
+    background: #fff !important;
+    border-radius: 20px !important;
+    width: 90% !important;
+    max-width: 600px !important;
+    max-height: 80vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18) !important;
+    overflow: hidden !important;
+    animation: bitstreamModalIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.icon-picker-header {
+    padding: 1.25rem 1.5rem !important;
+    border-bottom: 1.5px solid #e2e8f0 !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+}
+
+.icon-picker-header h3 {
+    margin: 0 !important;
+    font-size: 1.15rem !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+}
+
+.icon-picker-close {
+    background: none !important;
+    border: none !important;
+    font-size: 1.5rem !important;
+    color: #64748b !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    width: 32px !important;
+    height: 32px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50% !important;
+    transition: all 0.2s ease !important;
+}
+
+.icon-picker-close:hover {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+}
+
+.icon-picker-search {
+    padding: 1rem 1.5rem !important;
+    border-bottom: 1.5px solid #e2e8f0 !important;
+}
+
+.icon-picker-search input {
+    width: 100% !important;
+    padding: 0.65rem 0.85rem !important;
+    border: 1.5px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    background: #f8fafc !important;
+    color: #0f172a !important;
+    font-size: 0.95rem !important;
+    box-sizing: border-box !important;
+    transition: all 0.2s ease !important;
+}
+
+.icon-picker-search input:focus {
+    background: #fff !important;
+    border-color: var(--wp--preset--color--accent-1, #2c6e49) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(44, 110, 73, 0.13) !important;
+}
+
+.icon-picker-tabs {
+    padding: 0.75rem 1.5rem !important;
+    border-bottom: 1.5px solid #e2e8f0 !important;
+    display: flex !important;
+    gap: 0.5rem !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+}
+
+.icon-picker-tabs::-webkit-scrollbar {
+    display: none !important;
+}
+
+.icon-category {
+    padding: 0.45rem 1rem !important;
+    background: #f1f5f9 !important;
+    border: 1.5px solid transparent !important;
+    border-radius: 10px !important;
+    cursor: pointer !important;
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    color: #475569 !important;
+    transition: all 0.2s ease !important;
+    white-space: nowrap !important;
+}
+
+.icon-category:hover {
+    background: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+.icon-category.active {
+    background: var(--wp--preset--color--accent-1, #2c6e49) !important;
+    color: #fff !important;
+}
+
+#icon-grid {
+    padding: 1.5rem !important;
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)) !important;
+    gap: 0.75rem !important;
+    max-height: 380px !important;
+    overflow-y: auto !important;
+}
+
+.icon-option {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0.75rem !important;
+    border: 1.5px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    cursor: pointer !important;
+    text-align: center !important;
+    background: #fff !important;
+    transition: all 0.2s ease !important;
+}
+
+.icon-option:hover {
+    background: #f8fafc !important;
+    border-color: var(--wp--preset--color--accent-1, #2c6e49) !important;
+}
+
+.icon-option i {
+    font-size: 1.5rem !important;
+    margin-bottom: 0.4rem !important;
+    color: var(--wp--preset--color--accent-1, #2c6e49) !important;
+    display: block !important;
+}
+
+.icon-option small {
+    font-size: 0.75rem !important;
+    color: #64748b !important;
+    word-break: break-all !important;
+    font-weight: 500 !important;
+}
+
+/* Spinner and loading */
+.icon-loading {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 3rem 1.5rem !important;
+    text-align: center !important;
+    color: #64748b !important;
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+}
+
+.icon-loading-spinner {
+    width: 32px !important;
+    height: 32px !important;
+    border: 3.5px solid #f1f5f9 !important;
+    border-top: 3.5px solid var(--wp--preset--color--accent-1, #2c6e49) !important;
+    border-radius: 50% !important;
+    animation: spin 0.8s linear infinite !important;
+    margin-bottom: 0.75rem !important;
 }
 
 .bitstream-composer-editing-banner {
@@ -4687,17 +4985,20 @@ iframe[src*="youtube-nocookie.com"] {
        The parent .bitstream-composer acts as a transparent host; closing these
        screens also closes the composer host (handled in JS closeModal). */
     .bitstream-composer .bitstream-composer-modal-drafts,
-    .bitstream-composer .bitstream-composer-modal-scheduled-list {
+    .bitstream-composer .bitstream-composer-modal-scheduled-list,
+    .bitstream-composer .bitstream-composer-modal-settings {
         padding: 0 !important;
     }
 
     .bitstream-composer .bitstream-composer-modal-drafts>.bitstream-composer-modal-backdrop,
-    .bitstream-composer .bitstream-composer-modal-scheduled-list>.bitstream-composer-modal-backdrop {
+    .bitstream-composer .bitstream-composer-modal-scheduled-list>.bitstream-composer-modal-backdrop,
+    .bitstream-composer .bitstream-composer-modal-settings>.bitstream-composer-modal-backdrop {
         display: none !important;
     }
 
     .bitstream-composer .bitstream-composer-modal-drafts>.bitstream-composer-modal-dialog,
-    .bitstream-composer .bitstream-composer-modal-scheduled-list>.bitstream-composer-modal-dialog {
+    .bitstream-composer .bitstream-composer-modal-scheduled-list>.bitstream-composer-modal-dialog,
+    .bitstream-composer .bitstream-composer-modal-settings>.bitstream-composer-modal-dialog {
         width: 100% !important;
         max-width: 100% !important;
         height: 100% !important;
@@ -5248,3 +5549,288 @@ iframe[src*="youtube-nocookie.com"] {
 .bitstream-quoted-preview video:not(.bitstream-gallery-media) {
     cursor: pointer;
 }
+
+/* ==============================================
+   SHARE AS IMAGE — Capture & Share Modal Styles
+   ============================================== */
+
+/* Card capturing state */
+.bit-card.bit-card-capturing {
+    background-color: #ffffff !important;
+    border: 1px solid #eef0f2 !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06) !important;
+    padding: 1.5rem !important;
+    border-radius: 15px !important;
+    width: 500px !important;
+    box-sizing: border-box !important;
+}
+
+.bit-card.bit-card-capturing hr,
+.bit-card.bit-card-capturing .bit-card-footer,
+.bit-card.bit-card-capturing .bit-comments {
+    display: none !important;
+}
+
+.bit-card.bit-card-capturing .bit-card-quoted-nested .bit-card-footer,
+.bit-card.bit-card-capturing .bit-card-quoted-nested hr {
+    display: none !important;
+}
+
+.bit-card.bit-card-capturing .bit-timestamp-relative {
+    display: none !important;
+}
+
+.bit-card.bit-card-capturing .bit-timestamp-full {
+    display: inline !important;
+}
+
+.bit-card.bit-card-capturing .bit-timestamp-separator {
+    display: none !important;
+}
+
+.bit-card.bit-card-capturing .bit-card-watermark {
+    display: flex !important;
+}
+
+/* Share options modal buttons */
+.bitstream-share-options-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.bitstream-share-option-btn {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+    padding: 0.9rem 1rem;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    background: #f8fafc;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease, box-shadow 0.15s ease;
+    font-family: inherit;
+}
+
+.bitstream-share-option-btn:hover {
+    border-color: var(--wp--preset--color--accent-1, #2c6e49);
+    background: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(44,110,73,0.08);
+}
+
+.bitstream-share-option-btn i {
+    font-size: 1.25rem;
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    width: 22px;
+    flex-shrink: 0;
+    text-align: center;
+}
+
+.bitstream-share-option-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.bitstream-share-option-title {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #1e293b;
+}
+
+.bitstream-share-option-desc {
+    font-size: 0.78rem;
+    color: #64748b;
+    margin-top: 0.1rem;
+}
+
+/* Share image preview (fallback modal, second stage) */
+.bitstream-share-image-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.bitstream-share-image-preview img {
+    max-width: 100%;
+    border-radius: 10px;
+    border: 1px solid #eef0f2;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
+
+.bitstream-share-image-actions {
+    display: flex;
+    gap: 0.65rem;
+    width: 100%;
+    justify-content: flex-end;
+}
+
+/* ==========================================================================
+   Mood Feature Styles
+   ========================================================================== */
+
+/* Predefined Mood buttons inside modal */
+.bitstream-mood-btn {
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    background: #f8fafc;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    font-family: inherit;
+}
+
+.bitstream-mood-btn:hover {
+    border-color: #cbd5e1;
+    background: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+}
+
+.bitstream-mood-btn.is-active {
+    border-color: var(--wp--preset--color--accent-1, #2c6e49) !important;
+    background-color: rgba(44, 110, 73, 0.08) !important;
+    transform: scale(1.03);
+    box-shadow: 0 4px 12px rgba(44,110,73,0.08);
+}
+
+/* Saved custom moods grid button adjustments */
+.bitstream-saved-moods-grid .bitstream-mood-btn {
+    padding: 10px;
+}
+
+/* Manage mode vertical list */
+.bitstream-saved-moods-edit-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 10px;
+    background: #f8fafc;
+    box-sizing: border-box;
+}
+
+.bitstream-mood-manage-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 8px 12px;
+    transition: all 0.2s ease;
+}
+
+.bitstream-mood-manage-item:hover {
+    border-color: #cbd5e1;
+}
+
+.bitstream-mood-manage-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #1e293b;
+}
+
+.bitstream-mood-manage-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.bitstream-mood-sort-btn {
+    background: none;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    color: #64748b;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bitstream-mood-sort-btn:hover:not(:disabled) {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+    color: #1e293b;
+}
+
+.bitstream-mood-sort-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.bitstream-mood-delete-btn {
+    background: none;
+    border: 1px solid #fee2e2;
+    border-radius: 6px;
+    color: #ef4444;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bitstream-mood-delete-btn:hover {
+    background: #fef2f2;
+    border-color: #fca5a5;
+}
+
+/* Dynamic preview badges inside composer */
+.bitstream-composer-preview-mood {
+    margin-top: 0.75rem;
+    border: 1px solid #eef0f2;
+    border-radius: 12px;
+    background: #fff;
+    padding: 0.8rem 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+}
+
+/* Edit timeline modal mood row transitions */
+.bs-edit-mood-btn {
+    transition: all 0.2s ease;
+}
+
+.bs-edit-mood-btn:hover {
+    border-color: #cbd5e1 !important;
+    background: #fff !important;
+    color: #1e293b !important;
+}
+
+.bs-edit-mood-row button {
+    font-family: inherit;
+}
+
+/* Twemoji inline image sizing */
+img.emoji {
+    height: 1.15em;
+    width: 1.15em;
+    margin: 0 .05em 0 .1em;
+    vertical-align: -0.1em;
+    display: inline-block;
+}
+
+/* Prevent flash of native system emojis before Twemoji parsing runs */
+.bit-card:not([data-emoji-parsed]) .bit-mood-status,
+.bit-card:not([data-emoji-parsed]) .bit-card-pure-mood {
+    opacity: 0 !important;
+}
+
+.bit-card[data-emoji-parsed] .bit-mood-status,
+.bit-card[data-emoji-parsed] .bit-card-pure-mood {
+    opacity: 1 !important;
+    transition: opacity 0.15s ease-in-out;
+}

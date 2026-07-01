@@ -36,11 +36,21 @@ class BitStream_Plugin
     public function __construct()
     {
         self::$instance = $this;
+        add_action('wp_enqueue_scripts', [$this, 'register_global_assets'], 5);
+        add_action('admin_enqueue_scripts', [$this, 'register_global_assets'], 5);
         if (did_action('plugins_loaded')) {
             $this->init();
         } else {
             add_action('plugins_loaded', [$this, 'init']);
         }
+    }
+
+    /**
+     * Register global CDN assets
+     */
+    public function register_global_assets()
+    {
+        wp_register_script('twemoji', 'https://cdn.jsdelivr.net/npm/@twemoji/api@latest/dist/twemoji.min.js', [], null, true);
     }
 
     /**
@@ -268,7 +278,7 @@ function bitstream_render_nested_quoted_card($post_id)
     <div id="bit-quoted-<?php echo esc_attr($post_id); ?>" class="bit-card bit-card-quoted-nested" style="margin:0;padding:1.5rem;width:100%;max-width:none;box-sizing:border-box;border:1px solid #ddd;border-radius:15px;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,0.05);">
         <header class="bit-card-header" style="display:flex;align-items:center;margin-bottom:1rem;">
             <div class="bit-meta" style="font-size:0.875rem;color:var(--wp--preset--color--secondary,#666);">
-                <span class="bit-timestamp" tabindex="0" data-timestamp-tooltip="<?php echo esc_attr($timestamp_tooltip); ?>" title="<?php echo esc_attr($timestamp_tooltip); ?>"><?php echo esc_html($timestamp); ?></span>
+                <span class="bit-timestamp" tabindex="0" style="cursor: pointer;"><span class="bit-timestamp-relative"><?php echo esc_html($timestamp); ?></span><span class="bit-timestamp-full" style="display:none;"><span class="bit-timestamp-separator"> | </span><?php echo esc_html(get_post_time(get_option('date_format') . ' ' . get_option('time_format'), false, $post_id)); ?></span></span>
             </div>
         </header>
 
@@ -410,7 +420,11 @@ if (!function_exists('bitstream_render_card')) {
         $posted_datetime = get_post_time('d/m/Y H:i', false, $post_id);
         $is_edited = get_post_modified_time('U', false, $post_id) > get_post_time('U', false, $post_id);
         $timestamp_tooltip = 'Posted: ' . $posted_datetime . ($is_edited ? ' • Edited' : '');
-        $avatar = get_avatar(get_post_field('post_author', $post_id), 48, '', '', ['class' => 'bit-avatar-img']);
+        $avatar = get_avatar(get_post_field('post_author', $post_id), 96, '', '', ['class' => 'bit-avatar-img', 'extra_attr' => 'style="width:100%;height:100%;object-fit:cover;"']);
+        $author_id = get_post_field('post_author', $post_id);
+        $author_name = get_the_author_meta('display_name', $author_id);
+        $mood_emoji = get_post_meta($post_id, '_bitstream_mood_emoji', true);
+        $mood_emotion = get_post_meta($post_id, '_bitstream_mood_emotion', true);
         $likes = (int)get_post_meta($post_id, '_bitstream_likes', true);
         $comments = get_comments_number($post_id);
         $quoted_id = (int)get_post_meta($post_id, '_bitstream_quoted_bit', true);
@@ -420,6 +434,9 @@ if (!function_exists('bitstream_render_card')) {
         if ($quoted_id > 0) {
             $quoted_markup = bitstream_render_nested_quoted_card($quoted_id);
         }
+        $raw_content = trim(get_post_field('post_content', $post_id));
+        $has_attachments = !empty(get_post_meta($post_id, '_bitstream_attachment_id', true)) || !empty(get_post_meta($post_id, '_bitstream_attachment_ids', true));
+        $is_pure_mood = empty($raw_content) && !$has_attachments && ($quoted_id <= 0) && !$is_rebit_card && !empty($mood_emotion);
 
         ob_start(); ?>
     <article id="bit-<?php echo esc_attr($post_id); ?>" class="bit-card" style="margin:0;padding:1.5rem;width:100%;max-width:none;box-sizing:border-box;border:1px solid #eee;border-radius:15px;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,0.05);">
@@ -427,14 +444,33 @@ if (!function_exists('bitstream_render_card')) {
             <div class="bit-avatar" style="width:48px;height:48px;margin-right:0.75rem;border-radius:15px;overflow:hidden;">
                 <?php echo $avatar; ?>
             </div>
-            <div class="bit-meta" style="font-size:0.875rem;color:var(--wp--preset--color--secondary,#666);">
-                <span class="bit-timestamp" tabindex="0" data-timestamp-tooltip="<?php echo esc_attr($timestamp_tooltip); ?>" title="<?php echo esc_attr($timestamp_tooltip); ?>"><?php echo esc_html($timestamp); ?></span>
+            <div class="bit-meta" style="font-size:0.875rem;color:var(--wp--preset--color--secondary,#666);display:flex;flex-direction:column;gap:2px;">
+                <span class="bit-author-line" style="font-weight:600;color:var(--wp--preset--color--accent-1, #2c6e49);">
+                    <?php echo esc_html($author_name); ?>
+                    <?php if (!empty($mood_emotion) && !$is_pure_mood): ?>
+                        <span class="bit-mood-status" style="font-weight:normal;color:#666;margin-left:0.25rem;">
+                            is feeling <?php echo esc_html($mood_emoji); ?> <strong style="color:var(--wp--preset--color--accent-1, #2c6e49);"><?php echo esc_html($mood_emotion); ?></strong>
+                        </span>
+                    <?php endif; ?>
+                </span>
+                <span class="bit-timestamp" tabindex="0" style="cursor: pointer;"><span class="bit-timestamp-relative"><?php echo esc_html($timestamp); ?></span><span class="bit-timestamp-full" style="display:none;"><span class="bit-timestamp-separator"> | </span><?php echo esc_html(get_post_time(get_option('date_format') . ' ' . get_option('time_format'), false, $post_id)); ?></span></span>
             </div>
         </header>
 
-        <div class="bit-card-content" style="font-size:1rem;line-height:1.6;margin-bottom:1rem;">
-            <?php echo $content; ?>
-        </div>
+        <?php if ($is_pure_mood): ?>
+            <div class="bit-card-content bit-card-pure-mood" style="font-size:1.4rem;line-height:1.4;margin:1.5rem 0;padding:1.5rem;background:#f8fafc;border:1.5px dashed #e2e8f0;border-radius:15px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;">
+                <span class="bit-pure-mood-emoji" style="font-size:3.5rem;line-height:1;margin-bottom:0.5rem;"><?php echo esc_html($mood_emoji); ?></span>
+                <span class="bit-pure-mood-text" style="font-weight:500;color:#475569;">
+                    is feeling <strong style="color:var(--wp--preset--color--accent-1,#2c6e49);"><?php echo esc_html($mood_emotion); ?></strong>
+                </span>
+            </div>
+        <?php else: ?>
+            <?php if (!empty($raw_content)): ?>
+                <div class="bit-card-content" style="font-size:1rem;line-height:1.6;margin-bottom:1rem;">
+                    <?php echo $content; ?>
+                </div>
+            <?php endif; ?>
+        <?php endif; ?>
 
         <?php echo $rebit_markup; ?>
 
@@ -444,6 +480,11 @@ if (!function_exists('bitstream_render_card')) {
             </div>
         <?php
         endif; ?>
+
+        <div class="bit-card-watermark" style="display:none;align-items:center;gap:0.35rem;font-size:0.8rem;color:#aaa;margin-top:0.75rem;font-weight:500;font-family:inherit;">
+            <img src="<?php echo esc_url(BITSTREAM_PLUGIN_URL . 'assets/images/logo_192.png'); ?>" style="width:16px;height:16px;filter:grayscale(100%);opacity:0.5;display:block;" alt="" aria-hidden="true">
+            <span>BitStream</span>
+        </div>
 
         <hr style="margin:1rem 0;border:none;border-top:1px solid #eee;">
 
@@ -470,10 +511,8 @@ if (!function_exists('bitstream_render_card')) {
                 <button class="bit-like bit-action" data-post-id="<?php echo esc_attr($post_id); ?>" style="background:none;border:none;cursor:pointer;" title="Like this bit">
                     <i class="fas fa-heart"></i> <span class="bit-like-count"><?php echo esc_html($likes); ?></span>
                 </button>
-                <button class="bit-permalink bit-action" data-url="<?php echo esc_url(get_permalink($post_id)); ?>" style="background:none;border:none;cursor:pointer;" title="Copy link: <?php echo esc_attr(get_permalink($post_id)); ?>">
-                    <i class="fa-solid fa-up-right-from-square"></i>
-                </button>
-                <button class="bit-share bit-action" data-url="<?php echo esc_url(get_permalink($post_id)); ?>" data-title="<?php echo esc_attr(get_the_title($post_id)); ?>" style="background:none;border:none;cursor:pointer;" title="Share this bit">
+
+                <button class="bit-share bit-action" data-post-id="<?php echo esc_attr($post_id); ?>" data-url="<?php echo esc_url(get_permalink($post_id)); ?>" data-title="<?php echo esc_attr(get_the_title($post_id)); ?>" data-share-image="<?php echo esc_url(get_post_meta($post_id, '_bitstream_share_image_url', true)); ?>" style="background:none;border:none;cursor:pointer;" title="Share this bit">
                     <i class="fa-solid fa-share-nodes"></i>
                 </button>
             </div>

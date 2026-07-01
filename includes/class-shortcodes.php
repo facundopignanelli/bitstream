@@ -177,7 +177,7 @@ class BitStream_Shortcodes
             $future_count = (int) $future_count;
         }
 
-        return [
+        $actions = [
             [
                 'url' => self::get_composer_page_url(['composer_tab' => 'bit']),
                 'icon' => 'fa-solid fa-comment',
@@ -210,16 +210,22 @@ class BitStream_Shortcodes
                 'type' => 'link',
                 'modal' => 'scheduled-list',
             ],
-            [
+        ];
+
+        if (current_user_can('manage_options')) {
+            $actions[] = [
                 'type' => 'divider',
-            ],
-            [
-                'url' => admin_url('edit.php?post_type=bit&page=bitstream-settings'),
+            ];
+            $actions[] = [
+                'url' => self::get_composer_page_url(['composer_tab' => 'settings']),
                 'icon' => 'fa-solid fa-gear',
                 'label' => 'Settings',
                 'type' => 'link',
-            ],
-        ];
+                'modal' => 'settings',
+            ];
+        }
+
+        return $actions;
     }
 
     /**
@@ -559,6 +565,8 @@ class BitStream_Shortcodes
                             value="<?php echo esc_attr($edit_post_id); ?>">
                         <input type="hidden" id="bitstream-composer-quote-post-id" name="quote_post_id"
                             value="<?php echo esc_attr($quote_post_id_prefill); ?>">
+                        <input type="hidden" id="bitstream-composer-mood-emoji" name="bit_mood_emoji" value="">
+                        <input type="hidden" id="bitstream-composer-mood-emotion" name="bit_mood_emotion" value="">
 
                         <!-- Preview area -->
                         <div class="bitstream-composer-preview-area" hidden>
@@ -616,6 +624,23 @@ class BitStream_Shortcodes
                                 </div>
                                 <span class="bitstream-composer-preview-schedule-date"></span>
                             </div>
+                            <!-- Mood badge -->
+                            <div class="bitstream-composer-preview-mood" hidden>
+                                <div class="bitstream-composer-preview-header">
+                                    <span class="bitstream-composer-preview-label"><i class="fa-solid fa-face-smile"
+                                            aria-hidden="true"></i> Mood</span>
+                                    <div class="bitstream-composer-preview-actions">
+                                        <button type="button" class="bitstream-composer-preview-edit"
+                                            data-composer-edit="mood" title="Edit mood" aria-label="Edit mood"><i
+                                                class="fa-solid fa-pencil" aria-hidden="true"></i></button>
+                                        <button type="button" class="bitstream-composer-preview-remove"
+                                            data-composer-remove="mood" title="Remove mood"
+                                            aria-label="Remove mood"><i class="fa-solid fa-xmark"
+                                                aria-hidden="true"></i></button>
+                                    </div>
+                                </div>
+                                <span class="bitstream-composer-preview-mood-text" style="font-weight: 500; font-size: 1.1rem; padding: 0.25rem 0; display: block;"></span>
+                            </div>
                         </div>
 
                         <!-- Action buttons row -->
@@ -635,6 +660,10 @@ class BitStream_Shortcodes
                             <button type="button" class="bitstream-composer-action-btn" data-composer-modal="schedule"
                                 title="Schedule" aria-label="Schedule">
                                 <i class="fa-solid fa-clock" aria-hidden="true"></i>
+                            </button>
+                            <button type="button" class="bitstream-composer-action-btn" data-composer-modal="mood"
+                                title="Mood" aria-label="Mood">
+                                <i class="fa-solid fa-face-smile" aria-hidden="true"></i>
                             </button>
                         </div>
 
@@ -839,6 +868,97 @@ class BitStream_Shortcodes
                 </div>
             </div>
 
+            <!-- ═══ MOOD MODAL ═══ -->
+            <div class="bitstream-composer-modal bitstream-composer-modal-mood" hidden>
+                <div class="bitstream-composer-modal-backdrop" data-composer-modal-close="mood"></div>
+                <div class="bitstream-composer-modal-dialog" role="dialog" aria-modal="true" aria-label="Choose Mood">
+                    <header class="bitstream-composer-modal-header">
+                        <h3>How are you feeling?</h3>
+                        <button type="button" class="bitstream-composer-modal-close" data-composer-modal-close="mood"
+                            aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+                    </header>
+                    <div class="bitstream-composer-modal-body">
+                        <!-- Grid of predefined emotions -->
+                        <div class="bitstream-mood-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;">
+                            <button type="button" class="bitstream-mood-btn" data-emoji="😊" data-emotion="Happy" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease;">
+                                <span style="font-size: 1.8rem; margin-bottom: 4px;">😊</span>
+                                <span style="font-size: 0.85rem; font-weight: 500; color: #475569;">Happy</span>
+                            </button>
+                            <button type="button" class="bitstream-mood-btn" data-emoji="😢" data-emotion="Sad" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease;">
+                                <span style="font-size: 1.8rem; margin-bottom: 4px;">😢</span>
+                                <span style="font-size: 0.85rem; font-weight: 500; color: #475569;">Sad</span>
+                            </button>
+                            <button type="button" class="bitstream-mood-btn" data-emoji="😴" data-emotion="Tired" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease;">
+                                <span style="font-size: 1.8rem; margin-bottom: 4px;">😴</span>
+                                <span style="font-size: 0.85rem; font-weight: 500; color: #475569;">Tired</span>
+                            </button>
+                            <button type="button" class="bitstream-mood-btn" data-emoji="🤩" data-emotion="Excited" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease;">
+                                <span style="font-size: 1.8rem; margin-bottom: 4px;">🤩</span>
+                                <span style="font-size: 0.85rem; font-weight: 500; color: #475569;">Excited</span>
+                            </button>
+                            <button type="button" class="bitstream-mood-btn" data-emoji="🤪" data-emotion="Silly" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease;">
+                                <span style="font-size: 1.8rem; margin-bottom: 4px;">🤪</span>
+                                <span style="font-size: 0.85rem; font-weight: 500; color: #475569;">Silly</span>
+                            </button>
+                            <button type="button" class="bitstream-mood-btn" data-emoji="🤔" data-emotion="Pensive" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease;">
+                                <span style="font-size: 1.8rem; margin-bottom: 4px;">🤔</span>
+                                <span style="font-size: 0.85rem; font-weight: 500; color: #475569;">Pensive</span>
+                            </button>
+                            <button type="button" class="bitstream-mood-btn" data-emoji="😠" data-emotion="Angry" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease;">
+                                <span style="font-size: 1.8rem; margin-bottom: 4px;">😠</span>
+                                <span style="font-size: 0.85rem; font-weight: 500; color: #475569;">Angry</span>
+                            </button>
+                            <button type="button" class="bitstream-mood-btn" data-emoji="😌" data-emotion="Relieved" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease;">
+                                <span style="font-size: 1.8rem; margin-bottom: 4px;">😌</span>
+                                <span style="font-size: 0.85rem; font-weight: 500; color: #475569;">Relieved</span>
+                            </button>
+                            <button type="button" class="bitstream-mood-btn" data-emoji="🤯" data-emotion="Mind-blown" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease;">
+                                <span style="font-size: 1.8rem; margin-bottom: 4px;">🤯</span>
+                                <span style="font-size: 0.85rem; font-weight: 500; color: #475569;">Mind-blown</span>
+                            </button>
+                        </div>
+
+                        <!-- Saved/Custom Moods Section -->
+                        <div class="bitstream-saved-moods-section" style="margin-bottom: 20px;">
+                            <div class="bitstream-saved-moods-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <h4 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #475569;">Saved Moods</h4>
+                                <button type="button" class="bitstream-manage-moods-btn" style="background: none; border: none; color: var(--wp--preset--color--accent-1, #2c6e49); font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                                    <i class="fa-solid fa-gear"></i> Manage
+                                </button>
+                            </div>
+                            
+                            <!-- View mode: grid of saved items -->
+                            <div class="bitstream-saved-moods-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                                <!-- Dynamically populated by JS -->
+                            </div>
+                            
+                            <!-- Edit mode: list of items to sort/delete -->
+                            <div class="bitstream-saved-moods-edit-list" style="display: none; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 10px; background: #f8fafc;">
+                                <!-- Dynamically populated by JS -->
+                            </div>
+                        </div>
+
+                        <div class="bitstream-custom-mood-divider" style="margin: 15px 0; text-align: center; border-bottom: 1px solid #eef0f2; line-height: 0.1em;"><span style="background:#fff; padding:0 10px; color:#94a3b8; font-size:0.85rem; font-weight:500;">OR CREATE CUSTOM</span></div>
+
+                        <!-- Custom Mood Input Form -->
+                        <div class="bitstream-custom-mood-form" style="display: flex; gap: 10px; margin-top: 15px; align-items: flex-end;">
+                            <div style="flex: 0 0 70px;">
+                                <label for="bitstream-mood-custom-emoji" style="font-size:0.85rem; font-weight:600; color:#475569; display:block; margin-bottom:5px;">Emoji</label>
+                                <input type="text" id="bitstream-mood-custom-emoji" placeholder="😊" maxlength="30" style="width: 100%; text-align: center; font-size: 1.5rem; height: 46px; padding: 0; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; box-sizing: border-box;">
+                            </div>
+                            <div style="flex: 1;">
+                                <label for="bitstream-mood-custom-emotion" style="font-size:0.85rem; font-weight:600; color:#475569; display:block; margin-bottom:5px;">Feeling name</label>
+                                <input type="text" id="bitstream-mood-custom-emotion" placeholder="e.g. productive, nostalgic..." style="width: 100%; height: 46px; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 0 12px; background: #f8fafc; box-sizing: border-box; font-size: 0.95rem;">
+                            </div>
+                        </div>
+                    </div>
+                    <footer class="bitstream-composer-modal-footer">
+                        <button type="button" class="bitstream-composer-modal-cancel" data-composer-modal-close="mood">Cancel</button>
+                        <button type="button" class="bitstream-composer-modal-confirm bitstream-composer-mood-done">Done</button>
+                    </footer>
+                </div>
+            </div>
+
             <!-- ═══ SCHEDULED POSTS LIST MODAL ═══ -->
             <div class="bitstream-composer-modal bitstream-composer-modal-scheduled-list" hidden>
                 <div class="bitstream-composer-modal-backdrop" data-composer-modal-close="scheduled-list"></div>
@@ -904,6 +1024,36 @@ class BitStream_Shortcodes
                     </div>
                 </div>
             </div>
+
+            <?php if (current_user_can('manage_options')): ?>
+            <!-- ═══ SETTINGS MODAL ═══ -->
+            <div class="bitstream-composer-modal bitstream-composer-modal-settings" hidden>
+                <div class="bitstream-composer-modal-backdrop" data-composer-modal-close="settings"></div>
+                <div class="bitstream-composer-modal-dialog bitstream-composer-modal-dialog-wide" role="dialog"
+                    aria-modal="true" aria-label="Settings">
+                    <header class="bitstream-composer-modal-header">
+                        <h3>Settings</h3>
+                        <button type="button" class="bitstream-composer-modal-close" data-composer-modal-close="settings"
+                            aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+                    </header>
+                    <div class="bitstream-composer-modal-body">
+                        <?php
+                        if (class_exists('BitStream_Plugin')) {
+                            $plugin = BitStream_Plugin::get_instance();
+                            $shortcodes = $plugin ? $plugin->get_component('shortcodes') : null;
+                            if ($shortcodes && method_exists($shortcodes, 'render_settings')) {
+                                echo $shortcodes->render_settings([]);
+                            } else {
+                                echo do_shortcode('[bitstream_settings]');
+                            }
+                        } else {
+                            echo do_shortcode('[bitstream_settings]');
+                        }
+                        ?>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
 
             <?php echo self::render_media_modals(); ?>
         </section>
@@ -1534,7 +1684,7 @@ class BitStream_Shortcodes
             return '<p>Please log in to access settings.</p>';
         }
 
-        if (!current_user_can('edit_posts')) {
+        if (!current_user_can('manage_options')) {
             return '<p>You do not have permission to access settings.</p>';
         }
 
@@ -1919,6 +2069,23 @@ class BitStream_Shortcodes
         echo '</button>';
         echo '</div>';
 
+        // --- Share Image Cache Section ---
+        echo '<div class="bitstream-settings-section" style="margin-bottom: 2rem;">';
+        echo '<h2 style="margin-top: 0;">Share Image Cache</h2>';
+        echo '<p>Deletes all cached PNG post cards generated for the "Share as Image" feature, forcing a fresh, high-resolution render using your updated profile pictures next time they are shared.</p>';
+
+        if (isset($_POST['bitstream_clear_share_images']) && check_admin_referer('bitstream_clear_share_images_action', 'bitstream_clear_share_images_nonce')) {
+            $deleted_count = $this->perform_clear_all_share_images();
+            echo '<div style="padding: 10px; border-left: 4px solid #2c6e49; background: #f0f9f4; margin-bottom: 1rem;"><p style="margin: 0;"><strong>Share Image Cache Cleared.</strong> Deleted ' . intval($deleted_count) . ' cached image files and metadata.</p></div>';
+        }
+
+        echo '<form method="post">';
+        wp_nonce_field('bitstream_clear_share_images_action', 'bitstream_clear_share_images_nonce');
+        echo '<input type="hidden" name="settings_tab" value="advanced">';
+        echo '<button type="submit" name="bitstream_clear_share_images" style="background: #666; color: #fff; border: none; border-radius: 8px; padding: 0.5rem 1rem; cursor: pointer; font-weight: 600;">Clear Cached Share Images</button>';
+        echo '</form>';
+        echo '</div>';
+
         // --- Debug Logs Section ---
         echo '<div class="bitstream-settings-section">';
         echo '<h2 style="margin-top: 0;">Debug Logs</h2>';
@@ -2006,7 +2173,7 @@ class BitStream_Shortcodes
             $admin = new BitStream_Admin_Interface();
             $admin->perform_bitstream_reset();
             echo '<div style="padding: 10px; border-left: 4px solid #2c6e49; background: #f0f9f4; margin: 1rem 0;"><p style="margin: 0;"><strong>BitStream Reset Complete.</strong> All posts, media, and settings have been removed.</p></div>';
-            echo '<script>setTimeout(function() { window.location.href = "' . esc_js(admin_url('edit.php?post_type=bit&page=bitstream-settings')) . '"; }, 2000);</script>';
+            echo '<script>setTimeout(function() { window.location.href = "' . esc_js(self::get_feed_page_url()) . '"; }, 2000);</script>';
             echo '</div></div>';
             return;
         }
@@ -2063,6 +2230,8 @@ class BitStream_Shortcodes
                         <input type="hidden" name="composer_type" value="bit">
                         <input type="hidden" name="nonce" value="<?php echo esc_attr($submit_nonce); ?>">
                         <input type="hidden" name="quote_post_id" class="bs-edit-quote-post-id" value="0">
+                        <input type="hidden" name="bit_mood_emoji" class="bs-edit-mood-emoji" value="">
+                        <input type="hidden" name="bit_mood_emotion" class="bs-edit-mood-emotion" value="">
 
                         <div class="bs-edit-field">
                             <label class="bs-edit-label" for="bs-edit-bit-content">Content</label>
@@ -2072,6 +2241,17 @@ class BitStream_Shortcodes
 
                         <div class="bs-edit-media">
                             <?php echo self::render_media_field('bs-edit-bit-attachment-id', 'bs-edit-bit-media-preview'); ?>
+                        </div>
+
+                        <!-- Mood badge/button row in edit form -->
+                        <div class="bs-edit-mood-row" style="margin-bottom: 1rem; display: flex; align-items: center; gap: 8px;">
+                            <button type="button" class="bs-edit-mood-btn" style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1.5px solid #e2e8f0; border-radius: 20px; background: #f8fafc; font-size: 0.9rem; font-weight: 500; cursor: pointer; color: #475569; transition: all 0.2s ease;">
+                                <i class="fa-solid fa-face-smile"></i>
+                                <span class="bs-edit-mood-label">Add Mood</span>
+                            </button>
+                            <button type="button" class="bs-edit-mood-remove" style="background: none; border: none; color: #94a3b8; cursor: pointer; padding: 4px; display: none;" title="Remove mood">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
                         </div>
 
                         <footer class="bs-edit-modal-footer bitstream-composer-modal-footer">
@@ -2089,6 +2269,8 @@ class BitStream_Shortcodes
                         <input type="hidden" name="rebit_og_desc" class="bs-edit-og-desc" value="">
                         <input type="hidden" name="rebit_og_image" class="bs-edit-og-image" value="">
                         <input type="hidden" name="rebit_og_image_removed" class="bs-edit-og-image-removed" value="0">
+                        <input type="hidden" name="bit_mood_emoji" class="bs-edit-mood-emoji" value="">
+                        <input type="hidden" name="bit_mood_emotion" class="bs-edit-mood-emotion" value="">
 
                         <div class="bs-edit-field">
                             <label class="bs-edit-label" for="bs-edit-rebit-url">Link URL</label>
@@ -2103,6 +2285,17 @@ class BitStream_Shortcodes
                             <label class="bs-edit-label" for="bs-edit-rebit-commentary">Commentary</label>
                             <textarea id="bs-edit-rebit-commentary" name="rebit_commentary" class="bs-edit-textarea" rows="4"
                                 placeholder="Add your thoughts…"></textarea>
+                        </div>
+
+                        <!-- Mood badge/button row in edit form -->
+                        <div class="bs-edit-mood-row" style="margin-bottom: 1rem; display: flex; align-items: center; gap: 8px;">
+                            <button type="button" class="bs-edit-mood-btn" style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1.5px solid #e2e8f0; border-radius: 20px; background: #f8fafc; font-size: 0.9rem; font-weight: 500; cursor: pointer; color: #475569; transition: all 0.2s ease;">
+                                <i class="fa-solid fa-face-smile"></i>
+                                <span class="bs-edit-mood-label">Add Mood</span>
+                            </button>
+                            <button type="button" class="bs-edit-mood-remove" style="background: none; border: none; color: #94a3b8; cursor: pointer; padding: 4px; display: none;" title="Remove mood">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
                         </div>
 
                         <footer class="bs-edit-modal-footer bitstream-composer-modal-footer">
@@ -2227,5 +2420,35 @@ class BitStream_Shortcodes
         if ($post && $post->post_type === 'bit') {
             self::flush_user_post_counts($post->post_author);
         }
+    }
+
+    /**
+     * Clear all cached share images from uploads folder and delete post meta.
+     *
+     * @return int Number of files deleted
+     */
+    private function perform_clear_all_share_images()
+    {
+        global $wpdb;
+
+        $upload_dir = wp_upload_dir();
+        $save_dir   = trailingslashit($upload_dir['basedir']) . 'bitstream-shares';
+        $count = 0;
+
+        if (file_exists($save_dir) && is_dir($save_dir)) {
+            $files = glob(trailingslashit($save_dir) . '*.png');
+            if ($files) {
+                foreach ($files as $file) {
+                    if (is_file($file)) {
+                        @unlink($file);
+                        $count++;
+                    }
+                }
+            }
+        }
+
+        $wpdb->query("DELETE FROM {$wpdb->postmeta} WHERE meta_key IN ('_bitstream_share_image_url', '_bitstream_share_image_path')");
+
+        return $count;
     }
 }

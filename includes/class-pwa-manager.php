@@ -1458,12 +1458,23 @@ class BitStream_PWA_Manager {
             }
             
             $is_empty_content = empty($content);
-            if ($is_empty_content) {
-                $content = 'New update posted!';
-            }
-            
+
+            $mood_emoji   = get_post_meta($post_id, '_bitstream_mood_emoji', true);
+            $mood_emotion = get_post_meta($post_id, '_bitstream_mood_emotion', true);
+
             $data['title'] = 'New BitStream Post';
-            $data['body'] = $content;
+
+            if ($is_empty_content && !empty($mood_emotion)) {
+                // Mood-only bit: match timeline format
+                $post_author  = get_the_author();
+                $data['body'] = $post_author . ' is feeling ' . trim($mood_emoji . ' ' . $mood_emotion);
+            } else {
+                if ($is_empty_content) {
+                    $content = 'New update posted!';
+                }
+                $mood_prefix = !empty($mood_emotion) ? trim($mood_emoji . ' ' . $mood_emotion) . ' — ' : '';
+                $data['body'] = $mood_prefix . $content;
+            }
             $base_url = class_exists('BitStream_Shortcodes') ? BitStream_Shortcodes::get_feed_page_url() : home_url('/bitstream/');
             $data['url'] = add_query_arg('highlight_bit', $post_id, $base_url);
             

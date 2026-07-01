@@ -133,18 +133,6 @@ class BitStream_Admin_Interface
             1
         );
         add_action('admin_print_styles-' . $composer_hook, [$this, 'enqueue_admin_composer_assets']);
-
-        // 2. Settings (Unified Settings Page)
-        $settings_hook = add_submenu_page(
-            'edit.php?post_type=bit',
-            'Settings',
-            'Settings',
-            'edit_posts',
-            'bitstream-settings',
-        [$this, 'settings_admin_page'],
-            2
-        );
-        add_action('admin_print_styles-' . $settings_hook, [$this, 'enqueue_admin_settings_assets']);
     }
 
     /**
@@ -170,25 +158,6 @@ class BitStream_Admin_Interface
         echo '</div>';
     }
 
-    public function settings_admin_page()
-    {
-        echo '<div class="wrap">';
-        echo '<h1>' . esc_html__('BitStream Settings', 'bitstream') . '</h1>';
-        echo '<div style="margin-top: 20px;">';
-        if (class_exists('BitStream_Plugin')) {
-            $plugin = BitStream_Plugin::get_instance();
-            $shortcodes = $plugin ? $plugin->get_component('shortcodes') : null;
-            if ($shortcodes && method_exists($shortcodes, 'render_settings')) {
-                echo $shortcodes->render_settings([]);
-            } else {
-                echo do_shortcode('[bitstream_settings]');
-            }
-        } else {
-            echo do_shortcode('[bitstream_settings]');
-        }
-        echo '</div>';
-        echo '</div>';
-    }
 
     /**
      * Enqueue CSS/JS for the admin composer page
@@ -197,23 +166,14 @@ class BitStream_Admin_Interface
     {
         wp_enqueue_media();
         wp_enqueue_style('bitstream-css', BITSTREAM_PLUGIN_URL . 'assets/css/bitstream.css', [], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/css/bitstream.css'));
-        wp_enqueue_script('bitstream-js', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream.js', ['jquery'], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/js/bitstream.js'), true);
+        wp_enqueue_script('bitstream-js', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream.js', ['jquery', 'twemoji'], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/js/bitstream.js'), true);
 
         wp_localize_script('bitstream-js', 'bitstream_ajax', array_merge(BitStream_Ajax_Handlers::get_localized_data(), [
             'admin_page_redirect' => admin_url('edit.php?post_type=bit')
         ]));
     }
 
-    /**
-     * Enqueue CSS/JS for the admin settings page
-     */
-    public function enqueue_admin_settings_assets()
-    {
-        wp_enqueue_style('bitstream-css', BITSTREAM_PLUGIN_URL . 'assets/css/bitstream.css', [], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/css/bitstream.css'));
-        wp_enqueue_script('bitstream-js', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream.js', ['jquery'], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/js/bitstream.js'), true);
 
-        wp_localize_script('bitstream-js', 'bitstream_ajax', BitStream_Ajax_Handlers::get_localized_data());
-    }
 
     /**
      * Determine whether an attachment is likely managed by BitStream.

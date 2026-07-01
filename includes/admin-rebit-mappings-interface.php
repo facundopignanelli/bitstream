@@ -14,310 +14,7 @@ if (!defined('ABSPATH')) exit;
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 
 <style>
-/* Clean, simple layout without aggressive overflow controls */
-
-/* Basic responsive layout */
-.flex-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    margin-bottom: 20px;
-}
-
-.flex-item {
-    flex: 1;
-    min-width: 300px;
-}
-
-/* Simple card styling */
-.card {
-    background: #fff;
-    border: 1px solid #ccd0d4;
-    border-radius: 4px;
-    padding: 20px;
-    margin-bottom: 20px;
-}
-
-.card .title {
-    margin-top: 0;
-    margin-bottom: 15px;
-    font-size: 1.1em;
-}
-
-/* Full-width mappings container */
-.mappings-container {
-    width: 100%;
-    max-width: none;
-    margin: 0;
-}
-
-/* Clean mapping rows - wider spacing for better use of space */
-.mapping-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    padding: 20px;
-    margin-bottom: 15px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    background: #fafafa;
-    width: 100%;
-}
-
-/* Better field distribution for wider layout */
-.mapping-field {
-    flex: 1 1 200px;
-    min-width: 200px;
-}
-
-.mapping-field.preview-field {
-    flex: 1.5 1 250px;
-    min-width: 250px;
-}
-
-.mapping-field.actions-field {
-    flex: 0.7 1 140px;
-    min-width: 140px;
-}
-
-.mapping-field label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: 600;
-}
-
-.mapping-field input[type="text"],
-.mapping-field select {
-    width: 100%;
-    padding: 8px;
-    border: 1px solid #ccd0d4;
-    border-radius: 4px;
-    box-sizing: border-box;
-}
-
-/* Icon picker styling */
-.icon-input-container {
-    position: relative;
-}
-
-.icon-picker-button {
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: #f0f0f1;
-    border: 1px solid #8c8f94;
-    border-radius: 3px;
-    padding: 4px 8px;
-    cursor: pointer;
-    height: 28px;
-    width: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.icon-picker-button:hover {
-    background: #e0e0e1;
-}
-
-/* Modal styling */
-#icon-picker-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.7);
-    display: none;
-    justify-content: center;
-    align-items: center;
-    z-index: 999999;
-}
-
-#icon-picker-modal.show {
-    display: flex;
-}
-
-.icon-picker-content {
-    background: white;
-    border-radius: 8px;
-    width: 90%;
-    max-width: 600px;
-    max-height: 80vh;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-}
-
-.icon-picker-header {
-    padding: 20px;
-    border-bottom: 1px solid #ddd;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.icon-picker-header h3 {
-    margin: 0;
-}
-
-.icon-picker-close {
-    background: none;
-    border: none;
-    font-size: 24px;
-    cursor: pointer;
-    padding: 0;
-    width: 30px;
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.icon-picker-search {
-    padding: 10px 20px;
-    border-bottom: 1px solid #ddd;
-}
-
-.icon-picker-search input {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    box-sizing: border-box;
-}
-
-.icon-picker-tabs {
-    padding: 10px 20px;
-    border-bottom: 1px solid #ddd;
-    display: flex;
-    gap: 10px;
-}
-
-.icon-category {
-    padding: 8px 16px;
-    background: #f0f0f0;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 12px;
-    transition: all 0.2s ease;
-}
-
-.icon-category:hover {
-    background: #e8f4f0;
-    border-color: #2c6e49;
-}
-
-.icon-category.active {
-    background: #2c6e49;
-    color: white;
-    border-color: #2c6e49;
-}
-
-#icon-grid {
-    padding: 20px;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-    gap: 10px;
-    max-height: 400px;
-    overflow-y: auto;
-    overflow-x: hidden;
-}
-
-/* Loading indicator styling */
-.icon-loading {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 40px 20px;
-    text-align: center;
-    color: #666;
-    grid-column: 1 / -1;
-    width: 100%;
-    overflow: hidden;
-}
-
-.icon-loading-spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #2c6e49;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-bottom: 15px;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-.icon-option {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    cursor: pointer;
-    text-align: center;
-    background: white;
-}
-
-.icon-option:hover {
-    background: #f0f0f0;
-    border-color: #0073aa;
-}
-
-.icon-option i {
-    font-size: 20px;
-    margin-bottom: 5px;
-    color: #444;
-}
-
-.icon-option span {
-    font-size: 10px;
-    color: #666;
-    word-break: break-all;
-}
-
-/* Preview styling */
-.mapping-preview {
-    display: flex;
-    align-items: center;
-    padding: 10px;
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    margin-top: 10px;
-}
-
-.mapping-preview i {
-    margin-right: 8px;
-    color: #2c6e49;
-}
-
-/* Mobile responsive */
-@media (max-width: 768px) {
-    .flex-container {
-        flex-direction: column;
-    }
-    
-    .flex-item {
-        min-width: 100%;
-    }
-    
-    .mapping-row {
-        flex-direction: column;
-    }
-    
-    #icon-grid {
-        grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
-    }
-}
+/* ReBit Mappings styles are now unified and handled in bitstream.css */
 </style>
 
 <div class="wrap">
@@ -326,8 +23,8 @@ if (!defined('ABSPATH')) exit;
     
     <!-- Import Default Mappings -->
     <?php if (empty($mappings)): ?>
-    <div style="background: #e7f3ff; border: 1px solid #72aee6; border-radius: 4px; padding: 15px; margin-bottom: 20px;">
-        <h3 style="margin-top: 0;">🚀 Get Started Quickly</h3>
+    <div class="bitstream-settings-welcome">
+        <h3>🚀 Get Started Quickly</h3>
         <p>Import popular website mappings to get started immediately with Twitter, YouTube, GitHub, and more!</p>
         <form method="post" style="display: inline;">
             <?php wp_nonce_field('bitstream_rebit_mappings_save','bitstream_rebit_mappings_nonce'); ?>
@@ -342,12 +39,12 @@ if (!defined('ABSPATH')) exit;
         <div class="card flex-item">
             <h2 class="title">Quick Add Popular Sites</h2>
             <p>Add pre-configured mappings for popular websites:</p>
-            <form method="post" style="margin-bottom: 15px;">
+            <form method="post" class="bitstream-presets-form">
                 <?php wp_nonce_field('bitstream_rebit_mappings_save','bitstream_rebit_mappings_nonce'); ?>
-                <div style="display: flex; gap: 10px; align-items: end; flex-wrap: wrap;">
-                    <div style="flex: 1; min-width: 200px;">
+                <div class="bitstream-presets-row">
+                    <div class="bitstream-presets-select-wrap">
                         <label><strong>Website:</strong></label><br>
-                        <select name="preset_selection" style="width: 100%; box-sizing: border-box;">
+                        <select name="preset_selection">
                             <option value="">Select a website...</option>
                             <?php foreach (BitStream_ReBit_Mappings::get_rebit_presets() as $key => $preset): ?>
                                 <option value="<?php echo esc_attr($key); ?>">
@@ -356,7 +53,7 @@ if (!defined('ABSPATH')) exit;
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div style="flex: 0 0 auto;">
+                    <div class="bitstream-presets-btn-wrap">
                         <button type="submit" name="add_preset" class="button button-secondary">Add Preset</button>
                     </div>
                 </div>
@@ -376,22 +73,22 @@ if (!defined('ABSPATH')) exit;
                     <input type="hidden" name="bitstream_rebit_mappings[existing][<?php echo $i; ?>][icon]" value="<?php echo esc_attr($map['icon']); ?>" />
                 <?php endforeach; ?>
                 
-                <div style="margin-bottom: 15px;">
-                    <label><strong>Domain:</strong></label><br>
-                    <input type="text" name="bitstream_rebit_mappings[new][domain]" 
-                           placeholder="example.com" style="width: 100%; box-sizing: border-box;" 
+                <div class="bitstream-settings-field">
+                    <label for="new-mapping-domain">Domain</label>
+                    <input type="text" id="new-mapping-domain" name="bitstream_rebit_mappings[new][domain]" 
+                           placeholder="example.com" 
                            oninput="updateNewMappingPreview()" />
-                    <small class="description">Enter just the domain (e.g., "twitter.com")</small>
+                    <span class="description">Enter just the domain (e.g., "twitter.com")</span>
                 </div>
-                <div style="margin-bottom: 15px;">
-                    <label><strong>Label:</strong></label><br>
-                    <input type="text" name="bitstream_rebit_mappings[new][label]" 
-                           placeholder="shared a Tweet" style="width: 100%; box-sizing: border-box;" 
+                <div class="bitstream-settings-field">
+                    <label for="new-mapping-label">Label</label>
+                    <input type="text" id="new-mapping-label" name="bitstream_rebit_mappings[new][label]" 
+                           placeholder="shared a Tweet" 
                            oninput="updateNewMappingPreview()" />
-                    <small class="description">Text shown when sharing from this site (e.g., "shared a Tweet", "shared a video")</small>
+                    <span class="description">Text shown when sharing from this site (e.g., "shared a Tweet", "shared a video")</span>
                 </div>
-                <div style="margin-bottom: 15px;">
-                    <label><strong>Icon Class:</strong></label><br>
+                <div class="bitstream-settings-field">
+                    <label for="new-icon-input">Icon Class</label>
                     <div class="icon-input-container">
                         <input type="text" name="bitstream_rebit_mappings[new][icon]" 
                                placeholder="fas fa-link" 
@@ -401,16 +98,16 @@ if (!defined('ABSPATH')) exit;
                             <i class="fas fa-palette"></i>
                         </button>
                     </div>
-                    <small class="description">Font Awesome class or use the icon picker</small>
+                    <span class="description">Font Awesome class or use the icon picker</span>
                 </div>
-                <div style="margin-bottom: 15px;">
-                    <label><strong>Preview:</strong></label><br>
+                <div class="bitstream-settings-field">
+                    <label>Preview</label>
                     <div class="mapping-preview" id="new-mapping-preview">
-                        <i class="fas fa-link" style="margin-right: 8px; color: #2c6e49;"></i>
+                        <i class="fas fa-link"></i>
                         <span id="new-mapping-preview-text">shared from</span>
                     </div>
                 </div>
-                <p class="submit" style="margin-top: 15px;">
+                <p class="submit">
                     <input type="submit" name="submit" class="button-primary" value="Add Mapping" />
                 </p>
             </form>
@@ -422,30 +119,30 @@ if (!defined('ABSPATH')) exit;
         <form method="post" id="mappings-form">
             <?php wp_nonce_field('bitstream_rebit_mappings_save','bitstream_rebit_mappings_nonce'); ?>
             
-            <h2 style="margin-top: 30px; margin-bottom: 15px; font-size: 1.3em;">Current Mappings</h2>
+            <h2 class="title" style="margin-top: 30px; margin-bottom: 15px;">Current Mappings</h2>
             
             <?php if (empty($mappings)): ?>
                 <div class="card">
                     <p class="description">No mappings configured yet. Use the sections above to add mappings.</p>
                 </div>
             <?php else: ?>
-                <div id="mappings-container" style="background: #fff; border: 1px solid #ccd0d4; border-radius: 4px; padding: 20px;">
+                <div id="mappings-container" class="mappings-inner">
                     <?php foreach ($mappings as $i => $map): ?>
                         <div class="mapping-row">
                             <div class="mapping-field">
-                                <label><strong>Domain:</strong></label><br>
-                                <input type="text" name="bitstream_rebit_mappings[existing][<?php echo $i; ?>][domain]" 
+                                <label for="domain-<?php echo $i; ?>">Domain</label>
+                                <input type="text" id="domain-<?php echo $i; ?>" name="bitstream_rebit_mappings[existing][<?php echo $i; ?>][domain]" 
                                        value="<?php echo esc_attr($map['domain']); ?>" 
                                        placeholder="example.com" />
                             </div>
                             <div class="mapping-field">
-                                <label><strong>Label:</strong></label><br>
-                                <input type="text" name="bitstream_rebit_mappings[existing][<?php echo $i; ?>][label]" 
+                                <label for="label-<?php echo $i; ?>">Label</label>
+                                <input type="text" id="label-<?php echo $i; ?>" name="bitstream_rebit_mappings[existing][<?php echo $i; ?>][label]" 
                                        value="<?php echo esc_attr($map['label']); ?>" 
                                        placeholder="shared a Tweet" />
                             </div>
                             <div class="mapping-field">
-                                <label><strong>Icon Class:</strong></label><br>
+                                <label for="icon-input-<?php echo $i; ?>">Icon Class</label>
                                 <div class="icon-input-container">
                                     <input type="text" name="bitstream_rebit_mappings[existing][<?php echo $i; ?>][icon]" 
                                            value="<?php echo esc_attr($map['icon']); ?>" 
@@ -457,22 +154,21 @@ if (!defined('ABSPATH')) exit;
                                 </div>
                             </div>
                             <div class="mapping-field preview-field">
-                                <label><strong>Preview:</strong></label><br>
+                                <label>Preview</label>
                                 <div class="mapping-preview">
-                                    <i class="<?php echo esc_attr($map['icon']); ?>" style="margin-right: 8px; color: #2c6e49;"></i>
+                                    <i class="<?php echo esc_attr($map['icon']); ?>"></i>
                                     <span><?php echo esc_html($map['label']); ?></span>
                                 </div>
                             </div>
                             <div class="mapping-field actions-field">
-                                <label><strong>&nbsp;</strong></label><br>
-                                <button type="button" class="button button-link-delete" onclick="removeMapping(this)" style="color: #a00;">Remove</button>
+                                <button type="button" class="button button-link-delete" onclick="removeMapping(this)">Remove</button>
                                 <input type="hidden" name="bitstream_rebit_mappings[existing][<?php echo $i; ?>][remove]" value="0" class="remove-flag" />
                             </div>
                         </div>
                     <?php endforeach; ?>
                 </div>
                 
-                <p class="submit" style="margin-top: 20px;">
+                <p class="submit">
                     <input type="submit" name="submit" class="button-primary" value="Save All Mappings" />
                 </p>
             <?php endif; ?>
@@ -829,19 +525,9 @@ function renderIcons(iconsToShow, grid) {
     iconsToShow.forEach(iconClass => {
         const iconDiv = document.createElement('div');
         iconDiv.className = 'icon-option';
-        iconDiv.style.cssText = 'padding: 15px; text-align: center; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s; background: white;';
-        iconDiv.innerHTML = `<i class="${iconClass}" style="font-size: 24px; display: block; margin-bottom: 5px; color: #2c6e49;"></i><small style="font-size: 10px; word-break: break-all;">${iconClass}</small>`;
+        iconDiv.innerHTML = `<i class="${iconClass}"></i><small>${iconClass}</small>`;
         
         iconDiv.addEventListener('click', () => selectIcon(iconClass));
-        iconDiv.addEventListener('mouseenter', () => {
-            iconDiv.style.backgroundColor = '#f0f0f0';
-            iconDiv.style.borderColor = '#2c6e49';
-        });
-        iconDiv.addEventListener('mouseleave', () => {
-            iconDiv.style.backgroundColor = 'white';
-            iconDiv.style.borderColor = '#ddd';
-        });
-        
         grid.appendChild(iconDiv);
     });
     
