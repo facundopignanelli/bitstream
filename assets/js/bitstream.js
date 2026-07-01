@@ -46,6 +46,16 @@ document.addEventListener('DOMContentLoaded', function () {
     const BITSTREAM_CHUNKED_UPLOAD_THRESHOLD = 5 * 1024 * 1024;
     const BITSTREAM_UPLOAD_CHUNK_SIZE = 5 * 1024 * 1024;
 
+    // Mobile-only textarea auto-grow: starts at 160px, grows as user types.
+    // Uses inline flex-basis instead of height so that the flexbox engine
+    // can shrink the textarea down when the preview area needs space.
+    function bsMobileAutoResize(el) {
+        el.style.height = 'auto';
+        const baseHeight = Math.max(el.scrollHeight, 160);
+        el.style.height = '';
+        el.style.setProperty('flex-basis', baseHeight + 'px', 'important');
+    }
+
     function updateQuickActionCounter(triggerName) {
         document.querySelectorAll('[data-composer-modal-trigger="' + triggerName + '"]').forEach(trigger => {
             const span = trigger.querySelector('span');
@@ -5740,17 +5750,6 @@ jQuery(document).ready(function ($) {
             window.location.href = feedUrl.toString();
         }
     });
-
-    // Mobile-only textarea auto-grow: starts at 160px, grows as user types.
-    // Uses inline flex-basis instead of height so that the flexbox engine
-    // can shrink the textarea down when the preview area needs space.
-    function bsMobileAutoResize(el) {
-        el.style.height = 'auto';
-        const baseHeight = Math.max(el.scrollHeight, 160);
-        el.style.height = '';
-        el.style.setProperty('flex-basis', baseHeight + 'px', 'important');
-    }
-
     document.querySelectorAll('.bitstream-composer').forEach(composerRoot => {
         const form = composerRoot.querySelector('.bitstream-sidebar-composer-form');
         if (!form) return;
@@ -5923,6 +5922,11 @@ jQuery(document).ready(function ($) {
             const modal = composerRoot.querySelector('.bitstream-composer-modal-' + name);
             if (modal) {
                 modal.hidden = false;
+                if (activeEditMoodForm) {
+                    composerRoot.dataset.fromEditModal = 'true';
+                } else {
+                    delete composerRoot.dataset.fromEditModal;
+                }
                 const isMobile = window.innerWidth < 1024;
                 if (isMobile) {
                     composerRoot.hidden = false;
@@ -6078,6 +6082,13 @@ jQuery(document).ready(function ($) {
             } else {
                 const modal = composerRoot.querySelector('.bitstream-composer-modal-' + name);
                 if (modal) {
+                    const isMobile = window.innerWidth < 1024;
+                    const isFromEditModal = composerRoot.dataset.fromEditModal === 'true';
+
+                    if (name === 'mood') {
+                        activeEditMoodForm = null;
+                    }
+
                     if (name === 'rebit') {
                         const mRebitUrl = modal.querySelector('#bitstream-composer-modal-rebit-url');
                         const urlVal = mRebitUrl ? mRebitUrl.value.trim() : '';
@@ -6085,7 +6096,6 @@ jQuery(document).ready(function ($) {
                         if (urlVal && urlVal !== currentUrl) {
                             showDiscardConfirmation('Are you sure you want to discard this ReBit link?', () => {
                                 modal.hidden = true;
-                                const isMobile = window.innerWidth < 1024;
                                 const quickActionSource = composerRoot.dataset.quickActionSource || '';
                                 const shouldCloseComposer = isMobile && !keepPosterOpen && quickActionSource === 'new-rebit';
                                 if (shouldCloseComposer) {
@@ -6097,17 +6107,24 @@ jQuery(document).ready(function ($) {
                         }
                     }
                     modal.hidden = true;
-                    const isMobile = window.innerWidth < 1024;
-                    const quickActionSource = composerRoot.dataset.quickActionSource || '';
-                    const shouldCloseComposer = isMobile && !keepPosterOpen && (
-                        name === 'drafts'
-                        || name === 'scheduled-list'
-                        || name === 'settings'
-                        || (name === 'rebit' && quickActionSource === 'new-rebit')
-                    );
-                    if (shouldCloseComposer) {
-                        composerRoot.hidden = true;
-                        delete composerRoot.dataset.quickActionSource;
+
+                    if (isFromEditModal) {
+                        if (isMobile) {
+                            composerRoot.hidden = true;
+                        }
+                        delete composerRoot.dataset.fromEditModal;
+                    } else {
+                        const quickActionSource = composerRoot.dataset.quickActionSource || '';
+                        const shouldCloseComposer = isMobile && !keepPosterOpen && (
+                            name === 'drafts'
+                            || name === 'scheduled-list'
+                            || name === 'settings'
+                            || (name === 'rebit' && quickActionSource === 'new-rebit')
+                        );
+                        if (shouldCloseComposer) {
+                            composerRoot.hidden = true;
+                            delete composerRoot.dataset.quickActionSource;
+                        }
                     }
 
                     if (name === 'settings') {

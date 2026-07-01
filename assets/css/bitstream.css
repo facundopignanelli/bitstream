@@ -4872,6 +4872,10 @@ iframe[src*="youtube-nocookie.com"] {
         display: flex !important;
     }
 
+    .bitstream-composer[data-from-edit-modal="true"] > .bitstream-composer-modal-dialog {
+        display: none !important;
+    }
+
     .bitstream-composer>.bitstream-composer-modal-backdrop {
         display: none !important;
     }
