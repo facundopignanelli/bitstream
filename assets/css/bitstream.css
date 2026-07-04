@@ -1012,23 +1012,9 @@ a.bitstream-filter-chip:hover {
     display: none;
 }
 
-.bitstream-mobile-tabs-nav {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
-    gap: 0.65rem;
-    margin-top: 0.75rem;
-    margin-bottom: 0.75rem;
-}
-
-.bitstream-mobile-tabs-nav button {
-    width: 100%;
-}
-
 .bitstream-feed-sidebar-tabs {
     display: block;
 }
-
-
 
 .bitstream-composer-container {
     display: block;
@@ -1042,40 +1028,329 @@ a.bitstream-filter-chip:hover {
     grid-column: 1 / -1;
 }
 
-
-.bitstream-feed-sidebar-summary {
-    cursor: pointer;
-    font-weight: 700;
-    font-size: 0.95rem;
-    color: #fff;
-    margin-bottom: 0;
-    list-style: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--wp--preset--color--accent-1, #2c6e49);
-    padding: 0;
-    height: 2.5rem;
-    border-radius: 8px;
-    border: none;
-    transition: background 0.2s ease;
-}
-
 .hide-on-mobile {
     display: none !important;
 }
 
-.bitstream-feed-sidebar-summary:hover {
-    opacity: 0.9;
-}
+/* ── MOBILE BOTTOM NAVIGATION BAR ───────────────────────────────────────────
+   Always visible on mobile. All screens/sheets sit above it, never over it.
+   ─────────────────────────────────────────────────────────────────────────── */
 
-.bitstream-feed-sidebar-summary i {
-    font-size: 1.15rem;
-}
-
-.bitstream-feed-sidebar-summary::-webkit-details-marker {
+.bitstream-bottom-nav {
     display: none;
+    /* hidden by default; shown only on mobile via @media below */
 }
+
+@media (max-width: 1023px) {
+    .bitstream-bottom-nav {
+        display: grid;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 56px;
+        padding-bottom: env(safe-area-inset-bottom);
+        background: #fff;
+        border-top: 1px solid #eef0f2;
+        z-index: 99995;
+        grid-template-columns: repeat(3, 1fr);
+        box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.06);
+    }
+
+    .bitstream-bottom-nav.has-compose-btn {
+        grid-template-columns: repeat(5, 1fr);
+    }
+
+    .bitstream-bottom-nav-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        background: none;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        color: #6b7280;
+        font-size: 0.65rem;
+        font-weight: 500;
+        letter-spacing: 0.01em;
+        -webkit-tap-highlight-color: transparent;
+        transition: color 0.15s ease;
+        position: relative;
+    }
+
+    .bitstream-bottom-nav-btn i {
+        font-size: 1.2rem;
+        line-height: 1;
+    }
+
+    .bitstream-bottom-nav-btn:hover,
+    .bitstream-bottom-nav-btn.is-active {
+        color: var(--wp--preset--color--accent-1, #2c6e49);
+    }
+
+    .bitstream-bottom-nav-btn:focus,
+    .bitstream-bottom-nav-btn:focus-visible,
+    .bitstream-bottom-nav-btn:active {
+        outline: none !important;
+        border: none !important;
+        box-shadow: none !important;
+        background: none !important;
+    }
+
+    /* Active indicator dot on the Search button when filters are applied */
+    .bitstream-bottom-nav[data-filters-active="1"] #bs-nav-search::after {
+        content: '';
+        position: absolute;
+        top: 4px;
+        right: calc(50% - 14px);
+        width: 7px;
+        height: 7px;
+        background: var(--wp--preset--color--accent-1, #2c6e49);
+        border-radius: 50%;
+        border: 1.5px solid #fff;
+    }
+
+    /* Red count badge on the Drafts button when drafts are present */
+    .bitstream-bottom-nav-btn[data-drafts-count]:not([data-drafts-count="0"])::after {
+        content: attr(data-drafts-count);
+        position: absolute;
+        top: 2px;
+        right: calc(50% - 16px);
+        background: #e11d48;
+        /* Red badge */
+        color: #fff;
+        font-size: 0.55rem;
+        font-weight: 700;
+        min-width: 14px;
+        height: 14px;
+        border-radius: 7px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 3px;
+        border: 1.5px solid #fff;
+        box-sizing: border-box;
+        line-height: 1;
+    }
+
+    /* Compose button — matches standard buttons but colored accent-1 by default */
+    .bitstream-bottom-nav-btn.is-compose {
+        color: var(--wp--preset--color--accent-1, #2c6e49);
+    }
+
+    .bitstream-bottom-nav-btn.is-compose i {
+        margin: 0 !important;
+        /* Force center alignment */
+        padding: 0 !important;
+    }
+
+    /* Feed padding so content doesn't hide behind the nav bar */
+    .bitstream-feed-layout {
+        padding-bottom: calc(56px + env(safe-area-inset-bottom) + 1rem);
+    }
+
+    /* ── MOBILE SCREENS (full-height above nav bar) ────────────────────────── */
+
+    .bitstream-mobile-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: calc(56px + env(safe-area-inset-bottom));
+        background: #fff;
+        z-index: 99996;
+        display: flex;
+        flex-direction: column;
+        animation: bitstreamMobileModalIn 0.28s cubic-bezier(0.32, 0.94, 0.6, 1);
+        overscroll-behavior: contain;
+    }
+
+    .bitstream-mobile-screen[hidden] {
+        display: none;
+    }
+
+    .bitstream-mobile-screen-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #eef0f2;
+        flex-shrink: 0;
+    }
+
+    .bitstream-mobile-screen-header h2 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--wp--preset--color--accent-1, #2c6e49);
+    }
+
+    .bitstream-mobile-screen-close {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: #6b7280;
+        font-size: 1.2rem;
+        padding: 0.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .bitstream-mobile-screen-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1rem 1.25rem;
+        overscroll-behavior: contain;
+    }
+
+    /* ── BOTTOM SHEET (partial-height, e.g. More) ──────────────────────────── */
+
+    .bitstream-bottom-sheet-backdrop {
+        position: fixed;
+        inset: 0;
+        bottom: calc(56px + env(safe-area-inset-bottom));
+        background: rgba(0, 0, 0, 0.35);
+        backdrop-filter: blur(3px);
+        -webkit-backdrop-filter: blur(3px);
+        z-index: 99996;
+        animation: bitstreamFadeIn 0.2s ease-out;
+    }
+
+    .bitstream-bottom-sheet-backdrop[hidden] {
+        display: none;
+    }
+
+    .bitstream-bottom-sheet {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: calc(56px + env(safe-area-inset-bottom));
+        max-height: 62vh;
+        background: #fff;
+        border-radius: 20px 20px 0 0;
+        box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.12);
+        z-index: 99997;
+        display: flex;
+        flex-direction: column;
+        animation: bitstreamMobileModalIn 0.28s cubic-bezier(0.32, 0.94, 0.6, 1);
+        overscroll-behavior: contain;
+    }
+
+    .bitstream-bottom-sheet[hidden] {
+        display: none;
+    }
+
+    .bitstream-bottom-sheet-handle {
+        width: 36px;
+        height: 4px;
+        background: #d1d5db;
+        border-radius: 2px;
+        margin: 0.65rem auto 0;
+        flex-shrink: 0;
+    }
+
+    .bitstream-bottom-sheet-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.65rem 1.25rem 0.65rem;
+        border-bottom: 1px solid #eef0f2;
+        flex-shrink: 0;
+    }
+
+    .bitstream-bottom-sheet-header h2 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--wp--preset--color--accent-1, #2c6e49);
+    }
+
+    .bitstream-bottom-sheet-close {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: #6b7280;
+        font-size: 1.2rem;
+        padding: 0.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .bitstream-bottom-sheet-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0.75rem 1.25rem 1rem;
+        overscroll-behavior: contain;
+    }
+
+    /* More sheet row items */
+    .bs-more-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.8rem 0;
+        color: #374151;
+        text-decoration: none;
+        font-size: 0.95rem;
+        border-bottom: 1px solid #f3f4f6;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .bs-more-row:last-child {
+        border-bottom: none;
+    }
+
+    .bs-more-row i {
+        width: 1.25rem;
+        text-align: center;
+        color: var(--wp--preset--color--accent-1, #2c6e49);
+        font-size: 1rem;
+    }
+
+    .bs-more-section {
+        margin-top: 1rem;
+    }
+
+    .bs-more-section:first-child {
+        margin-top: 0;
+    }
+
+    .bs-more-section-title {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #9ca3af;
+        margin: 0 0 0.5rem;
+    }
+
+    /* Search screen sections */
+    .bs-search-section {
+        margin-bottom: 1.25rem;
+    }
+
+    .bs-search-section:last-child {
+        margin-bottom: 0;
+    }
+
+    .bs-search-section-title {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #9ca3af;
+        margin: 0 0 0.6rem;
+    }
+}
+
 
 .bitstream-filter-search {
     display: grid;
@@ -2433,7 +2708,7 @@ video {
     border-radius: 16px;
     background: #fff;
     width: 100%;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.01);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.01);
 }
 
 .bitstream-settings .mapping-field {
@@ -2640,7 +2915,7 @@ video {
     .bitstream-settings-tabs {
         gap: 1rem;
     }
-    
+
     .bitstream-settings-tab {
         padding: 0.65rem 0.25rem;
         font-size: 0.9rem;
@@ -2679,7 +2954,7 @@ video {
 
 /* Custom dialog width for settings modal on desktop */
 @media (min-width: 1024px) {
-    section.bitstream-composer div.bitstream-composer-modal-settings > div.bitstream-composer-modal-dialog.bitstream-composer-modal-dialog-wide {
+    section.bitstream-composer div.bitstream-composer-modal-settings>div.bitstream-composer-modal-dialog.bitstream-composer-modal-dialog-wide {
         max-width: min(95vw, 780px) !important;
     }
 }
@@ -2691,7 +2966,8 @@ video {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(15, 23, 42, 0.45) !important; /* Slate dark transparent backdrop */
+    background: rgba(15, 23, 42, 0.45) !important;
+    /* Slate dark transparent backdrop */
     backdrop-filter: blur(4px) !important;
     display: none;
     justify-content: center;
@@ -4872,7 +5148,7 @@ iframe[src*="youtube-nocookie.com"] {
         display: flex !important;
     }
 
-    .bitstream-composer[data-from-edit-modal="true"] > .bitstream-composer-modal-dialog {
+    .bitstream-composer[data-from-edit-modal="true"]>.bitstream-composer-modal-dialog {
         display: none !important;
     }
 
@@ -5062,8 +5338,8 @@ iframe[src*="youtube-nocookie.com"] {
     }
 
     /* Each card takes the full width of the carousel slot */
-    .bitstream-composer-preview-carousel > .bitstream-composer-preview-rebit,
-    .bitstream-composer-preview-carousel > .bitstream-composer-preview-media {
+    .bitstream-composer-preview-carousel>.bitstream-composer-preview-rebit,
+    .bitstream-composer-preview-carousel>.bitstream-composer-preview-media {
         flex: 0 0 100% !important;
         min-width: 0 !important;
         scroll-snap-align: start !important;
@@ -5293,6 +5569,10 @@ iframe[src*="youtube-nocookie.com"] {
    100 001   composer sub-modal (mobile)      (.bitstream-composer .bitstream-composer-modal, mobile only)
    100 000   .bitstream-composer (mobile)     (full-screen composer / host for Drafts & Scheduled screens)
     99 990   .bs-edit-modal                   (Edit Bit screen)
+    99 997   .bitstream-bottom-sheet          (More sheet drawer)
+    99 996   .bitstream-mobile-screen         (Search screen — full-height above nav)
+             .bitstream-bottom-sheet-backdrop (More sheet backdrop)
+    99 995   .bitstream-bottom-nav            (mobile bottom nav bar — always topmost of these)
     10 000   .bitstream-rebit-editor-modal    (Admin-only Rebit editor — WP dashboard use only)
      9 999   tooltips / dropdowns             (in-page overlays)
    ─────────────────────────────────────────────────────────────────────────── */
@@ -5562,7 +5842,7 @@ iframe[src*="youtube-nocookie.com"] {
 .bit-card.bit-card-capturing {
     background-color: #ffffff !important;
     border: 1px solid #eef0f2 !important;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.06) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06) !important;
     padding: 1.5rem !important;
     border-radius: 15px !important;
     width: 500px !important;
@@ -5624,7 +5904,7 @@ iframe[src*="youtube-nocookie.com"] {
     border-color: var(--wp--preset--color--accent-1, #2c6e49);
     background: #fff;
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(44,110,73,0.08);
+    box-shadow: 0 4px 12px rgba(44, 110, 73, 0.08);
 }
 
 .bitstream-share-option-btn i {
@@ -5664,7 +5944,7 @@ iframe[src*="youtube-nocookie.com"] {
     max-width: 100%;
     border-radius: 10px;
     border: 1px solid #eef0f2;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
 .bitstream-share-image-actions {
@@ -5692,14 +5972,14 @@ iframe[src*="youtube-nocookie.com"] {
     border-color: #cbd5e1;
     background: #fff;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
 }
 
 .bitstream-mood-btn.is-active {
     border-color: var(--wp--preset--color--accent-1, #2c6e49) !important;
     background-color: rgba(44, 110, 73, 0.08) !important;
     transform: scale(1.03);
-    box-shadow: 0 4px 12px rgba(44,110,73,0.08);
+    box-shadow: 0 4px 12px rgba(44, 110, 73, 0.08);
 }
 
 /* Saved custom moods grid button adjustments */
@@ -5802,7 +6082,7 @@ iframe[src*="youtube-nocookie.com"] {
     border-radius: 12px;
     background: #fff;
     padding: 0.8rem 1rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
 }
 
 /* Edit timeline modal mood row transitions */
@@ -5839,4 +6119,4 @@ img.emoji {
 .bit-card[data-emoji-parsed] .bit-card-pure-mood {
     opacity: 1 !important;
     transition: opacity 0.15s ease-in-out;
-}
+}

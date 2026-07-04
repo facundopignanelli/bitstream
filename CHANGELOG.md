@@ -3,28 +3,26 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.3.0] - 2026-07-01
+## [3.3.0] - 2026-07-04
 
 ### Added
-- Added click navigation support for quoted bit previews, allowing users to click a quoted bit on their timeline feed to highlight and scroll to it directly on the feed.
-- Added a native share button (share-nodes icon) next to the permalink copy-link button on each bit card. On supported browsers/devices (mobile PWA, etc.) it opens the OS share sheet; on unsupported browsers it falls back to copying the link to the clipboard.
-- Added PWA deep-linking support via `handle_links` and `launch_handler` settings in the web app manifest, allowing links to individual bits (or any page under the site) to open directly in the installed PWA. Dynamically resolved the PWA scope, start_url, share_target, shortcuts, and icon paths in both the served manifest and Service Worker registration to support any custom WordPress subdirectory installation.
-- Added unified **Share** options modal with two choices: "Share Link" (triggers native OS share sheet or clipboard copy) and "Share as Image" (generates a pixel-perfect PNG card of the post with a branded BitStream watermark and full timestamp, constrained to 1000px wide for optimal compatibility with social media like Instagram Stories, then triggers native file sharing or a download/copy fallback modal on desktop).
-- Added the Mood Status feature, allowing users to select or create a status update in the format `[User Name] is feeling [emoji] [emotion]` next to their name in timeline posts. Users can post a pure mood update (with no text content) or attach a mood to standard posts/rebits.
-- Added support for the Mood Status feature in push notifications and RSS feeds, displaying a timeline-matching format `[User Name] is feeling [emoji] [emotion]` for mood-only posts, and appending mood metadata details to other posts.
-- Added a custom saved moods library saved in user profile options. Supported fully interactive editing capability inside the Mood Modal to reorder (via Up/Down buttons), delete, or edit (via inline input fields) custom moods, automatically propagating changes to previous posts/bits that use the modified custom moods (with changes updated dynamically on the screen without requiring a page refresh).
-- Integrated the mood status editing support directly into the timeline edit modal for both bits and rebits.
-- Added client-side validation using standard Unicode property escapes (`\p{Extended_Pictographic}`, `\p{Emoji_Presentation}`, `\p{Regional_Indicator}`) to ensure the custom mood emoji field only accepts valid emojis, with full support for complex Windows compound ZWJ emoji sequences (such as skin tones, gender signs, and flags) without truncation. Enforced a system tooltip on click/focus prompting OS-specific emoji keyboards (e.g. Win + . on Windows).
-- Added cross-platform emoji standardization: integrated the community-maintained `jdecked/twemoji` parser (v17.0.3) to dynamically convert text emojis inside cards, preview badges, and selectors into clean, uniform SVG vector assets from a reliable CDN. This unifies emoji appearances across Windows, macOS, Android, and iOS to resolve device-specific display discrepancies.
-- Added a "Share Image Cache" section to the Advanced Settings tab, allowing administrators to force-delete all previously cached PNG share images from disk and clear the corresponding post metadata, forcing fresh high-resolution card renders.
-- Added a frontend Settings modal (with full-viewport slide-up screen pattern on mobile viewports) for administrators, accessible directly from the quick actions menu.
+- **Mobile Bottom Navigation Bar & Drawer Routing**: Added a persistent, sticky mobile bottom navigation bar (`[Home] [Search] [Compose] [Drafts] [More]`) for layout viewports under 1024px. Features a full-screen slide-up Search & Filter screen, a bottom drawer sheet for More options (with logged-in gating for settings and standalone About dialog), and a red notification badge for active Draft counts.
+- **Personalisation Option to Hide Intro Box**: Added a settings checkbox to hide the welcome intro box for logged-in users.
+- **Mood Status & Emoji Standardization**: Added a comprehensive Mood Status feature to share updates in the format `[User] is feeling [emoji] [emotion]` or post pure mood updates (rendered in a distinctive large card block). Includes a fully interactive custom moods library in user profiles (edit, reorder, delete with live propagation), support in timeline edit modals, push notifications, and RSS feeds. Ensured cross-platform consistency by integrating the `jdecked/twemoji` SVG parser and client-side Unicode property validation for complex emoji ZWJ sequences.
+- **Unified Sharing & PNG Card Generator**: Added a unified Share modal offering "Share Link" (native OS sheet or clipboard copy) and "Share as Image" (generates a branded 1000px wide PNG card of the post with watermark for optimal social sharing). Integrated a native share button on timeline cards and added an option in Advanced Settings to clear the cached PNG image files.
+- **PWA Deep-linking**: Added PWA deep-linking support via manifest `handle_links`/`launch_handler`, dynamically resolving PWA scope, start URL, shortcuts, and assets for WordPress installations in custom subdirectories.
+- **Frontend Settings Modal**: Added a frontend Settings modal for administrators (using the mobile slide-up screen pattern), accessible from the quick actions menu.
+- **Quoted Bits Interaction**: Added click navigation support to instantly highlight and scroll to a quoted bit when clicked.
+- **Hashtag Suggestions Autocomplete**: Added a hashtag suggestions popup that queries previously used hashtags on the site, displaying their usage counts. Features fully keyboard-navigable suggestions, click-to-select, touch-friendly tap targets, and non-clipping fixed positioning optimized for mobile viewports and soft keyboards.
 
 ### Changed
-- Removed the redundant "Copy Link" permalink button from bit card footers since the new Share modal provides link sharing and the OS share sheet includes a native copy option.
-- Changed timeline card header layout: styled the author display name with the primary/accent theme color.
-- Changed timeline card timestamp interaction: removed the black hover/focus tooltip popups for relative time, and implemented inline click toggles to append the full timestamp next to the relative time (e.g. `2 days ago | 30/06/2026 16:14`), ensuring that the timestamp text is fully selectable and copyable.
-- Changed timeline card mood layout: styled emotion names with the primary/accent theme color in all cases, and implemented a dedicated large status block in the card body for pure mood posts (posts with no body text or attachments) for a cleaner and more distinct aesthetic.
-- Removed the Settings page from the WordPress Admin panel menu and cleaned up obsolete menu registration and asset enqueueing methods.
+- **Mobile Layout & Component Consolidation**: Purged the legacy floating action menu button (`#bitstream-floating-menu`) and the inline mobile feed header navigation tabs, routing all primary flows through the new bottom navigation bar.
+- **Settings Administration**: Moved the Settings dashboard entirely to the frontend modal and removed the legacy page from the WordPress Admin menu.
+- **Timeline Card Polish**:
+  - Styled author display names and emotion labels with the primary/accent theme color.
+  - Replaced hover relative-time tooltips with inline click toggles that display a fully selectable, copyable timestamp.
+  - Changed the copied or shared post link to use the feed page URL with the `highlight_bit` query parameter instead of the individual post permalink.
+  - Removed the redundant footer "Copy Link" button in favor of the new unified Share modal.
 
 ## [3.2.3] - 2026-06-28
 

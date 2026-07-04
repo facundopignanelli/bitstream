@@ -4954,116 +4954,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Floating BitStream menu functionality
-    function initFloatingMenu() {
-        const bitstreamToggle = document.querySelector('.bitstream-toggle');
-        const bitstreamDropdown = document.querySelector('.bitstream-dropdown');
-
-        if (!bitstreamToggle || !bitstreamDropdown) {
-            return; // Elements not found
-        }
-
-        let isOpen = false;
-
-        // Function to open dropdown
-        function openDropdown() {
-            console.log('Opening dropdown'); // Debug log
-            isOpen = true;
-            bitstreamDropdown.style.opacity = '1';
-            bitstreamDropdown.style.visibility = 'visible';
-            bitstreamDropdown.style.transform = 'translateY(0)';
-            bitstreamDropdown.style.pointerEvents = 'auto';
-            bitstreamToggle.style.background = '#1f4d35';
-            bitstreamToggle.style.transform = 'scale(1.1)';
-        }
-
-        // Function to close dropdown
-        function closeDropdown() {
-            console.log('Closing dropdown'); // Debug log
-            isOpen = false;
-            bitstreamDropdown.style.opacity = '0';
-            bitstreamDropdown.style.visibility = 'hidden';
-            bitstreamDropdown.style.transform = 'translateY(10px)';
-            bitstreamDropdown.style.pointerEvents = 'none';
-            bitstreamToggle.style.background = '#2c6e49';
-            bitstreamToggle.style.transform = 'scale(1)';
-        }
-
-        // Unified event handler for both click and touch
-        function handleToggle(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Toggle button activated, isOpen:', isOpen); // Debug log
-
-            if (isOpen) {
-                closeDropdown();
-            } else {
-                openDropdown();
-            }
-        }
-
-        // Add both click and touchstart for maximum compatibility
-        bitstreamToggle.addEventListener('click', handleToggle);
-        bitstreamToggle.addEventListener('touchstart', handleToggle);
-
-        // Prevent double-firing on devices that support both
-        bitstreamToggle.addEventListener('touchend', (e) => {
-            e.preventDefault();
-        });
-
-        // Add hover effects for desktop only (check if touch device)
-        const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-        if (!isTouch) {
-            bitstreamToggle.addEventListener('mouseenter', () => {
-                if (!isOpen) {
-                    bitstreamToggle.style.background = '#1f4d35';
-                    bitstreamToggle.style.transform = 'scale(1.05)';
-                }
-            });
-
-            bitstreamToggle.addEventListener('mouseleave', () => {
-                if (!isOpen) {
-                    bitstreamToggle.style.background = '#2c6e49';
-                    bitstreamToggle.style.transform = 'scale(1)';
-                }
-            });
-        }
-
-        // Add hover effects for dropdown links (desktop only)
-        if (!isTouch) {
-            // Use event delegation since links might not exist when this runs
-            bitstreamDropdown.addEventListener('mouseenter', (e) => {
-                if (e.target.classList.contains('bitstream-dropdown-link')) {
-                    e.target.style.background = '#f5f5f5';
-                }
-            });
-            bitstreamDropdown.addEventListener('mouseleave', (e) => {
-                if (e.target.classList.contains('bitstream-dropdown-link')) {
-                    e.target.style.background = 'white';
-                }
-            });
-        }
-
-        // Close dropdown when clicking/touching outside
-        function handleOutsideClick(e) {
-            if (!e.target.closest('.bitstream-menu') && isOpen) {
-                closeDropdown();
-            }
-        }
-
-        document.addEventListener('click', handleOutsideClick);
-        document.addEventListener('touchstart', handleOutsideClick);
-
-        console.log('Floating menu initialized'); // Debug log
-    }
-
-    // Initialize floating menu (try multiple times if needed)
-    initFloatingMenu();
-
-    // Also try after a short delay in case elements are loaded later
-    setTimeout(initFloatingMenu, 500);
-    setTimeout(initFloatingMenu, 1000);
-
     // Fix responsive embeds (YouTube, etc.)
     function makeEmbedsResponsive() {
         // Find all iframes and make them responsive
@@ -5357,7 +5247,7 @@ document.addEventListener('DOMContentLoaded', function () {
         makeEmbedsResponsive();
         initMediaSession(document);
         adjustCardMediaDimensions(document);
-        initFloatingMenu(); // Re-init floating menu if new content added
+
         initCommentToggles(); // Re-init comment toggles for new content
         parseTimelineCards();
     });
@@ -5417,28 +5307,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const scrollTrigger = document.querySelector('.bitstream-scroll-trigger');
     const isInfiniteScroll = feed.dataset.infiniteScroll === 'true';
 
-    const sidebarPanels = document.querySelectorAll('.bitstream-feed-sidebar-panel');
     const archiveYears = document.querySelectorAll('.bitstream-archive-year');
-
-    function syncSidebarPanelState() {
-        if (!sidebarPanels.length) {
-            return;
-        }
-
-        const isDesktop = window.innerWidth >= 1024;
-
-        if (isDesktop) {
-            // Remove inline styles to let desktop CSS take over
-            sidebarPanels.forEach(panel => {
-                panel.style.display = '';
-            });
-            // Reset active mobile tabs state
-            const tabsNav = document.querySelector('.bitstream-mobile-tabs-nav');
-            if (tabsNav) {
-                tabsNav.querySelectorAll('button').forEach(b => b.classList.remove('is-active'));
-            }
-        }
-    }
 
     function syncArchiveYearState() {
         if (!archiveYears.length) {
@@ -5460,18 +5329,15 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-
-
     archiveYears.forEach(year => {
         year.addEventListener('toggle', () => {
             year.dataset.userToggled = 'true';
         });
     });
 
-    syncSidebarPanelState();
     syncArchiveYearState();
-    window.addEventListener('resize', syncSidebarPanelState);
     window.addEventListener('resize', syncArchiveYearState);
+
 
     function loadNextPage() {
         const nextPage = parseInt(feed.dataset.page) + 1;
@@ -6119,6 +5985,7 @@ jQuery(document).ready(function ($) {
                             name === 'drafts'
                             || name === 'scheduled-list'
                             || name === 'settings'
+                            || name === 'about'
                             || (name === 'rebit' && quickActionSource === 'new-rebit')
                         );
                         if (shouldCloseComposer) {
@@ -8410,3 +8277,190 @@ jQuery(document).ready(function ($) {
     }
     setTimeout(cleanupUrlParams, 300);
 });
+
+// ── MOBILE BOTTOM NAVIGATION ─────────────────────────────────────────────────
+//   Handles Home, Search screen, Compose, and More sheet.
+//   Buttons only exist on mobile (<1024px) so this is effectively a no-op on desktop.
+// ─────────────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    const navHome    = document.getElementById('bs-nav-home');
+    const navSearch  = document.getElementById('bs-nav-search');
+    const navCompose = document.getElementById('bs-nav-compose');
+    const navDrafts  = document.getElementById('bs-nav-drafts');
+    const navMore    = document.getElementById('bs-nav-more');
+
+    const searchScreen  = document.getElementById('bs-search-screen');
+    const searchClose   = document.getElementById('bs-search-screen-close');
+
+    const moreSheet     = document.getElementById('bs-more-sheet');
+    const moreBackdrop  = document.getElementById('bs-more-backdrop');
+    const moreClose     = document.getElementById('bs-more-sheet-close');
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    function closeSearch() {
+        if (searchScreen) {
+            searchScreen.hidden = true;
+        }
+        if (navSearch) navSearch.classList.remove('is-active');
+    }
+
+    function openSearch() {
+        closeMore();
+        if (searchScreen) {
+            searchScreen.hidden = false;
+        }
+        if (navSearch) navSearch.classList.add('is-active');
+    }
+
+    // Prepopulate search input if search screen is opened and filter search parameter is in URL
+    if (searchScreen) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const activeSearch = urlParams.get('bitstream_search');
+        if (activeSearch) {
+            const searchInput = searchScreen.querySelector('input[type="search"]');
+            if (searchInput) searchInput.value = activeSearch;
+        }
+    }
+
+    function closeMore() {
+        if (moreSheet)    moreSheet.hidden    = true;
+        if (moreBackdrop) moreBackdrop.hidden = true;
+        if (navMore)      navMore.classList.remove('is-active');
+    }
+
+    function openMore() {
+        closeSearch();
+        if (moreSheet)    moreSheet.hidden    = false;
+        if (moreBackdrop) moreBackdrop.hidden = false;
+        if (navMore)      navMore.classList.add('is-active');
+    }
+
+    // ── Home ─────────────────────────────────────────────────────────────────
+    if (navHome) {
+        // Set home active styling if on base feed page and no query parameters are active
+        const feedUrl = navHome.dataset.feedUrl;
+        const currentBase = window.location.origin + window.location.pathname;
+        const isOnFeed = feedUrl && currentBase === new URL(feedUrl, window.location.origin).pathname;
+        const hasParams = window.location.search.length > 0;
+        if (isOnFeed && !hasParams) {
+            navHome.classList.add('is-active');
+        }
+
+        navHome.addEventListener('click', () => {
+            closeSearch();
+            closeMore();
+
+            if (isOnFeed && !window.location.search) {
+                // Already on the clean feed page — scroll to top
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else if (feedUrl) {
+                window.location.href = feedUrl;
+            } else {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        });
+    }
+
+    // ── Search ───────────────────────────────────────────────────────────────
+    if (navSearch) {
+        navSearch.addEventListener('click', () => {
+            if (searchScreen && !searchScreen.hidden) {
+                closeSearch();
+            } else {
+                openSearch();
+            }
+        });
+    }
+
+    if (searchClose) {
+        searchClose.addEventListener('click', closeSearch);
+    }
+
+    // ── Compose ──────────────────────────────────────────────────────────────
+    if (navCompose) {
+        navCompose.addEventListener('click', () => {
+            closeSearch();
+            closeMore();
+
+            const composerEl = document.querySelector('.bitstream-composer');
+            if (composerEl) {
+                // Composer is on this page — show it instantly on mobile
+                const isMobile = window.innerWidth < 1024;
+                if (isMobile) {
+                    composerEl.hidden = false;
+                }
+                const textarea = composerEl.querySelector('#bitstream-quick-bit-content');
+                if (textarea) {
+                    textarea.focus();
+                    if (!isMobile) {
+                        textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }
+            } else {
+                // Not on feed page — navigate to composer URL
+                const composerBaseUrl = (window.bitstream_ajax && bitstream_ajax.composer_url)
+                    ? bitstream_ajax.composer_url
+                    : window.location.href;
+                const url = new URL(composerBaseUrl, window.location.origin);
+                url.searchParams.set('composer_tab', 'bit');
+                window.location.href = url.toString();
+            }
+        });
+    }
+
+    // ── More ─────────────────────────────────────────────────────────────────
+    if (navMore) {
+        navMore.addEventListener('click', () => {
+            if (moreSheet && !moreSheet.hidden) {
+                closeMore();
+            } else {
+                openMore();
+            }
+        });
+    }
+
+    if (moreClose)    moreClose.addEventListener('click', closeMore);
+    if (moreBackdrop) moreBackdrop.addEventListener('click', closeMore);
+
+    // Close More sheet and Search screen if a composer modal/screen trigger is clicked
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('[data-composer-modal-trigger]')) {
+            closeMore();
+            closeSearch();
+        }
+    });
+
+    // ── Standalone About Modal ───────────────────────────────────────────────
+    const aboutTrigger = document.getElementById('bs-more-about-trigger');
+    const aboutModal   = document.getElementById('bs-about-modal');
+
+    function openAboutModal() {
+        closeMore();
+        if (aboutModal) {
+            aboutModal.hidden = false;
+        }
+    }
+
+    function closeAboutModal() {
+        if (aboutModal) {
+            aboutModal.hidden = true;
+        }
+    }
+
+    if (aboutTrigger) {
+        aboutTrigger.addEventListener('click', (e) => {
+            e.preventDefault();
+            openAboutModal();
+        });
+    }
+
+    const aboutCloseBtn = document.getElementById('bs-about-modal-close-btn');
+    const aboutCancelBtn = document.getElementById('bs-about-modal-cancel-btn');
+    const aboutBackdrop = document.getElementById('bs-about-modal-close-backdrop');
+
+    if (aboutCloseBtn)  aboutCloseBtn.addEventListener('click', closeAboutModal);
+    if (aboutCancelBtn) aboutCancelBtn.addEventListener('click', closeAboutModal);
+    if (aboutBackdrop)  aboutBackdrop.addEventListener('click', closeAboutModal);
+});
+

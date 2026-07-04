@@ -113,6 +113,10 @@ Keep the comment block in `bitstream.css` (`/* Z-INDEX LADDER */`) up to date. C
 | 100 001 | Composer sub-modal popup (mobile) |
 | 100 000 | `.bitstream-composer` (mobile host) |
 | 99 990 | `.bs-edit-modal` |
+| 99 997 | `.bitstream-bottom-sheet` (More sheet drawer) |
+| 99 996 | `.bitstream-mobile-screen` (Search screen — full-height above nav) |
+|         | `.bitstream-bottom-sheet-backdrop` (More sheet backdrop) |
+| 99 995 | `.bitstream-bottom-nav` (mobile bottom nav bar) |
 | 10 000 | `.bitstream-rebit-editor-modal` (WP Admin only) |
 | 9 999 | tooltips / dropdowns |
 

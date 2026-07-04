@@ -132,7 +132,9 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       caches.match(event.request)
         .then(cachedResponse => {
-          if (cachedResponse) {
+          // If request is CORS and cached response is opaque, do not return cached response.
+          // Opaque responses are not allowed to be returned to CORS requests and cause network failures.
+          if (cachedResponse && !(event.request.mode === 'cors' && cachedResponse.type === 'opaque')) {
             // For CSS/JS assets, update in background (Stale-While-Revalidate)
             if (!isFont) {
               fetch(event.request.clone())
@@ -159,6 +161,11 @@ self.addEventListener('fetch', event => {
               }
               return networkResponse;
             });
+        })
+        .catch(err => {
+          console.warn('BitStream SW: Static asset fetch/cache failure:', err);
+          // Return a fresh fallback response or a temporary error instead of letting promise reject
+          return new Response('Network error occurred during service worker fetch.', { status: 480, statusText: 'Service Worker Network Error' });
         })
     );
     return;

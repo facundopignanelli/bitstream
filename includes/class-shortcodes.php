@@ -578,9 +578,9 @@ class BitStream_Shortcodes
                                         <span class="bitstream-composer-preview-label"><i class="fa-solid fa-link"
                                                 aria-hidden="true"></i> Rebit</span>
                                         <div class="bitstream-composer-preview-actions">
-                                            <button type="button" class="bitstream-composer-preview-edit" data-composer-edit="rebit"
-                                                title="Edit rebit" aria-label="Edit rebit"><i class="fa-solid fa-pencil"
-                                                    aria-hidden="true"></i></button>
+                                            <button type="button" class="bitstream-composer-preview-edit"
+                                                data-composer-edit="rebit" title="Edit rebit" aria-label="Edit rebit"><i
+                                                    class="fa-solid fa-pencil" aria-hidden="true"></i></button>
                                             <button type="button" class="bitstream-composer-preview-remove"
                                                 data-composer-remove="rebit" title="Remove rebit" aria-label="Remove rebit"><i
                                                     class="fa-solid fa-xmark" aria-hidden="true"></i></button>
@@ -594,9 +594,9 @@ class BitStream_Shortcodes
                                         <span class="bitstream-composer-preview-label"><i class="fa-solid fa-photo-film"
                                                 aria-hidden="true"></i> Media</span>
                                         <div class="bitstream-composer-preview-actions">
-                                            <button type="button" class="bitstream-composer-preview-edit" data-composer-edit="media"
-                                                title="Edit media" aria-label="Edit media"><i class="fa-solid fa-pencil"
-                                                    aria-hidden="true"></i></button>
+                                            <button type="button" class="bitstream-composer-preview-edit"
+                                                data-composer-edit="media" title="Edit media" aria-label="Edit media"><i
+                                                    class="fa-solid fa-pencil" aria-hidden="true"></i></button>
                                             <button type="button" class="bitstream-composer-preview-remove"
                                                 data-composer-remove="media" title="Remove media" aria-label="Remove media"><i
                                                     class="fa-solid fa-xmark" aria-hidden="true"></i></button>
@@ -630,16 +630,16 @@ class BitStream_Shortcodes
                                     <span class="bitstream-composer-preview-label"><i class="fa-solid fa-face-smile"
                                             aria-hidden="true"></i> Mood</span>
                                     <div class="bitstream-composer-preview-actions">
-                                        <button type="button" class="bitstream-composer-preview-edit"
-                                            data-composer-edit="mood" title="Edit mood" aria-label="Edit mood"><i
-                                                class="fa-solid fa-pencil" aria-hidden="true"></i></button>
-                                        <button type="button" class="bitstream-composer-preview-remove"
-                                            data-composer-remove="mood" title="Remove mood"
-                                            aria-label="Remove mood"><i class="fa-solid fa-xmark"
+                                        <button type="button" class="bitstream-composer-preview-edit" data-composer-edit="mood"
+                                            title="Edit mood" aria-label="Edit mood"><i class="fa-solid fa-pencil"
                                                 aria-hidden="true"></i></button>
+                                        <button type="button" class="bitstream-composer-preview-remove"
+                                            data-composer-remove="mood" title="Remove mood" aria-label="Remove mood"><i
+                                                class="fa-solid fa-xmark" aria-hidden="true"></i></button>
                                     </div>
                                 </div>
-                                <span class="bitstream-composer-preview-mood-text" style="font-weight: 500; font-size: 1.1rem; padding: 0.25rem 0; display: block;"></span>
+                                <span class="bitstream-composer-preview-mood-text"
+                                    style="font-weight: 500; font-size: 1.1rem; padding: 0.25rem 0; display: block;"></span>
                             </div>
                         </div>
 
@@ -661,8 +661,8 @@ class BitStream_Shortcodes
                                 title="Schedule" aria-label="Schedule">
                                 <i class="fa-solid fa-clock" aria-hidden="true"></i>
                             </button>
-                            <button type="button" class="bitstream-composer-action-btn" data-composer-modal="mood"
-                                title="Mood" aria-label="Mood">
+                            <button type="button" class="bitstream-composer-action-btn" data-composer-modal="mood" title="Mood"
+                                aria-label="Mood">
                                 <i class="fa-solid fa-face-smile" aria-hidden="true"></i>
                             </button>
                         </div>
@@ -879,40 +879,50 @@ class BitStream_Shortcodes
                     </header>
                     <div class="bitstream-composer-modal-body">
                         <!-- Grid of predefined emotions -->
-                        <div class="bitstream-mood-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;">
-                            <button type="button" class="bitstream-mood-btn" data-emoji="😊" data-emotion="Happy" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease;">
+                        <div class="bitstream-mood-grid"
+                            style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;">
+                            <button type="button" class="bitstream-mood-btn" data-emoji="😊" data-emotion="Happy"
+                                style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease;">
                                 <span style="font-size: 1.8rem; margin-bottom: 4px;">😊</span>
                                 <span style="font-size: 0.85rem; font-weight: 500; color: #475569;">Happy</span>
                             </button>
-                            <button type="button" class="bitstream-mood-btn" data-emoji="😢" data-emotion="Sad" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease;">
+                            <button type="button" class="bitstream-mood-btn" data-emoji="😢" data-emotion="Sad"
+                                style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease;">
                                 <span style="font-size: 1.8rem; margin-bottom: 4px;">😢</span>
                                 <span style="font-size: 0.85rem; font-weight: 500; color: #475569;">Sad</span>
                             </button>
-                            <button type="button" class="bitstream-mood-btn" data-emoji="😴" data-emotion="Tired" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease;">
+                            <button type="button" class="bitstream-mood-btn" data-emoji="😴" data-emotion="Tired"
+                                style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease;">
                                 <span style="font-size: 1.8rem; margin-bottom: 4px;">😴</span>
                                 <span style="font-size: 0.85rem; font-weight: 500; color: #475569;">Tired</span>
                             </button>
-                            <button type="button" class="bitstream-mood-btn" data-emoji="🤩" data-emotion="Excited" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease;">
+                            <button type="button" class="bitstream-mood-btn" data-emoji="🤩" data-emotion="Excited"
+                                style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease;">
                                 <span style="font-size: 1.8rem; margin-bottom: 4px;">🤩</span>
                                 <span style="font-size: 0.85rem; font-weight: 500; color: #475569;">Excited</span>
                             </button>
-                            <button type="button" class="bitstream-mood-btn" data-emoji="🤪" data-emotion="Silly" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease;">
+                            <button type="button" class="bitstream-mood-btn" data-emoji="🤪" data-emotion="Silly"
+                                style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease;">
                                 <span style="font-size: 1.8rem; margin-bottom: 4px;">🤪</span>
                                 <span style="font-size: 0.85rem; font-weight: 500; color: #475569;">Silly</span>
                             </button>
-                            <button type="button" class="bitstream-mood-btn" data-emoji="🤔" data-emotion="Pensive" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease;">
+                            <button type="button" class="bitstream-mood-btn" data-emoji="🤔" data-emotion="Pensive"
+                                style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease;">
                                 <span style="font-size: 1.8rem; margin-bottom: 4px;">🤔</span>
                                 <span style="font-size: 0.85rem; font-weight: 500; color: #475569;">Pensive</span>
                             </button>
-                            <button type="button" class="bitstream-mood-btn" data-emoji="😠" data-emotion="Angry" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease;">
+                            <button type="button" class="bitstream-mood-btn" data-emoji="😠" data-emotion="Angry"
+                                style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease;">
                                 <span style="font-size: 1.8rem; margin-bottom: 4px;">😠</span>
                                 <span style="font-size: 0.85rem; font-weight: 500; color: #475569;">Angry</span>
                             </button>
-                            <button type="button" class="bitstream-mood-btn" data-emoji="😌" data-emotion="Relieved" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease;">
+                            <button type="button" class="bitstream-mood-btn" data-emoji="😌" data-emotion="Relieved"
+                                style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease;">
                                 <span style="font-size: 1.8rem; margin-bottom: 4px;">😌</span>
                                 <span style="font-size: 0.85rem; font-weight: 500; color: #475569;">Relieved</span>
                             </button>
-                            <button type="button" class="bitstream-mood-btn" data-emoji="🤯" data-emotion="Mind-blown" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease;">
+                            <button type="button" class="bitstream-mood-btn" data-emoji="🤯" data-emotion="Mind-blown"
+                                style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease;">
                                 <span style="font-size: 1.8rem; margin-bottom: 4px;">🤯</span>
                                 <span style="font-size: 0.85rem; font-weight: 500; color: #475569;">Mind-blown</span>
                             </button>
@@ -920,41 +930,57 @@ class BitStream_Shortcodes
 
                         <!-- Saved/Custom Moods Section -->
                         <div class="bitstream-saved-moods-section" style="margin-bottom: 20px;">
-                            <div class="bitstream-saved-moods-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <div class="bitstream-saved-moods-header"
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                                 <h4 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #475569;">Saved Moods</h4>
-                                <button type="button" class="bitstream-manage-moods-btn" style="background: none; border: none; color: var(--wp--preset--color--accent-1, #2c6e49); font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                                <button type="button" class="bitstream-manage-moods-btn"
+                                    style="background: none; border: none; color: var(--wp--preset--color--accent-1, #2c6e49); font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px;">
                                     <i class="fa-solid fa-gear"></i> Manage
                                 </button>
                             </div>
-                            
+
                             <!-- View mode: grid of saved items -->
-                            <div class="bitstream-saved-moods-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                            <div class="bitstream-saved-moods-grid"
+                                style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
                                 <!-- Dynamically populated by JS -->
                             </div>
-                            
+
                             <!-- Edit mode: list of items to sort/delete -->
-                            <div class="bitstream-saved-moods-edit-list" style="display: none; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 10px; background: #f8fafc;">
+                            <div class="bitstream-saved-moods-edit-list"
+                                style="display: none; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 10px; background: #f8fafc;">
                                 <!-- Dynamically populated by JS -->
                             </div>
                         </div>
 
-                        <div class="bitstream-custom-mood-divider" style="margin: 15px 0; text-align: center; border-bottom: 1px solid #eef0f2; line-height: 0.1em;"><span style="background:#fff; padding:0 10px; color:#94a3b8; font-size:0.85rem; font-weight:500;">OR CREATE CUSTOM</span></div>
+                        <div class="bitstream-custom-mood-divider"
+                            style="margin: 15px 0; text-align: center; border-bottom: 1px solid #eef0f2; line-height: 0.1em;">
+                            <span style="background:#fff; padding:0 10px; color:#94a3b8; font-size:0.85rem; font-weight:500;">OR
+                                CREATE CUSTOM</span></div>
 
                         <!-- Custom Mood Input Form -->
-                        <div class="bitstream-custom-mood-form" style="display: flex; gap: 10px; margin-top: 15px; align-items: flex-end;">
+                        <div class="bitstream-custom-mood-form"
+                            style="display: flex; gap: 10px; margin-top: 15px; align-items: flex-end;">
                             <div style="flex: 0 0 70px;">
-                                <label for="bitstream-mood-custom-emoji" style="font-size:0.85rem; font-weight:600; color:#475569; display:block; margin-bottom:5px;">Emoji</label>
-                                <input type="text" id="bitstream-mood-custom-emoji" placeholder="😊" maxlength="30" style="width: 100%; text-align: center; font-size: 1.5rem; height: 46px; padding: 0; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; box-sizing: border-box;">
+                                <label for="bitstream-mood-custom-emoji"
+                                    style="font-size:0.85rem; font-weight:600; color:#475569; display:block; margin-bottom:5px;">Emoji</label>
+                                <input type="text" id="bitstream-mood-custom-emoji" placeholder="😊" maxlength="30"
+                                    style="width: 100%; text-align: center; font-size: 1.5rem; height: 46px; padding: 0; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; box-sizing: border-box;">
                             </div>
                             <div style="flex: 1;">
-                                <label for="bitstream-mood-custom-emotion" style="font-size:0.85rem; font-weight:600; color:#475569; display:block; margin-bottom:5px;">Feeling name</label>
-                                <input type="text" id="bitstream-mood-custom-emotion" placeholder="e.g. productive, nostalgic..." style="width: 100%; height: 46px; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 0 12px; background: #f8fafc; box-sizing: border-box; font-size: 0.95rem;">
+                                <label for="bitstream-mood-custom-emotion"
+                                    style="font-size:0.85rem; font-weight:600; color:#475569; display:block; margin-bottom:5px;">Feeling
+                                    name</label>
+                                <input type="text" id="bitstream-mood-custom-emotion"
+                                    placeholder="e.g. productive, nostalgic..."
+                                    style="width: 100%; height: 46px; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 0 12px; background: #f8fafc; box-sizing: border-box; font-size: 0.95rem;">
                             </div>
                         </div>
                     </div>
                     <footer class="bitstream-composer-modal-footer">
-                        <button type="button" class="bitstream-composer-modal-cancel" data-composer-modal-close="mood">Cancel</button>
-                        <button type="button" class="bitstream-composer-modal-confirm bitstream-composer-mood-done">Done</button>
+                        <button type="button" class="bitstream-composer-modal-cancel"
+                            data-composer-modal-close="mood">Cancel</button>
+                        <button type="button"
+                            class="bitstream-composer-modal-confirm bitstream-composer-mood-done">Done</button>
                     </footer>
                 </div>
             </div>
@@ -1026,33 +1052,33 @@ class BitStream_Shortcodes
             </div>
 
             <?php if (current_user_can('manage_options')): ?>
-            <!-- ═══ SETTINGS MODAL ═══ -->
-            <div class="bitstream-composer-modal bitstream-composer-modal-settings" hidden>
-                <div class="bitstream-composer-modal-backdrop" data-composer-modal-close="settings"></div>
-                <div class="bitstream-composer-modal-dialog bitstream-composer-modal-dialog-wide" role="dialog"
-                    aria-modal="true" aria-label="Settings">
-                    <header class="bitstream-composer-modal-header">
-                        <h3>Settings</h3>
-                        <button type="button" class="bitstream-composer-modal-close" data-composer-modal-close="settings"
-                            aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-                    </header>
-                    <div class="bitstream-composer-modal-body">
-                        <?php
-                        if (class_exists('BitStream_Plugin')) {
-                            $plugin = BitStream_Plugin::get_instance();
-                            $shortcodes = $plugin ? $plugin->get_component('shortcodes') : null;
-                            if ($shortcodes && method_exists($shortcodes, 'render_settings')) {
-                                echo $shortcodes->render_settings([]);
+                <!-- ═══ SETTINGS MODAL ═══ -->
+                <div class="bitstream-composer-modal bitstream-composer-modal-settings" hidden>
+                    <div class="bitstream-composer-modal-backdrop" data-composer-modal-close="settings"></div>
+                    <div class="bitstream-composer-modal-dialog bitstream-composer-modal-dialog-wide" role="dialog"
+                        aria-modal="true" aria-label="Settings">
+                        <header class="bitstream-composer-modal-header">
+                            <h3>Settings</h3>
+                            <button type="button" class="bitstream-composer-modal-close" data-composer-modal-close="settings"
+                                aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+                        </header>
+                        <div class="bitstream-composer-modal-body">
+                            <?php
+                            if (class_exists('BitStream_Plugin')) {
+                                $plugin = BitStream_Plugin::get_instance();
+                                $shortcodes = $plugin ? $plugin->get_component('shortcodes') : null;
+                                if ($shortcodes && method_exists($shortcodes, 'render_settings')) {
+                                    echo $shortcodes->render_settings([]);
+                                } else {
+                                    echo do_shortcode('[bitstream_settings]');
+                                }
                             } else {
                                 echo do_shortcode('[bitstream_settings]');
                             }
-                        } else {
-                            echo do_shortcode('[bitstream_settings]');
-                        }
-                        ?>
+                            ?>
+                        </div>
                     </div>
                 </div>
-            </div>
             <?php endif; ?>
 
             <?php echo self::render_media_modals(); ?>
@@ -1284,7 +1310,24 @@ class BitStream_Shortcodes
             );
         }
 
-        $base_filter_url = remove_query_arg(['bitstream_type', 'bitstream_month', 'bitstream_search', 'bitstream_hashtag', 'paged']);
+        $base_filter_url = remove_query_arg([
+            'bitstream_type',
+            'bitstream_month',
+            'bitstream_search',
+            'bitstream_hashtag',
+            'paged',
+            'composer_tab',
+            'show_drafts',
+            'show_scheduled',
+            'show_settings',
+            'focus_composer',
+            'quote_post_id',
+            'highlight_bit',
+            'highlight_scheduled',
+            'open_comments',
+            'share_target',
+            'shared_id'
+        ]);
         $build_filter_url = static function ($base_url, $type, $month, $search, $hashtag = '') {
             $params = [];
             if (!empty($type) && $type !== 'all') {
@@ -1326,12 +1369,15 @@ class BitStream_Shortcodes
 
         echo '<div class="bitstream-feed-sidebar-column">';
 
-        echo '<aside class="bitstream-feed-sidebar bitstream-feed-sidebar-intro">';
-        echo '<div class="bitstream-intro-box">';
-        echo '<h3 class="bitstream-feed-sidebar-title">' . esc_html($intro_title) . '</h3>';
-        echo '<p class="bitstream-intro-text">' . nl2br(esc_html($intro_text)) . '</p>';
-        echo '</div>';
-        echo '</aside>';
+        $hide_intro = (get_option('bitstream_hide_intro_for_logged_in', '0') === '1') && is_user_logged_in();
+        if (!$hide_intro) {
+            echo '<aside class="bitstream-feed-sidebar bitstream-feed-sidebar-intro">';
+            echo '<div class="bitstream-intro-box">';
+            echo '<h3 class="bitstream-feed-sidebar-title">' . esc_html($intro_title) . '</h3>';
+            echo '<p class="bitstream-intro-text">' . nl2br(esc_html($intro_text)) . '</p>';
+            echo '</div>';
+            echo '</aside>';
+        }
 
         if (!empty($desktop_quick_actions)) {
             echo '<aside class="hide-on-mobile">';
@@ -1343,18 +1389,9 @@ class BitStream_Shortcodes
 
         echo '<div class="bitstream-feed-sidebar-left">';
 
-        // Mobile Tab Buttons (Hidden on desktop)
+        // Hashtag counts needed for sidebar and search screen
         $hashtag_counts = class_exists('BitStream_Content_Display') ? BitStream_Content_Display::get_hashtag_counts() : [];
-        echo '<div class="bitstream-mobile-tabs-nav hide-on-desktop">';
-        echo '<button class="bitstream-feed-sidebar-summary" data-panel="search" title="Search" aria-label="Search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i></button>';
-        if (!empty($desktop_rss_links) || !empty($desktop_push_button)) {
-            echo '<button class="bitstream-feed-sidebar-summary" data-panel="rss" title="RSS Feeds" aria-label="RSS Feeds"><i class="fa-solid fa-rss" aria-hidden="true"></i></button>';
-        }
-        echo '<button class="bitstream-feed-sidebar-summary" data-panel="filters" title="Filters" aria-label="Filters"><i class="fa-solid fa-sliders" aria-hidden="true"></i></button>';
-        if (!empty($hashtag_counts)) {
-            echo '<button class="bitstream-feed-sidebar-summary" data-panel="hashtags" title="Hashtags" aria-label="Hashtags"><i class="fa-solid fa-hashtag" aria-hidden="true"></i></button>';
-        }
-        echo '</div>';
+
 
         echo '<div class="bitstream-feed-sidebar-tabs">';
 
@@ -1605,33 +1642,211 @@ class BitStream_Shortcodes
 
         echo '</div>'; // End feed layout
 
-        // Inline script for Mobile Tabs
-        echo '<script>
-        document.addEventListener("DOMContentLoaded", function() {
-            var tabsNav = document.querySelector(".bitstream-mobile-tabs-nav");
-            if (!tabsNav) return;
-            var buttons = tabsNav.querySelectorAll("button");
-            var panels = document.querySelectorAll(".bitstream-feed-sidebar-panel");
-            
-            buttons.forEach(function(btn) {
-                btn.addEventListener("click", function() {
-                    var targetId = this.getAttribute("data-panel");
-                    var isActive = this.classList.contains("is-active");
-                    
-                    // Reset all
-                    buttons.forEach(function(b) { b.classList.remove("is-active"); });
-                    panels.forEach(function(p) { p.style.display = "none"; });
-                    
-                    // Toggle current
-                    if (!isActive) {
-                        this.classList.add("is-active");
-                        var targetPanel = document.querySelector(".bitstream-feed-sidebar-panel-" + targetId);
-                        if(targetPanel) targetPanel.style.display = "block";
-                    }
-                });
-            });
-        });
-        </script>';
+        $draft_count = 0;
+        if (current_user_can('edit_posts')) {
+            $author_id = get_current_user_id();
+            $draft_count = get_user_meta($author_id, '_bitstream_draft_count', true);
+            if ($draft_count === '') {
+                $draft_count = (int) (new WP_Query([
+                    'post_type' => 'bit',
+                    'post_status' => 'draft',
+                    'author' => $author_id,
+                    'posts_per_page' => 1,
+                    'fields' => 'ids'
+                ]))->found_posts;
+            } else {
+                $draft_count = (int) $draft_count;
+            }
+        }
+
+        $filters_active = $has_active_filters ? '1' : '0';
+        $nav_classes = 'bitstream-bottom-nav';
+        if (current_user_can('edit_posts')) {
+            $nav_classes .= ' has-compose-btn';
+        }
+
+        echo '<nav class="' . esc_attr($nav_classes) . '" role="navigation" aria-label="Main navigation" data-filters-active="' . esc_attr($filters_active) . '">';
+        echo '<button class="bitstream-bottom-nav-btn" id="bs-nav-home" data-feed-url="' . esc_url($base_filter_url) . '" aria-label="Home">';
+        echo '<i class="fa-solid fa-house" aria-hidden="true"></i><span>Home</span></button>';
+        echo '<button class="bitstream-bottom-nav-btn" id="bs-nav-search" aria-label="Search &amp; Filter">';
+        echo '<i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span>Search</span></button>';
+        if (current_user_can('edit_posts')) {
+            echo '<button class="bitstream-bottom-nav-btn is-compose" id="bs-nav-compose" aria-label="Compose">';
+            echo '<i class="fa-solid fa-pen" aria-hidden="true"></i><span>Compose</span></button>';
+            echo '<button class="bitstream-bottom-nav-btn" id="bs-nav-drafts" data-composer-modal-trigger="drafts" data-drafts-count="' . esc_attr($draft_count) . '" aria-label="Drafts">';
+            echo '<i class="fa-solid fa-file-lines" aria-hidden="true"></i><span>Drafts</span></button>';
+        }
+        echo '<button class="bitstream-bottom-nav-btn" id="bs-nav-more" aria-label="More options">';
+        echo '<i class="fa-solid fa-ellipsis" aria-hidden="true"></i><span>More</span></button>';
+        echo '</nav>';
+
+        // Search Screen (mobile only)
+        echo '<div class="bitstream-mobile-screen" id="bs-search-screen" hidden>';
+        echo '<div class="bitstream-mobile-screen-header">';
+        echo '<h2>Search &amp; Filter</h2>';
+        echo '<button class="bitstream-mobile-screen-close" id="bs-search-screen-close" aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>';
+        echo '</div>';
+        echo '<div class="bitstream-mobile-screen-body">';
+
+        // Search form
+        echo '<div class="bs-search-section">';
+        echo '<p class="bs-search-section-title">Search</p>';
+        echo '<form class="bitstream-filter-search" method="get" action="' . esc_url($base_filter_url) . '">';
+        if ($selected_type !== 'all') {
+            echo '<input type="hidden" name="bitstream_type" value="' . esc_attr($selected_type) . '">';
+        }
+        if (!empty($selected_month)) {
+            echo '<input type="hidden" name="bitstream_month" value="' . esc_attr($selected_month) . '">';
+        }
+        echo '<input type="search" name="bitstream_search" value="' . esc_attr($selected_search) . '" placeholder="Search posts...">';
+        echo '<button type="submit">Search</button>';
+        echo '</form>';
+        echo '</div>';
+
+        // Content type filter
+        echo '<div class="bs-search-section">';
+        echo '<p class="bs-search-section-title">Content type</p>';
+        echo '<div class="bitstream-feed-sidebar">';
+        echo '<a class="bitstream-filter-link ' . ($selected_type === 'all' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'all', $selected_month, $selected_search, $selected_hashtag)) . '">All</a>';
+        echo '<a class="bitstream-filter-link ' . ($selected_type === 'bits' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'bits', $selected_month, $selected_search, $selected_hashtag)) . '">Bits</a>';
+        echo '<a class="bitstream-filter-link ' . ($selected_type === 'rebits' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'rebits', $selected_month, $selected_search, $selected_hashtag)) . '">Rebits</a>';
+        echo '</div>';
+        echo '</div>';
+
+        // Date / archive filter
+        echo '<div class="bs-search-section">';
+        echo '<p class="bs-search-section-title">Date</p>';
+        echo '<div class="bitstream-feed-sidebar">';
+        echo '<a class="bitstream-filter-link ' . (empty($selected_month) ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, $selected_type, '', $selected_search, $selected_hashtag)) . '">All dates</a>';
+        if (!empty($archive_rows)) {
+            $archive_by_year_search = [];
+            foreach ($archive_rows as $row) {
+                $year = intval($row->y);
+                if (!isset($archive_by_year_search[$year])) {
+                    $archive_by_year_search[$year] = ['total' => 0, 'months' => []];
+                }
+                $archive_by_year_search[$year]['total'] += intval($row->c);
+                $archive_by_year_search[$year]['months'][] = ['m' => intval($row->m), 'c' => intval($row->c)];
+            }
+            $sel_year_s = !empty($selected_month) ? substr($selected_month, 0, 4) : '';
+            $yr_idx_s = 0;
+            foreach ($archive_by_year_search as $year => $year_data) {
+                $is_open = ($sel_year_s === strval($year)) || (empty($sel_year_s) && $yr_idx_s === 0);
+                echo '<details class="bitstream-archive-year"' . ($is_open ? ' open' : '') . '>';
+                echo '<summary class="bitstream-archive-year-summary">';
+                echo '<span class="bitstream-archive-year-label">' . esc_html(strval($year)) . '</span>';
+                echo '<span class="bitstream-archive-year-count">(' . intval($year_data['total']) . ')</span>';
+                echo '</summary><div class="bitstream-archive-months">';
+                foreach ($year_data['months'] as $month_data) {
+                    $month_value = sprintf('%04d-%02d', intval($year), intval($month_data['m']));
+                    $is_active = ($selected_month === $month_value) ? ' is-active' : '';
+                    $label = date_i18n('F', mktime(0, 0, 0, intval($month_data['m']), 1, intval($year)));
+                    echo '<a class="bitstream-filter-link' . $is_active . '" href="' . esc_url($build_filter_url($base_filter_url, $selected_type, $month_value, $selected_search, $selected_hashtag)) . '">';
+                    echo '<strong class="bitstream-archive-label">' . esc_html($label) . '</strong> <span class="bitstream-archive-count">(' . intval($month_data['c']) . ')</span>';
+                    echo '</a>';
+                }
+                echo '</div></details>';
+                $yr_idx_s++;
+            }
+        }
+        echo '</div></div>';
+
+        // Hashtags
+        if (!empty($hashtag_counts)) {
+            echo '<div class="bs-search-section">';
+            echo '<p class="bs-search-section-title">Hashtags</p>';
+            echo '<div class="bitstream-feed-sidebar bitstream-hashtag-list">';
+            foreach ($hashtag_counts as $tag => $count) {
+                $is_active_tag = (mb_strtolower($selected_hashtag, 'UTF-8') === mb_strtolower($tag, 'UTF-8')) ? ' is-active' : '';
+                $tag_url = $build_filter_url($base_filter_url, $selected_type, $selected_month, $selected_search, $tag);
+                echo '<a class="bitstream-filter-link bitstream-hashtag-sidebar-link' . $is_active_tag . '" href="' . esc_url($tag_url) . '">';
+                echo '<span class="bitstream-hashtag-sidebar-tag">#' . esc_html($tag) . '</span>';
+                echo '<span class="bitstream-archive-count">(' . intval($count) . ')</span>';
+                echo '</a>';
+            }
+            echo '</div></div>';
+        }
+
+        echo '</div></div>'; // End search screen body + screen
+
+        // More Sheet (mobile only)
+        echo '<div class="bitstream-bottom-sheet-backdrop" id="bs-more-backdrop" hidden></div>';
+        echo '<div class="bitstream-bottom-sheet" id="bs-more-sheet" hidden role="dialog" aria-modal="true" aria-label="More options">';
+        echo '<div class="bitstream-bottom-sheet-handle" aria-hidden="true"></div>';
+        echo '<div class="bitstream-bottom-sheet-header">';
+        echo '<h2>More</h2>';
+        echo '<button class="bitstream-bottom-sheet-close" id="bs-more-sheet-close" aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>';
+        echo '</div>';
+        echo '<div class="bitstream-bottom-sheet-body">';
+
+        if (!is_user_logged_in()) {
+            echo '<a class="bs-more-row" href="' . esc_url(wp_login_url(get_permalink())) . '">';
+            echo '<i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i><span>Log in</span>';
+            echo '</a>';
+        }
+
+        if (current_user_can('edit_posts')) {
+            $author_id = get_current_user_id();
+            $future_count = get_user_meta($author_id, '_bitstream_scheduled_count', true);
+            if ($future_count === '') {
+                $future_count = (int) (new WP_Query([
+                    'post_type' => 'bit',
+                    'post_status' => 'future',
+                    'author' => $author_id,
+                    'posts_per_page' => 1,
+                    'fields' => 'ids'
+                ]))->found_posts;
+            } else {
+                $future_count = (int) $future_count;
+            }
+
+            echo '<a class="bs-more-row" href="#" data-composer-modal-trigger="scheduled-list">';
+            echo '<i class="fa-solid fa-clock" aria-hidden="true"></i><span>Scheduled (' . $future_count . ')</span>';
+            echo '</a>';
+        }
+
+        if (!empty($desktop_push_button)) {
+            echo '<div class="bs-more-section">';
+            echo '<p class="bs-more-section-title">Notifications</p>';
+            echo $desktop_push_button; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+            echo '</div>';
+        }
+
+        if (!empty($desktop_rss_links)) {
+            echo '<div class="bs-more-section">';
+            echo '<p class="bs-more-section-title">RSS Feeds</p>';
+            echo $desktop_rss_links; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+            echo '</div>';
+        }
+
+        if (current_user_can('manage_options')) {
+            echo '<a class="bs-more-row" href="#" data-composer-modal-trigger="settings">';
+            echo '<i class="fa-solid fa-gear" aria-hidden="true"></i><span>Settings</span>';
+            echo '</a>';
+        }
+
+        echo '<a class="bs-more-row" href="#" id="bs-more-about-trigger">';
+        echo '<i class="fa-solid fa-circle-info" aria-hidden="true"></i><span>About</span>';
+        echo '</a>';
+
+        echo '</div></div>'; // End more sheet body + sheet
+
+        // About Modal (mobile only, standalone)
+        echo '<div class="bitstream-composer-modal bitstream-composer-modal-about" id="bs-about-modal" hidden>';
+        echo '<div class="bitstream-composer-modal-backdrop" id="bs-about-modal-close-backdrop"></div>';
+        echo '<div class="bitstream-composer-modal-dialog" role="dialog" aria-modal="true" aria-label="About BitStream">';
+        echo '<header class="bitstream-composer-modal-header">';
+        echo '<h3>About BitStream</h3>';
+        echo '<button type="button" class="bitstream-composer-modal-close" id="bs-about-modal-close-btn" aria-label="Close">';
+        echo '<i class="fa-solid fa-xmark" aria-hidden="true"></i></button>';
+        echo '</header>';
+        echo '<div class="bitstream-composer-modal-body" style="padding: 1.5rem 1.4rem;">';
+        echo self::render_about_box(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+        echo '</div>';
+        echo '<footer class="bitstream-composer-modal-footer">';
+        echo '<button type="button" class="bitstream-composer-modal-cancel" id="bs-about-modal-cancel-btn">Close</button>';
+        echo '</footer>';
+        echo '</div></div>';
 
         wp_reset_postdata();
         return ob_get_clean();
@@ -1775,17 +1990,21 @@ class BitStream_Shortcodes
 
         $intro_title = get_option('bitstream_feed_intro_title', $default_intro_title);
         $intro_text = get_option('bitstream_feed_intro_text', $default_intro_text);
+        $hide_intro = get_option('bitstream_hide_intro_for_logged_in', '0');
         $updated = false;
 
         if (isset($_POST['bitstream_save_feed_intro']) && check_admin_referer('bitstream_feed_intro_save', 'bitstream_feed_intro_nonce')) {
             $new_intro_title = sanitize_text_field(wp_unslash($_POST['bitstream_feed_intro_title'] ?? ''));
             $new_intro_text = sanitize_textarea_field(wp_unslash($_POST['bitstream_feed_intro_text'] ?? ''));
+            $new_hide_intro = isset($_POST['bitstream_hide_intro_for_logged_in']) ? '1' : '0';
 
             $intro_title = !empty($new_intro_title) ? $new_intro_title : $default_intro_title;
             $intro_text = !empty($new_intro_text) ? $new_intro_text : $default_intro_text;
+            $hide_intro = $new_hide_intro;
 
             update_option('bitstream_feed_intro_title', $intro_title, false);
             update_option('bitstream_feed_intro_text', $intro_text, false);
+            update_option('bitstream_hide_intro_for_logged_in', $hide_intro, false);
             $updated = true;
         }
 
@@ -1808,6 +2027,12 @@ class BitStream_Shortcodes
         echo '<div style="margin-bottom: 1rem;">';
         echo '<label for="bitstream-feed-intro-text" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Description</label>';
         echo '<textarea id="bitstream-feed-intro-text" name="bitstream_feed_intro_text" rows="5" style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box;">' . esc_textarea($intro_text) . '</textarea>';
+        echo '</div>';
+
+        echo '<div style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">';
+        $checked = ($hide_intro === '1') ? ' checked' : '';
+        echo '<input id="bitstream-hide-intro-for-logged-in" name="bitstream_hide_intro_for_logged_in" type="checkbox" value="1"' . $checked . '>';
+        echo '<label for="bitstream-hide-intro-for-logged-in" style="font-weight: 600; cursor: pointer; user-select: none;">Hide intro box for logged-in users</label>';
         echo '</div>';
 
         echo '<button type="submit" name="bitstream_save_feed_intro" style="background: var(--wp--preset--color--accent-1, #2c6e49); color: #fff; border: none; border-radius: 10px; padding: 0.6rem 1.5rem; cursor: pointer; font-weight: 600; font-size: 0.95rem;">Save Intro</button>';
@@ -2244,12 +2469,16 @@ class BitStream_Shortcodes
                         </div>
 
                         <!-- Mood badge/button row in edit form -->
-                        <div class="bs-edit-mood-row" style="margin-bottom: 1rem; display: flex; align-items: center; gap: 8px;">
-                            <button type="button" class="bs-edit-mood-btn" style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1.5px solid #e2e8f0; border-radius: 20px; background: #f8fafc; font-size: 0.9rem; font-weight: 500; cursor: pointer; color: #475569; transition: all 0.2s ease;">
+                        <div class="bs-edit-mood-row"
+                            style="margin-bottom: 1rem; display: flex; align-items: center; gap: 8px;">
+                            <button type="button" class="bs-edit-mood-btn"
+                                style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1.5px solid #e2e8f0; border-radius: 20px; background: #f8fafc; font-size: 0.9rem; font-weight: 500; cursor: pointer; color: #475569; transition: all 0.2s ease;">
                                 <i class="fa-solid fa-face-smile"></i>
                                 <span class="bs-edit-mood-label">Add Mood</span>
                             </button>
-                            <button type="button" class="bs-edit-mood-remove" style="background: none; border: none; color: #94a3b8; cursor: pointer; padding: 4px; display: none;" title="Remove mood">
+                            <button type="button" class="bs-edit-mood-remove"
+                                style="background: none; border: none; color: #94a3b8; cursor: pointer; padding: 4px; display: none;"
+                                title="Remove mood">
                                 <i class="fa-solid fa-xmark"></i>
                             </button>
                         </div>
@@ -2288,12 +2517,16 @@ class BitStream_Shortcodes
                         </div>
 
                         <!-- Mood badge/button row in edit form -->
-                        <div class="bs-edit-mood-row" style="margin-bottom: 1rem; display: flex; align-items: center; gap: 8px;">
-                            <button type="button" class="bs-edit-mood-btn" style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1.5px solid #e2e8f0; border-radius: 20px; background: #f8fafc; font-size: 0.9rem; font-weight: 500; cursor: pointer; color: #475569; transition: all 0.2s ease;">
+                        <div class="bs-edit-mood-row"
+                            style="margin-bottom: 1rem; display: flex; align-items: center; gap: 8px;">
+                            <button type="button" class="bs-edit-mood-btn"
+                                style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1.5px solid #e2e8f0; border-radius: 20px; background: #f8fafc; font-size: 0.9rem; font-weight: 500; cursor: pointer; color: #475569; transition: all 0.2s ease;">
                                 <i class="fa-solid fa-face-smile"></i>
                                 <span class="bs-edit-mood-label">Add Mood</span>
                             </button>
-                            <button type="button" class="bs-edit-mood-remove" style="background: none; border: none; color: #94a3b8; cursor: pointer; padding: 4px; display: none;" title="Remove mood">
+                            <button type="button" class="bs-edit-mood-remove"
+                                style="background: none; border: none; color: #94a3b8; cursor: pointer; padding: 4px; display: none;"
+                                title="Remove mood">
                                 <i class="fa-solid fa-xmark"></i>
                             </button>
                         </div>
@@ -2432,7 +2665,7 @@ class BitStream_Shortcodes
         global $wpdb;
 
         $upload_dir = wp_upload_dir();
-        $save_dir   = trailingslashit($upload_dir['basedir']) . 'bitstream-shares';
+        $save_dir = trailingslashit($upload_dir['basedir']) . 'bitstream-shares';
         $count = 0;
 
         if (file_exists($save_dir) && is_dir($save_dir)) {

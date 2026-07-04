@@ -122,6 +122,7 @@ class BitStream_Ajax_Handlers
             'plugin_url'         => BITSTREAM_PLUGIN_URL,
             'save_share_image_nonce' => wp_create_nonce('bitstream_save_share_image_nonce'),
             'custom_moods'       => is_user_logged_in() ? (get_user_meta(get_current_user_id(), '_bitstream_custom_moods', true) ?: []) : [],
+            'hashtags'           => class_exists('BitStream_Content_Display') ? BitStream_Content_Display::get_hashtag_counts() : [],
         ];
     }
 
@@ -1936,6 +1937,8 @@ class BitStream_Ajax_Handlers
                 'attachment_id' => $attachment_id > 0 ? $attachment_id : '',
                 'attachment_ids' => $attachment_ids_str,
                 'attachments'   => $attachments_data,
+                'mood_emoji'    => get_post_meta($post_id, '_bitstream_mood_emoji', true) ?: '',
+                'mood_emotion'  => get_post_meta($post_id, '_bitstream_mood_emotion', true) ?: '',
             ];
 
             wp_send_json_success($data);
@@ -2039,6 +2042,8 @@ class BitStream_Ajax_Handlers
                 'media_preview_html'=> $media_preview_html,
                 'schedule_enabled'  => $schedule_enabled,
                 'schedule_datetime' => $schedule_datetime,
+                'mood_emoji'        => get_post_meta($post_id, '_bitstream_mood_emoji', true) ?: '',
+                'mood_emotion'      => get_post_meta($post_id, '_bitstream_mood_emotion', true) ?: '',
             ];
 
             wp_send_json_success($data);
