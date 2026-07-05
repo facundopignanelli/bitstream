@@ -73,7 +73,8 @@ Manage all configuration options directly on the frontend timeline page via the 
 - **Adaptive Sidebars**: Left navigation and filter links, right Quick Actions rails, and responsive stacking across device breakpoints.
 - **Interactive Cards**: Rich media support, quoted bits (nested cards), and inline action buttons (comments, likes, share).
 - **Interactive Time Toggles**: Click/tap on relative timestamps (e.g., *2 hours ago*) to dynamically append the exact date and time inline (fully selectable and copyable).
-- **Quoted Bits Navigation**: Quoted bit previews are interactive; clicking them instantly highlights and scrolls to the quoted bit on the feed.
+- **Quoted Bits Navigation**: Quoted bit previews are interactive; clicking them filters the feed to isolate that post, displaying an active filter chip to easily clear and return to the full feed.
+- **Deep-Linked Highlight View**: Direct links containing the `highlight_bit` parameter filter the timeline to show only the targeted post. Features an active filter chip at the top to clear the view and return to the full timeline.
 
 ### 📝 Composer Interface
 - **Unified Feed Composition**: Compose Bits and ReBits directly from the feed page.
@@ -82,12 +83,15 @@ Manage all configuration options directly on the frontend timeline page via the 
 - **Rich Media Grids**: Drag-and-drop uploads, attaching up to 10 images or videos per post, custom image cropper, and video support.
 - **Fullscreen Lightbox**: Pop up gallery view allowing users to zoom in and expand single or multi-media images and videos directly from the timeline.
 - **Hashtag Suggestions Autocomplete**: Type `#` inside the composer or edit modals to receive immediate suggestions of previously used hashtags sorted by count, featuring keyboard navigation (`ArrowUp`/`ArrowDown`/`Enter`/`Tab`) and a mobile-friendly inline stacked layout.
+- **Rich Emoji Insertion**: Integrated custom emoji picker triggers inside the composer and edit form textareas, placing a subtle shortcut inside the text fields for seamless rich emoji composition.
+- **Timeline Edit Modal Quote Support**: Editing a post that quotes another bit displays the quoted bit preview block inside the edit modal, and allows users to easily clear/remove the quote.
 
 ### 🎭 Mood Status Selector
 - **Custom Mood Badges**: Select or create a status update in the format `[User Name] is feeling [emoji] [emotion]` next to your name in timeline posts.
 - **Pure Mood Posts**: Distinctive large card status blocks in the timeline for mood-only updates (posts with no body text or attachments).
 - **Personal Moods Library**: Build a custom saved moods library saved in user profile options. Reorder (Up/Down), delete, or edit custom moods inside the Mood Modal with real-time UI propagation.
 - **Emoji Standardization**: Integrates `jdecked/twemoji` to dynamically convert text emojis into uniform SVG vector assets from CDN, ensuring identical emoji displays across Windows, macOS, Android, and iOS.
+- **Custom Emoji Picker**: Includes a responsive, styled emoji picker featuring Unicode category tabs, instant country/flag/name search, skin tone preferences, and recently used emojis. The picker automatically scales to the width of its parent modal on desktop and mobile, caches rendering grids in memory for instant tab switching, and has a local fallback cache to ensure it loads even when the CDN is offline.
 - **Validation**: Enforces valid Unicode emojis with full support for complex compound ZWJ sequences (skin tones, gender signs, flags).
 
 ### 🔗 Enhanced ReBit System

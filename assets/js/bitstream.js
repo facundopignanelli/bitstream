@@ -692,7 +692,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     window.showDeleteConfirmation = showDeleteConfirmation;
 
-    function showDiscardConfirmation(message, onConfirm) {
+    function showDiscardConfirmation(message, onConfirm, onSaveDraft = null) {
         let confirmModal = document.querySelector('.bitstream-composer-modal-discard-confirm');
         if (!confirmModal) {
             confirmModal = document.createElement('div');
@@ -712,6 +712,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     </div>
                     <footer class="bitstream-composer-modal-footer">
                         <button type="button" class="bitstream-composer-modal-cancel" data-composer-modal-close="discard-confirm">Cancel</button>
+                        <button type="button" class="bitstream-composer-modal-confirm bitstream-composer-discard-save-btn" style="background-color: var(--wp--preset--color--accent-1, #2c6e49); color: white; display: none;">Save to Drafts</button>
                         <button type="button" class="bitstream-composer-modal-confirm bitstream-composer-discard-confirm-btn is-delete">Discard</button>
                     </footer>
                 </div>
@@ -740,6 +741,23 @@ document.addEventListener('DOMContentLoaded', function () {
         const msgEl = confirmModal.querySelector('.bitstream-discard-confirm-message');
         if (msgEl) {
             msgEl.textContent = message;
+        }
+
+        // Bind save draft button
+        const saveDraftBtn = confirmModal.querySelector('.bitstream-composer-discard-save-btn');
+        if (saveDraftBtn) {
+            if (onSaveDraft) {
+                saveDraftBtn.style.display = '';
+                const newSaveDraftBtn = saveDraftBtn.cloneNode(true);
+                saveDraftBtn.parentNode.replaceChild(newSaveDraftBtn, saveDraftBtn);
+                newSaveDraftBtn.addEventListener('click', () => {
+                    confirmModal.hidden = true;
+                    document.body.style.overflow = '';
+                    onSaveDraft();
+                });
+            } else {
+                saveDraftBtn.style.display = 'none';
+            }
         }
 
         // Bind confirm button
@@ -3246,6 +3264,48 @@ document.addEventListener('DOMContentLoaded', function () {
         let ogImageFrame = null;
         let editFormIsDirty = false;
         let isPopulating = false;
+        let activeLinkMetaForm = null;
+        let clearBitFormRebit = () => {};
+        let renderBitFormRebitPreview = () => {};
+
+        function getRebitMetaForm() {
+            return activeLinkMetaForm || rebitForm;
+        }
+
+        function getRebitMetaFields(form) {
+            if (!form) {
+                return {};
+            }
+
+            if (form === rebitForm) {
+                return {
+                    urlInput: form.querySelector('#bs-edit-rebit-url'),
+                    attachmentInput: form.querySelector('input[name="rebit_attachment_id"]'),
+                    titleInput: form.querySelector('input[name="rebit_og_title"]') || form.querySelector('.bs-edit-og-title'),
+                    descInput: form.querySelector('input[name="rebit_og_desc"]') || form.querySelector('.bs-edit-og-desc'),
+                    imageInput: form.querySelector('input[name="rebit_og_image"]') || form.querySelector('.bs-edit-og-image'),
+                    imageRemovedInput: form.querySelector('input[name="rebit_og_image_removed"]') || form.querySelector('.bs-edit-og-image-removed')
+                };
+            }
+
+            return {
+                urlInput: form.querySelector('.bs-edit-rebit-url-hidden'),
+                attachmentInput: form.querySelector('.bs-edit-rebit-attachment-id'),
+                titleInput: form.querySelector('.bs-edit-rebit-og-title'),
+                descInput: form.querySelector('.bs-edit-rebit-og-desc'),
+                imageInput: form.querySelector('.bs-edit-rebit-og-image'),
+                imageRemovedInput: form.querySelector('.bs-edit-rebit-og-image-removed')
+            };
+        }
+
+        function bitFormHasActiveRebit(form) {
+            if (!form || form !== bitForm) {
+                return false;
+            }
+
+            const fields = getRebitMetaFields(form);
+            return !!(fields.urlInput && !fields.urlInput.disabled && (fields.urlInput.value || '').trim());
+        }
 
         function attemptCloseEditModal() {
             if (editFormIsDirty) {
@@ -3341,16 +3401,17 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         function setLinkMetaPreview() {
-            if (!rebitForm || !linkMetaModal) {
+            const metaForm = getRebitMetaForm();
+            if (!metaForm || !linkMetaModal) {
                 return;
             }
 
-            const urlInput = rebitForm.querySelector('#bs-edit-rebit-url');
-            const attachmentInput = rebitForm.querySelector('input[name="rebit_attachment_id"]');
-            const titleInput = rebitForm.querySelector('input[name="rebit_og_title"]');
-            const descInput = rebitForm.querySelector('input[name="rebit_og_desc"]');
-            const imageInput = rebitForm.querySelector('input[name="rebit_og_image"]');
-            const imageRemovedInput = rebitForm.querySelector('input[name="rebit_og_image_removed"]');
+            const fields = getRebitMetaFields(metaForm);
+            const urlInput = fields.urlInput;
+            const attachmentInput = fields.attachmentInput;
+            const titleInput = fields.titleInput;
+            const descInput = fields.descInput;
+            const imageInput = fields.imageInput;
 
             const modalUrlInput = linkMetaModal.querySelector('#bs-edit-link-meta-url-input');
             const visibleTitleInput = linkMetaModal.querySelector('#bs-edit-link-meta-title-input');
@@ -3393,14 +3454,16 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         function syncLinkMetaFields() {
-            if (!rebitForm || !linkMetaModal) {
+            const metaForm = getRebitMetaForm();
+            if (!metaForm || !linkMetaModal) {
                 return;
             }
 
-            const titleInput = rebitForm.querySelector('input[name="rebit_og_title"]');
-            const descInput = rebitForm.querySelector('input[name="rebit_og_desc"]');
-            const imageInput = rebitForm.querySelector('input[name="rebit_og_image"]');
-            const imageRemovedInput = rebitForm.querySelector('input[name="rebit_og_image_removed"]');
+            const fields = getRebitMetaFields(metaForm);
+            const titleInput = fields.titleInput;
+            const descInput = fields.descInput;
+            const imageInput = fields.imageInput;
+            const imageRemovedInput = fields.imageRemovedInput;
 
             const visibleTitleInput = linkMetaModal.querySelector('#bs-edit-link-meta-title-input');
             const visibleDescInput = linkMetaModal.querySelector('#bs-edit-link-meta-desc-input');
@@ -3418,11 +3481,12 @@ document.addEventListener('DOMContentLoaded', function () {
             setLinkMetaPreview();
         }
 
-        function openLinkMetaModal() {
-            if (!linkMetaModal || !rebitForm) {
+        function openLinkMetaModal(sourceForm) {
+            if (!linkMetaModal) {
                 return;
             }
 
+            activeLinkMetaForm = sourceForm || rebitForm;
             setLinkMetaPreview();
             linkMetaModal.hidden = false;
         }
@@ -3431,6 +3495,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (linkMetaModal) {
                 linkMetaModal.hidden = true;
             }
+            activeLinkMetaForm = null;
         }
 
         function setQuotePreview(form, quotePostId, quotePreviewHtml) {
@@ -3993,6 +4058,26 @@ document.addEventListener('DOMContentLoaded', function () {
             if (form === rebitForm) {
                 bindLinkMetaControls();
             }
+
+            const quoteRemoveBtn = form.querySelector('.bs-edit-quote-remove-btn');
+            if (quoteRemoveBtn) {
+                quoteRemoveBtn.addEventListener('click', () => {
+                    setQuotePreview(form, 0, '');
+                });
+            }
+
+            const mediaToggleBtn = form.querySelector('.bs-edit-media-toggle-btn');
+            const editMediaWrap = form.querySelector('.bs-edit-media');
+            if (mediaToggleBtn && editMediaWrap) {
+                mediaToggleBtn.addEventListener('click', () => {
+                    const isOpen = editMediaWrap.classList.contains('media-uploader-open');
+                    editMediaWrap.classList.toggle('media-uploader-open', !isOpen);
+                    const label = mediaToggleBtn.querySelector('.bs-edit-media-toggle-label');
+                    if (label) {
+                        label.textContent = isOpen ? 'Add Media' : 'Hide Media';
+                    }
+                });
+            }
         }
 
         function populateBitForm(data, isQuoteMode) {
@@ -4002,6 +4087,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
             bindFormOnce(bitForm);
             showForm(bitForm);
+
+            const editMediaWrap = bitForm.querySelector('.bs-edit-media');
+            const mediaToggleBtn = bitForm.querySelector('.bs-edit-media-toggle-btn');
+            if (editMediaWrap) {
+                editMediaWrap.classList.remove('media-uploader-open');
+            }
+            if (mediaToggleBtn) {
+                const label = mediaToggleBtn.querySelector('.bs-edit-media-toggle-label');
+                if (label) {
+                    label.textContent = 'Add Media';
+                }
+            }
 
             const postId = parseInt(data.post_id || '0', 10);
             const editPostInput = bitForm.querySelector('input[name="edit_post_id"]');
@@ -5599,6 +5696,9 @@ jQuery(document).ready(function ($) {
                     const statusEl = composer.querySelector('.bitstream-sidebar-composer-status');
                     if (statusEl) statusEl.textContent = '';
                 }
+                if (typeof window.bitstreamSyncBottomNav === 'function') {
+                    window.bitstreamSyncBottomNav();
+                }
             }
         } else {
             e.preventDefault();
@@ -5870,7 +5970,7 @@ jQuery(document).ready(function ($) {
                     
                     const customEmojiInput = modal.querySelector('#bitstream-mood-custom-emoji');
                     const customEmotionInput = modal.querySelector('#bitstream-mood-custom-emotion');
-                    if (customEmojiInput) customEmojiInput.value = '';
+                    setCustomEmojiDisplay('');
                     if (customEmotionInput) customEmotionInput.value = '';
 
                     let foundPredefined = false;
@@ -5883,7 +5983,7 @@ jQuery(document).ready(function ($) {
                         });
 
                         if (!foundPredefined) {
-                            if (customEmojiInput) customEmojiInput.value = currentEmoji;
+                            setCustomEmojiDisplay(currentEmoji);
                             if (customEmotionInput) customEmotionInput.value = currentEmotion;
                         }
                     }
@@ -5891,9 +5991,15 @@ jQuery(document).ready(function ($) {
                     renderSavedMoods();
                 }
             }
+            if (typeof window.bitstreamSyncBottomNav === 'function') {
+                window.bitstreamSyncBottomNav();
+            }
         }
         function clearComposer() {
             if (form) form.reset();
+            if (typeof window.closeAllBsEmojiPickers === 'function') {
+                window.closeAllBsEmojiPickers();
+            }
             if (hAttachmentId) hAttachmentId.value = '';
             if (hAttachmentIds) hAttachmentIds.value = '';
             if (previewMediaThumb) previewMediaThumb.innerHTML = '';
@@ -5928,6 +6034,9 @@ jQuery(document).ready(function ($) {
 
         function closeModal(name, keepPosterOpen = false) {
             setStatus('');
+            if (typeof window.closeAllBsEmojiPickers === 'function') {
+                window.closeAllBsEmojiPickers();
+            }
             if (name === 'composer') {
                 const content = textarea ? textarea.value.trim() : '';
                 const hasRebit = hRebitUrl && hRebitUrl.value.trim();
@@ -5939,6 +6048,10 @@ jQuery(document).ready(function ($) {
                         delete composerRoot.dataset.quickActionSource;
                         composerRoot.querySelectorAll('.bitstream-composer-modal').forEach(m => m.hidden = true);
                         clearComposer();
+                    }, () => {
+                        if (composerSaveDraftActionBtn) {
+                            composerSaveDraftActionBtn.click();
+                        }
                     });
                     return;
                 }
@@ -6001,6 +6114,9 @@ jQuery(document).ready(function ($) {
                         window.history.replaceState({}, '', url.toString());
                     }
                 }
+            }
+            if (typeof window.bitstreamSyncBottomNav === 'function') {
+                window.bitstreamSyncBottomNav();
             }
         }
 
@@ -6079,6 +6195,499 @@ jQuery(document).ready(function ($) {
         });
 
         // ==========================================
+        // Emoji Picker Factory
+        // ==========================================
+
+        (function () {
+            let _emojiData = null;
+            let _emojiDataPromise = null;
+            const _activePickers = [];
+
+            window.closeAllBsEmojiPickers = function () {
+                _activePickers.forEach(p => p.close());
+            };
+
+            const CATEGORY_ORDER = [
+                'Smileys & Emotion',
+                'People & Body',
+                'Animals & Nature',
+                'Food & Drink',
+                'Travel & Places',
+                'Activities',
+                'Objects',
+                'Symbols',
+                'Flags',
+            ];
+
+            const CATEGORY_ICONS = {
+                'Smileys & Emotion':  '1F600',
+                'People & Body':      '1F44B',
+                'Animals & Nature':   '1F436',
+                'Food & Drink':       '1F355',
+                'Travel & Places':    '2708-FE0F',
+                'Activities':         '26BD',
+                'Objects':            '1F4A1',
+                'Symbols':            '267E-FE0F',
+                'Flags':              '1F3C1',
+            };
+
+            const TONE_COLORS = [
+                { tone: '',      color: '#FFCC22', label: 'Default' },
+                { tone: '1F3FB', color: '#FFDBB4', label: 'Light' },
+                { tone: '1F3FC', color: '#C68642', label: 'Medium-Light' },
+                { tone: '1F3FD', color: '#8D5524', label: 'Medium' },
+                { tone: '1F3FE', color: '#5C3317', label: 'Medium-Dark' },
+                { tone: '1F3FF', color: '#2C1810', label: 'Dark' },
+            ];
+
+            function unifiedToChar(unified) {
+                return String.fromCodePoint(...unified.split('-').map(cp => parseInt(cp, 16)));
+            }
+
+            function getBsRecentEmoji() {
+                try { return JSON.parse(localStorage.getItem('bitstream_recent_emoji') || '[]'); }
+                catch { return []; }
+            }
+
+            function addBsRecentEmoji(emoji) {
+                let arr = getBsRecentEmoji().filter(e => e !== emoji);
+                arr.unshift(emoji);
+                localStorage.setItem('bitstream_recent_emoji', JSON.stringify(arr.slice(0, 24)));
+            }
+
+            function getBsEmojiTone() {
+                return localStorage.getItem('bitstream_emoji_tone') || '';
+            }
+
+            function setBsEmojiTone(tone) {
+                localStorage.setItem('bitstream_emoji_tone', tone);
+            }
+
+            function loadBsEmojiData() {
+                if (_emojiData) return Promise.resolve(_emojiData);
+                if (_emojiDataPromise) return _emojiDataPromise;
+
+                const primaryUrl = 'https://cdn.jsdelivr.net/npm/emoji-datasource@latest/emoji_pretty.json';
+                const localUrl = (window.bitstream_ajax && bitstream_ajax.plugin_url)
+                    ? bitstream_ajax.plugin_url + 'assets/js/emoji_pretty.json'
+                    : null;
+
+                const processRawData = (raw) => {
+                    const categories = {};
+                    const map = {};
+                    raw.sort((a, b) => a.sort_order - b.sort_order);
+                    for (const entry of raw) {
+                        if (entry.category === 'Component') continue;
+                        if (!categories[entry.category]) categories[entry.category] = [];
+                        categories[entry.category].push(entry);
+                        map[entry.unified] = entry;
+                    }
+                    _emojiData = { categories, map, all: raw.filter(e => e.category !== 'Component') };
+                    return _emojiData;
+                };
+
+                _emojiDataPromise = fetch(primaryUrl)
+                    .then(r => {
+                        if (!r.ok) throw new Error('CDN response not ok');
+                        return r.json();
+                    })
+                    .catch(err => {
+                        console.warn('Emoji Picker CDN fetch failed, trying local fallback...', err);
+                        if (!localUrl) throw err;
+                        return fetch(localUrl).then(r => {
+                            if (!r.ok) throw new Error('Local fallback failed');
+                            return r.json();
+                        });
+                    })
+                    .then(processRawData)
+                    .catch(err => {
+                        _emojiDataPromise = null; // allow retry
+                        return Promise.reject(err);
+                    });
+                return _emojiDataPromise;
+            }
+
+            function createBsEmojiPicker() {
+                // Build picker element
+                const tabsHtml = [
+                    `<button type="button" class="bs-emoji-tab" data-category="recent" title="Recently used"><i class="fa-solid fa-clock-rotate-left"></i></button>`,
+                    ...CATEGORY_ORDER.map(cat =>
+                        `<button type="button" class="bs-emoji-tab" data-category="${cat}" title="${cat}">${unifiedToChar(CATEGORY_ICONS[cat])}</button>`
+                    )
+                ].join('');
+
+                const tonesHtml = TONE_COLORS.map(t =>
+                    `<button type="button" class="bs-tone-swatch" data-tone="${t.tone}" style="background:${t.color};" title="${t.label}"></button>`
+                ).join('');
+
+                const pickerEl = document.createElement('div');
+                pickerEl.className = 'bs-emoji-picker';
+                pickerEl.setAttribute('hidden', '');
+                pickerEl.setAttribute('role', 'dialog');
+                pickerEl.setAttribute('aria-label', 'Emoji picker');
+                pickerEl.innerHTML = `
+                    <div class="bs-emoji-picker-top">
+                        <input type="text" class="bs-emoji-picker-search" placeholder="Search emoji\u2026" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                        <button type="button" class="bs-emoji-tone-toggle" title="Skin tone" aria-label="Change skin tone"></button>
+                    </div>
+                    <div class="bs-emoji-tone-row" hidden>${tonesHtml}</div>
+                    <div class="bs-emoji-picker-tabs">${tabsHtml}</div>
+                    <div class="bs-emoji-picker-body">
+                        <div class="bs-emoji-picker-status bs-emoji-picker-empty" hidden>No emoji found</div>
+                        <div class="bs-emoji-picker-status bs-emoji-picker-error" hidden>
+                            <p>Couldn\u2019t load emoji data.</p>
+                            <button type="button" class="bs-emoji-retry-btn">Try again</button>
+                        </div>
+                        <div class="bs-emoji-picker-status bs-emoji-picker-loading" hidden>
+                            <i class="fa-solid fa-spinner fa-spin"></i> Loading\u2026
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(pickerEl);
+
+                const searchInput = pickerEl.querySelector('.bs-emoji-picker-search');
+                const toneToggle  = pickerEl.querySelector('.bs-emoji-tone-toggle');
+                const toneRow     = pickerEl.querySelector('.bs-emoji-tone-row');
+                const toneSwatches = pickerEl.querySelectorAll('.bs-tone-swatch');
+                const tabEls      = pickerEl.querySelectorAll('.bs-emoji-tab');
+                const emptyEl     = pickerEl.querySelector('.bs-emoji-picker-empty');
+                const errorEl     = pickerEl.querySelector('.bs-emoji-picker-error');
+                const loadingEl   = pickerEl.querySelector('.bs-emoji-picker-loading');
+                const retryBtn    = pickerEl.querySelector('.bs-emoji-retry-btn');
+                const bodyContainer = pickerEl.querySelector('.bs-emoji-picker-body');
+
+                const categoryGrids = {}; // Cache map: categoryName -> DOMElement
+
+                // Dedicated grid for search results
+                const searchGrid = document.createElement('div');
+                searchGrid.className = 'bs-emoji-grid';
+                searchGrid.hidden = true;
+                bodyContainer.appendChild(searchGrid);
+
+                let activeCategory = 'Smileys & Emotion';
+                let isOpen = false;
+                let _onSelect = null;
+                let _outsideHandler = null;
+                let _searchTimeout = null;
+
+                // Parse category tab emoji with Twemoji
+                parseEmojis(pickerEl.querySelector('.bs-emoji-picker-tabs'));
+
+                function updateToneToggle() {
+                    const tone = getBsEmojiTone();
+                    const found = TONE_COLORS.find(t => t.tone === tone) || TONE_COLORS[0];
+                    toneToggle.style.background = found.color;
+                    toneSwatches.forEach(s => s.classList.toggle('is-active', s.dataset.tone === tone));
+                }
+                updateToneToggle();
+
+                function clearCachedGrids() {
+                    Object.keys(categoryGrids).forEach(key => {
+                        categoryGrids[key].remove();
+                        delete categoryGrids[key];
+                    });
+                }
+
+                function setState(state) {
+                    emptyEl.hidden   = state !== 'empty';
+                    errorEl.hidden   = state !== 'error';
+                    loadingEl.hidden = state !== 'loading';
+
+                    if (state !== 'grid') {
+                        searchGrid.hidden = true;
+                        Object.values(categoryGrids).forEach(g => g.hidden = true);
+                    }
+                }
+
+                function createGridElement(entries) {
+                    const gridEl = document.createElement('div');
+                    gridEl.className = 'bs-emoji-grid';
+                    gridEl.hidden = true;
+
+                    entries.forEach(entry => {
+                        const char = unifiedToChar(entry.unified);
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'bs-emoji-btn';
+                        btn.dataset.unified = entry.unified;
+                        btn.dataset.emoji = char;
+                        btn.title = entry.short_name.replace(/_/g, ' ');
+                        if (entry.skin_variations && Object.keys(entry.skin_variations).length) {
+                            btn.dataset.hasTones = '1';
+                        }
+                        btn.textContent = char;
+                        gridEl.appendChild(btn);
+                    });
+
+                    parseEmojis(gridEl);
+                    gridEl.querySelectorAll('.bs-emoji-btn').forEach(btn => {
+                        if (!btn.querySelector('img')) btn.style.display = 'none';
+                    });
+
+                    return gridEl;
+                }
+
+                function renderCategory(category) {
+                    if (!_emojiData) return;
+
+                    searchGrid.hidden = true;
+                    Object.keys(categoryGrids).forEach(key => {
+                        categoryGrids[key].hidden = true;
+                    });
+
+                    if (category === 'recent') {
+                        if (categoryGrids.recent) {
+                            categoryGrids.recent.remove();
+                        }
+                        const recent = getBsRecentEmoji();
+                        if (!recent.length) {
+                            setState('empty');
+                            return;
+                        }
+                        const entries = recent.flatMap(char => {
+                            const entry = Object.values(_emojiData.map).find(e => unifiedToChar(e.unified) === char);
+                            return entry ? [entry] : [];
+                        });
+                        const recentGrid = createGridElement(entries);
+                        bodyContainer.appendChild(recentGrid);
+                        categoryGrids.recent = recentGrid;
+
+                        const visibleCount = recentGrid.querySelectorAll('.bs-emoji-btn:not([style*="display: none"])').length;
+                        if (visibleCount === 0) {
+                            setState('empty');
+                        } else {
+                            recentGrid.hidden = false;
+                            setState('grid');
+                        }
+                        return;
+                    }
+
+                    if (!categoryGrids[category]) {
+                        const entries = _emojiData.categories[category] || [];
+                        if (!entries.length) {
+                            setState('empty');
+                            return;
+                        }
+                        const newGrid = createGridElement(entries);
+                        bodyContainer.appendChild(newGrid);
+                        categoryGrids[category] = newGrid;
+                    }
+
+                    const activeGrid = categoryGrids[category];
+                    const visibleCount = activeGrid.querySelectorAll('.bs-emoji-btn:not([style*="display: none"])').length;
+                    if (visibleCount === 0) {
+                        setState('empty');
+                    } else {
+                        activeGrid.hidden = false;
+                        setState('grid');
+                    }
+                }
+
+                function renderSearch(query) {
+                    if (!_emojiData) return;
+
+                    Object.keys(categoryGrids).forEach(key => {
+                        categoryGrids[key].hidden = true;
+                    });
+
+                    const q = query.toLowerCase().trim();
+                    const qUnderscore = q.replace(/\s+/g, '_');
+                    const results = _emojiData.all.filter(e => {
+                        const name = (e.name || '').toLowerCase();
+                        return e.short_names.some(n => n.includes(qUnderscore)) || name.includes(q);
+                    });
+
+                    searchGrid.innerHTML = '';
+                    results.forEach(entry => {
+                        const char = unifiedToChar(entry.unified);
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'bs-emoji-btn';
+                        btn.dataset.unified = entry.unified;
+                        btn.dataset.emoji = char;
+                        btn.title = entry.short_name.replace(/_/g, ' ');
+                        if (entry.skin_variations && Object.keys(entry.skin_variations).length) {
+                            btn.dataset.hasTones = '1';
+                        }
+                        btn.textContent = char;
+                        searchGrid.appendChild(btn);
+                    });
+
+                    parseEmojis(searchGrid);
+                    searchGrid.querySelectorAll('.bs-emoji-btn').forEach(btn => {
+                        if (!btn.querySelector('img')) btn.style.display = 'none';
+                    });
+
+                    const visibleCount = searchGrid.querySelectorAll('.bs-emoji-btn:not([style*="display: none"])').length;
+                    if (visibleCount === 0) {
+                        setState('empty');
+                    } else {
+                        searchGrid.hidden = false;
+                        setState('grid');
+                    }
+                }
+
+                function setActiveTab(category) {
+                    activeCategory = category;
+                    tabEls.forEach(t => t.classList.toggle('is-active', t.dataset.category === category));
+                }
+
+                function positionPicker(triggerEl) {
+                    const rect = triggerEl.getBoundingClientRect();
+                    const pickerH = 400;
+                    const vp = { w: window.innerWidth, h: window.innerHeight };
+                    const navH = window.innerWidth < 1024 ? 56 : 0;
+
+                    // Match nearest modal dialog width if inside one
+                    const dialog = triggerEl.closest('.bitstream-composer-modal-dialog, .bs-edit-modal-dialog');
+                    let pickerW = 320;
+                    let left = rect.left;
+
+                    if (dialog) {
+                        const dialogRect = dialog.getBoundingClientRect();
+                        pickerW = dialogRect.width;
+                        left = dialogRect.left;
+                        pickerEl.style.width = pickerW + 'px';
+                        pickerEl.style.borderRadius = '0 0 20px 20px';
+                    } else {
+                        pickerEl.style.width = '320px';
+                        pickerEl.style.borderRadius = '16px';
+                    }
+
+                    let top = (rect.bottom + 6 + pickerH < vp.h - navH)
+                        ? rect.bottom + 6
+                        : rect.top - pickerH - 6;
+
+                    if (!dialog) {
+                        if (left + pickerW > vp.w - 8) left = vp.w - pickerW - 8;
+                        if (left < 8) left = 8;
+                    }
+                    if (top < 8) top = 8;
+
+                    pickerEl.style.top  = top + 'px';
+                    pickerEl.style.left = left + 'px';
+                }
+
+                // Picker inner body clicks
+                bodyContainer.addEventListener('click', e => {
+                    const btn = e.target.closest('.bs-emoji-btn');
+                    if (!btn) return;
+                    let emoji = btn.dataset.emoji;
+                    const tone = getBsEmojiTone();
+                    if (btn.dataset.hasTones && tone && _emojiData) {
+                        const entry = _emojiData.map[btn.dataset.unified];
+                        if (entry && entry.skin_variations && entry.skin_variations[tone]) {
+                            emoji = unifiedToChar(entry.skin_variations[tone].unified);
+                        }
+                    }
+                    addBsRecentEmoji(emoji);
+                    if (_onSelect) _onSelect(emoji);
+                    close();
+                });
+
+                // Tab clicks
+                tabEls.forEach(tab => {
+                    tab.addEventListener('click', () => {
+                        searchInput.value = '';
+                        setActiveTab(tab.dataset.category);
+                        renderCategory(activeCategory);
+                    });
+                });
+
+                // Search
+                searchInput.addEventListener('input', () => {
+                    clearTimeout(_searchTimeout);
+                    _searchTimeout = setTimeout(() => {
+                        const q = searchInput.value.trim();
+                        if (!q) {
+                            setActiveTab(activeCategory);
+                            renderCategory(activeCategory);
+                        } else {
+                            tabEls.forEach(t => t.classList.remove('is-active'));
+                            renderSearch(q);
+                        }
+                    }, 180);
+                });
+
+                // Tone toggle
+                toneToggle.addEventListener('click', e => {
+                    e.stopPropagation();
+                    toneRow.hidden = !toneRow.hidden;
+                });
+
+                toneSwatches.forEach(swatch => {
+                    swatch.addEventListener('click', e => {
+                        e.stopPropagation();
+                        setBsEmojiTone(swatch.dataset.tone);
+                        updateToneToggle();
+                        toneRow.hidden = true;
+                        clearCachedGrids();
+                        const q = searchInput.value.trim();
+                        if (q) renderSearch(q); else renderCategory(activeCategory);
+                    });
+                });
+
+                // Retry on load failure
+                retryBtn.addEventListener('click', () => {
+                    setState('loading');
+                    loadBsEmojiData()
+                        .then(() => renderCategory(activeCategory))
+                        .catch(() => setState('error'));
+                });
+
+                // Escape key
+                pickerEl.addEventListener('keydown', e => {
+                    if (e.key === 'Escape') close();
+                });
+
+                // Prevent outside-click handler from triggering on inner clicks
+                pickerEl.addEventListener('mousedown', e => e.stopPropagation());
+
+                function open(triggerEl, onSelectCallback) {
+                    if (isOpen) { close(); return; }
+                    window.closeAllBsEmojiPickers();
+                    _onSelect = onSelectCallback;
+                    isOpen = true;
+                    pickerEl.removeAttribute('hidden');
+                    positionPicker(triggerEl);
+
+                    const initialTab = getBsRecentEmoji().length > 0 ? 'recent' : 'Smileys & Emotion';
+                    setActiveTab(initialTab);
+                    setState('loading');
+                    searchInput.value = '';
+
+                    loadBsEmojiData()
+                        .then(() => renderCategory(activeCategory))
+                        .catch(() => setState('error'));
+
+                    // Delay outside-click listener so the triggering click doesn't close immediately
+                    setTimeout(() => {
+                        _outsideHandler = () => close();
+                        document.addEventListener('mousedown', _outsideHandler);
+                    }, 0);
+                }
+
+                function close() {
+                    if (!isOpen) return;
+                    isOpen = false;
+                    _onSelect = null;
+                    pickerEl.setAttribute('hidden', '');
+                    toneRow.hidden = true;
+                    if (_outsideHandler) {
+                        document.removeEventListener('mousedown', _outsideHandler);
+                        _outsideHandler = null;
+                    }
+                }
+
+                const pickerInst = { open, close };
+                _activePickers.push(pickerInst);
+                return pickerInst;
+            }
+
+            window.createBsEmojiPicker = createBsEmojiPicker;
+        })();
+
+        // ==========================================
         // Mood Modal Implementation
         // ==========================================
 
@@ -6086,12 +6695,62 @@ jQuery(document).ready(function ($) {
         const customEmojiInput = moodModal ? moodModal.querySelector('#bitstream-mood-custom-emoji') : null;
         const customEmotionInput = moodModal ? moodModal.querySelector('#bitstream-mood-custom-emotion') : null;
         const moodDoneBtn = moodModal ? moodModal.querySelector('.bitstream-composer-mood-done') : null;
+        const emojiTriggerBtn = moodModal ? moodModal.querySelector('#bitstream-mood-emoji-trigger') : null;
 
         const savedMoodsGrid = moodModal ? moodModal.querySelector('.bitstream-saved-moods-grid') : null;
         const savedMoodsEditList = moodModal ? moodModal.querySelector('.bitstream-saved-moods-edit-list') : null;
         const manageMoodsBtn = moodModal ? moodModal.querySelector('.bitstream-manage-moods-btn') : null;
         let isManagingMoods = false;
         let moodEditsMap = {};
+
+        // One shared picker instance for the entire mood modal
+        const moodEmojiPicker = (typeof createBsEmojiPicker === 'function') ? createBsEmojiPicker() : null;
+
+        // One shared picker instance for inserting emojis into text inputs/areas
+        const textEmojiPicker = (typeof createBsEmojiPicker === 'function') ? createBsEmojiPicker() : null;
+
+        function insertEmojiAtCursor(inputEl, emoji) {
+            if (!inputEl) return;
+            const startPos = inputEl.selectionStart;
+            const endPos = inputEl.selectionEnd;
+            const text = inputEl.value;
+            const before = text.substring(0, startPos);
+            const after = text.substring(endPos, text.length);
+            inputEl.value = before + emoji + after;
+            inputEl.selectionStart = inputEl.selectionEnd = startPos + emoji.length;
+            inputEl.focus();
+            inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        // Delegate click handler to document body to handle any present or dynamic .bs-insert-emoji-btn
+        document.body.addEventListener('click', (e) => {
+            const btn = e.target.closest('.bs-insert-emoji-btn');
+            if (!btn || !textEmojiPicker) return;
+            e.preventDefault();
+            const targetSelector = btn.getAttribute('data-target-input');
+            const targetInput = document.querySelector(targetSelector);
+            if (targetInput) {
+                textEmojiPicker.open(btn, (emoji) => {
+                    insertEmojiAtCursor(targetInput, emoji);
+                });
+            }
+        });
+
+        // Sync trigger button appearance with the hidden emoji input value
+        function setCustomEmojiDisplay(emoji) {
+            if (customEmojiInput) customEmojiInput.value = emoji || '';
+            if (!emojiTriggerBtn) return;
+            if (emoji) {
+                emojiTriggerBtn.textContent = emoji;
+                parseEmojis(emojiTriggerBtn);
+                emojiTriggerBtn.style.color = 'inherit';
+                emojiTriggerBtn.style.borderColor = 'var(--wp--preset--color--accent-1, #2c6e49)';
+            } else {
+                emojiTriggerBtn.innerHTML = '<i class="fa-solid fa-plus" style="font-size: 1rem;" aria-hidden="true"></i>';
+                emojiTriggerBtn.style.color = '#94a3b8';
+                emojiTriggerBtn.style.borderColor = '';
+            }
+        }
 
         if (moodModal) {
             parseEmojis(moodModal);
@@ -6122,7 +6781,7 @@ jQuery(document).ready(function ($) {
                     row.className = 'bitstream-mood-manage-item';
                     row.innerHTML = `
                         <div class="bitstream-mood-manage-info" style="display: flex; gap: 6px; align-items: center; flex: 1; margin-right: 10px;">
-                            <input type="text" class="bs-mood-edit-emoji" data-index="${index}" value="${mood.emoji}" style="width: 36px; text-align: center; font-size: 1.1rem; height: 32px; border: 1.5px solid #e2e8f0; border-radius: 8px; background: #fff; padding: 0; box-sizing: border-box;">
+                            <span class="bs-mood-emoji-display" data-index="${index}" title="Click to change emoji" style="display: flex; align-items: center; justify-content: center; width: 36px; height: 32px; flex-shrink: 0; border: 1.5px solid #e2e8f0; border-radius: 8px; background: #fff; cursor: pointer; box-sizing: border-box; font-size: 1.1rem;">${mood.emoji}</span>
                             <input type="text" class="bs-mood-edit-emotion" data-index="${index}" value="${mood.emotion}" style="flex: 1; height: 32px; border: 1.5px solid #e2e8f0; border-radius: 8px; background: #fff; padding: 0 8px; box-sizing: border-box; font-size: 0.85rem;">
                         </div>
                         <div class="bitstream-mood-manage-actions">
@@ -6132,12 +6791,34 @@ jQuery(document).ready(function ($) {
                         </div>
                     `;
                     savedMoodsEditList.appendChild(row);
+
+                    // Render the emoji via Twemoji
+                    const emojiSpan = row.querySelector('.bs-mood-emoji-display');
+                    parseEmojis(emojiSpan);
+
+                    // Clicking the span opens the picker; selection updates the span and records the edit
+                    emojiSpan.addEventListener('click', () => {
+                        if (!moodEmojiPicker) return;
+                        const idx = parseInt(emojiSpan.dataset.index, 10);
+                        const oldEmoji   = customMoods[idx].emoji;
+                        const oldEmotion = customMoods[idx].emotion;
+                        moodEmojiPicker.open(emojiSpan, (emoji) => {
+                            customMoods[idx].emoji = emoji;
+                            const oldKey = `${oldEmoji}|${oldEmotion}`;
+                            if (oldEmotion && (oldEmoji !== emoji)) {
+                                moodEditsMap[oldKey] = { emoji, emotion: oldEmotion };
+                            }
+                            emojiSpan.textContent = emoji;
+                            parseEmojis(emojiSpan);
+                        });
+                    });
                 });
+
 
                 let focusOldEmoji = '';
                 let focusOldEmotion = '';
 
-                savedMoodsEditList.querySelectorAll('.bs-mood-edit-emoji, .bs-mood-edit-emotion').forEach(input => {
+                savedMoodsEditList.querySelectorAll('.bs-mood-edit-emotion').forEach(input => {
                     input.addEventListener('focus', () => {
                         const idx = parseInt(input.dataset.index, 10);
                         focusOldEmoji = customMoods[idx].emoji;
@@ -6147,26 +6828,15 @@ jQuery(document).ready(function ($) {
                     input.addEventListener('change', () => {
                         const idx = parseInt(input.dataset.index, 10);
                         const oldKey = `${focusOldEmoji}|${focusOldEmotion}`;
-
-                        if (input.classList.contains('bs-mood-edit-emoji')) {
-                            const val = input.value;
-                            const emojiRegex = /(?:\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Regional_Indicator})[\p{Emoji}\p{Extended_Pictographic}\u200d\uFE0F]*/gu;
-                            const matches = val.match(emojiRegex);
-                            const sanitized = matches ? matches[0] : '';
-                            input.value = sanitized;
-                            customMoods[idx].emoji = sanitized;
-                        } else {
-                            customMoods[idx].emotion = input.value.trim();
-                        }
-
-                        const newEmoji = customMoods[idx].emoji;
+                        customMoods[idx].emotion = input.value.trim();
+                        const newEmoji   = customMoods[idx].emoji;
                         const newEmotion = customMoods[idx].emotion;
-
                         if (newEmotion && (focusOldEmoji !== newEmoji || focusOldEmotion !== newEmotion)) {
                             moodEditsMap[oldKey] = { emoji: newEmoji, emotion: newEmotion };
                         }
                     });
                 });
+
 
                 savedMoodsEditList.querySelectorAll('.bs-mood-up').forEach(btn => {
                     btn.addEventListener('click', (e) => {
@@ -6232,7 +6902,7 @@ jQuery(document).ready(function ($) {
                         e.preventDefault();
                         moodModal.querySelectorAll('.bitstream-mood-btn').forEach(b => b.classList.remove('is-active'));
                         btn.classList.add('is-active');
-                        if (customEmojiInput) customEmojiInput.value = '';
+                        setCustomEmojiDisplay('');
                         if (customEmotionInput) customEmotionInput.value = '';
                     });
 
@@ -6329,7 +6999,7 @@ jQuery(document).ready(function ($) {
                 e.preventDefault();
                 moodModal.querySelectorAll('.bitstream-mood-btn').forEach(b => b.classList.remove('is-active'));
                 btn.classList.add('is-active');
-                if (customEmojiInput) customEmojiInput.value = '';
+                setCustomEmojiDisplay('');
                 if (customEmotionInput) customEmotionInput.value = '';
             });
         });
@@ -6337,55 +7007,17 @@ jQuery(document).ready(function ($) {
         const clearHighlights = () => {
             moodModal.querySelectorAll('.bitstream-mood-btn').forEach(b => b.classList.remove('is-active'));
         };
-        if (customEmojiInput) {
-            // Create a small tooltip element
-            const tip = document.createElement('div');
-            tip.className = 'bitstream-emoji-tip';
-            tip.style.cssText = 'position: absolute; background: var(--wp--preset--color--accent-1, #2c6e49); color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 500; pointer-events: none; z-index: 1000000; display: none; white-space: nowrap; box-shadow: 0 4px 10px rgba(0,0,0,0.15);';
-            
-            const isWindows = navigator.userAgent.toLowerCase().includes('win');
-            if (isWindows) {
-                tip.innerHTML = 'Press <kbd style="background: #475569; padding: 1px 4px; border-radius: 3px; font-family: inherit;">Win</kbd> + <kbd style="background: #475569; padding: 1px 4px; border-radius: 3px; font-family: inherit;">.</kbd> to open emojis';
-            } else {
-                tip.innerHTML = 'Use keyboard emoji key';
-            }
-            
-            document.body.appendChild(tip);
 
-            customEmojiInput.addEventListener('focus', () => {
-                const rect = customEmojiInput.getBoundingClientRect();
-                tip.style.left = `${rect.left + window.scrollX + (rect.width / 2) - (tip.offsetWidth / 2)}px`;
-                tip.style.top = `${rect.top + window.scrollY - tip.offsetHeight - 8}px`;
-                tip.style.display = 'block';
-                // Adjust if left goes out of viewport bounds
-                const tipRect = tip.getBoundingClientRect();
-                if (tipRect.left < 10) {
-                    tip.style.left = '10px';
-                } else if (tipRect.right > window.innerWidth - 10) {
-                    tip.style.left = `${window.innerWidth - tipRect.width - 10}px`;
-                }
-            });
-
-            customEmojiInput.addEventListener('blur', () => {
-                tip.style.display = 'none';
-            });
-            
-            // Clean up tooltip if modal is closed
-            composerRoot.querySelectorAll('[data-composer-modal-close="mood"]').forEach(closeBtn => {
-                closeBtn.addEventListener('click', () => {
-                    tip.style.display = 'none';
+        // Wire emoji picker to the custom mood trigger button
+        if (emojiTriggerBtn && moodEmojiPicker) {
+            emojiTriggerBtn.addEventListener('click', () => {
+                clearHighlights();
+                moodEmojiPicker.open(emojiTriggerBtn, (emoji) => {
+                    setCustomEmojiDisplay(emoji);
                 });
             });
-
-            customEmojiInput.addEventListener('input', () => {
-                clearHighlights();
-                const val = customEmojiInput.value;
-                // Match flags, ZWJ sequences, skin tones, or basic pictographics
-                const emojiRegex = /(?:\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Regional_Indicator})[\p{Emoji}\p{Extended_Pictographic}\u200d\uFE0F]*/gu;
-                const matches = val.match(emojiRegex);
-                customEmojiInput.value = matches ? matches[0] : '';
-            });
         }
+
         if (customEmotionInput) customEmotionInput.addEventListener('input', clearHighlights);
 
         if (moodDoneBtn) {
@@ -7403,6 +8035,10 @@ jQuery(document).ready(function ($) {
                     if (submitBtn) submitBtn.disabled = false;
                 });
         });
+
+        window.bitstreamCloseModal = closeModal;
+        window.bitstreamOpenModal = openModal;
+        window.bitstreamClearComposer = clearComposer;
     });
 
     // Handle standard WP comment form submission via AJAX (also handles moved forms for nested replies)
@@ -8246,7 +8882,6 @@ jQuery(document).ready(function ($) {
         }
         const url = new URL(window.location.href);
         const paramsToRemove = [
-            'highlight_bit',
             'highlight_draft',
             'highlight_scheduled',
             'open_comments',
@@ -8298,11 +8933,56 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
+    function syncBottomNavActiveState() {
+        const composerEl = document.querySelector('.bitstream-composer');
+        const isComposerOpen = composerEl && !composerEl.hidden;
+        
+        let activeBtn = null;
+        
+        if (isComposerOpen) {
+            const draftsModal = composerEl.querySelector('.bitstream-composer-modal-drafts');
+            const scheduledModal = composerEl.querySelector('.bitstream-composer-modal-scheduled-list');
+            const settingsModal = composerEl.querySelector('.bitstream-composer-modal-settings');
+            const aboutModalEl = document.getElementById('bs-about-modal');
+            
+            const isDraftsOpen = draftsModal && !draftsModal.hidden;
+            const isScheduledOpen = scheduledModal && !scheduledModal.hidden;
+            const isSettingsOpen = settingsModal && !settingsModal.hidden;
+            const isAboutOpen = aboutModalEl && !aboutModalEl.hidden;
+            
+            if (isDraftsOpen) {
+                activeBtn = navDrafts;
+            } else if (isScheduledOpen || isSettingsOpen || isAboutOpen) {
+                activeBtn = navMore;
+            } else {
+                activeBtn = navCompose;
+            }
+        } else if (searchScreen && !searchScreen.hidden) {
+            activeBtn = navSearch;
+        } else if (moreSheet && !moreSheet.hidden) {
+            activeBtn = navMore;
+        } else {
+            const feedUrl = navHome ? navHome.dataset.feedUrl : '';
+            const isOnFeed = feedUrl && window.location.pathname === new URL(feedUrl, window.location.origin).pathname;
+            const hasParams = window.location.search.length > 0;
+            if (isOnFeed && !hasParams) {
+                activeBtn = navHome;
+            }
+        }
+        
+        [navHome, navSearch, navCompose, navDrafts, navMore].forEach(btn => {
+            if (btn) {
+                btn.classList.toggle('is-active', btn === activeBtn);
+            }
+        });
+    }
+    window.bitstreamSyncBottomNav = syncBottomNavActiveState;
+
     function closeSearch() {
         if (searchScreen) {
             searchScreen.hidden = true;
         }
-        if (navSearch) navSearch.classList.remove('is-active');
+        syncBottomNavActiveState();
     }
 
     function openSearch() {
@@ -8310,7 +8990,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (searchScreen) {
             searchScreen.hidden = false;
         }
-        if (navSearch) navSearch.classList.add('is-active');
+        syncBottomNavActiveState();
     }
 
     // Prepopulate search input if search screen is opened and filter search parameter is in URL
@@ -8326,51 +9006,231 @@ document.addEventListener('DOMContentLoaded', () => {
     function closeMore() {
         if (moreSheet)    moreSheet.hidden    = true;
         if (moreBackdrop) moreBackdrop.hidden = true;
-        if (navMore)      navMore.classList.remove('is-active');
+        syncBottomNavActiveState();
     }
+
+    // Expose closeMore/closeSearch globally so trigger handler can call them
+    window.bitstreamCloseMore = closeMore;
+    window.bitstreamCloseSearch = closeSearch;
 
     function openMore() {
         closeSearch();
         if (moreSheet)    moreSheet.hidden    = false;
         if (moreBackdrop) moreBackdrop.hidden = false;
-        if (navMore)      navMore.classList.add('is-active');
+        syncBottomNavActiveState();
     }
 
     // ── Home ─────────────────────────────────────────────────────────────────
     if (navHome) {
-        // Set home active styling if on base feed page and no query parameters are active
         const feedUrl = navHome.dataset.feedUrl;
-        const currentBase = window.location.origin + window.location.pathname;
-        const isOnFeed = feedUrl && currentBase === new URL(feedUrl, window.location.origin).pathname;
-        const hasParams = window.location.search.length > 0;
-        if (isOnFeed && !hasParams) {
-            navHome.classList.add('is-active');
-        }
+        const isOnFeed = feedUrl && window.location.pathname === new URL(feedUrl, window.location.origin).pathname;
 
-        navHome.addEventListener('click', () => {
-            closeSearch();
-            closeMore();
+        navHome.addEventListener('click', (e) => {
+            // Check if composer has unsaved changes before leaving/scrolling
+            const composerEl = document.querySelector('.bitstream-composer');
+            if (composerEl && !composerEl.hidden) {
+                const content = composerEl.querySelector('#bitstream-quick-bit-content');
+                const hasRebit = composerEl.querySelector('#bitstream-composer-rebit-url');
+                const hasMedia = composerEl.querySelector('#bitstream-composer-attachment-id');
+                
+                const contentVal = content ? content.value.trim() : '';
+                const rebitVal = hasRebit ? hasRebit.value.trim() : '';
+                const mediaVal = hasMedia && parseInt(hasMedia.value || '0', 10) > 0;
+                
+                if (contentVal || rebitVal || mediaVal) {
+                    e.preventDefault();
+                    if (typeof window.showDiscardConfirmation === 'function') {
+                        window.showDiscardConfirmation('Are you sure you want to discard your draft?', () => {
+                            composerEl.hidden = true;
+                            composerEl.querySelectorAll('.bitstream-composer-modal').forEach(m => m.hidden = true);
+                            const clearFn = window.bitstreamClearComposer || (typeof clearComposer === 'function' ? clearComposer : null);
+                            if (clearFn) clearFn();
+                            if (isOnFeed) {
+                                executeHomeClick();
+                            } else if (feedUrl) {
+                                window.location.href = feedUrl;
+                            }
+                        }, () => {
+                            const saveBtn = composerEl.querySelector('.bitstream-composer-save-draft-action');
+                            if (saveBtn) saveBtn.click();
+                        });
+                    } else if (confirm('Are you sure you want to discard your draft?')) {
+                        composerEl.hidden = true;
+                        composerEl.querySelectorAll('.bitstream-composer-modal').forEach(m => m.hidden = true);
+                        const clearFn = window.bitstreamClearComposer || (typeof clearComposer === 'function' ? clearComposer : null);
+                        if (clearFn) clearFn();
+                        if (isOnFeed) {
+                            executeHomeClick();
+                        } else if (feedUrl) {
+                            window.location.href = feedUrl;
+                        }
+                    }
+                    return;
+                } else {
+                    composerEl.hidden = true;
+                    composerEl.querySelectorAll('.bitstream-composer-modal').forEach(m => m.hidden = true);
+                }
+            }
 
-            if (isOnFeed && !window.location.search) {
-                // Already on the clean feed page — scroll to top
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+            e.preventDefault();
+            if (isOnFeed) {
+                executeHomeClick();
             } else if (feedUrl) {
                 window.location.href = feedUrl;
-            } else {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+
+            function executeHomeClick() {
+                closeSearch();
+                closeMore();
+
+                if (isOnFeed && feedUrl) {
+                    // Scroll up first
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    
+                    // Reset URL in background
+                    window.history.pushState({}, document.title, feedUrl);
+                    
+                    // Fetch the clean feed in the background
+                    fetch(feedUrl)
+                        .then(response => response.text())
+                        .then(htmlText => {
+                            const parser = new DOMParser();
+                            const doc = parser.parseFromString(htmlText, 'text/html');
+                            
+                            const newFeed = doc.querySelector('.bitstream-feed');
+                            const currentFeed = document.querySelector('.bitstream-feed');
+                            
+                            if (newFeed && currentFeed) {
+                                // Replace inner HTML of the feed
+                                currentFeed.innerHTML = newFeed.innerHTML;
+                                
+                                // Reset dataset attributes on currentFeed
+                                currentFeed.dataset.page = newFeed.dataset.page || '1';
+                                currentFeed.dataset.maxPage = newFeed.dataset.maxPage || '1';
+                                currentFeed.dataset.filterType = 'all';
+                                currentFeed.dataset.filterMonth = '';
+                                currentFeed.dataset.filterSearch = '';
+                                currentFeed.dataset.filterHashtag = '';
+                                
+                                // Sync active likes and comments
+                                if (typeof syncLikeButtonState === 'function') syncLikeButtonState(currentFeed);
+                                if (typeof initCommentToggles === 'function') initCommentToggles();
+                            }
+                            
+                            // Update Load More button visibility
+                            const newLoadMore = doc.getElementById('bitstream-load-more');
+                            const currentLoadMore = document.getElementById('bitstream-load-more');
+                            if (currentLoadMore) {
+                                if (newLoadMore) {
+                                    currentLoadMore.style.display = '';
+                                    currentLoadMore.textContent = 'Load More';
+                                } else {
+                                    currentLoadMore.style.display = 'none';
+                                }
+                            }
+                            
+                            // Reset active filters display
+                            const newActiveFilters = doc.querySelector('.bitstream-active-filters');
+                            const currentActiveFilters = document.querySelector('.bitstream-active-filters');
+                            if (currentActiveFilters) {
+                                if (newActiveFilters) {
+                                    currentActiveFilters.innerHTML = newActiveFilters.innerHTML;
+                                    currentActiveFilters.style.display = '';
+                                } else {
+                                    currentActiveFilters.innerHTML = '';
+                                    currentActiveFilters.style.display = 'none';
+                                }
+                            } else if (newActiveFilters) {
+                                const parent = currentFeed.parentNode;
+                                const temp = document.createElement('div');
+                                temp.innerHTML = newActiveFilters.outerHTML;
+                                parent.insertBefore(temp.firstElementChild, currentFeed);
+                            }
+
+                            // Infinite scroll scrollTrigger visibility
+                            const currentScrollTrigger = document.querySelector('.bitstream-scroll-trigger');
+                            const newScrollTrigger = doc.querySelector('.bitstream-scroll-trigger');
+                            if (currentScrollTrigger) {
+                                currentScrollTrigger.style.display = newScrollTrigger ? '' : 'none';
+                            }
+                            
+                            // Clear search inputs and active search list items in the search screen
+                            const searchInputs = document.querySelectorAll('form.bitstream-filter-search input[name="bitstream_search"]');
+                            searchInputs.forEach(input => input.value = '');
+                            
+                            const filterLinks = document.querySelectorAll('.bitstream-filter-link');
+                            filterLinks.forEach(link => {
+                                const text = link.textContent.trim().toLowerCase();
+                                const isAll = text === 'all' || text === 'all dates';
+                                link.classList.toggle('is-active', isAll);
+                            });
+                            
+                            syncBottomNavActiveState();
+                        });
+                } else if (feedUrl) {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    setTimeout(() => {
+                        window.location.href = feedUrl;
+                    }, 300);
+                } else {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    syncBottomNavActiveState();
+                }
             }
         });
     }
 
     // ── Search ───────────────────────────────────────────────────────────────
     if (navSearch) {
-        navSearch.addEventListener('click', () => {
-            if (searchScreen && !searchScreen.hidden) {
-                closeSearch();
-            } else {
-                openSearch();
+        navSearch.addEventListener('click', (e) => {
+            // Check if composer has unsaved changes before leaving
+            const composerEl = document.querySelector('.bitstream-composer');
+            if (composerEl && !composerEl.hidden) {
+                const content = composerEl.querySelector('#bitstream-quick-bit-content');
+                const hasRebit = composerEl.querySelector('#bitstream-composer-rebit-url');
+                const hasMedia = composerEl.querySelector('#bitstream-composer-attachment-id');
+                
+                const contentVal = content ? content.value.trim() : '';
+                const rebitVal = hasRebit ? hasRebit.value.trim() : '';
+                const mediaVal = hasMedia && parseInt(hasMedia.value || '0', 10) > 0;
+                
+                if (contentVal || rebitVal || mediaVal) {
+                    e.preventDefault();
+                    if (typeof window.showDiscardConfirmation === 'function') {
+                        window.showDiscardConfirmation('Are you sure you want to discard your draft?', () => {
+                            composerEl.hidden = true;
+                            composerEl.querySelectorAll('.bitstream-composer-modal').forEach(m => m.hidden = true);
+                            const clearFn = window.bitstreamClearComposer || (typeof clearComposer === 'function' ? clearComposer : null);
+                            if (clearFn) clearFn();
+                            toggleSearch();
+                        }, () => {
+                            const saveBtn = composerEl.querySelector('.bitstream-composer-save-draft-action');
+                            if (saveBtn) saveBtn.click();
+                        });
+                    } else if (confirm('Are you sure you want to discard your draft?')) {
+                        composerEl.hidden = true;
+                        composerEl.querySelectorAll('.bitstream-composer-modal').forEach(m => m.hidden = true);
+                        const clearFn = window.bitstreamClearComposer || (typeof clearComposer === 'function' ? clearComposer : null);
+                        if (clearFn) clearFn();
+                        toggleSearch();
+                    }
+                    return;
+                } else {
+                    composerEl.hidden = true;
+                    composerEl.querySelectorAll('.bitstream-composer-modal').forEach(m => m.hidden = true);
+                }
             }
+
+            toggleSearch();
         });
+    }
+
+    function toggleSearch() {
+        if (searchScreen && !searchScreen.hidden) {
+            closeSearch();
+        } else {
+            openSearch();
+        }
     }
 
     if (searchClose) {
@@ -8379,23 +9239,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ── Compose ──────────────────────────────────────────────────────────────
     if (navCompose) {
-        navCompose.addEventListener('click', () => {
-            closeSearch();
-            closeMore();
-
+        navCompose.addEventListener('click', (e) => {
+            e.preventDefault();
             const composerEl = document.querySelector('.bitstream-composer');
             if (composerEl) {
-                // Composer is on this page — show it instantly on mobile
-                const isMobile = window.innerWidth < 1024;
-                if (isMobile) {
-                    composerEl.hidden = false;
-                }
-                const textarea = composerEl.querySelector('#bitstream-quick-bit-content');
-                if (textarea) {
-                    textarea.focus();
-                    if (!isMobile) {
-                        textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                if (!composerEl.hidden) {
+                    if (typeof window.bitstreamCloseModal === 'function') {
+                        window.bitstreamCloseModal('composer');
+                    } else {
+                        composerEl.hidden = true;
+                        syncBottomNavActiveState();
                     }
+                } else {
+                    closeSearch();
+                    closeMore();
+                    composerEl.hidden = false;
+                    syncBottomNavActiveState();
+                    const textarea = composerEl.querySelector('#bitstream-quick-bit-content');
+                    if (textarea) textarea.focus();
                 }
             } else {
                 // Not on feed page — navigate to composer URL
@@ -8405,6 +9266,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 const url = new URL(composerBaseUrl, window.location.origin);
                 url.searchParams.set('composer_tab', 'bit');
                 window.location.href = url.toString();
+            }
+        });
+    }
+
+    // ── Drafts Click Intercept to Toggle ───────────────────────────────────────
+    if (navDrafts) {
+        navDrafts.addEventListener('click', (e) => {
+            const composerEl = document.querySelector('.bitstream-composer');
+            if (composerEl) {
+                const draftsModal = composerEl.querySelector('.bitstream-composer-modal-drafts');
+                if (draftsModal && !draftsModal.hidden) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (typeof window.bitstreamCloseModal === 'function') {
+                        window.bitstreamCloseModal('drafts');
+                    } else {
+                        draftsModal.hidden = true;
+                        composerEl.hidden = true;
+                        syncBottomNavActiveState();
+                    }
+                }
             }
         });
     }
@@ -8426,8 +9308,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Close More sheet and Search screen if a composer modal/screen trigger is clicked
     document.addEventListener('click', (e) => {
         if (e.target.closest('[data-composer-modal-trigger]')) {
-            closeMore();
-            closeSearch();
+            if (typeof window.bitstreamCloseMore === 'function') window.bitstreamCloseMore();
+            if (typeof window.bitstreamCloseSearch === 'function') window.bitstreamCloseSearch();
         }
     });
 
@@ -8440,12 +9322,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (aboutModal) {
             aboutModal.hidden = false;
         }
+        syncBottomNavActiveState();
     }
 
     function closeAboutModal() {
         if (aboutModal) {
             aboutModal.hidden = true;
         }
+        syncBottomNavActiveState();
     }
 
     if (aboutTrigger) {
@@ -8462,5 +9346,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (aboutCloseBtn)  aboutCloseBtn.addEventListener('click', closeAboutModal);
     if (aboutCancelBtn) aboutCancelBtn.addEventListener('click', closeAboutModal);
     if (aboutBackdrop)  aboutBackdrop.addEventListener('click', closeAboutModal);
+
+    // Initialize active nav state on page load
+    syncBottomNavActiveState();
 });
 

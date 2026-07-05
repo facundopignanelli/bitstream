@@ -1052,7 +1052,7 @@ a.bitstream-filter-chip:hover {
         padding-bottom: env(safe-area-inset-bottom);
         background: #fff;
         border-top: 1px solid #eef0f2;
-        z-index: 99995;
+        z-index: 100005;
         grid-template-columns: repeat(3, 1fr);
         box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.06);
     }
@@ -2387,6 +2387,7 @@ video {
     padding-bottom: 0px;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
+    flex-shrink: 0;
 }
 
 .bitstream-settings-tabs::-webkit-scrollbar {
@@ -4671,7 +4672,7 @@ iframe[src*="youtube-nocookie.com"] {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1.1rem 1.4rem 0.9rem;
+    padding: 0.9rem 1.2rem 0.75rem;
     border-bottom: 1px solid #eef0f2;
     position: sticky;
     top: 0;
@@ -4705,7 +4706,7 @@ iframe[src*="youtube-nocookie.com"] {
 }
 
 .bs-edit-modal-body {
-    padding: 1.2rem 1.4rem;
+    padding: 1rem 1.2rem;
     display: flex;
     flex-direction: column;
     gap: 0;
@@ -4750,13 +4751,13 @@ iframe[src*="youtube-nocookie.com"] {
 .bs-edit-form {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.75rem;
 }
 
 .bs-edit-field {
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
+    gap: 0.25rem;
 }
 
 .bs-edit-label {
@@ -5026,7 +5027,7 @@ iframe[src*="youtube-nocookie.com"] {
     display: flex;
     justify-content: flex-end;
     gap: 0.5rem;
-    padding: 0.75rem 1.4rem;
+    padding: 0.65rem 1.2rem;
     border-top: 1px solid #eef0f2;
     flex-shrink: 0;
     background: #fff;
@@ -5041,8 +5042,8 @@ iframe[src*="youtube-nocookie.com"] {
 
 .bs-edit-quote-preview {
     margin-top: 0.25rem;
-    margin-bottom: 1rem;
-    padding: 0.95rem 1rem;
+    margin-bottom: 0.75rem;
+    padding: 0.75rem 0.85rem;
     border: 1px solid #eef0f2;
     border-radius: 14px;
     background: #f8fafc;
@@ -5092,6 +5093,7 @@ iframe[src*="youtube-nocookie.com"] {
     .bs-edit-modal,
     .bitstream-cropper-modal {
         padding: 0 !important;
+        align-items: flex-start !important;
     }
 
     .bs-edit-modal-backdrop,
@@ -5103,8 +5105,8 @@ iframe[src*="youtube-nocookie.com"] {
     .bitstream-cropper-dialog {
         width: 100% !important;
         max-width: 100% !important;
-        height: 100% !important;
-        max-height: 100vh !important;
+        height: calc(100% - 56px - env(safe-area-inset-bottom)) !important;
+        max-height: calc(100vh - 56px - env(safe-area-inset-bottom)) !important;
         border-radius: 0 !important;
         box-shadow: none !important;
         animation: bitstreamMobileModalIn 0.28s cubic-bezier(0.32, 0.94, 0.6, 1) !important;
@@ -5133,7 +5135,7 @@ iframe[src*="youtube-nocookie.com"] {
         inset: 0 !important;
         z-index: 100000 !important;
         display: none !important;
-        align-items: center !important;
+        align-items: flex-start !important;
         justify-content: center !important;
         padding: 0 !important;
         box-sizing: border-box !important;
@@ -5160,8 +5162,8 @@ iframe[src*="youtube-nocookie.com"] {
         position: relative;
         width: 100% !important;
         max-width: 100% !important;
-        height: 100% !important;
-        max-height: 100vh !important;
+        height: calc(100% - 56px - env(safe-area-inset-bottom)) !important;
+        max-height: calc(100vh - 56px - env(safe-area-inset-bottom)) !important;
         background: #fff;
         border-radius: 0 !important;
         box-shadow: none !important;
@@ -5198,7 +5200,11 @@ iframe[src*="youtube-nocookie.com"] {
     .bitstream-composer .bitstream-composer-modal {
         /* Re-use the standard modal backdrop/centering so they float above the full-screen composer */
         position: fixed !important;
-        inset: 0 !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        /* Exclude the bottom nav so the dialog is never centred into the nav zone */
+        bottom: calc(56px + env(safe-area-inset-bottom)) !important;
         z-index: 100001 !important;
         display: none;
         align-items: center;
@@ -5231,7 +5237,8 @@ iframe[src*="youtube-nocookie.com"] {
         width: 100% !important;
         max-width: 480px !important;
         height: auto !important;
-        max-height: 90vh !important;
+        /* Cap at the available viewport above the bottom nav, minus 1rem breathing room */
+        max-height: calc(100svh - 56px - env(safe-area-inset-bottom) - 1rem) !important;
         border-radius: 20px !important;
         box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18) !important;
         display: flex !important;
@@ -5268,6 +5275,7 @@ iframe[src*="youtube-nocookie.com"] {
     .bitstream-composer .bitstream-composer-modal-scheduled-list,
     .bitstream-composer .bitstream-composer-modal-settings {
         padding: 0 !important;
+        align-items: flex-start !important;
     }
 
     .bitstream-composer .bitstream-composer-modal-drafts>.bitstream-composer-modal-backdrop,
@@ -5281,8 +5289,8 @@ iframe[src*="youtube-nocookie.com"] {
     .bitstream-composer .bitstream-composer-modal-settings>.bitstream-composer-modal-dialog {
         width: 100% !important;
         max-width: 100% !important;
-        height: 100% !important;
-        max-height: 100vh !important;
+        height: calc(100% - 56px - env(safe-area-inset-bottom)) !important;
+        max-height: calc(100vh - 56px - env(safe-area-inset-bottom)) !important;
         border-radius: 0 !important;
         box-shadow: none !important;
         animation: bitstreamMobileModalIn 0.28s cubic-bezier(0.32, 0.94, 0.6, 1) !important;
@@ -5572,7 +5580,7 @@ iframe[src*="youtube-nocookie.com"] {
     99 997   .bitstream-bottom-sheet          (More sheet drawer)
     99 996   .bitstream-mobile-screen         (Search screen — full-height above nav)
              .bitstream-bottom-sheet-backdrop (More sheet backdrop)
-    99 995   .bitstream-bottom-nav            (mobile bottom nav bar — always topmost of these)
+   100 005   .bitstream-bottom-nav            (mobile bottom nav bar)
     10 000   .bitstream-rebit-editor-modal    (Admin-only Rebit editor — WP dashboard use only)
      9 999   tooltips / dropdowns             (in-page overlays)
    ─────────────────────────────────────────────────────────────────────────── */
@@ -6119,4 +6127,363 @@ img.emoji {
 .bit-card[data-emoji-parsed] .bit-card-pure-mood {
     opacity: 1 !important;
     transition: opacity 0.15s ease-in-out;
+}
+
+/* =====================================================
+   EMOJI PICKER
+   ===================================================== */
+
+.bs-emoji-picker {
+    position: fixed;
+    z-index: 100010;
+    width: 320px;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 1px solid #eef0f2;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: bitstreamModalIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bs-emoji-picker[hidden] {
+    display: none;
+}
+
+/* ── Top bar: search + tone toggle ── */
+
+.bs-emoji-picker-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 10px 0;
+}
+
+.bs-emoji-picker-search {
+    flex: 1;
+    height: 34px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 20px;
+    padding: 0 12px;
+    font-size: 0.85rem;
+    background: #f8fafc;
+    outline: none;
+    color: #1e293b;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.bs-emoji-picker-search:focus {
+    border-color: var(--wp--preset--color--accent-1, #2c6e49);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(44, 110, 73, 0.13);
+}
+
+.bs-emoji-tone-toggle {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid #e2e8f0;
+    cursor: pointer;
+    flex-shrink: 0;
+    padding: 0;
+    transition: border-color 0.15s, transform 0.15s;
+}
+
+.bs-emoji-tone-toggle:hover {
+    border-color: #94a3b8;
+    transform: scale(1.1);
+}
+
+/* ── Skin tone swatch row ── */
+
+.bs-emoji-tone-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px 0;
+}
+
+.bs-emoji-tone-row[hidden] {
+    display: none;
+}
+
+.bs-tone-swatch {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    padding: 0;
+    transition: transform 0.12s, border-color 0.12s;
+}
+
+.bs-tone-swatch:hover {
+    transform: scale(1.2);
+}
+
+.bs-tone-swatch.is-active {
+    border-color: var(--wp--preset--color--accent-1, #2c6e49);
+    transform: scale(1.1);
+}
+
+/* ── Category tabs ── */
+
+.bs-emoji-picker-tabs {
+    display: flex;
+    padding: 8px 6px 0;
+    gap: 2px;
+    border-bottom: 1px solid #eef0f2;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.bs-emoji-picker-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.bs-emoji-tab {
+    flex: 1;
+    max-width: 50px;
+    height: 32px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    color: #94a3b8;
+    padding: 0;
+    transition: background 0.12s, color 0.12s;
+}
+
+.bs-emoji-tab img.emoji {
+    width: 17px;
+    height: 17px;
+    pointer-events: none;
+}
+
+.bs-emoji-tab:hover {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.bs-emoji-tab.is-active {
+    background: #f0fdf4;
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+}
+
+/* ── Scrollable body ── */
+
+.bs-emoji-picker-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px;
+    min-height: 180px;
+    max-height: 272px;
+    overscroll-behavior: contain;
+}
+
+/* ── Emoji grid ── */
+
+.bs-emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
+    gap: 4px;
+    justify-items: center;
+}
+
+.bs-emoji-grid[hidden] {
+    display: none;
+}
+
+.bs-emoji-btn {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    font-size: 1.2rem;
+    transition: background 0.08s, transform 0.08s;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.bs-emoji-btn img.emoji {
+    width: 22px;
+    height: 22px;
+    pointer-events: none;
+}
+
+.bs-emoji-btn:hover {
+    background: #f1f5f9;
+    transform: scale(1.18);
+}
+
+.bs-emoji-btn:active {
+    transform: scale(0.92);
+}
+
+/* ── Status views (loading / empty / error) ── */
+
+.bs-emoji-picker-status {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 160px;
+    color: #94a3b8;
+    font-size: 0.875rem;
+    gap: 8px;
+    text-align: center;
+    padding: 1rem;
+}
+
+.bs-emoji-picker-status[hidden] {
+    display: none;
+}
+
+.bs-emoji-picker-status p {
+    margin: 0;
+}
+
+.bs-emoji-retry-btn {
+    padding: 6px 14px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    background: #f8fafc;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: #475569;
+    transition: background 0.12s, border-color 0.12s;
+}
+
+.bs-emoji-retry-btn:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+/* ── Trigger button shared style ── */
+
+.bs-emoji-trigger:hover {
+    border-color: var(--wp--preset--color--accent-1, #2c6e49) !important;
+    background: #f0fdf4 !important;
+}
+
+/* ── Mobile adjustments ── */
+
+@media (max-width: 1023px) {
+    .bs-emoji-picker {
+        width: min(320px, calc(100vw - 2rem));
+    }
+}
+
+/* Fix text overflow for very long bits, ensuring card and highlight boundary wraps correctly */
+.bit-card-content,
+.bit-card-pure-mood,
+.bitstream-quoted-preview {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+/* Collapsible Media Uploader in Edit Modal */
+.bs-edit-modal .bitstream-media-field {
+    min-height: 0;
+}
+
+.bs-edit-modal .bitstream-media-dropzone {
+    border: none !important;
+    background: none !important;
+    padding: 0 !important;
+    cursor: default !important;
+    min-height: 0 !important;
+    pointer-events: none !important;
+}
+
+.bs-edit-modal .bitstream-media-preview {
+    pointer-events: auto !important;
+}
+
+.bs-edit-modal .bitstream-media-dropzone-icon,
+.bs-edit-modal .bitstream-media-dropzone > span,
+.bs-edit-modal .bitstream-media-controls {
+    display: none !important;
+}
+
+/* When expanded */
+.bs-edit-modal .media-uploader-open .bitstream-media-dropzone {
+    border: 1.5px dashed #cbd5e1 !important;
+    background: #f8fafc !important;
+    padding: 1rem 0.85rem !important;
+    cursor: pointer !important;
+    min-height: 90px !important;
+    pointer-events: auto !important;
+}
+
+.bs-edit-modal .media-uploader-open .bitstream-media-dropzone-icon {
+    display: block !important;
+    margin-bottom: 0.25rem;
+}
+
+.bs-edit-modal .media-uploader-open .bitstream-media-dropzone > span {
+    display: inline !important;
+    font-size: 0.82rem;
+}
+
+.bs-edit-modal .media-uploader-open .bitstream-media-controls {
+    display: flex !important;
+    margin-top: 0.5rem;
+}
+
+/* Collapsible Rebit picker in Edit Modal */
+.bs-edit-rebit {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.bs-edit-rebit-preview {
+    margin-top: 0.25rem;
+    margin-bottom: 0.75rem;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid #eef0f2;
+    border-radius: 14px;
+    background: #f8fafc;
+}
+
+.bs-edit-rebit-preview-card {
+    margin-top: 0.75rem;
+}
+
+.bs-edit-rebit-preview-card .bitstream-og-card,
+.bs-edit-rebit-live-preview-card .bitstream-og-card {
+    margin: 0;
+}
+
+.bs-edit-rebit-setup {
+    display: none;
+}
+
+.bs-edit-rebit.rebit-picker-open .bs-edit-rebit-setup {
+    display: block;
+}
+
+.bs-edit-rebit-live-preview {
+    margin-top: 0.75rem;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid #eef0f2;
+    border-radius: 14px;
+    background: #fff;
+}
+
+.bs-edit-rebit-fetch.is-edit-mode {
+    background: #f8fafc;
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    border: 1.5px solid var(--wp--preset--color--accent-1, #2c6e49);
 }

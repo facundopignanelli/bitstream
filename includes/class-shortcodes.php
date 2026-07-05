@@ -541,9 +541,14 @@ class BitStream_Shortcodes
                         style="color: var(--wp--preset--color--accent-1, #2c6e49); margin-bottom: 0.65rem;">Post a Bit</h3>
                     <form class="bitstream-sidebar-composer-form bitstream-composer-form"
                         data-composer-type="<?php echo esc_attr($composer_type_prefill); ?>">
-                        <textarea id="bitstream-quick-bit-content" name="bit_content" rows="3"
-                            placeholder="What's on your mind?" required
-                            class="bitstream-composer-field bitstream-composer-textarea"><?php echo esc_textarea($bit_content_prefill); ?></textarea>
+                        <div class="bs-textarea-container" style="position: relative; width: 100%;">
+                            <textarea id="bitstream-quick-bit-content" name="bit_content" rows="3"
+                                placeholder="What's on your mind?" required
+                                class="bitstream-composer-field bitstream-composer-textarea" style="padding-right: 36px;"><?php echo esc_textarea($bit_content_prefill); ?></textarea>
+                            <button type="button" class="bs-insert-emoji-btn" data-target-input="#bitstream-quick-bit-content" title="Insert Emoji" aria-label="Insert Emoji" style="position: absolute; right: 8px; bottom: 8px; background: none; border: none; font-size: 1.1rem; color: #94a3b8; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; transition: color 0.15s;">
+                                <i class="fa-regular fa-face-smile" aria-hidden="true"></i>
+                            </button>
+                        </div>
 
                         <!-- Hidden inputs for rebit / schedule / edit -->
                         <input type="hidden" id="bitstream-composer-attachment-id" name="bit_attachment_id"
@@ -784,16 +789,16 @@ class BitStream_Shortcodes
                         <button type="button" class="bitstream-composer-modal-close" data-composer-modal-close="drafts"
                             aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
                     </header>
+                    <div class="bitstream-settings-tabs" style="padding: 0 1.4rem; margin-bottom: 0;">
+                        <button type="button"
+                            class="bitstream-settings-tab bitstream-composer-drafts-filter-btn is-active"
+                            data-filter="all"><i class="fa-solid fa-list" aria-hidden="true"></i> <span>All</span></button>
+                        <button type="button" class="bitstream-settings-tab bitstream-composer-drafts-filter-btn"
+                            data-filter="bit"><i class="fa-solid fa-comment" aria-hidden="true"></i> <span>Bits</span></button>
+                        <button type="button" class="bitstream-settings-tab bitstream-composer-drafts-filter-btn"
+                            data-filter="rebit"><i class="fa-solid fa-link" aria-hidden="true"></i> <span>Rebits</span></button>
+                    </div>
                     <div class="bitstream-composer-modal-body">
-                        <div class="bitstream-scheduled-filter bitstream-composer-drafts-filter">
-                            <button type="button"
-                                class="bitstream-scheduled-filter-btn bitstream-composer-drafts-filter-btn is-active"
-                                data-filter="all">All</button>
-                            <button type="button" class="bitstream-scheduled-filter-btn bitstream-composer-drafts-filter-btn"
-                                data-filter="bit">Bits</button>
-                            <button type="button" class="bitstream-scheduled-filter-btn bitstream-composer-drafts-filter-btn"
-                                data-filter="rebit">Rebits</button>
-                        </div>
                         <div class="bitstream-scheduled-list bitstream-composer-drafts-list">
                             <?php if ($drafts_query->have_posts()): ?>
                                 <?php while ($drafts_query->have_posts()):
@@ -963,8 +968,13 @@ class BitStream_Shortcodes
                             <div style="flex: 0 0 70px;">
                                 <label for="bitstream-mood-custom-emoji"
                                     style="font-size:0.85rem; font-weight:600; color:#475569; display:block; margin-bottom:5px;">Emoji</label>
-                                <input type="text" id="bitstream-mood-custom-emoji" placeholder="😊" maxlength="30"
-                                    style="width: 100%; text-align: center; font-size: 1.5rem; height: 46px; padding: 0; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; box-sizing: border-box;">
+                                <button type="button" id="bitstream-mood-emoji-trigger"
+                                    class="bs-emoji-trigger"
+                                    style="width: 100%; height: 46px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; font-size: 1.5rem; color: #94a3b8; transition: border-color 0.15s, background 0.15s;"
+                                    aria-label="Choose emoji">
+                                    <i class="fa-solid fa-plus" style="font-size: 1rem;" aria-hidden="true"></i>
+                                </button>
+                                <input type="hidden" id="bitstream-mood-custom-emoji" value="">
                             </div>
                             <div style="flex: 1;">
                                 <label for="bitstream-mood-custom-emotion"
@@ -995,16 +1005,16 @@ class BitStream_Shortcodes
                         <button type="button" class="bitstream-composer-modal-close" data-composer-modal-close="scheduled-list"
                             aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
                     </header>
+                    <div class="bitstream-settings-tabs" style="padding: 0 1.4rem; margin-bottom: 0;">
+                        <button type="button"
+                            class="bitstream-settings-tab bitstream-composer-scheduled-filter-btn is-active"
+                            data-filter="all"><i class="fa-solid fa-list" aria-hidden="true"></i> <span>All</span></button>
+                        <button type="button" class="bitstream-settings-tab bitstream-composer-scheduled-filter-btn"
+                            data-filter="bit"><i class="fa-solid fa-comment" aria-hidden="true"></i> <span>Bits</span></button>
+                        <button type="button" class="bitstream-settings-tab bitstream-composer-scheduled-filter-btn"
+                            data-filter="rebit"><i class="fa-solid fa-link" aria-hidden="true"></i> <span>Rebits</span></button>
+                    </div>
                     <div class="bitstream-composer-modal-body">
-                        <div class="bitstream-scheduled-filter bitstream-composer-scheduled-filter">
-                            <button type="button"
-                                class="bitstream-scheduled-filter-btn bitstream-composer-scheduled-filter-btn is-active"
-                                data-filter="all">All</button>
-                            <button type="button" class="bitstream-scheduled-filter-btn bitstream-composer-scheduled-filter-btn"
-                                data-filter="bit">Bits</button>
-                            <button type="button" class="bitstream-scheduled-filter-btn bitstream-composer-scheduled-filter-btn"
-                                data-filter="rebit">Rebits</button>
-                        </div>
                         <div class="bitstream-scheduled-list bitstream-composer-scheduled-list">
                             <?php if ($scheduled_query->have_posts()): ?>
                                 <?php while ($scheduled_query->have_posts()):
@@ -1262,7 +1272,7 @@ class BitStream_Shortcodes
 
         $highlight_id = isset($_GET['highlight_bit']) ? intval($_GET['highlight_bit']) : 0;
         if ($highlight_id > 0) {
-            $query_args['post__not_in'] = [$highlight_id];
+            $query_args['p'] = $highlight_id;
         }
 
         // Hashtag content filter — applied via posts_where
@@ -1281,14 +1291,6 @@ class BitStream_Shortcodes
         // Remove the hashtag where filter after query
         if (!empty($selected_hashtag) && isset($bitstream_hashtag_where)) {
             remove_filter('posts_where', $bitstream_hashtag_where);
-        }
-
-        if ($highlight_id > 0 && intval($paged) === 1) {
-            $hl_post = get_post($highlight_id);
-            if ($hl_post && $hl_post->post_type === 'bit' && $hl_post->post_status === 'publish') {
-                $q->posts = array_merge([$hl_post], $q->posts);
-                $q->post_count = count($q->posts);
-            }
         }
 
         $max = $q->max_num_pages;
@@ -1352,7 +1354,7 @@ class BitStream_Shortcodes
             $feed_classes .= ' bitstream-infinite-scroll';
         }
 
-        $has_active_filters = ($selected_type !== 'all') || !empty($selected_month) || !empty($selected_search) || !empty($selected_hashtag);
+        $has_active_filters = ($selected_type !== 'all') || !empty($selected_month) || !empty($selected_search) || !empty($selected_hashtag) || ($highlight_id > 0);
         $selected_month_label = '';
         if (!empty($selected_month)) {
             [$selected_year, $selected_month_num] = explode('-', $selected_month);
@@ -1515,6 +1517,19 @@ class BitStream_Shortcodes
 
         if ($has_active_filters) {
             echo '<div class="bitstream-active-filters" aria-label="Active filters">';
+            if ($highlight_id > 0) {
+                $hl_post = get_post($highlight_id);
+                $label = 'Highlighted post';
+                if ($hl_post && $hl_post->post_type === 'bit' && $hl_post->post_status === 'publish') {
+                    $snippet = wp_strip_all_tags($hl_post->post_content);
+                    if (mb_strlen($snippet) > 20) {
+                        $snippet = mb_substr($snippet, 0, 20) . '...';
+                    }
+                    $label = 'Post: "' . $snippet . '"';
+                }
+                $remove_url = $build_filter_url($base_filter_url, $selected_type, $selected_month, $selected_search, $selected_hashtag);
+                echo '<a href="' . esc_url($remove_url) . '" class="bitstream-filter-chip" title="Show all posts">' . esc_html($label) . ' <i class="fa-solid fa-xmark" aria-hidden="true" style="margin-left: 6px; font-size: 0.9em; opacity: 0.6;"></i></a>';
+            }
             if ($selected_type !== 'all') {
                 $type_label = ($selected_type === 'rebits') ? 'Rebits' : 'Bits';
                 $remove_url = $build_filter_url($base_filter_url, 'all', $selected_month, $selected_search, $selected_hashtag);
@@ -1785,6 +1800,23 @@ class BitStream_Shortcodes
             echo '</a>';
         }
 
+        if (!empty($desktop_push_button)) {
+            echo '<div class="bs-more-section">';
+            echo '<p class="bs-more-section-title">Notifications</p>';
+            echo $desktop_push_button; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+            echo '</div>';
+        }
+
+        if (!empty($desktop_rss_links)) {
+            echo '<div class="bs-more-section">';
+            echo '<p class="bs-more-section-title">RSS Feeds</p>';
+            echo $desktop_rss_links; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+            echo '</div>';
+        }
+
+        echo '<div class="bs-more-section">';
+        echo '<p class="bs-more-section-title">General</p>';
+
         if (current_user_can('edit_posts')) {
             $author_id = get_current_user_id();
             $future_count = get_user_meta($author_id, '_bitstream_scheduled_count', true);
@@ -1805,20 +1837,6 @@ class BitStream_Shortcodes
             echo '</a>';
         }
 
-        if (!empty($desktop_push_button)) {
-            echo '<div class="bs-more-section">';
-            echo '<p class="bs-more-section-title">Notifications</p>';
-            echo $desktop_push_button; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-            echo '</div>';
-        }
-
-        if (!empty($desktop_rss_links)) {
-            echo '<div class="bs-more-section">';
-            echo '<p class="bs-more-section-title">RSS Feeds</p>';
-            echo $desktop_rss_links; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-            echo '</div>';
-        }
-
         if (current_user_can('manage_options')) {
             echo '<a class="bs-more-row" href="#" data-composer-modal-trigger="settings">';
             echo '<i class="fa-solid fa-gear" aria-hidden="true"></i><span>Settings</span>';
@@ -1828,6 +1846,7 @@ class BitStream_Shortcodes
         echo '<a class="bs-more-row" href="#" id="bs-more-about-trigger">';
         echo '<i class="fa-solid fa-circle-info" aria-hidden="true"></i><span>About</span>';
         echo '</a>';
+        echo '</div>';
 
         echo '</div></div>'; // End more sheet body + sheet
 
@@ -2460,17 +2479,37 @@ class BitStream_Shortcodes
 
                         <div class="bs-edit-field">
                             <label class="bs-edit-label" for="bs-edit-bit-content">Content</label>
-                            <textarea id="bs-edit-bit-content" name="bit_content" class="bs-edit-textarea" rows="5"
-                                placeholder="What's happening?"></textarea>
+                            <div class="bs-textarea-container" style="position: relative; width: 100%;">
+                                <textarea id="bs-edit-bit-content" name="bit_content" class="bs-edit-textarea" rows="5"
+                                    placeholder="What's happening?" style="padding-right: 38px;"></textarea>
+                                <button type="button" class="bs-insert-emoji-btn" data-target-input="#bs-edit-bit-content" title="Insert Emoji" aria-label="Insert Emoji" style="position: absolute; right: 8px; bottom: 8px; background: none; border: none; font-size: 1.1rem; color: #94a3b8; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; transition: color 0.15s;">
+                                    <i class="fa-regular fa-face-smile" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Quote Preview -->
+                        <div class="bs-edit-quote-preview" hidden>
+                            <div class="bitstream-composer-preview-header">
+                                <span class="bitstream-composer-preview-label">
+                                    <i class="fa-solid fa-quote-left" aria-hidden="true"></i> Quoted Bit
+                                </span>
+                                <div class="bitstream-composer-preview-actions">
+                                    <button type="button" class="bitstream-composer-preview-remove bs-edit-quote-remove-btn" title="Remove quote" aria-label="Remove quote">
+                                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="bs-edit-quote-preview-card"></div>
                         </div>
 
                         <div class="bs-edit-media">
                             <?php echo self::render_media_field('bs-edit-bit-attachment-id', 'bs-edit-bit-media-preview'); ?>
                         </div>
 
-                        <!-- Mood badge/button row in edit form -->
-                        <div class="bs-edit-mood-row"
-                            style="margin-bottom: 1rem; display: flex; align-items: center; gap: 8px;">
+                        <!-- Action buttons row in edit form -->
+                        <div class="bs-edit-actions-row"
+                            style="margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                             <button type="button" class="bs-edit-mood-btn"
                                 style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1.5px solid #e2e8f0; border-radius: 20px; background: #f8fafc; font-size: 0.9rem; font-weight: 500; cursor: pointer; color: #475569; transition: all 0.2s ease;">
                                 <i class="fa-solid fa-face-smile"></i>
@@ -2480,6 +2519,11 @@ class BitStream_Shortcodes
                                 style="background: none; border: none; color: #94a3b8; cursor: pointer; padding: 4px; display: none;"
                                 title="Remove mood">
                                 <i class="fa-solid fa-xmark"></i>
+                            </button>
+                            <button type="button" class="bs-edit-media-toggle-btn"
+                                style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1.5px solid #e2e8f0; border-radius: 20px; background: #f8fafc; font-size: 0.9rem; font-weight: 500; cursor: pointer; color: #475569; transition: all 0.2s ease;">
+                                <i class="fa-solid fa-photo-film"></i>
+                                <span class="bs-edit-media-toggle-label">Add Media</span>
                             </button>
                         </div>
 
@@ -2512,8 +2556,13 @@ class BitStream_Shortcodes
 
                         <div class="bs-edit-field">
                             <label class="bs-edit-label" for="bs-edit-rebit-commentary">Commentary</label>
-                            <textarea id="bs-edit-rebit-commentary" name="rebit_commentary" class="bs-edit-textarea" rows="4"
-                                placeholder="Add your thoughts…"></textarea>
+                            <div class="bs-textarea-container" style="position: relative; width: 100%;">
+                                <textarea id="bs-edit-rebit-commentary" name="rebit_commentary" class="bs-edit-textarea" rows="4"
+                                    placeholder="Add your thoughts…" style="padding-right: 38px;"></textarea>
+                                <button type="button" class="bs-insert-emoji-btn" data-target-input="#bs-edit-rebit-commentary" title="Insert Emoji" aria-label="Insert Emoji" style="position: absolute; right: 8px; bottom: 8px; background: none; border: none; font-size: 1.1rem; color: #94a3b8; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; transition: color 0.15s;">
+                                    <i class="fa-regular fa-face-smile" aria-hidden="true"></i>
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Mood badge/button row in edit form -->

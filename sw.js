@@ -214,8 +214,27 @@ self.addEventListener('fetch', event => {
         .catch(() => {
           // Offline fallback for feed navigation
           if (event.request.mode === 'navigate' && isFeedPage(event.request.url)) {
-            return caches.match(FEED_PATH);
+            return caches.match(FEED_PATH).then(cachedFeed => {
+              if (cachedFeed) {
+                return cachedFeed;
+              }
+
+              return new Response(
+                '<!doctype html><html><head><meta charset="utf-8"><title>BitStream</title></head><body><p>BitStream is offline.</p></body></html>',
+                {
+                  status: 503,
+                  statusText: 'Service Unavailable',
+                  headers: { 'Content-Type': 'text/html; charset=utf-8' }
+                }
+              );
+            });
           }
+
+          return new Response('BitStream request failed.', {
+            status: 503,
+            statusText: 'Service Unavailable',
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+          });
         })
     );
   }

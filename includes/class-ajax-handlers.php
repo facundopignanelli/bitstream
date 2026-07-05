@@ -1317,9 +1317,7 @@ class BitStream_Ajax_Handlers
                 ]);
             }
 
-            if ($is_update && empty(get_post_meta($edit_post_id, 'bitstream_rebit_url', true))) {
-                wp_send_json_error('This post is a Bit. Edit it from the Bit tab.');
-            }
+            $is_bit_to_rebit_conversion = $is_update && empty(get_post_meta($edit_post_id, 'bitstream_rebit_url', true));
 
             $mood_emoji = sanitize_text_field(wp_unslash($_POST['bit_mood_emoji'] ?? ''));
             $mood_emotion = sanitize_text_field(wp_unslash($_POST['bit_mood_emotion'] ?? ''));
@@ -1412,6 +1410,10 @@ class BitStream_Ajax_Handlers
             update_post_meta($post_id, '_bitstream_og_desc', sanitize_text_field($og_desc));
             update_post_meta($post_id, '_bitstream_og_image', esc_url_raw($og_image));
             update_post_meta($post_id, '_bitstream_og_fetched', time());
+
+            if ($is_bit_to_rebit_conversion) {
+                delete_post_meta($post_id, '_bitstream_quoted_bit');
+            }
 
             if (!empty($attachment_ids)) {
                 $this->assign_attachments_to_bit($post_id, $attachment_ids);
@@ -1572,7 +1574,7 @@ class BitStream_Ajax_Handlers
 
         $highlight_id = isset($_POST['highlight_bit']) ? intval($_POST['highlight_bit']) : 0;
         if ($highlight_id > 0) {
-            $query_args['post__not_in'] = [$highlight_id];
+            $query_args['p'] = $highlight_id;
         }
 
         if ($selected_type === 'bits') {

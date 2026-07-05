@@ -6,23 +6,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.3.0] - 2026-07-04
 
 ### Added
-- **Mobile Bottom Navigation Bar & Drawer Routing**: Added a persistent, sticky mobile bottom navigation bar (`[Home] [Search] [Compose] [Drafts] [More]`) for layout viewports under 1024px. Features a full-screen slide-up Search & Filter screen, a bottom drawer sheet for More options (with logged-in gating for settings and standalone About dialog), and a red notification badge for active Draft counts.
-- **Personalisation Option to Hide Intro Box**: Added a settings checkbox to hide the welcome intro box for logged-in users.
+- **Mobile Bottom Navigation Bar & Drawer Routing**: Added a persistent, sticky mobile bottom navigation bar (`[Home] [Search] [Compose] [Drafts] [More]`) for viewports under 1024px. Features:
+  - Full-screen slide-up Search & Filter screen.
+  - Bottom drawer sheet for More options, segmented into Notifications, RSS Feeds, and General (with settings, Scheduled posts, and About links).
+  - Drafts and Scheduled posts modals displayed as full-screen slide-up views, styled with consistent Settings-style filter tabs (`All`, `Bits`, `Rebits`).
+  - Active tab highlighting that syncs dynamically with the currently active modal/view.
+  - A red notification badge for active Draft counts.
 - **Mood Status & Emoji Standardization**: Added a comprehensive Mood Status feature to share updates in the format `[User] is feeling [emoji] [emotion]` or post pure mood updates (rendered in a distinctive large card block). Includes a fully interactive custom moods library in user profiles (edit, reorder, delete with live propagation), support in timeline edit modals, push notifications, and RSS feeds. Ensured cross-platform consistency by integrating the `jdecked/twemoji` SVG parser and client-side Unicode property validation for complex emoji ZWJ sequences.
 - **Unified Sharing & PNG Card Generator**: Added a unified Share modal offering "Share Link" (native OS sheet or clipboard copy) and "Share as Image" (generates a branded 1000px wide PNG card of the post with watermark for optimal social sharing). Integrated a native share button on timeline cards and added an option in Advanced Settings to clear the cached PNG image files.
 - **PWA Deep-linking**: Added PWA deep-linking support via manifest `handle_links`/`launch_handler`, dynamically resolving PWA scope, start URL, shortcuts, and assets for WordPress installations in custom subdirectories.
 - **Frontend Settings Modal**: Added a frontend Settings modal for administrators (using the mobile slide-up screen pattern), accessible from the quick actions menu.
 - **Quoted Bits Interaction**: Added click navigation support to instantly highlight and scroll to a quoted bit when clicked.
 - **Hashtag Suggestions Autocomplete**: Added a hashtag suggestions popup that queries previously used hashtags on the site, displaying their usage counts. Features fully keyboard-navigable suggestions, click-to-select, touch-friendly tap targets, and non-clipping fixed positioning optimized for mobile viewports and soft keyboards.
+- **Personalisation Option to Hide Intro Box**: Added a settings checkbox to hide the welcome intro box for logged-in users.
+- **Custom Emoji Picker & Rich Input Integration**: Added a responsive custom emoji picker for mood selection and textarea insertions. Features:
+  - Dynamic scale-to-modal positioning (stretching to 520px inside dialogs, or responsive full-width on mobile viewports).
+  - Adaptive columns (`repeat(auto-fill, minmax(36px, 1fr))`) and in-memory cache of static category grids for instant rendering and tab switching.
+  - Global skin-tone selection stored in `localStorage` (purging layout caches automatically on change).
+  - Search resolution matching against full Unicode names and country descriptions (e.g., searching "argentina" matches the Argentine flag).
+  - Full local offline fallback to a server-side JSON database (`assets/js/emoji_pretty.json`) if CDN requests fail.
+  - Inline triggers built into the composer and edit/rebit comment textareas for seamless inline rich composition.
+  - Active registry to auto-dismiss pickers when modals or the composer are exited.
 
 ### Changed
-- **Mobile Layout & Component Consolidation**: Purged the legacy floating action menu button (`#bitstream-floating-menu`) and the inline mobile feed header navigation tabs, routing all primary flows through the new bottom navigation bar.
+- **Mobile Layout & Component Consolidation**: Purged the legacy floating action menu button (`#bitstream-floating-menu`) and the inline mobile feed header navigation tabs, routing all primary flows through the new bottom navigation bar. Sized all mobile fullscreen screen dialogs (Composer, Edit Bit, Cropper, Drafts, Scheduled, Settings) to align to the top of the viewport and stop above the navigation bar to ensure actions are never covered.
 - **Settings Administration**: Moved the Settings dashboard entirely to the frontend modal and removed the legacy page from the WordPress Admin menu.
 - **Timeline Card Polish**:
   - Styled author display names and emotion labels with the primary/accent theme color.
   - Replaced hover relative-time tooltips with inline click toggles that display a fully selectable, copyable timestamp.
   - Changed the copied or shared post link to use the feed page URL with the `highlight_bit` query parameter instead of the individual post permalink.
   - Removed the redundant footer "Copy Link" button in favor of the new unified Share modal.
+- **Composer Exit Confirmation**: Added a "Save to Drafts" option inside the custom discard confirmation modal when closing a composer containing unsaved draft content.
+- **Timeline Filtering & Highlight View**:
+  - Modified the highlight behavior (`highlight_bit` query parameter) to filter and render only the targeted single post on the feed, rather than displaying the full timeline.
+  - Integrated an active filter chip ("Post: ... [x]") at the top of the timeline allowing users to clear the highlight filter and return to the full feed.
+  - Stopped stripping the `highlight_bit` parameter from the URL on load so the single post view persists across reloads and shares.
+  - Added CSS wrapping rules (`overflow-wrap: anywhere; word-break: break-word;`) to prevent horizontal layout overflow and boundary breakage when highlighting very long single-word bits.
+- **Timeline Edit Modal Quote Support**:
+  - Integrated quoted bit preview display inside the edit modal so that bits quoting other posts visually show the quoted content.
+  - Added a remove/clear button on the quoted bit preview inside the edit modal, enabling users to remove quoted posts during edits.
+  - Reduced padding, margins, and gap spacing in the edit modal header, body, footer, and fields to ensure the entire layout fits on most viewports without requiring vertical scrollbars.
+
 
 ## [3.2.3] - 2026-06-28
 
