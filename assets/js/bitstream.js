@@ -808,12 +808,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const highlightScheduled = parseInt(params.get('highlight_scheduled') || '0', 10);
         const openComments = parseInt(params.get('open_comments') || '0', 10);
 
-        if (highlightBit > 0) {
-            const bitCard = document.getElementById('bit-' + highlightBit);
-            if (bitCard) {
-                bitCard.classList.add('bitstream-highlight-target');
-            }
-        }
 
         if (openComments > 0) {
             const targetSection = document.getElementById('comments-' + openComments);

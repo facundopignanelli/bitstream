@@ -47,7 +47,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added a remove/clear button on the quoted bit preview inside the edit modal, enabling users to remove quoted posts during edits.
   - Reduced padding, margins, and gap spacing in the edit modal header, body, footer, and fields to ensure the entire layout fits on most viewports without requiring vertical scrollbars.
 
-
 ## [3.2.3] - 2026-06-28
 
 ### Added
