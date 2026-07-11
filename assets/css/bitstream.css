@@ -4022,7 +4022,8 @@ body.bitstream-cropper-open {
     margin: 0 0 0.7rem;
 }
 
-.bitstream-composer-quote-preview .bit-card-quoted-nested {
+.bitstream-composer-quote-preview .bit-card-quoted-nested,
+.bs-edit-quote-preview .bit-card-quoted-nested {
     position: static !important;
     width: 100% !important;
     left: auto !important;
@@ -4393,7 +4394,8 @@ iframe[src*="youtube-nocookie.com"] {
 }
 
 .bitstream-quoted-preview .bit-card-quoted-nested .bit-card-header,
-.bitstream-composer-quote-preview .bit-card-quoted-nested .bit-card-header {
+.bitstream-composer-quote-preview .bit-card-quoted-nested .bit-card-header,
+.bs-edit-quote-preview .bit-card-quoted-nested .bit-card-header {
     margin-bottom: 0.45rem !important;
 }
 
@@ -5150,7 +5152,10 @@ iframe[src*="youtube-nocookie.com"] {
         display: flex !important;
     }
 
-    .bitstream-composer[data-from-edit-modal="true"]>.bitstream-composer-modal-dialog {
+    .bitstream-composer[data-from-edit-modal="true"]>.bitstream-composer-modal-dialog,
+    .bitstream-composer:has(.bitstream-composer-modal-drafts:not([hidden]))>.bitstream-composer-modal-dialog,
+    .bitstream-composer:has(.bitstream-composer-modal-scheduled-list:not([hidden]))>.bitstream-composer-modal-dialog,
+    .bitstream-composer:has(.bitstream-composer-modal-settings:not([hidden]))>.bitstream-composer-modal-dialog {
         display: none !important;
     }
 
@@ -5285,12 +5290,15 @@ iframe[src*="youtube-nocookie.com"] {
     }
 
     .bitstream-composer .bitstream-composer-modal-drafts>.bitstream-composer-modal-dialog,
+    .bitstream-composer .bitstream-composer-modal-drafts>.bitstream-composer-modal-dialog.bitstream-composer-modal-dialog-wide,
     .bitstream-composer .bitstream-composer-modal-scheduled-list>.bitstream-composer-modal-dialog,
-    .bitstream-composer .bitstream-composer-modal-settings>.bitstream-composer-modal-dialog {
+    .bitstream-composer .bitstream-composer-modal-scheduled-list>.bitstream-composer-modal-dialog.bitstream-composer-modal-dialog-wide,
+    .bitstream-composer .bitstream-composer-modal-settings>.bitstream-composer-modal-dialog,
+    .bitstream-composer .bitstream-composer-modal-settings>.bitstream-composer-modal-dialog.bitstream-composer-modal-dialog-wide {
         width: 100% !important;
         max-width: 100% !important;
-        height: calc(100% - 56px - env(safe-area-inset-bottom)) !important;
-        max-height: calc(100vh - 56px - env(safe-area-inset-bottom)) !important;
+        height: 100% !important;
+        max-height: 100% !important;
         border-radius: 0 !important;
         box-shadow: none !important;
         animation: bitstreamMobileModalIn 0.28s cubic-bezier(0.32, 0.94, 0.6, 1) !important;

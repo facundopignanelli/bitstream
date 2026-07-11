@@ -199,6 +199,13 @@ document.addEventListener('DOMContentLoaded', function () {
             const hasVisiblePreviews = Array.from(previewArea.children).some(child => !child.hidden);
             previewArea.hidden = !hasVisiblePreviews;
         }
+
+        if (previewEl.id === 'bs-edit-bit-media-preview') {
+            const editMediaWrap = previewEl.closest('.bs-edit-media');
+            if (editMediaWrap) {
+                editMediaWrap.hidden = attachments.length === 0;
+            }
+        }
     }
 
     function renderMultiplePreviews(previewEl, attachments) {
@@ -3248,8 +3255,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const loadingMessage = loadingState ? loadingState.querySelector('p') : null;
         const errorState = modal.querySelector('.bs-edit-modal-error');
         const errorMessage = modal.querySelector('.bs-edit-modal-error-msg');
-        const bitForm = modal.querySelector('.bs-edit-form-bit');
-        const rebitForm = modal.querySelector('.bs-edit-form-rebit');
+        const bitForm = modal.querySelector('.bs-edit-form-unified') || modal.querySelector('.bs-edit-form-bit') || modal.querySelector('.bs-edit-form');
         const linkMetaModal = modal.querySelector('.bs-edit-link-meta-modal');
         const closeButtons = modal.querySelectorAll('[data-bs-edit-modal-close="true"]');
         const submitNonce = modal.dataset.submitNonce || (window.bitstream_ajax && bitstream_ajax.composer_submit_nonce) || '';
@@ -3261,34 +3267,207 @@ document.addEventListener('DOMContentLoaded', function () {
         let activeLinkMetaForm = null;
         let clearBitFormRebit = () => {};
         let renderBitFormRebitPreview = () => {};
+        let syncEditPreviewArea = () => {};
+        let _editCarouselScrollHandler = null;
+
+        syncEditPreviewArea = function() {
+            const hasRebit = !bitForm.querySelector('.bs-edit-rebit-preview-container').hidden && bitForm.querySelector('.bs-edit-rebit-url-hidden').value;
+            const hasQuote = !bitForm.querySelector('.bs-edit-quote-preview').hidden && parseInt(bitForm.querySelector('.bs-edit-quote-post-id').value || '0', 10) > 0;
+            const previewArea = bitForm.querySelector('.bs-edit-preview-area');
+            const previewCarousel = bitForm.querySelector('.bs-edit-preview-carousel');
+            const previewDotsEl = bitForm.querySelector('.bs-edit-preview-dots');
+            
+            if (previewArea) {
+                previewArea.hidden = !(hasRebit || hasQuote);
+            }
+
+            if (!previewCarousel || !previewDotsEl) return;
+
+            if (_editCarouselScrollHandler) {
+                previewCarousel.removeEventListener('scroll', _editCarouselScrollHandler);
+                _editCarouselScrollHandler = null;
+            }
+
+            const isMobileCarousel = window.innerWidth < 1024;
+            const bothPresent = hasRebit && hasQuote;
+
+            if (!isMobileCarousel || !bothPresent) {
+                previewDotsEl.hidden = true;
+                previewDotsEl.innerHTML = '';
+                return;
+            }
+
+            const containerRebit = bitForm.querySelector('.bs-edit-rebit-preview-container');
+            const containerQuote = bitForm.querySelector('.bs-edit-quote-preview');
+            const cards = [containerRebit, containerQuote];
+            const labels = ['Link', 'Quote'];
+
+            previewDotsEl.innerHTML = '';
+            previewDotsEl.hidden = false;
+            previewDotsEl.setAttribute('aria-hidden', 'true');
+
+            cards.forEach(function (card, i) {
+                const dot = document.createElement('button');
+                dot.type = 'button';
+                dot.className = 'bitstream-composer-preview-dot' + (i === 0 ? ' is-active' : '');
+                dot.setAttribute('aria-label', 'Go to ' + labels[i]);
+                dot.addEventListener('click', function () {
+                    previewCarousel.scrollTo({ left: card.offsetLeft, behavior: 'smooth' });
+                });
+                previewDotsEl.appendChild(dot);
+            });
+
+            const dots = previewDotsEl.querySelectorAll('.bitstream-composer-preview-dot');
+            let _rafId = null;
+            _editCarouselScrollHandler = function () {
+                if (_rafId) return;
+                _rafId = requestAnimationFrame(function () {
+                    _rafId = null;
+                    const scrollLeft = previewCarousel.scrollLeft;
+                    const width = previewCarousel.offsetWidth;
+                    const activeIndex = width > 0 ? Math.round(scrollLeft / width) : 0;
+                    dots.forEach(function (d, i) {
+                        d.classList.toggle('is-active', i === activeIndex);
+                    });
+                });
+            };
+            previewCarousel.addEventListener('scroll', _editCarouselScrollHandler, { passive: true });
+        };
+
+        clearBitFormRebit = function() {
+            const fields = getRebitMetaFields(bitForm);
+            if (fields.urlInput) fields.urlInput.value = '';
+            if (fields.titleInput) fields.titleInput.value = '';
+            if (fields.descInput) fields.descInput.value = '';
+            if (fields.imageInput) fields.imageInput.value = '';
+            if (fields.imageRemovedInput) fields.imageRemovedInput.value = '0';
+            if (fields.attachmentInput) fields.attachmentInput.value = '';
+
+            const urlInputModal = modal.querySelector('#bs-edit-rebit-url-input');
+            if (urlInputModal) urlInputModal.value = '';
+            
+            const previewContainer = bitForm.querySelector('.bs-edit-rebit-preview-container');
+            if (previewContainer) previewContainer.hidden = true;
+            
+            const previewCard = bitForm.querySelector('.bs-edit-rebit-preview-card');
+            if (previewCard) previewCard.innerHTML = '';
+
+            const toggleBtn = bitForm.querySelector('.bs-edit-rebit-toggle-btn');
+            if (toggleBtn) toggleBtn.style.display = '';
+
+            syncEditPreviewArea();
+        };
+
+        renderBitFormRebitPreview = function() {
+            const urlInput = bitForm.querySelector('.bs-edit-rebit-url-hidden');
+            const url = urlInput ? urlInput.value.trim() : '';
+            const previewContainer = bitForm.querySelector('.bs-edit-rebit-preview-container');
+            const previewCard = bitForm.querySelector('.bs-edit-rebit-preview-card');
+            
+            if (!url) {
+                if (previewContainer) previewContainer.hidden = true;
+                if (previewCard) previewCard.innerHTML = '';
+                syncEditPreviewArea();
+                return;
+            }
+
+            if (previewContainer) previewContainer.hidden = false;
+            syncEditPreviewArea();
+
+            if (previewCard) {
+                previewCard.innerHTML = '<div style="padding: 1rem; text-align: center; color: #94a3b8;"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading preview...</div>';
+            }
+
+            const fd = new FormData();
+            fd.append('action', 'bitstream_render_rebit_preview');
+            fd.append('nonce', bitstream_ajax.og_fetch_nonce);
+            fd.append('rebit_url', url);
+            
+            const titleInput = bitForm.querySelector('.bs-edit-rebit-og-title');
+            const descInput = bitForm.querySelector('.bs-edit-rebit-og-desc');
+            const imageInput = bitForm.querySelector('.bs-edit-rebit-og-image');
+            const imageRemovedInput = bitForm.querySelector('.bs-edit-rebit-og-image-removed');
+            const attachmentInput = bitForm.querySelector('.bs-edit-rebit-attachment-id');
+            
+            fd.append('rebit_og_title', titleInput ? titleInput.value : '');
+            fd.append('rebit_og_desc', descInput ? descInput.value : '');
+            fd.append('rebit_og_image', imageInput ? imageInput.value : '');
+            fd.append('rebit_og_image_removed', imageRemovedInput ? imageRemovedInput.value : '0');
+            fd.append('rebit_attachment_id', attachmentInput ? attachmentInput.value : '');
+
+            fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success) throw new Error(data.data || 'Preview failed.');
+                    const resp = data.data || {};
+                    if (previewCard) {
+                        previewCard.innerHTML = resp.rendered_html || '';
+                        applyMediaDeterrents(previewCard);
+                    }
+                    syncEditPreviewArea();
+                })
+                .catch(() => {
+                    if (previewCard) {
+                        previewCard.innerHTML = '<div style="padding: 1rem; color: #ef4444;"><i class="fa-solid fa-triangle-exclamation"></i> Failed to load link preview.</div>';
+                    }
+                    syncEditPreviewArea();
+                });
+        };
+
+        function fetchOgMetadataForBitForm(url) {
+            if (!url || !window.bitstream_ajax || !bitstream_ajax.og_fetch_nonce) {
+                return;
+            }
+            
+            const previewCard = bitForm.querySelector('.bs-edit-rebit-preview-card');
+            const previewContainer = bitForm.querySelector('.bs-edit-rebit-preview-container');
+            if (previewContainer) previewContainer.hidden = false;
+            syncEditPreviewArea();
+
+            if (previewCard) {
+                previewCard.innerHTML = '<div style="padding: 1rem; text-align: center; color: #94a3b8;"><i class="fa-solid fa-circle-notch fa-spin"></i> Fetching link preview...</div>';
+            }
+
+            const fd = new FormData();
+            fd.append('action', 'bitstream_fetch_og_data');
+            fd.append('nonce', bitstream_ajax.og_fetch_nonce);
+            fd.append('url', url);
+            fd.append('post_id', '0');
+
+            fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success) throw new Error(data.data || 'Fetch failed.');
+                    const og = data.data || {};
+                    const fields = getRebitMetaFields(bitForm);
+                    if (fields.titleInput) fields.titleInput.value = og.title || '';
+                    if (fields.descInput) fields.descInput.value = og.description || '';
+                    if (fields.imageInput) fields.imageInput.value = og.image || '';
+                    if (fields.imageRemovedInput) fields.imageRemovedInput.value = og.image ? '0' : '1';
+                    if (fields.attachmentInput) fields.attachmentInput.value = '';
+                    
+                    renderBitFormRebitPreview();
+                })
+                .catch(() => {
+                    if (previewCard) {
+                        previewCard.innerHTML = '<div style="padding: 1rem; color: #ef4444;"><i class="fa-solid fa-triangle-exclamation"></i> Link preview failed.</div>';
+                    }
+                    syncEditPreviewArea();
+                });
+        }
 
         function getRebitMetaForm() {
-            return activeLinkMetaForm || rebitForm;
+            return activeLinkMetaForm || bitForm;
         }
 
         function getRebitMetaFields(form) {
-            if (!form) {
-                return {};
-            }
-
-            if (form === rebitForm) {
-                return {
-                    urlInput: form.querySelector('#bs-edit-rebit-url'),
-                    attachmentInput: form.querySelector('input[name="rebit_attachment_id"]'),
-                    titleInput: form.querySelector('input[name="rebit_og_title"]') || form.querySelector('.bs-edit-og-title'),
-                    descInput: form.querySelector('input[name="rebit_og_desc"]') || form.querySelector('.bs-edit-og-desc'),
-                    imageInput: form.querySelector('input[name="rebit_og_image"]') || form.querySelector('.bs-edit-og-image'),
-                    imageRemovedInput: form.querySelector('input[name="rebit_og_image_removed"]') || form.querySelector('.bs-edit-og-image-removed')
-                };
-            }
-
             return {
-                urlInput: form.querySelector('.bs-edit-rebit-url-hidden'),
-                attachmentInput: form.querySelector('.bs-edit-rebit-attachment-id'),
-                titleInput: form.querySelector('.bs-edit-rebit-og-title'),
-                descInput: form.querySelector('.bs-edit-rebit-og-desc'),
-                imageInput: form.querySelector('.bs-edit-rebit-og-image'),
-                imageRemovedInput: form.querySelector('.bs-edit-rebit-og-image-removed')
+                urlInput: bitForm.querySelector('#bs-edit-rebit-url') || bitForm.querySelector('.bs-edit-rebit-url-hidden'),
+                attachmentInput: bitForm.querySelector('input[name="rebit_attachment_id"]') || bitForm.querySelector('.bs-edit-rebit-attachment-id'),
+                titleInput: bitForm.querySelector('input[name="rebit_og_title"]') || bitForm.querySelector('.bs-edit-rebit-og-title'),
+                descInput: bitForm.querySelector('input[name="rebit_og_desc"]') || bitForm.querySelector('.bs-edit-rebit-og-desc'),
+                imageInput: bitForm.querySelector('input[name="rebit_og_image"]') || bitForm.querySelector('.bs-edit-og-image'),
+                imageRemovedInput: bitForm.querySelector('input[name="rebit_og_image_removed"]') || bitForm.querySelector('.bs-edit-og-image-removed')
             };
         }
 
@@ -3360,9 +3539,6 @@ document.addEventListener('DOMContentLoaded', function () {
         function showForm(form) {
             if (bitForm) {
                 bitForm.hidden = form !== bitForm;
-            }
-            if (rebitForm) {
-                rebitForm.hidden = form !== rebitForm;
             }
         }
 
@@ -3480,7 +3656,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            activeLinkMetaForm = sourceForm || rebitForm;
+            activeLinkMetaForm = sourceForm || bitForm;
             setLinkMetaPreview();
             linkMetaModal.hidden = false;
         }
@@ -3516,6 +3692,9 @@ document.addEventListener('DOMContentLoaded', function () {
             quoteWrap.hidden = !quotePreviewHtml;
             if (quotePreviewHtml) {
                 applyMediaDeterrents(quoteCard);
+            }
+            if (form === bitForm && typeof syncEditPreviewArea === 'function') {
+                syncEditPreviewArea();
             }
         }
 
@@ -3782,13 +3961,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         function bindLinkMetaControls() {
-            if (!rebitForm || !linkMetaModal || linkMetaModal.dataset.timelineMetaBound === '1') {
+            if (!bitForm || !linkMetaModal || linkMetaModal.dataset.timelineMetaBound === '1') {
                 return;
             }
 
             linkMetaModal.dataset.timelineMetaBound = '1';
 
-            const openButton = rebitForm.querySelector('.bs-edit-link-meta-open');
             const refetchButton = linkMetaModal.querySelector('.bs-edit-link-meta-refetch');
             const closeButtons = linkMetaModal.querySelectorAll('[data-bs-edit-link-meta-close="true"]');
             const saveButton = linkMetaModal.querySelector('.bs-edit-link-meta-save');
@@ -3798,17 +3976,26 @@ document.addEventListener('DOMContentLoaded', function () {
             const chooseImageButton = linkMetaModal.querySelector('.bs-edit-og-image-select');
             const cropImageButton = linkMetaModal.querySelector('.bs-edit-og-image-crop');
             const clearImageButton = linkMetaModal.querySelector('.bs-edit-og-image-clear');
-            const imageInput = rebitForm.querySelector('input[name="rebit_og_image"]');
-            const imageRemovedInput = rebitForm.querySelector('input[name="rebit_og_image_removed"]');
-            const attachmentInput = rebitForm.querySelector('input[name="rebit_attachment_id"]');
-            const mainUrlInput = rebitForm.querySelector('#bs-edit-rebit-url');
 
-            if (openButton) {
-                openButton.addEventListener('click', () => {
-                    if (modalUrlInput && mainUrlInput) {
-                        modalUrlInput.value = mainUrlInput.value || '';
+            const rebitOpenBtn = bitForm ? bitForm.querySelector('.bs-edit-link-meta-open') : null;
+            if (rebitOpenBtn) {
+                rebitOpenBtn.addEventListener('click', () => {
+                    const fields = getRebitMetaFields(bitForm);
+                    if (modalUrlInput && fields.urlInput) {
+                        modalUrlInput.value = fields.urlInput.value || '';
                     }
-                    openLinkMetaModal();
+                    openLinkMetaModal(bitForm);
+                });
+            }
+
+            const bitOpenBtn = bitForm ? bitForm.querySelector('.bs-edit-bit-link-meta-open') : null;
+            if (bitOpenBtn) {
+                bitOpenBtn.addEventListener('click', () => {
+                    const fields = getRebitMetaFields(bitForm);
+                    if (modalUrlInput && fields.urlInput) {
+                        modalUrlInput.value = fields.urlInput.value || '';
+                    }
+                    openLinkMetaModal(bitForm);
                 });
             }
 
@@ -3820,13 +4007,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 saveButton.addEventListener('click', () => {
                     syncLinkMetaFields();
                     closeLinkMetaModal();
+                    const activeForm = getRebitMetaForm();
+                    if (activeForm === bitForm) {
+                        renderBitFormRebitPreview();
+                    }
                 });
             }
 
             if (refetchButton) {
                 refetchButton.addEventListener('click', () => {
-                    const targetUrl = (mainUrlInput && mainUrlInput.value ? mainUrlInput.value : (modalUrlInput ? modalUrlInput.value : '')).trim();
-                    const editPostInput = rebitForm.querySelector('input[name="edit_post_id"]');
+                    const activeForm = getRebitMetaForm();
+                    const fields = getRebitMetaFields(activeForm);
+                    const targetUrl = (fields.urlInput && fields.urlInput.value ? fields.urlInput.value : (modalUrlInput ? modalUrlInput.value : '')).trim();
+                    const editPostInput = activeForm ? activeForm.querySelector('input[name="edit_post_id"]') : null;
 
                     if (!targetUrl) {
                         setErrorState('Add a link URL first.');
@@ -3859,26 +4052,29 @@ document.addEventListener('DOMContentLoaded', function () {
                             }
 
                             const og = data.data || {};
-                            const titleInput = rebitForm.querySelector('input[name="rebit_og_title"]');
-                            const descInput = rebitForm.querySelector('input[name="rebit_og_desc"]');
+                            const activeFields = getRebitMetaFields(getRebitMetaForm());
 
-                            if (titleInput) {
-                                titleInput.value = og.title || '';
+                            if (activeFields.titleInput) {
+                                activeFields.titleInput.value = og.title || '';
                             }
-                            if (descInput) {
-                                descInput.value = og.description || '';
+                            if (activeFields.descInput) {
+                                activeFields.descInput.value = og.description || '';
                             }
-                            if (imageInput) {
-                                imageInput.value = og.image || '';
+                            if (activeFields.imageInput) {
+                                activeFields.imageInput.value = og.image || '';
                             }
-                            if (imageRemovedInput) {
-                                imageRemovedInput.value = og.image ? '0' : '1';
+                            if (activeFields.imageRemovedInput) {
+                                activeFields.imageRemovedInput.value = og.image ? '0' : '1';
                             }
-                            if (attachmentInput) {
-                                attachmentInput.value = '';
+                            if (activeFields.attachmentInput) {
+                                activeFields.attachmentInput.value = '';
                             }
 
                             setLinkMetaPreview();
+                            const currentActiveForm = getRebitMetaForm();
+                            if (currentActiveForm === bitForm) {
+                                renderBitFormRebitPreview();
+                            }
                             setStatus(og.cached ? 'Metadata refreshed from cache.' : 'Metadata refreshed.');
                         })
                         .catch(error => {
@@ -3921,14 +4117,23 @@ document.addEventListener('DOMContentLoaded', function () {
 
                             const attachment = selection.toJSON();
                             const attachmentMime = attachment.mime || attachment.type || '';
-                            setAttachmentPreview(rebitForm, attachment.id || 0, attachment.url || '', attachmentMime);
-                            if (imageInput) {
-                                imageInput.value = attachment.url || '';
+                            const activeForm = getRebitMetaForm();
+                            const activeFields = getRebitMetaFields(activeForm);
+
+                            if (activeFields.attachmentInput) {
+                                activeFields.attachmentInput.value = attachment.id || '';
                             }
-                            if (imageRemovedInput) {
-                                imageRemovedInput.value = '0';
+                            if (activeFields.imageInput) {
+                                activeFields.imageInput.value = attachment.url || '';
                             }
+                            if (activeFields.imageRemovedInput) {
+                                activeFields.imageRemovedInput.value = '0';
+                            }
+
                             setLinkMetaPreview();
+                            if (activeForm === bitForm) {
+                                renderBitFormRebitPreview();
+                            }
                         });
                     }
 
@@ -3938,8 +4143,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (cropImageButton) {
                 cropImageButton.addEventListener('click', () => {
-                    const attachmentId = attachmentInput ? parseInt(attachmentInput.value || '0', 10) : 0;
-                    const imageUrl = imageInput ? (imageInput.value || '').trim() : '';
+                    const activeForm = getRebitMetaForm();
+                    const activeFields = getRebitMetaFields(activeForm);
+                    const attachmentId = activeFields.attachmentInput ? parseInt(activeFields.attachmentInput.value || '0', 10) : 0;
+                    const imageUrl = activeFields.imageInput ? (activeFields.imageInput.value || '').trim() : '';
 
                     const openCropperForAttachment = (preparedAttachmentId) => {
                         if (!preparedAttachmentId) {
@@ -3955,16 +4162,25 @@ document.addEventListener('DOMContentLoaded', function () {
                             cropperOpener('bitstream-rebit-attachment-id', '', {
                                 attachmentId: preparedAttachmentId,
                                 onComplete: (croppedMedia, croppedUrl) => {
+                                    const currentForm = getRebitMetaForm();
+                                    const currentFields = getRebitMetaFields(currentForm);
+
                                     if (croppedMedia && croppedMedia.id) {
-                                        setAttachmentPreview(rebitForm, croppedMedia.id, croppedUrl || croppedMedia.url || '', croppedMedia.mime || 'image/jpeg');
+                                        if (currentFields.attachmentInput) {
+                                            currentFields.attachmentInput.value = croppedMedia.id;
+                                        }
                                     }
-                                    if (imageInput) {
-                                        imageInput.value = croppedUrl || (croppedMedia && croppedMedia.url) || '';
+                                    if (currentFields.imageInput) {
+                                        currentFields.imageInput.value = croppedUrl || (croppedMedia && croppedMedia.url) || '';
                                     }
-                                    if (imageRemovedInput) {
-                                        imageRemovedInput.value = '0';
+                                    if (currentFields.imageRemovedInput) {
+                                        currentFields.imageRemovedInput.value = '0';
                                     }
+
                                     setLinkMetaPreview();
+                                    if (currentForm === bitForm) {
+                                        renderBitFormRebitPreview();
+                                    }
                                 }
                             });
                         } else {
@@ -4007,12 +4223,17 @@ document.addEventListener('DOMContentLoaded', function () {
                             }
 
                             const prepared = data.data || {};
-                            setAttachmentPreview(rebitForm, prepared.id || 0, prepared.url || imageUrl, prepared.mime || 'image/jpeg');
-                            if (imageInput) {
-                                imageInput.value = prepared.url || imageUrl;
+                            const currentForm = getRebitMetaForm();
+                            const currentFields = getRebitMetaFields(currentForm);
+
+                            if (currentFields.attachmentInput) {
+                                currentFields.attachmentInput.value = prepared.id || '';
                             }
-                            if (imageRemovedInput) {
-                                imageRemovedInput.value = '0';
+                            if (currentFields.imageInput) {
+                                currentFields.imageInput.value = prepared.url || imageUrl;
+                            }
+                            if (currentFields.imageRemovedInput) {
+                                currentFields.imageRemovedInput.value = '0';
                             }
                             openCropperForAttachment(prepared.id || 0);
                         })
@@ -4027,14 +4248,23 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (clearImageButton) {
                 const clearLinkImage = () => {
-                    setAttachmentPreview(rebitForm, 0, '', '');
-                    if (imageInput) {
-                        imageInput.value = '';
+                    const activeForm = getRebitMetaForm();
+                    const activeFields = getRebitMetaFields(activeForm);
+
+                    if (activeFields.attachmentInput) {
+                        activeFields.attachmentInput.value = '';
                     }
-                    if (imageRemovedInput) {
-                        imageRemovedInput.value = '1';
+                    if (activeFields.imageInput) {
+                        activeFields.imageInput.value = '';
                     }
+                    if (activeFields.imageRemovedInput) {
+                        activeFields.imageRemovedInput.value = '1';
+                    }
+
                     setLinkMetaPreview();
+                    if (activeForm === bitForm) {
+                        renderBitFormRebitPreview();
+                    }
                 };
 
                 clearImageButton.addEventListener('click', clearLinkImage);
@@ -4049,8 +4279,15 @@ document.addEventListener('DOMContentLoaded', function () {
             form.dataset.timelineModalBound = '1';
             bindScheduleControls(form);
             bindMediaControls(form);
-            if (form === rebitForm) {
+            if (form === bitForm) {
                 bindLinkMetaControls();
+            }
+
+            const removeBtn = bitForm ? bitForm.querySelector('.bs-edit-rebit-remove-btn') : null;
+            if (removeBtn) {
+                removeBtn.addEventListener('click', () => {
+                    clearBitFormRebit();
+                });
             }
 
             const quoteRemoveBtn = form.querySelector('.bs-edit-quote-remove-btn');
@@ -4059,22 +4296,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     setQuotePreview(form, 0, '');
                 });
             }
-
-            const mediaToggleBtn = form.querySelector('.bs-edit-media-toggle-btn');
-            const editMediaWrap = form.querySelector('.bs-edit-media');
-            if (mediaToggleBtn && editMediaWrap) {
-                mediaToggleBtn.addEventListener('click', () => {
-                    const isOpen = editMediaWrap.classList.contains('media-uploader-open');
-                    editMediaWrap.classList.toggle('media-uploader-open', !isOpen);
-                    const label = mediaToggleBtn.querySelector('.bs-edit-media-toggle-label');
-                    if (label) {
-                        label.textContent = isOpen ? 'Add Media' : 'Hide Media';
-                    }
-                });
-            }
         }
 
-        function populateBitForm(data, isQuoteMode) {
+        function populateEditForm(data, isQuoteMode) {
             if (!bitForm) {
                 return;
             }
@@ -4083,22 +4307,18 @@ document.addEventListener('DOMContentLoaded', function () {
             showForm(bitForm);
 
             const editMediaWrap = bitForm.querySelector('.bs-edit-media');
-            const mediaToggleBtn = bitForm.querySelector('.bs-edit-media-toggle-btn');
-            if (editMediaWrap) {
-                editMediaWrap.classList.remove('media-uploader-open');
-            }
-            if (mediaToggleBtn) {
-                const label = mediaToggleBtn.querySelector('.bs-edit-media-toggle-label');
-                if (label) {
-                    label.textContent = 'Add Media';
-                }
-            }
 
+            const isRebit = (data.post_type === 'rebit');
             const postId = parseInt(data.post_id || '0', 10);
             const editPostInput = bitForm.querySelector('input[name="edit_post_id"]');
+            const composerTypeInput = bitForm.querySelector('.bs-edit-composer-type');
             const contentInput = bitForm.querySelector('#bs-edit-bit-content');
+            const contentLabel = bitForm.querySelector('#bs-edit-content-label');
             const submitButton = bitForm.querySelector('.bs-edit-submit');
             const draftButton = bitForm.querySelector('.bs-edit-save-draft');
+            const urlField = bitForm.querySelector('.bs-edit-url-field');
+            const urlInput = bitForm.querySelector('#bs-edit-rebit-url');
+            
             const attachmentId = parseInt(data.attachment_id || '0', 10);
             const attachmentUrl = data.attachment_url || '';
             const attachmentMime = data.attachment_mime || '';
@@ -4107,8 +4327,12 @@ document.addEventListener('DOMContentLoaded', function () {
             const scheduleEnabled = (data.post_status === 'future' || data.schedule_enabled === '1');
             const scheduleDatetime = data.schedule_datetime || '';
 
+            if (composerTypeInput) {
+                composerTypeInput.value = isRebit ? 'rebit' : 'bit';
+            }
+
             if (modalTitle) {
-                modalTitle.textContent = isQuoteMode ? 'Quote Bit' : 'Edit Bit';
+                modalTitle.textContent = isRebit ? 'Edit Rebit' : (isQuoteMode ? 'Quote Bit' : 'Edit Bit');
             }
 
             if (editPostInput) {
@@ -4122,9 +4346,48 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
+            if (contentLabel) {
+                contentLabel.textContent = isRebit ? 'Commentary' : 'Content';
+            }
+
+            if (urlField) {
+                urlField.hidden = !isRebit;
+            }
+
+            if (urlInput) {
+                urlInput.value = isRebit ? (data.rebit_url || '') : '';
+            }
+
             setQuotePreview(bitForm, quotePostId, quotePreviewHtml);
+            
+            const hasAttachments = data.attachments && data.attachments.length > 0;
+            if (editMediaWrap) {
+                editMediaWrap.hidden = !hasAttachments;
+            }
             setAttachmentPreview(bitForm, isQuoteMode ? 0 : attachmentId, isQuoteMode ? '' : attachmentUrl, isQuoteMode ? '' : attachmentMime, isQuoteMode ? [] : (data.attachments || []));
             setScheduleState(bitForm, 'bit', scheduleEnabled && !isQuoteMode, isQuoteMode ? '' : scheduleDatetime);
+
+            // Populate Rebit fields
+            const rebitUrl = isQuoteMode ? '' : (data.rebit_url || '');
+            const fields = getRebitMetaFields(bitForm);
+            if (fields.urlInput) fields.urlInput.value = rebitUrl;
+            if (fields.titleInput) fields.titleInput.value = isQuoteMode ? '' : (data.og_title || '');
+            if (fields.descInput) fields.descInput.value = isQuoteMode ? '' : (data.og_desc || '');
+            if (fields.imageInput) fields.imageInput.value = isQuoteMode ? '' : (data.og_image || '');
+            if (fields.imageRemovedInput) fields.imageRemovedInput.value = '0';
+            if (fields.attachmentInput) fields.attachmentInput.value = isQuoteMode ? '' : (data.rebit_attachment_id || '');
+
+            if (rebitUrl) {
+                const previewContainer = bitForm.querySelector('.bs-edit-rebit-preview-container');
+                if (previewContainer) previewContainer.hidden = false;
+                renderBitFormRebitPreview();
+            } else {
+                const previewContainer = bitForm.querySelector('.bs-edit-rebit-preview-container');
+                if (previewContainer) previewContainer.hidden = true;
+                const previewCard = bitForm.querySelector('.bs-edit-rebit-preview-card');
+                if (previewCard) previewCard.innerHTML = '';
+                syncEditPreviewArea();
+            }
 
             // Mood integration
             const moodEmojiInput = bitForm.querySelector('.bs-edit-mood-emoji');
@@ -4151,99 +4414,10 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             if (submitButton) {
-                submitButton.textContent = isQuoteMode ? 'Post Bit' : 'Update Bit';
+                submitButton.textContent = isRebit ? 'Update Rebit' : (isQuoteMode ? 'Post Bit' : 'Update Bit');
             }
             if (draftButton) {
                 draftButton.textContent = data.post_status === 'draft' && !isQuoteMode ? 'Update Draft' : 'Save to Drafts';
-            }
-
-            setLoadingState(false);
-            clearFormFeedback();
-            setModalVisible(true);
-        }
-
-        function populateRebitForm(data) {
-            if (!rebitForm) {
-                return;
-            }
-
-            bindFormOnce(rebitForm);
-            showForm(rebitForm);
-
-            const postId = parseInt(data.post_id || '0', 10);
-            const editPostInput = rebitForm.querySelector('input[name="edit_post_id"]');
-            const urlInput = rebitForm.querySelector('#bs-edit-rebit-url');
-            const commentaryInput = rebitForm.querySelector('#bs-edit-rebit-commentary');
-            const ogTitleInput = rebitForm.querySelector('.bs-edit-og-title');
-            const ogDescInput = rebitForm.querySelector('.bs-edit-og-desc');
-            const ogImageInput = rebitForm.querySelector('.bs-edit-og-image');
-            const ogImageRemovedInput = rebitForm.querySelector('.bs-edit-og-image-removed');
-            const submitButton = rebitForm.querySelector('.bs-edit-submit');
-            const draftButton = rebitForm.querySelector('.bs-edit-save-draft');
-            const attachmentId = parseInt(data.attachment_id || '0', 10);
-            const attachmentUrl = data.attachment_url || '';
-            const attachmentMime = data.attachment_mime || '';
-            const scheduleEnabled = (data.post_status === 'future' || data.schedule_enabled === '1');
-            const scheduleDatetime = data.schedule_datetime || '';
-
-            if (modalTitle) {
-                modalTitle.textContent = 'Edit Rebit';
-            }
-
-            if (editPostInput) {
-                editPostInput.value = String(postId || 0);
-            }
-            if (urlInput) {
-                urlInput.value = data.rebit_url || '';
-            }
-            if (commentaryInput) {
-                commentaryInput.value = data.content || '';
-            }
-            if (ogTitleInput) {
-                ogTitleInput.value = data.og_title || '';
-            }
-            if (ogDescInput) {
-                ogDescInput.value = data.og_desc || '';
-            }
-            if (ogImageInput) {
-                ogImageInput.value = data.og_image || '';
-            }
-            if (ogImageRemovedInput) {
-                ogImageRemovedInput.value = '0';
-            }
-
-            setAttachmentPreview(rebitForm, attachmentId, attachmentUrl, attachmentMime);
-            setLinkMetaPreview();
-
-            // Mood integration
-            const moodEmojiInput = rebitForm.querySelector('.bs-edit-mood-emoji');
-            const moodEmotionInput = rebitForm.querySelector('.bs-edit-mood-emotion');
-            const moodBtn = rebitForm.querySelector('.bs-edit-mood-btn');
-            const moodLabel = rebitForm.querySelector('.bs-edit-mood-label');
-            const moodRemove = rebitForm.querySelector('.bs-edit-mood-remove');
-
-            const moodEmoji = data.mood_emoji || '';
-            const moodEmotion = data.mood_emotion || '';
-
-            if (moodEmojiInput) moodEmojiInput.value = moodEmoji;
-            if (moodEmotionInput) moodEmotionInput.value = moodEmotion;
-
-            if (moodBtn && moodLabel && moodRemove) {
-                if (moodEmotion) {
-                    moodLabel.textContent = `${moodEmoji} Feeling ${moodEmotion}`;
-                    parseEmojis(moodLabel);
-                    moodRemove.style.display = 'inline-block';
-                } else {
-                    moodLabel.textContent = 'Add Mood';
-                    moodRemove.style.display = 'none';
-                }
-            }
-
-            if (submitButton) {
-                submitButton.textContent = 'Update Rebit';
-            }
-            if (draftButton) {
-                draftButton.textContent = data.post_status === 'draft' ? 'Update Draft' : 'Save to Drafts';
             }
 
             setLoadingState(false);
@@ -4262,7 +4436,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            const composerType = form.dataset.composerType || 'bit';
+            const composerTypeInput = form.querySelector('.bs-edit-composer-type');
+            const composerType = composerTypeInput ? composerTypeInput.value : (form.dataset.composerType || 'bit');
             const editPostInput = form.querySelector('input[name="edit_post_id"]');
             const submitButton = form.querySelector('.bs-edit-submit');
             const draftButton = form.querySelector('.bs-edit-save-draft');
@@ -4281,13 +4456,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 const attachmentInput = form.querySelector('.bs-edit-attachment-id');
                 const quoteInput = form.querySelector('.bs-edit-quote-post-id');
                 const moodInput = form.querySelector('.bs-edit-mood-emotion');
+                const rebitUrlInput = form.querySelector('.bs-edit-rebit-url-hidden');
                 const content = textarea ? textarea.value.trim() : '';
                 const hasMedia = attachmentInput && parseInt(attachmentInput.value || '0', 10) > 0;
                 const hasQuote = quoteInput && parseInt(quoteInput.value || '0', 10) > 0;
                 const hasMood = moodInput && moodInput.value.trim();
+                const hasRebit = rebitUrlInput && rebitUrlInput.value.trim();
 
-                if (!saveAsDraft && !content && !hasMedia && !hasQuote && !hasMood) {
-                    setErrorState('Write something or attach media.');
+                if (!saveAsDraft && !content && !hasMedia && !hasQuote && !hasMood && !hasRebit) {
+                    setErrorState('Write something, attach media, or add a link.');
                     return;
                 }
 
@@ -4430,11 +4607,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     const responseData = data.data || {};
                     isPopulating = true;
-                    if (responseData.post_type === 'rebit' || postType === 'rebit') {
-                        populateRebitForm(responseData);
-                    } else {
-                        populateBitForm(responseData, false);
-                    }
+                    populateEditForm(responseData, false);
                     isPopulating = false;
                     editFormIsDirty = false;
                 })
@@ -4474,7 +4647,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     const responseData = data.data || {};
                     isPopulating = true;
-                    populateBitForm({
+                    populateEditForm({
                         post_id: numericPostId,
                         content: '',
                         quote_post_id: numericPostId,
@@ -5449,6 +5622,7 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('filter_month', feed.dataset.filterMonth || '');
         formData.append('filter_search', feed.dataset.filterSearch || '');
         formData.append('filter_hashtag', feed.dataset.filterHashtag || '');
+        formData.append('filter_emotion', feed.dataset.filterEmotion || '');
         formData.append('highlight_bit', feed.dataset.highlightBit || '0');
 
         fetch(bitstream_ajax.ajax_url, {
@@ -5460,7 +5634,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(html => {
                 const temp = document.createElement('div');
                 temp.innerHTML = html;
-                const newCards = temp.querySelectorAll('.bit-card');
+                const newCards = temp.querySelectorAll(':scope > .bit-card');
 
                 // Append new cards to feed
                 newCards.forEach(card => {
@@ -7124,10 +7298,8 @@ jQuery(document).ready(function ($) {
             }
         };
 
-        const editFormBit = document.querySelector('.bs-edit-form-bit');
-        const editFormRebit = document.querySelector('.bs-edit-form-rebit');
-        if (editFormBit) wireTimelineEditMoodButtons(editFormBit);
-        if (editFormRebit) wireTimelineEditMoodButtons(editFormRebit);
+        const editForm = document.querySelector('.bs-edit-form-unified') || document.querySelector('.bs-edit-form-bit') || document.querySelector('.bs-edit-form');
+        if (editForm) wireTimelineEditMoodButtons(editForm);
 
         // DRY Helper: Load draft or scheduled post into composer
         function loadPostIntoComposer(postId) {
@@ -8164,7 +8336,7 @@ jQuery(document).ready(function ($) {
                     const html = await response.text();
                     const temp = document.createElement('div');
                     temp.innerHTML = html;
-                    let newCards = Array.from(temp.querySelectorAll('.bit-card'));
+                    let newCards = Array.from(temp.querySelectorAll(':scope > .bit-card'));
 
                     if (maxPosts > 0) {
                         const remaining = maxPosts - loadedCount;
@@ -9105,6 +9277,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 currentFeed.dataset.filterMonth = '';
                                 currentFeed.dataset.filterSearch = '';
                                 currentFeed.dataset.filterHashtag = '';
+                                currentFeed.dataset.filterEmotion = '';
                                 
                                 // Sync active likes and comments
                                 if (typeof syncLikeButtonState === 'function') syncLikeButtonState(currentFeed);

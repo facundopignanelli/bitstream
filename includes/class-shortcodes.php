@@ -1206,7 +1206,10 @@ class BitStream_Shortcodes
         }
 
         $requested_type = isset($_GET['bitstream_type']) ? sanitize_key(wp_unslash($_GET['bitstream_type'])) : 'all';
-        $selected_type = in_array($requested_type, ['all', 'bits', 'rebits'], true) ? $requested_type : 'all';
+        $selected_type = in_array($requested_type, ['all', 'bits', 'rebits', 'emotions'], true) ? $requested_type : 'all';
+
+        $requested_emotion = isset($_GET['bitstream_emotion']) ? sanitize_text_field(wp_unslash($_GET['bitstream_emotion'])) : '';
+        $selected_emotion = trim($requested_emotion);
 
         $requested_month = isset($_GET['bitstream_month']) ? sanitize_text_field(wp_unslash($_GET['bitstream_month'])) : '';
         $selected_month = preg_match('/^\d{4}-\d{2}$/', $requested_month) ? $requested_month : '';
@@ -1233,8 +1236,10 @@ class BitStream_Shortcodes
             'order' => 'DESC'
         ];
 
+        $meta_query = [];
+
         if ($selected_type === 'bits') {
-            $query_args['meta_query'] = [
+            $meta_query[] = [
                 'relation' => 'OR',
                 [
                     'key' => 'bitstream_rebit_url',
@@ -1247,13 +1252,32 @@ class BitStream_Shortcodes
                 ],
             ];
         } elseif ($selected_type === 'rebits') {
-            $query_args['meta_query'] = [
-                [
-                    'key' => 'bitstream_rebit_url',
-                    'value' => '',
-                    'compare' => '!=',
-                ],
+            $meta_query[] = [
+                'key' => 'bitstream_rebit_url',
+                'value' => '',
+                'compare' => '!=',
             ];
+        } elseif ($selected_type === 'emotions') {
+            $meta_query[] = [
+                'key' => '_bitstream_mood_emotion',
+                'value' => '',
+                'compare' => '!=',
+            ];
+        }
+
+        if (!empty($selected_emotion)) {
+            $meta_query[] = [
+                'key' => '_bitstream_mood_emotion',
+                'value' => $selected_emotion,
+                'compare' => '=',
+            ];
+        }
+
+        if (!empty($meta_query)) {
+            if (count($meta_query) > 1) {
+                $meta_query['relation'] = 'AND';
+            }
+            $query_args['meta_query'] = $meta_query;
         }
 
         if (!empty($selected_month)) {
@@ -1317,6 +1341,7 @@ class BitStream_Shortcodes
             'bitstream_month',
             'bitstream_search',
             'bitstream_hashtag',
+            'bitstream_emotion',
             'paged',
             'composer_tab',
             'show_drafts',
@@ -1330,7 +1355,7 @@ class BitStream_Shortcodes
             'share_target',
             'shared_id'
         ]);
-        $build_filter_url = static function ($base_url, $type, $month, $search, $hashtag = '') {
+        $build_filter_url = static function ($base_url, $type, $month, $search, $hashtag = '', $emotion = '') {
             $params = [];
             if (!empty($type) && $type !== 'all') {
                 $params['bitstream_type'] = $type;
@@ -1344,6 +1369,9 @@ class BitStream_Shortcodes
             if (!empty($hashtag)) {
                 $params['bitstream_hashtag'] = $hashtag;
             }
+            if (!empty($emotion)) {
+                $params['bitstream_emotion'] = $emotion;
+            }
             return empty($params) ? $base_url : add_query_arg($params, $base_url);
         };
 
@@ -1354,7 +1382,7 @@ class BitStream_Shortcodes
             $feed_classes .= ' bitstream-infinite-scroll';
         }
 
-        $has_active_filters = ($selected_type !== 'all') || !empty($selected_month) || !empty($selected_search) || !empty($selected_hashtag) || ($highlight_id > 0);
+        $has_active_filters = ($selected_type !== 'all') || !empty($selected_month) || !empty($selected_search) || !empty($selected_hashtag) || !empty($selected_emotion) || ($highlight_id > 0);
         $selected_month_label = '';
         if (!empty($selected_month)) {
             [$selected_year, $selected_month_num] = explode('-', $selected_month);
@@ -1393,6 +1421,7 @@ class BitStream_Shortcodes
 
         // Hashtag counts needed for sidebar and search screen
         $hashtag_counts = class_exists('BitStream_Content_Display') ? BitStream_Content_Display::get_hashtag_counts() : [];
+        $emotion_counts = class_exists('BitStream_Content_Display') ? BitStream_Content_Display::get_emotion_counts() : [];
 
 
         echo '<div class="bitstream-feed-sidebar-tabs">';
@@ -1406,6 +1435,9 @@ class BitStream_Shortcodes
         }
         if (!empty($selected_month)) {
             echo '<input type="hidden" name="bitstream_month" value="' . esc_attr($selected_month) . '">';
+        }
+        if (!empty($selected_emotion)) {
+            echo '<input type="hidden" name="bitstream_emotion" value="' . esc_attr($selected_emotion) . '">';
         }
         echo '<input type="search" name="bitstream_search" value="' . esc_attr($selected_search) . '" placeholder="Search posts...">';
         echo '<button type="submit">Search</button>';
@@ -1430,7 +1462,7 @@ class BitStream_Shortcodes
         // Filters Panel
         echo '<div class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-filters hide-on-desktop" data-panel-id="filters">';
         echo '<div class="bitstream-feed-sidebar">';
-        echo '<a class="bitstream-filter-link ' . (empty($selected_month) ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, $selected_type, '', $selected_search, $selected_hashtag)) . '">All dates</a>';
+        echo '<a class="bitstream-filter-link ' . (empty($selected_month) ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, $selected_type, '', $selected_search, $selected_hashtag, $selected_emotion)) . '">All dates</a>';
         if (!empty($archive_rows)) {
             $archive_by_year = [];
             foreach ($archive_rows as $row) {
@@ -1465,7 +1497,7 @@ class BitStream_Shortcodes
                     $month_value = sprintf('%04d-%02d', intval($year), intval($month_data['m']));
                     $is_active = ($selected_month === $month_value) ? ' is-active' : '';
                     $label = date_i18n('F', mktime(0, 0, 0, intval($month_data['m']), 1, intval($year)));
-                    echo '<a class="bitstream-filter-link' . $is_active . '" href="' . esc_url($build_filter_url($base_filter_url, $selected_type, $month_value, $selected_search, $selected_hashtag)) . '">';
+                    echo '<a class="bitstream-filter-link' . $is_active . '" href="' . esc_url($build_filter_url($base_filter_url, $selected_type, $month_value, $selected_search, $selected_hashtag, $selected_emotion)) . '">';
                     echo '<strong class="bitstream-archive-label">' . esc_html($label) . '</strong> <span class="bitstream-archive-count">(' . intval($month_data['c']) . ')</span>';
                     echo '</a>';
                 }
@@ -1479,9 +1511,10 @@ class BitStream_Shortcodes
         echo '</div>';
 
         echo '<div class="bitstream-feed-sidebar" style="margin-top: 0.75rem;">';
-        echo '<a class="bitstream-filter-link ' . ($selected_type === 'all' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'all', $selected_month, $selected_search, $selected_hashtag)) . '">All</a>';
-        echo '<a class="bitstream-filter-link ' . ($selected_type === 'bits' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'bits', $selected_month, $selected_search, $selected_hashtag)) . '">Bits</a>';
-        echo '<a class="bitstream-filter-link ' . ($selected_type === 'rebits' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'rebits', $selected_month, $selected_search, $selected_hashtag)) . '">Rebits</a>';
+        echo '<a class="bitstream-filter-link ' . ($selected_type === 'all' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'all', $selected_month, $selected_search, $selected_hashtag, $selected_emotion)) . '">All</a>';
+        echo '<a class="bitstream-filter-link ' . ($selected_type === 'bits' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'bits', $selected_month, $selected_search, $selected_hashtag, $selected_emotion)) . '">Bits</a>';
+        echo '<a class="bitstream-filter-link ' . ($selected_type === 'rebits' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'rebits', $selected_month, $selected_search, $selected_hashtag, $selected_emotion)) . '">Rebits</a>';
+        echo '<a class="bitstream-filter-link ' . ($selected_type === 'emotions' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'emotions', $selected_month, $selected_search, $selected_hashtag, $selected_emotion)) . '">Emotions</a>';
         echo '</div>';
         echo '</div>'; // End filters panel
 
@@ -1492,10 +1525,26 @@ class BitStream_Shortcodes
             foreach ($hashtag_counts as $tag => $count) {
                 $is_active_tag = (mb_strtolower($selected_hashtag, 'UTF-8') === mb_strtolower($tag, 'UTF-8')) ? ' is-active' : '';
                 // Keep selected type, month, and search when adding a hashtag filter
-                $tag_url = $build_filter_url($base_filter_url, $selected_type, $selected_month, $selected_search, $tag);
+                $tag_url = $build_filter_url($base_filter_url, $selected_type, $selected_month, $selected_search, $tag, $selected_emotion);
                 echo '<a class="bitstream-filter-link bitstream-hashtag-sidebar-link' . $is_active_tag . '" href="' . esc_url($tag_url) . '">';
                 echo '<span class="bitstream-hashtag-sidebar-tag">#' . esc_html($tag) . '</span>';
                 echo '<span class="bitstream-archive-count">(' . intval($count) . ')</span>';
+                echo '</a>';
+            }
+            echo '</div>';
+            echo '</div>';
+        }
+
+        // Emotions Panel
+        if (!empty($emotion_counts)) {
+            echo '<div class="bitstream-feed-sidebar-panel bitstream-feed-sidebar-panel-emotions" data-panel-id="emotions">';
+            echo '<div class="bitstream-feed-sidebar bitstream-emotion-list">';
+            foreach ($emotion_counts as $key => $data) {
+                $is_active_emotion = (mb_strtolower($selected_emotion, 'UTF-8') === $key) ? ' is-active' : '';
+                $emotion_url = $build_filter_url($base_filter_url, $selected_type, $selected_month, $selected_search, $selected_hashtag, $data['emotion']);
+                echo '<a class="bitstream-filter-link bitstream-emotion-sidebar-link' . $is_active_emotion . '" href="' . esc_url($emotion_url) . '">';
+                echo '<span class="bitstream-emotion-sidebar-tag">' . esc_html(trim($data['emoji'] . ' ' . $data['emotion'])) . '</span>';
+                echo '<span class="bitstream-archive-count">(' . intval($data['count']) . ')</span>';
                 echo '</a>';
             }
             echo '</div>';
@@ -1518,25 +1567,35 @@ class BitStream_Shortcodes
         if ($has_active_filters) {
             echo '<div class="bitstream-active-filters" aria-label="Active filters">';
             if ($highlight_id > 0) {
-                $remove_url = $build_filter_url($base_filter_url, $selected_type, $selected_month, $selected_search, $selected_hashtag);
+                $remove_url = $build_filter_url($base_filter_url, $selected_type, $selected_month, $selected_search, $selected_hashtag, $selected_emotion);
                 echo '<a href="' . esc_url($remove_url) . '" class="bitstream-filter-chip bitstream-filter-chip-back" title="Go back to timeline"><i class="fa-solid fa-arrow-left" aria-hidden="true" style="margin-right: 6px;"></i> Go back</a>';
             } else {
                 if ($selected_type !== 'all') {
-                    $type_label = ($selected_type === 'rebits') ? 'Rebits' : 'Bits';
-                    $remove_url = $build_filter_url($base_filter_url, 'all', $selected_month, $selected_search, $selected_hashtag);
+                    if ($selected_type === 'rebits') {
+                        $type_label = 'Rebits';
+                    } elseif ($selected_type === 'emotions') {
+                        $type_label = 'Emotions';
+                    } else {
+                        $type_label = 'Bits';
+                    }
+                    $remove_url = $build_filter_url($base_filter_url, 'all', $selected_month, $selected_search, $selected_hashtag, $selected_emotion);
                     echo '<a href="' . esc_url($remove_url) . '" class="bitstream-filter-chip" title="Remove filter">' . esc_html($type_label) . ' <i class="fa-solid fa-xmark" aria-hidden="true" style="margin-left: 6px; font-size: 0.9em; opacity: 0.6;"></i></a>';
                 }
                 if (!empty($selected_month_label)) {
-                    $remove_url = $build_filter_url($base_filter_url, $selected_type, '', $selected_search, $selected_hashtag);
+                    $remove_url = $build_filter_url($base_filter_url, $selected_type, '', $selected_search, $selected_hashtag, $selected_emotion);
                     echo '<a href="' . esc_url($remove_url) . '" class="bitstream-filter-chip" title="Remove filter">' . esc_html($selected_month_label) . ' <i class="fa-solid fa-xmark" aria-hidden="true" style="margin-left: 6px; font-size: 0.9em; opacity: 0.6;"></i></a>';
                 }
                 if (!empty($selected_search)) {
-                    $remove_url = $build_filter_url($base_filter_url, $selected_type, $selected_month, '', $selected_hashtag);
+                    $remove_url = $build_filter_url($base_filter_url, $selected_type, $selected_month, '', $selected_hashtag, $selected_emotion);
                     echo '<a href="' . esc_url($remove_url) . '" class="bitstream-filter-chip" title="Remove filter">Search: ' . esc_html($selected_search) . ' <i class="fa-solid fa-xmark" aria-hidden="true" style="margin-left: 6px; font-size: 0.9em; opacity: 0.6;"></i></a>';
                 }
                 if (!empty($selected_hashtag)) {
-                    $remove_url = $build_filter_url($base_filter_url, $selected_type, $selected_month, $selected_search, '');
+                    $remove_url = $build_filter_url($base_filter_url, $selected_type, $selected_month, $selected_search, '', $selected_emotion);
                     echo '<a href="' . esc_url($remove_url) . '" class="bitstream-filter-chip" title="Remove filter">#' . esc_html($selected_hashtag) . ' <i class="fa-solid fa-xmark" aria-hidden="true" style="margin-left: 6px; font-size: 0.9em; opacity: 0.6;"></i></a>';
+                }
+                if (!empty($selected_emotion)) {
+                    $remove_url = $build_filter_url($base_filter_url, $selected_type, $selected_month, $selected_search, $selected_hashtag, '');
+                    echo '<a href="' . esc_url($remove_url) . '" class="bitstream-filter-chip" title="Remove filter">Emotion: ' . esc_html($selected_emotion) . ' <i class="fa-solid fa-xmark" aria-hidden="true" style="margin-left: 6px; font-size: 0.9em; opacity: 0.6;"></i></a>';
                 }
                 echo '<a class="bitstream-filter-chip bitstream-filter-chip-clear" href="' . esc_url($base_filter_url) . '">Clear all</a>';
             }
@@ -1544,7 +1603,7 @@ class BitStream_Shortcodes
         }
 
         if ($q->have_posts()) {
-            echo '<div class="' . $feed_classes . '" data-page="' . $current_page . '" data-max-page="' . $max . '" data-infinite-scroll="' . ($infinite_scroll ? 'true' : 'false') . '" data-filter-type="' . esc_attr($selected_type) . '" data-filter-month="' . esc_attr($selected_month) . '" data-filter-search="' . esc_attr($selected_search) . '" data-filter-hashtag="' . esc_attr($selected_hashtag) . '" data-highlight-bit="' . esc_attr($highlight_id) . '">';
+            echo '<div class="' . $feed_classes . '" data-page="' . $current_page . '" data-max-page="' . $max . '" data-infinite-scroll="' . ($infinite_scroll ? 'true' : 'false') . '" data-filter-type="' . esc_attr($selected_type) . '" data-filter-month="' . esc_attr($selected_month) . '" data-filter-search="' . esc_attr($selected_search) . '" data-filter-hashtag="' . esc_attr($selected_hashtag) . '" data-filter-emotion="' . esc_attr($selected_emotion) . '" data-highlight-bit="' . esc_attr($highlight_id) . '">';
             while ($q->have_posts()) {
                 $q->the_post();
                 echo bitstream_render_card(get_the_ID());
@@ -1571,15 +1630,16 @@ class BitStream_Shortcodes
 
         echo '<aside class="hide-on-mobile">';
         echo '<div class="bitstream-feed-sidebar">';
-        echo '<a class="bitstream-filter-link ' . ($selected_type === 'all' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'all', $selected_month, $selected_search, $selected_hashtag)) . '">All</a>';
-        echo '<a class="bitstream-filter-link ' . ($selected_type === 'bits' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'bits', $selected_month, $selected_search, $selected_hashtag)) . '">Bits</a>';
-        echo '<a class="bitstream-filter-link ' . ($selected_type === 'rebits' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'rebits', $selected_month, $selected_search, $selected_hashtag)) . '">Rebits</a>';
+        echo '<a class="bitstream-filter-link ' . ($selected_type === 'all' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'all', $selected_month, $selected_search, $selected_hashtag, $selected_emotion)) . '">All</a>';
+        echo '<a class="bitstream-filter-link ' . ($selected_type === 'bits' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'bits', $selected_month, $selected_search, $selected_hashtag, $selected_emotion)) . '">Bits</a>';
+        echo '<a class="bitstream-filter-link ' . ($selected_type === 'rebits' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'rebits', $selected_month, $selected_search, $selected_hashtag, $selected_emotion)) . '">Rebits</a>';
+        echo '<a class="bitstream-filter-link ' . ($selected_type === 'emotions' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'emotions', $selected_month, $selected_search, $selected_hashtag, $selected_emotion)) . '">Emotions</a>';
         echo '</div>';
         echo '</aside>';
 
         echo '<aside class="hide-on-mobile">';
         echo '<div class="bitstream-feed-sidebar">';
-        echo '<a class="bitstream-filter-link ' . (empty($selected_month) ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, $selected_type, '', $selected_search, $selected_hashtag)) . '">All dates</a>';
+        echo '<a class="bitstream-filter-link ' . (empty($selected_month) ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, $selected_type, '', $selected_search, $selected_hashtag, $selected_emotion)) . '">All dates</a>';
         if (!empty($archive_rows)) {
             $archive_by_year = [];
             foreach ($archive_rows as $row) {
@@ -1614,7 +1674,7 @@ class BitStream_Shortcodes
                     $month_value = sprintf('%04d-%02d', intval($year), intval($month_data['m']));
                     $is_active = ($selected_month === $month_value) ? ' is-active' : '';
                     $label = date_i18n('F', mktime(0, 0, 0, intval($month_data['m']), 1, intval($year)));
-                    echo '<a class="bitstream-filter-link' . $is_active . '" href="' . esc_url($build_filter_url($base_filter_url, $selected_type, $month_value, $selected_search, $selected_hashtag)) . '">';
+                    echo '<a class="bitstream-filter-link' . $is_active . '" href="' . esc_url($build_filter_url($base_filter_url, $selected_type, $month_value, $selected_search, $selected_hashtag, $selected_emotion)) . '">';
                     echo '<strong class="bitstream-archive-label">' . esc_html($label) . '</strong> <span class="bitstream-archive-count">(' . intval($month_data['c']) . ')</span>';
                     echo '</a>';
                 }
@@ -1705,6 +1765,9 @@ class BitStream_Shortcodes
         if (!empty($selected_month)) {
             echo '<input type="hidden" name="bitstream_month" value="' . esc_attr($selected_month) . '">';
         }
+        if (!empty($selected_emotion)) {
+            echo '<input type="hidden" name="bitstream_emotion" value="' . esc_attr($selected_emotion) . '">';
+        }
         echo '<input type="search" name="bitstream_search" value="' . esc_attr($selected_search) . '" placeholder="Search posts...">';
         echo '<button type="submit">Search</button>';
         echo '</form>';
@@ -1714,9 +1777,10 @@ class BitStream_Shortcodes
         echo '<div class="bs-search-section">';
         echo '<p class="bs-search-section-title">Content type</p>';
         echo '<div class="bitstream-feed-sidebar">';
-        echo '<a class="bitstream-filter-link ' . ($selected_type === 'all' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'all', $selected_month, $selected_search, $selected_hashtag)) . '">All</a>';
-        echo '<a class="bitstream-filter-link ' . ($selected_type === 'bits' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'bits', $selected_month, $selected_search, $selected_hashtag)) . '">Bits</a>';
-        echo '<a class="bitstream-filter-link ' . ($selected_type === 'rebits' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'rebits', $selected_month, $selected_search, $selected_hashtag)) . '">Rebits</a>';
+        echo '<a class="bitstream-filter-link ' . ($selected_type === 'all' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'all', $selected_month, $selected_search, $selected_hashtag, $selected_emotion)) . '">All</a>';
+        echo '<a class="bitstream-filter-link ' . ($selected_type === 'bits' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'bits', $selected_month, $selected_search, $selected_hashtag, $selected_emotion)) . '">Bits</a>';
+        echo '<a class="bitstream-filter-link ' . ($selected_type === 'rebits' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'rebits', $selected_month, $selected_search, $selected_hashtag, $selected_emotion)) . '">Rebits</a>';
+        echo '<a class="bitstream-filter-link ' . ($selected_type === 'emotions' ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, 'emotions', $selected_month, $selected_search, $selected_hashtag, $selected_emotion)) . '">Emotions</a>';
         echo '</div>';
         echo '</div>';
 
@@ -1724,7 +1788,7 @@ class BitStream_Shortcodes
         echo '<div class="bs-search-section">';
         echo '<p class="bs-search-section-title">Date</p>';
         echo '<div class="bitstream-feed-sidebar">';
-        echo '<a class="bitstream-filter-link ' . (empty($selected_month) ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, $selected_type, '', $selected_search, $selected_hashtag)) . '">All dates</a>';
+        echo '<a class="bitstream-filter-link ' . (empty($selected_month) ? 'is-active' : '') . '" href="' . esc_url($build_filter_url($base_filter_url, $selected_type, '', $selected_search, $selected_hashtag, $selected_emotion)) . '">All dates</a>';
         if (!empty($archive_rows)) {
             $archive_by_year_search = [];
             foreach ($archive_rows as $row) {
@@ -1748,7 +1812,7 @@ class BitStream_Shortcodes
                     $month_value = sprintf('%04d-%02d', intval($year), intval($month_data['m']));
                     $is_active = ($selected_month === $month_value) ? ' is-active' : '';
                     $label = date_i18n('F', mktime(0, 0, 0, intval($month_data['m']), 1, intval($year)));
-                    echo '<a class="bitstream-filter-link' . $is_active . '" href="' . esc_url($build_filter_url($base_filter_url, $selected_type, $month_value, $selected_search, $selected_hashtag)) . '">';
+                    echo '<a class="bitstream-filter-link' . $is_active . '" href="' . esc_url($build_filter_url($base_filter_url, $selected_type, $month_value, $selected_search, $selected_hashtag, $selected_emotion)) . '">';
                     echo '<strong class="bitstream-archive-label">' . esc_html($label) . '</strong> <span class="bitstream-archive-count">(' . intval($month_data['c']) . ')</span>';
                     echo '</a>';
                 }
@@ -1765,10 +1829,26 @@ class BitStream_Shortcodes
             echo '<div class="bitstream-feed-sidebar bitstream-hashtag-list">';
             foreach ($hashtag_counts as $tag => $count) {
                 $is_active_tag = (mb_strtolower($selected_hashtag, 'UTF-8') === mb_strtolower($tag, 'UTF-8')) ? ' is-active' : '';
-                $tag_url = $build_filter_url($base_filter_url, $selected_type, $selected_month, $selected_search, $tag);
+                $tag_url = $build_filter_url($base_filter_url, $selected_type, $selected_month, $selected_search, $tag, $selected_emotion);
                 echo '<a class="bitstream-filter-link bitstream-hashtag-sidebar-link' . $is_active_tag . '" href="' . esc_url($tag_url) . '">';
                 echo '<span class="bitstream-hashtag-sidebar-tag">#' . esc_html($tag) . '</span>';
                 echo '<span class="bitstream-archive-count">(' . intval($count) . ')</span>';
+                echo '</a>';
+            }
+            echo '</div></div>';
+        }
+
+        // Emotions
+        if (!empty($emotion_counts)) {
+            echo '<div class="bs-search-section">';
+            echo '<p class="bs-search-section-title">Emotions</p>';
+            echo '<div class="bitstream-feed-sidebar bitstream-emotion-list">';
+            foreach ($emotion_counts as $key => $data) {
+                $is_active_emotion = (mb_strtolower($selected_emotion, 'UTF-8') === $key) ? ' is-active' : '';
+                $emotion_url = $build_filter_url($base_filter_url, $selected_type, $selected_month, $selected_search, $selected_hashtag, $data['emotion']);
+                echo '<a class="bitstream-filter-link bitstream-emotion-sidebar-link' . $is_active_emotion . '" href="' . esc_url($emotion_url) . '">';
+                echo '<span class="bitstream-emotion-sidebar-tag">' . esc_html(trim($data['emoji'] . ' ' . $data['emotion'])) . '</span>';
+                echo '<span class="bitstream-archive-count">(' . intval($data['count']) . ')</span>';
                 echo '</a>';
             }
             echo '</div></div>';
@@ -2460,17 +2540,33 @@ class BitStream_Shortcodes
                         <p class="bs-edit-modal-error-msg"></p>
                     </div>
 
-                    <form class="bs-edit-form bs-edit-form-bit bitstream-composer-form" data-composer-type="bit" hidden
+                    <form class="bs-edit-form bs-edit-form-unified bitstream-composer-form" data-composer-type="bit" hidden
                         novalidate>
                         <input type="hidden" name="edit_post_id" value="">
-                        <input type="hidden" name="composer_type" value="bit">
+                        <input type="hidden" name="composer_type" class="bs-edit-composer-type" value="bit">
                         <input type="hidden" name="nonce" value="<?php echo esc_attr($submit_nonce); ?>">
                         <input type="hidden" name="quote_post_id" class="bs-edit-quote-post-id" value="0">
                         <input type="hidden" name="bit_mood_emoji" class="bs-edit-mood-emoji" value="">
                         <input type="hidden" name="bit_mood_emotion" class="bs-edit-mood-emotion" value="">
+                        <input type="hidden" name="rebit_og_title" class="bs-edit-rebit-og-title" value="">
+                        <input type="hidden" name="rebit_og_desc" class="bs-edit-rebit-og-desc" value="">
+                        <input type="hidden" name="rebit_og_image" class="bs-edit-rebit-og-image" value="">
+                        <input type="hidden" name="rebit_og_image_removed" class="bs-edit-rebit-og-image-removed" value="0">
+                        <input type="hidden" name="rebit_attachment_id" class="bs-edit-rebit-attachment-id" value="">
 
+                        <!-- Link URL field (Only shown for Rebit) -->
+                        <div class="bs-edit-field bs-edit-url-field" hidden>
+                            <label class="bs-edit-label" for="bs-edit-rebit-url">Link URL</label>
+                            <div class="bs-edit-url-row">
+                                <input type="url" id="bs-edit-rebit-url" name="rebit_url" class="bs-edit-url-input bs-edit-rebit-url-hidden"
+                                    placeholder="https://example.com/post">
+                                <button type="button" class="bs-edit-refetch-btn bs-edit-link-meta-open">Edit metadata</button>
+                            </div>
+                        </div>
+
+                        <!-- Content / Commentary -->
                         <div class="bs-edit-field">
-                            <label class="bs-edit-label" for="bs-edit-bit-content">Content</label>
+                            <label class="bs-edit-label" for="bs-edit-bit-content" id="bs-edit-content-label">Content</label>
                             <div class="bs-textarea-container" style="position: relative; width: 100%;">
                                 <textarea id="bs-edit-bit-content" name="bit_content" class="bs-edit-textarea" rows="5"
                                     placeholder="What's happening?" style="padding-right: 38px;"></textarea>
@@ -2480,23 +2576,53 @@ class BitStream_Shortcodes
                             </div>
                         </div>
 
-                        <!-- Quote Preview -->
-                        <div class="bs-edit-quote-preview" hidden>
-                            <div class="bitstream-composer-preview-header">
-                                <span class="bitstream-composer-preview-label">
-                                    <i class="fa-solid fa-quote-left" aria-hidden="true"></i> Quoted Bit
-                                </span>
-                                <div class="bitstream-composer-preview-actions">
-                                    <button type="button" class="bitstream-composer-preview-remove bs-edit-quote-remove-btn" title="Remove quote" aria-label="Remove quote">
-                                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-                                    </button>
+                        <!-- Preview area matching composer carousel design -->
+                        <div class="bitstream-composer-preview-area bs-edit-preview-area" hidden>
+                            <div class="bitstream-composer-preview-carousel bs-edit-preview-carousel">
+                                <!-- Rebit Preview -->
+                                <div class="bitstream-composer-preview-rebit bs-edit-rebit-preview-container" hidden>
+                                    <div class="bitstream-composer-preview-header">
+                                        <span class="bitstream-composer-preview-label">
+                                            <i class="fa-solid fa-link" aria-hidden="true"></i> Attached Link
+                                        </span>
+                                        <div class="bitstream-composer-preview-actions">
+                                            <button type="button" class="bitstream-composer-preview-edit bs-edit-bit-link-meta-open"
+                                                title="Edit link metadata" aria-label="Edit link metadata">
+                                                <i class="fa-solid fa-pencil" aria-hidden="true"></i>
+                                            </button>
+                                            <button type="button" class="bitstream-composer-preview-remove bs-edit-rebit-remove-btn"
+                                                title="Remove link" aria-label="Remove link">
+                                                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="bs-edit-rebit-preview-card" style="margin-top: 0.5rem;"></div>
+                                </div>
+
+                                <!-- Quote Preview -->
+                                <div class="bs-edit-quote-preview" hidden>
+                                    <div class="bitstream-composer-preview-header">
+                                        <span class="bitstream-composer-preview-label">
+                                            <i class="fa-solid fa-quote-left" aria-hidden="true"></i> Quoted Bit
+                                        </span>
+                                        <div class="bitstream-composer-preview-actions">
+                                            <button type="button" class="bitstream-composer-preview-remove bs-edit-quote-remove-btn" title="Remove quote" aria-label="Remove quote">
+                                                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="bs-edit-quote-preview-card"></div>
                                 </div>
                             </div>
-                            <div class="bs-edit-quote-preview-card"></div>
+                            <!-- Dot indicators -->
+                            <div class="bitstream-composer-preview-dots bs-edit-preview-dots" hidden aria-hidden="true"></div>
                         </div>
 
-                        <div class="bs-edit-media">
-                            <?php echo self::render_media_field('bs-edit-bit-attachment-id', 'bs-edit-bit-media-preview'); ?>
+                        <!-- Media preview (Only preview area, no dropzone/upload buttons) -->
+                        <div class="bs-edit-media" hidden>
+                            <input type="hidden" id="bs-edit-bit-attachment-id" class="bs-edit-attachment-id" name="bit_attachment_id" value="">
+                            <input type="hidden" id="bs-edit-bit-attachment-ids" class="bs-edit-attachment-ids" name="bit_attachment_ids" value="">
+                            <div class="bitstream-media-preview" id="bs-edit-bit-media-preview"></div>
                         </div>
 
                         <!-- Action buttons row in edit form -->
@@ -2512,68 +2638,10 @@ class BitStream_Shortcodes
                                 title="Remove mood">
                                 <i class="fa-solid fa-xmark"></i>
                             </button>
-                            <button type="button" class="bs-edit-media-toggle-btn"
-                                style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1.5px solid #e2e8f0; border-radius: 20px; background: #f8fafc; font-size: 0.9rem; font-weight: 500; cursor: pointer; color: #475569; transition: all 0.2s ease;">
-                                <i class="fa-solid fa-photo-film"></i>
-                                <span class="bs-edit-media-toggle-label">Add Media</span>
-                            </button>
                         </div>
 
                         <footer class="bs-edit-modal-footer bitstream-composer-modal-footer">
                             <button type="submit" class="bitstream-composer-submit bs-edit-submit">Update Bit</button>
-                        </footer>
-                    </form>
-
-                    <form class="bs-edit-form bs-edit-form-rebit bitstream-composer-form" data-composer-type="rebit" hidden
-                        novalidate>
-                        <input type="hidden" name="edit_post_id" value="">
-                        <input type="hidden" name="composer_type" value="rebit">
-                        <input type="hidden" name="nonce" value="<?php echo esc_attr($submit_nonce); ?>">
-                        <input type="hidden" name="rebit_attachment_id" class="bs-edit-attachment-id" value="">
-                        <input type="hidden" name="rebit_og_title" class="bs-edit-og-title" value="">
-                        <input type="hidden" name="rebit_og_desc" class="bs-edit-og-desc" value="">
-                        <input type="hidden" name="rebit_og_image" class="bs-edit-og-image" value="">
-                        <input type="hidden" name="rebit_og_image_removed" class="bs-edit-og-image-removed" value="0">
-                        <input type="hidden" name="bit_mood_emoji" class="bs-edit-mood-emoji" value="">
-                        <input type="hidden" name="bit_mood_emotion" class="bs-edit-mood-emotion" value="">
-
-                        <div class="bs-edit-field">
-                            <label class="bs-edit-label" for="bs-edit-rebit-url">Link URL</label>
-                            <div class="bs-edit-url-row">
-                                <input type="url" id="bs-edit-rebit-url" name="rebit_url" class="bs-edit-url-input"
-                                    placeholder="https://example.com/post">
-                                <button type="button" class="bs-edit-refetch-btn bs-edit-link-meta-open">Edit metadata</button>
-                            </div>
-                        </div>
-
-                        <div class="bs-edit-field">
-                            <label class="bs-edit-label" for="bs-edit-rebit-commentary">Commentary</label>
-                            <div class="bs-textarea-container" style="position: relative; width: 100%;">
-                                <textarea id="bs-edit-rebit-commentary" name="rebit_commentary" class="bs-edit-textarea" rows="4"
-                                    placeholder="Add your thoughts…" style="padding-right: 38px;"></textarea>
-                                <button type="button" class="bs-insert-emoji-btn" data-target-input="#bs-edit-rebit-commentary" title="Insert Emoji" aria-label="Insert Emoji" style="position: absolute; right: 8px; bottom: 8px; background: none; border: none; font-size: 1.1rem; color: #94a3b8; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; transition: color 0.15s;">
-                                    <i class="fa-regular fa-face-smile" aria-hidden="true"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Mood badge/button row in edit form -->
-                        <div class="bs-edit-mood-row"
-                            style="margin-bottom: 1rem; display: flex; align-items: center; gap: 8px;">
-                            <button type="button" class="bs-edit-mood-btn"
-                                style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1.5px solid #e2e8f0; border-radius: 20px; background: #f8fafc; font-size: 0.9rem; font-weight: 500; cursor: pointer; color: #475569; transition: all 0.2s ease;">
-                                <i class="fa-solid fa-face-smile"></i>
-                                <span class="bs-edit-mood-label">Add Mood</span>
-                            </button>
-                            <button type="button" class="bs-edit-mood-remove"
-                                style="background: none; border: none; color: #94a3b8; cursor: pointer; padding: 4px; display: none;"
-                                title="Remove mood">
-                                <i class="fa-solid fa-xmark"></i>
-                            </button>
-                        </div>
-
-                        <footer class="bs-edit-modal-footer bitstream-composer-modal-footer">
-                            <button type="submit" class="bitstream-composer-submit bs-edit-submit">Update Rebit</button>
                         </footer>
                     </form>
 
@@ -2645,11 +2713,11 @@ class BitStream_Shortcodes
                                 <button type="button" class="bitstream-composer-modal-confirm bs-edit-link-meta-save"
                                     data-bs-edit-link-meta-close="true">Done</button>
                             </footer>
-                        </div>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
         <?php
     }
 

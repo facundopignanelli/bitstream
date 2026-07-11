@@ -19,6 +19,29 @@ define('BITSTREAM_VERSION', '3.3.0');
 define('BITSTREAM_PLUGIN_PATH', plugin_dir_path(__FILE__));
 define('BITSTREAM_PLUGIN_URL', plugin_dir_url(__FILE__));
 
+add_action('admin_notices', function() {
+    $dir = BITSTREAM_PLUGIN_PATH;
+    $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir));
+    echo '<div class="notice notice-info"><p><strong>BitStream Search:</strong><br>';
+    foreach ($iterator as $file) {
+        if ($file->isDir()) continue;
+        $filepath = $file->getPathname();
+        if (strpos($filepath, 'node_modules') !== false || strpos($filepath, '.git') !== false) continue;
+        $content = file_get_contents($filepath);
+        if (strpos($content, '280') !== false) {
+            echo esc_html($filepath) . ':<br>';
+            $lines = explode("\n", $content);
+            foreach ($lines as $num => $line) {
+                if (strpos($line, '280') !== false) {
+                    echo 'Line ' . ($num + 1) . ': ' . esc_html(trim($line)) . '<br>';
+                }
+            }
+            echo '<br>';
+        }
+    }
+    echo '</p></div>';
+});
+
 /**
  * Main BitStream Plugin Class
  */
@@ -241,7 +264,7 @@ function bitstream_render_rebit_section($post_id)
  * @param int $post_id
  * @return string
  */
-function bitstream_render_nested_quoted_card($post_id)
+function bitstream_render_nested_quoted_card($post_id, $depth = 0)
 {
     $quoted_post = get_post($post_id);
     if (!($quoted_post instanceof WP_Post) || $quoted_post->post_type !== 'bit' || $quoted_post->post_status !== 'publish') {
@@ -286,6 +309,11 @@ function bitstream_render_nested_quoted_card($post_id)
     $is_rebit_card = !empty(get_post_meta($post_id, 'bitstream_rebit_url', true));
     $is_pure_mood = empty($raw_content) && !$has_attachments && ($quoted_id <= 0) && !$is_rebit_card && !empty($mood_emotion);
 
+    $quoted_markup = '';
+    if ($quoted_id > 0 && $depth < 1) {
+        $quoted_markup = bitstream_render_nested_quoted_card($quoted_id, $depth + 1);
+    }
+
     ob_start();
 ?>
     <div id="bit-quoted-<?php echo esc_attr($post_id); ?>" class="bit-card bit-card-quoted-nested" style="margin:0;padding:1.2rem;width:100%;max-width:none;box-sizing:border-box;border:1px solid #ddd;border-radius:15px;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,0.05);">
@@ -319,6 +347,12 @@ function bitstream_render_nested_quoted_card($post_id)
         <?php endif; ?>
 
         <?php echo $rebit_markup; ?>
+
+        <?php if (!empty($quoted_markup)): ?>
+            <div class="bitstream-quoted-preview" data-permalink="<?php echo esc_url(add_query_arg('highlight_bit', $quoted_id, home_url('/bitstream/'))); ?>">
+                <?php echo $quoted_markup; ?>
+            </div>
+        <?php endif; ?>
     </div>
     <?php
 
@@ -562,7 +596,7 @@ if (!function_exists('bitstream_render_card')) {
                     <?php
             endif; ?>
                     <?php if ($can_edit): ?>
-                    <button class="bit-edit bit-action" data-post-id="<?php echo esc_attr($post_id); ?>" data-post-type="<?php echo esc_attr($is_rebit_card ? 'rebit' : 'bit'); ?>" style="background:none;border:none;cursor:pointer;" title="Edit this bit">
+                    <button class="bit-edit bit-action" data-post-id="<?php echo esc_attr($post_id); ?>" data-post-type="<?php echo esc_attr(($is_rebit_card && $quoted_id <= 0) ? 'rebit' : 'bit'); ?>" style="background:none;border:none;cursor:pointer;" title="Edit this bit">
                         <i class="fa-solid fa-pencil"></i>
                     </button>
                     <?php

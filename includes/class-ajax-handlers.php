@@ -1188,7 +1188,8 @@ class BitStream_Ajax_Handlers
             }
 
             if ($composer_type === 'bit') {
-                if ($is_update && !empty(get_post_meta($edit_post_id, 'bitstream_rebit_url', true))) {
+                $existing_quote_id = $is_update ? intval(get_post_meta($edit_post_id, '_bitstream_quoted_bit', true)) : 0;
+                if ($is_update && !empty(get_post_meta($edit_post_id, 'bitstream_rebit_url', true)) && $existing_quote_id <= 0) {
                     wp_send_json_error('This post is a Rebit. Edit it from the Rebit tab.');
                 }
 
@@ -1291,6 +1292,42 @@ class BitStream_Ajax_Handlers
                 }
 
                 $this->maybe_save_custom_mood_to_list($author_id, $mood_emoji, $mood_emotion);
+
+                // Save Rebit / Link Preview metadata if attached
+                $rebit_url = esc_url_raw(wp_unslash($_POST['rebit_url'] ?? ''));
+                if (!empty($rebit_url) && filter_var($rebit_url, FILTER_VALIDATE_URL)) {
+                    update_post_meta($post_id, 'bitstream_rebit_url', $rebit_url);
+                    
+                    $og_title = sanitize_text_field(wp_unslash($_POST['rebit_og_title'] ?? ''));
+                    $og_desc = sanitize_textarea_field(wp_unslash($_POST['rebit_og_desc'] ?? ''));
+                    $og_image = esc_url_raw(wp_unslash($_POST['rebit_og_image'] ?? ''));
+                    $og_image_removed = !empty($_POST['rebit_og_image_removed']) && strval($_POST['rebit_og_image_removed']) === '1';
+
+                    update_post_meta($post_id, '_bitstream_og_title', $og_title);
+                    update_post_meta($post_id, '_bitstream_og_desc', $og_desc);
+
+                    // Rebit image attachment handling
+                    $rebit_attachment_id = intval($_POST['rebit_attachment_id'] ?? 0);
+                    if ($og_image_removed) {
+                        delete_post_meta($post_id, '_bitstream_og_image');
+                        delete_post_meta($post_id, '_bitstream_rebit_attachment_id');
+                    } elseif ($rebit_attachment_id > 0) {
+                        update_post_meta($post_id, '_bitstream_rebit_attachment_id', $rebit_attachment_id);
+                        update_post_meta($post_id, '_bitstream_og_image', wp_get_attachment_url($rebit_attachment_id));
+                    } elseif (!empty($og_image)) {
+                        update_post_meta($post_id, '_bitstream_og_image', $og_image);
+                        delete_post_meta($post_id, '_bitstream_rebit_attachment_id');
+                    } else {
+                        delete_post_meta($post_id, '_bitstream_og_image');
+                        delete_post_meta($post_id, '_bitstream_rebit_attachment_id');
+                    }
+                } else {
+                    delete_post_meta($post_id, 'bitstream_rebit_url');
+                    delete_post_meta($post_id, '_bitstream_og_title');
+                    delete_post_meta($post_id, '_bitstream_og_desc');
+                    delete_post_meta($post_id, '_bitstream_og_image');
+                    delete_post_meta($post_id, '_bitstream_rebit_attachment_id');
+                }
 
                 wp_send_json_success([
                     'message' => $save_as_draft
@@ -1555,7 +1592,10 @@ class BitStream_Ajax_Handlers
         $is_preview_mode = isset($_POST['preview_mode']) && $_POST['preview_mode'] === '1';
 
         $requested_type = isset($_POST['filter_type']) ? sanitize_key(wp_unslash($_POST['filter_type'])) : 'all';
-        $selected_type = in_array($requested_type, ['all', 'bits', 'rebits'], true) ? $requested_type : 'all';
+        $selected_type = in_array($requested_type, ['all', 'bits', 'rebits', 'emotions'], true) ? $requested_type : 'all';
+
+        $requested_emotion = isset($_POST['filter_emotion']) ? sanitize_text_field(wp_unslash($_POST['filter_emotion'])) : '';
+        $selected_emotion = trim($requested_emotion);
 
         $requested_month = isset($_POST['filter_month']) ? sanitize_text_field(wp_unslash($_POST['filter_month'])) : '';
         $selected_month = preg_match('/^\d{4}-\d{2}$/', $requested_month) ? $requested_month : '';
@@ -1577,8 +1617,10 @@ class BitStream_Ajax_Handlers
             $query_args['p'] = $highlight_id;
         }
 
+        $meta_query = [];
+
         if ($selected_type === 'bits') {
-            $query_args['meta_query'] = [
+            $meta_query[] = [
                 'relation' => 'OR',
                 [
                     'key' => 'bitstream_rebit_url',
@@ -1590,15 +1632,33 @@ class BitStream_Ajax_Handlers
                     'compare' => '=',
                 ],
             ];
-        }
-        elseif ($selected_type === 'rebits') {
-            $query_args['meta_query'] = [
-                [
-                    'key' => 'bitstream_rebit_url',
-                    'value' => '',
-                    'compare' => '!=',
-                ],
+        } elseif ($selected_type === 'rebits') {
+            $meta_query[] = [
+                'key' => 'bitstream_rebit_url',
+                'value' => '',
+                'compare' => '!=',
             ];
+        } elseif ($selected_type === 'emotions') {
+            $meta_query[] = [
+                'key' => '_bitstream_mood_emotion',
+                'value' => '',
+                'compare' => '!=',
+            ];
+        }
+
+        if (!empty($selected_emotion)) {
+            $meta_query[] = [
+                'key' => '_bitstream_mood_emotion',
+                'value' => $selected_emotion,
+                'compare' => '=',
+            ];
+        }
+
+        if (!empty($meta_query)) {
+            if (count($meta_query) > 1) {
+                $meta_query['relation'] = 'AND';
+            }
+            $query_args['meta_query'] = $meta_query;
         }
 
         if (!empty($selected_month)) {
@@ -2081,8 +2141,14 @@ class BitStream_Ajax_Handlers
                 wp_send_json_error('You do not have permission to edit this post.');
             }
 
+            $quote_post_id = intval(get_post_meta($post_id, '_bitstream_quoted_bit', true));
+            $is_quote  = ($quote_post_id > 0);
+
             $rebit_url = get_post_meta($post_id, 'bitstream_rebit_url', true);
             $is_rebit  = !empty($rebit_url);
+
+            // A post is treated as a Rebit only if it has a Rebit URL and is NOT quoting another bit.
+            $effective_post_type = ($is_rebit && !$is_quote) ? 'rebit' : 'bit';
 
             // Resolve attachments
             $attachment_ids_str = get_post_meta($post_id, '_bitstream_attachment_ids', true);
@@ -2134,7 +2200,7 @@ class BitStream_Ajax_Handlers
 
             $data = [
                 'post_id'         => $post_id,
-                'post_type'       => $is_rebit ? 'rebit' : 'bit',
+                'post_type'       => $effective_post_type,
                 'post_status'     => $post->post_status,
                 'content'         => $editable_content,
                 'attachment_id'   => $attachment_id,
@@ -2153,14 +2219,21 @@ class BitStream_Ajax_Handlers
                 $data['og_title']  = get_post_meta($post_id, '_bitstream_og_title', true);
                 $data['og_desc']   = get_post_meta($post_id, '_bitstream_og_desc', true);
                 $data['og_image']  = get_post_meta($post_id, '_bitstream_og_image', true);
-                $data['quote_post_id'] = 0;
+                
+                $rebit_attachment_id = intval(get_post_meta($post_id, '_bitstream_rebit_attachment_id', true));
+                if ($rebit_attachment_id <= 0) {
+                    $rebit_attachment_id = intval(get_post_meta($post_id, '_bitstream_attachment_id', true));
+                }
+                $data['rebit_attachment_id'] = $rebit_attachment_id > 0 ? $rebit_attachment_id : 0;
             }
-            else {
-                $quote_post_id = intval(get_post_meta($post_id, '_bitstream_quoted_bit', true));
-                $data['quote_post_id'] = $quote_post_id > 0 ? $quote_post_id : 0;
-                if ($quote_post_id > 0 && function_exists('bitstream_render_nested_quoted_card')) {
+
+            if ($is_quote) {
+                $data['quote_post_id'] = $quote_post_id;
+                if (function_exists('bitstream_render_nested_quoted_card')) {
                     $data['quote_preview_html'] = bitstream_render_nested_quoted_card($quote_post_id);
                 }
+            } else {
+                $data['quote_post_id'] = 0;
             }
 
             wp_send_json_success($data);

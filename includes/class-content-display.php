@@ -605,12 +605,64 @@ class BitStream_Content_Display
     }
 
     /**
-     * Invalidate the hashtag counts cache when a bit is saved.
+     * Get counts of active emotions from published bits.
+     *
+     * Returns an array of arrays containing 'emotion', 'emoji', and 'count'.
+     * Cached via transient.
+     */
+    public static function get_emotion_counts()
+    {
+        $cached = get_transient('bitstream_emotion_counts');
+        if (is_array($cached)) {
+            return $cached;
+        }
+
+        global $wpdb;
+        $results = $wpdb->get_results(
+            "SELECT pm_emotion.meta_value AS emotion, pm_emoji.meta_value AS emoji, COUNT(p.ID) AS count
+             FROM {$wpdb->posts} p
+             JOIN {$wpdb->postmeta} pm_emotion ON p.ID = pm_emotion.post_id AND pm_emotion.meta_key = '_bitstream_mood_emotion'
+             LEFT JOIN {$wpdb->postmeta} pm_emoji ON p.ID = pm_emoji.post_id AND pm_emoji.meta_key = '_bitstream_mood_emoji'
+             WHERE p.post_type = 'bit' AND p.post_status = 'publish' AND pm_emotion.meta_value != ''
+             GROUP BY pm_emotion.meta_value, pm_emoji.meta_value
+             ORDER BY count DESC"
+        );
+
+        $emotions = [];
+        foreach ($results as $row) {
+            $emotion = trim($row->emotion);
+            $emoji = trim($row->emoji);
+            $count = intval($row->count);
+            
+            $key = mb_strtolower($emotion, 'UTF-8');
+            if (isset($emotions[$key])) {
+                $emotions[$key]['count'] += $count;
+            } else {
+                $emotions[$key] = [
+                    'emotion' => $emotion,
+                    'emoji'   => $emoji,
+                    'count'   => $count
+                ];
+            }
+        }
+
+        // Sort by count descending
+        uasort($emotions, function ($a, $b) {
+            return $b['count'] - $a['count'];
+        });
+
+        set_transient('bitstream_emotion_counts', $emotions, HOUR_IN_SECONDS);
+        return $emotions;
+    }
+
+    /**
+     * Invalidate the hashtag and emotion counts cache when a bit is saved.
      */
     public static function flush_hashtag_cache($post_id)
     {
         if (get_post_type($post_id) === 'bit') {
             delete_transient('bitstream_hashtag_counts');
+            delete_transient('bitstream_emotion_counts');
         }
     }
 }
