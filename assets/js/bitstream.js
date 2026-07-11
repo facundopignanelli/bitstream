@@ -1282,7 +1282,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const pasteButtons = composerRoot.querySelectorAll('.bitstream-media-paste');
             const libraryButtons = composerRoot.querySelectorAll('.bitstream-media-library');
             const dropzones = composerRoot.querySelectorAll('.bitstream-media-dropzone');
-            const cropperModal = composerRoot.querySelector('.bitstream-cropper-modal');
+            const cropperModal = document.querySelector('.bitstream-cropper-modal');
             const cropperImage = cropperModal ? cropperModal.querySelector('.bitstream-cropper-image') : null;
             const cropperSelection = cropperModal ? cropperModal.querySelector('.bitstream-cropper-selection') : null;
             const cropperStage = cropperModal ? cropperModal.querySelector('.bitstream-cropper-stage') : null;
@@ -9136,6 +9136,36 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
+        if (navHome) {
+            const params = new URLSearchParams(window.location.search);
+            const hasHighlight = params.has('highlight_bit') && parseInt(params.get('highlight_bit') || '0', 10) > 0;
+            const feedEl = document.querySelector('.bitstream-feed');
+            const feedHighlight = feedEl && feedEl.dataset.highlightBit && parseInt(feedEl.dataset.highlightBit, 10) > 0;
+            const isHighlightView = hasHighlight || feedHighlight;
+            
+            const icon = navHome.querySelector('i');
+            const span = navHome.querySelector('span');
+            if (isHighlightView) {
+                if (icon) {
+                    icon.className = 'fa-solid fa-arrow-left';
+                }
+                if (span) {
+                    span.textContent = 'Back';
+                }
+                navHome.setAttribute('aria-label', 'Go back to timeline');
+                navHome.setAttribute('title', 'Go back to timeline');
+            } else {
+                if (icon) {
+                    icon.className = 'fa-solid fa-house';
+                }
+                if (span) {
+                    span.textContent = 'Home';
+                }
+                navHome.setAttribute('aria-label', 'Home');
+                navHome.removeAttribute('title');
+            }
+        }
+        
         [navHome, navSearch, navCompose, navDrafts, navMore].forEach(btn => {
             if (btn) {
                 btn.classList.toggle('is-active', btn === activeBtn);
@@ -9278,6 +9308,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 currentFeed.dataset.filterSearch = '';
                                 currentFeed.dataset.filterHashtag = '';
                                 currentFeed.dataset.filterEmotion = '';
+                                currentFeed.removeAttribute('data-highlight-bit');
                                 
                                 // Sync active likes and comments
                                 if (typeof syncLikeButtonState === 'function') syncLikeButtonState(currentFeed);

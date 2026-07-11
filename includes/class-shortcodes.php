@@ -1090,8 +1090,6 @@ class BitStream_Shortcodes
                     </div>
                 </div>
             <?php endif; ?>
-
-            <?php echo self::render_media_modals(); ?>
         </section>
         <?php
         return ob_get_clean();
@@ -1732,9 +1730,15 @@ class BitStream_Shortcodes
             $nav_classes .= ' has-compose-btn';
         }
 
+        $highlight_id = isset($_GET['highlight_bit']) ? intval($_GET['highlight_bit']) : 0;
+        $home_icon = ($highlight_id > 0) ? 'fa-arrow-left' : 'fa-house';
+        $home_label = ($highlight_id > 0) ? 'Go back to timeline' : 'Home';
+        $home_text = ($highlight_id > 0) ? 'Back' : 'Home';
+        $home_title = ($highlight_id > 0) ? ' title="Go back to timeline"' : '';
+
         echo '<nav class="' . esc_attr($nav_classes) . '" role="navigation" aria-label="Main navigation" data-filters-active="' . esc_attr($filters_active) . '">';
-        echo '<button class="bitstream-bottom-nav-btn" id="bs-nav-home" data-feed-url="' . esc_url($base_filter_url) . '" aria-label="Home">';
-        echo '<i class="fa-solid fa-house" aria-hidden="true"></i><span>Home</span></button>';
+        echo '<button class="bitstream-bottom-nav-btn" id="bs-nav-home" data-feed-url="' . esc_url($base_filter_url) . '" aria-label="' . esc_attr($home_label) . '"' . $home_title . '>';
+        echo '<i class="fa-solid ' . esc_attr($home_icon) . '" aria-hidden="true"></i><span>' . esc_html($home_text) . '</span></button>';
         echo '<button class="bitstream-bottom-nav-btn" id="bs-nav-search" aria-label="Search &amp; Filter">';
         echo '<i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span>Search</span></button>';
         if (current_user_can('edit_posts')) {
@@ -2716,9 +2720,9 @@ class BitStream_Shortcodes
                     </div>
                 </div>
             </div>
-        </div>
     </div>
         <?php
+        echo self::render_media_modals();
     }
 
     /**
