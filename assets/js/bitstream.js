@@ -4376,7 +4376,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             if (urlField) {
-                urlField.hidden = !isRebit;
+                urlField.hidden = true;
             }
 
             if (urlInput) {
@@ -4412,6 +4412,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 const previewCard = bitForm.querySelector('.bs-edit-rebit-preview-card');
                 if (previewCard) previewCard.innerHTML = '';
                 syncEditPreviewArea();
+            }
+
+            const rebitRemoveBtn = bitForm.querySelector('.bs-edit-rebit-remove-btn');
+            if (rebitRemoveBtn) {
+                rebitRemoveBtn.style.display = isRebit ? 'none' : '';
             }
 
             // Mood integration
