@@ -4630,6 +4630,78 @@ iframe[src*="youtube-nocookie.com"] {
     white-space: nowrap;
 }
 
+/* Hashtag Autocomplete Inline Panel */
+.bitstream-hashtag-autocomplete-inline {
+    width: 100%;
+    background: #ffffff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    margin-top: 8px;
+    margin-bottom: 8px;
+    max-height: 160px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    padding: 4px;
+    box-sizing: border-box;
+    animation: bitstreamModalIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bs-hashtag-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #334155;
+    user-select: none;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.bs-hashtag-item:hover,
+.bs-hashtag-item.is-active {
+    background: #f1f5f9;
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+}
+
+.bs-hashtag-symbol {
+    color: #94a3b8;
+    font-weight: 600;
+    margin-right: 2px;
+}
+
+.bs-hashtag-name {
+    font-weight: 500;
+    flex-grow: 1;
+}
+
+.bs-hashtag-count {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    background: #f8fafc;
+    padding: 2px 6px;
+    border-radius: 6px;
+}
+
+.bs-hashtag-item:hover .bs-hashtag-count,
+.bs-hashtag-item.is-active .bs-hashtag-count {
+    background: #e2e8f0;
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+}
+
+@media (max-width: 1023px) {
+    .bitstream-hashtag-autocomplete-inline {
+        max-height: 140px;
+        margin-top: 6px;
+        margin-bottom: 6px;
+    }
+    .bs-hashtag-item {
+        padding: 10px 14px;
+        font-size: 0.95rem;
+    }
+}
+
 /* Timeline Edit Modal Premium Styling */
 /* ── Dedicated Timeline Edit Modal (.bs-edit-modal) ──────────────────────── */
 
