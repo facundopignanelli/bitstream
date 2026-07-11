@@ -88,6 +88,18 @@
     object-fit: unset !important;
 }
 
+/* Twitter Rebit card avatar image reset */
+.bit-rebit-twitter img {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: unset !important;
+    max-height: none !important;
+    object-fit: cover !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+}
+
 /* Constrain video/mediaelement output inside cards */
 .bit-card-content video,
 .bit-rebit-preview video,
@@ -5274,7 +5286,8 @@ iframe[src*="youtube-nocookie.com"] {
     }
 
     /* ── Nested sub-modals (media, rebit, schedule, drafts…) → popup style on mobile ── */
-    .bitstream-composer .bitstream-composer-modal {
+    .bitstream-composer .bitstream-composer-modal,
+    .bs-edit-modal .bitstream-composer-modal {
         /* Re-use the standard modal backdrop/centering so they float above the full-screen composer */
         position: fixed !important;
         top: 0 !important;
@@ -5291,12 +5304,14 @@ iframe[src*="youtube-nocookie.com"] {
         background: transparent;
     }
 
-    .bitstream-composer .bitstream-composer-modal:not([hidden]) {
+    .bitstream-composer .bitstream-composer-modal:not([hidden]),
+    .bs-edit-modal .bitstream-composer-modal:not([hidden]) {
         display: flex !important;
     }
 
     /* Show the backdrop for nested sub-modals */
-    .bitstream-composer .bitstream-composer-modal>.bitstream-composer-modal-backdrop {
+    .bitstream-composer .bitstream-composer-modal>.bitstream-composer-modal-backdrop,
+    .bs-edit-modal .bitstream-composer-modal>.bitstream-composer-modal-backdrop {
         display: block !important;
         /* position:absolute keeps it contained within the already-fixed parent.
            position:fixed would let backdrop-filter composite against the entire
@@ -5308,7 +5323,8 @@ iframe[src*="youtube-nocookie.com"] {
     }
 
     /* Popup dialog style for nested sub-modals on mobile */
-    .bitstream-composer .bitstream-composer-modal>.bitstream-composer-modal-dialog {
+    .bitstream-composer .bitstream-composer-modal>.bitstream-composer-modal-dialog,
+    .bs-edit-modal .bitstream-composer-modal>.bitstream-composer-modal-dialog {
         position: relative;
         z-index: 1;
         width: 100% !important;
@@ -5325,21 +5341,25 @@ iframe[src*="youtube-nocookie.com"] {
         animation: bitstreamModalIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
     }
 
-    .bitstream-composer .bitstream-composer-modal>.bitstream-composer-modal-dialog>.bitstream-composer-modal-header {
+    .bitstream-composer .bitstream-composer-modal>.bitstream-composer-modal-dialog>.bitstream-composer-modal-header,
+    .bs-edit-modal .bitstream-composer-modal>.bitstream-composer-modal-dialog>.bitstream-composer-modal-header {
         border-radius: 20px 20px 0 0 !important;
     }
 
-    .bitstream-composer .bitstream-composer-modal>.bitstream-composer-modal-dialog>.bitstream-composer-modal-footer {
+    .bitstream-composer .bitstream-composer-modal>.bitstream-composer-modal-dialog>.bitstream-composer-modal-footer,
+    .bs-edit-modal .bitstream-composer-modal>.bitstream-composer-modal-dialog>.bitstream-composer-modal-footer {
         border-radius: 0 0 20px 20px !important;
     }
 
-    .bitstream-composer .bitstream-composer-modal>.bitstream-composer-modal-dialog>.bitstream-composer-modal-body {
+    .bitstream-composer .bitstream-composer-modal>.bitstream-composer-modal-dialog>.bitstream-composer-modal-body,
+    .bs-edit-modal .bitstream-composer-modal>.bitstream-composer-modal-dialog>.bitstream-composer-modal-body {
         overflow-y: auto;
         flex: 1 1 auto;
     }
 
     /* Wide dialog variant */
-    .bitstream-composer .bitstream-composer-modal>.bitstream-composer-modal-dialog.bitstream-composer-modal-dialog-wide {
+    .bitstream-composer .bitstream-composer-modal>.bitstream-composer-modal-dialog.bitstream-composer-modal-dialog-wide,
+    .bs-edit-modal .bitstream-composer-modal>.bitstream-composer-modal-dialog.bitstream-composer-modal-dialog-wide {
         max-width: min(90vw, 600px) !important;
     }
 
