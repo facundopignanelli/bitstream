@@ -6745,10 +6745,26 @@ jQuery(document).ready(function ($) {
                         const dialogRect = dialog.getBoundingClientRect();
                         pickerW = dialogRect.width;
                         left = dialogRect.left;
-                        pickerEl.style.width = pickerW + 'px';
-                        pickerEl.style.borderRadius = '0 0 20px 20px';
+                        
+                        if (window.innerWidth < 1024) {
+                            const margin = 16;
+                            pickerW = Math.min(320, vp.w - (margin * 2));
+                            left = (vp.w - pickerW) / 2;
+                            pickerEl.style.width = pickerW + 'px';
+                            pickerEl.style.borderRadius = '16px';
+                        } else {
+                            pickerEl.style.width = pickerW + 'px';
+                            pickerEl.style.borderRadius = '0 0 20px 20px';
+                        }
                     } else {
-                        pickerEl.style.width = '320px';
+                        if (window.innerWidth < 1024) {
+                            const margin = 16;
+                            pickerW = Math.min(320, vp.w - (margin * 2));
+                            pickerEl.style.width = pickerW + 'px';
+                        } else {
+                            pickerW = 320;
+                            pickerEl.style.width = '320px';
+                        }
                         pickerEl.style.borderRadius = '16px';
                     }
 
@@ -9531,7 +9547,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (moreClose)    moreClose.addEventListener('click', closeMore);
-    if (moreBackdrop) moreBackdrop.addEventListener('click', closeMore);
+    if (moreBackdrop) {
+        moreBackdrop.addEventListener('click', closeMore);
+        moreBackdrop.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            closeMore();
+        }, { passive: false });
+        moreBackdrop.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            closeMore();
+        }, { passive: false });
+        moreBackdrop.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            closeMore();
+        }, { passive: false });
+    }
 
     // Close More sheet and Search screen if a composer modal/screen trigger is clicked
     document.addEventListener('click', (e) => {
