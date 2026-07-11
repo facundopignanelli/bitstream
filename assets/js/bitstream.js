@@ -2183,6 +2183,10 @@ document.addEventListener('DOMContentLoaded', function () {
                                 sizes: { medium: { url: url } }
                             };
 
+                            if (!cropperState) {
+                                return;
+                            }
+
                             if (cropperState.targetInputId === 'bitstream-rebit-attachment-id') {
                                 if (rebitOgImageInput) {
                                     rebitOgImageInput.value = url || '';
@@ -2289,7 +2293,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
             composerRoot.addEventListener('paste', (event) => {
                 const clipboard = event.clipboardData;
-                if (!clipboard || !clipboard.items || !clipboard.items.length) {
+                if (!clipboard) {
+                    return;
+                }
+
+                // If target is a text input/textarea and there's text, let default paste happen
+                const target = event.target;
+                const isTextInput = target.tagName === 'TEXTAREA' || (target.tagName === 'INPUT' && target.type === 'text') || (target.tagName === 'INPUT' && target.type === 'url');
+                if (isTextInput && clipboard.getData('text/plain')) {
+                    return;
+                }
+
+                if (!clipboard.items || !clipboard.items.length) {
                     return;
                 }
 
@@ -2315,8 +2330,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 event.preventDefault();
-                uploadMediaFile(imageFile, mediaTarget.targetInputId, mediaTarget.targetPreviewId);
-                setStatus('Uploading pasted image...');
+                uploadMultipleFiles([imageFile], mediaTarget.targetInputId, mediaTarget.targetPreviewId, {
+                    setStatus: (msg, isError) => setStatus(msg, isError)
+                });
             });
 
             function fetchAttachmentData(attachmentId) {
@@ -3941,7 +3957,16 @@ document.addEventListener('DOMContentLoaded', function () {
             if (textarea) {
                 textarea.addEventListener('paste', (event) => {
                     const clipboardData = event.clipboardData || window.clipboardData;
-                    if (!clipboardData || !clipboardData.files || !clipboardData.files.length) {
+                    if (!clipboardData) {
+                        return;
+                    }
+
+                    // If there is plain text in the clipboard, let the default paste handle it.
+                    if (clipboardData.getData('text/plain')) {
+                        return;
+                    }
+
+                    if (!clipboardData.files || !clipboardData.files.length) {
                         return;
                     }
 
