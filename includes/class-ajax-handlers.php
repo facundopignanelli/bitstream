@@ -1695,7 +1695,10 @@ class BitStream_Ajax_Handlers
         if ($q->have_posts()) {
             while ($q->have_posts()) {
                 $q->the_post();
-                echo bitstream_render_card(get_the_ID(), false, ['comment_action' => $is_preview_mode ? 'link' : 'toggle']);
+                echo bitstream_render_card(get_the_ID(), false, [
+                    'comment_action' => $is_preview_mode ? 'link' : 'toggle',
+                    'is_preview'      => $is_preview_mode,
+                ]);
             }
         }
 
@@ -2088,6 +2091,7 @@ class BitStream_Ajax_Handlers
             $content = preg_replace('#<figure[^>]*>[\s\S]*?</figure>#i', '', $content);
             $content = preg_replace('#<(audio|video)[^>]*>[\s\S]*?</\1>#i', '', $content);
             $content = preg_replace('#<img[^>]*>#i', '', $content);
+            $content = preg_replace('#<(p|div|br|hr)[^>]*>#i', "\n", $content);
             $content = trim(html_entity_decode(wp_strip_all_tags($content), ENT_QUOTES, 'UTF-8'));
 
             $data = [
@@ -2194,9 +2198,10 @@ class BitStream_Ajax_Handlers
             $editable_content = preg_replace(
                 '#<(audio|video)[^>]*>[\s\S]*?</\1>#i',
                 '',
-                wp_strip_all_tags($editable_content)
+                $editable_content
             );
-            $editable_content = trim($editable_content);
+            $editable_content = preg_replace('#<(p|div|br|hr)[^>]*>#i', "\n", $editable_content);
+            $editable_content = trim(html_entity_decode(wp_strip_all_tags($editable_content), ENT_QUOTES, 'UTF-8'));
 
             $data = [
                 'post_id'         => $post_id,

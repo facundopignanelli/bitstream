@@ -86,6 +86,9 @@ class BitStream_Plugin
 
         // Initialize components
         $this->init_components();
+
+        // Strip image metadata on upload
+        add_filter('wp_generate_attachment_metadata', [$this, 'strip_image_metadata_on_upload'], 10, 2);
     }
 
     /**
@@ -144,6 +147,113 @@ class BitStream_Plugin
     public function get_component($component_name)
     {
         return isset($this->components[$component_name]) ? $this->components[$component_name] : null;
+    }
+
+    /**
+     * Strip metadata from uploaded images and their generated sub-sizes.
+     *
+     * @param array $metadata Attachment metadata.
+     * @param int   $attachment_id Attachment ID.
+     * @return array
+     */
+    public function strip_image_metadata_on_upload($metadata, $attachment_id)
+    {
+        $mime_type = get_post_mime_type($attachment_id);
+        if (empty($mime_type) || strpos($mime_type, 'image/') !== 0) {
+            return $metadata;
+        }
+
+        $file = get_attached_file($attachment_id);
+        if ($file && file_exists($file)) {
+            $this->strip_metadata_from_file($file);
+        }
+
+        // Process all sub-sizes
+        if (!empty($metadata['sizes']) && is_array($metadata['sizes'])) {
+            $dirname = dirname($file);
+            foreach ($metadata['sizes'] as $size => $size_info) {
+                if (!empty($size_info['file'])) {
+                    $subsize_file = path_join($dirname, $size_info['file']);
+                    if (file_exists($subsize_file)) {
+                        $this->strip_metadata_from_file($subsize_file);
+                    }
+                }
+            }
+        }
+
+        return $metadata;
+    }
+
+    /**
+     * Strip metadata from a single image file.
+     *
+     * @param string $file_path Absolute path to the file.
+     * @return bool True if successful, false otherwise.
+     */
+    public function strip_metadata_from_file($file_path)
+    {
+        if (empty($file_path) || !file_exists($file_path)) {
+            return false;
+        }
+
+        // Try Imagick first if available
+        if (class_exists('Imagick')) {
+            try {
+                $imagick = new Imagick($file_path);
+                $imagick->stripImage();
+                $result = $imagick->writeImage($file_path);
+                $imagick->clear();
+                $imagick->destroy();
+                if ($result) {
+                    return true;
+                }
+            } catch (Exception $e) {
+                // If Imagick fails, we fall back to GD
+                if (class_exists('BitStream_Error_Logger')) {
+                    BitStream_Error_Logger::log('Imagick metadata stripping failed: ' . $e->getMessage());
+                }
+            }
+        }
+
+        // GD Fallback
+        if (function_exists('gd_info')) {
+            $image = null;
+            $mime_info = wp_check_filetype($file_path);
+            $mime_type = $mime_info['type'];
+
+            if ($mime_type === 'image/jpeg' || $mime_type === 'image/jpg') {
+                if (function_exists('imagecreatefromjpeg') && function_exists('imagejpeg')) {
+                    $image = @imagecreatefromjpeg($file_path);
+                    if ($image) {
+                        // GD does not support EXIF, so writing it back strips it
+                        @imagejpeg($image, $file_path, 90);
+                    }
+                }
+            } elseif ($mime_type === 'image/png') {
+                if (function_exists('imagecreatefrompng') && function_exists('imagepng')) {
+                    $image = @imagecreatefrompng($file_path);
+                    if ($image) {
+                        imagealphablending($image, false);
+                        imagesavealpha($image, true);
+                        @imagepng($image, $file_path);
+                    }
+                }
+            } elseif ($mime_type === 'image/webp') {
+                if (function_exists('imagecreatefromwebp') && function_exists('imagewebp')) {
+                    $image = @imagecreatefromwebp($file_path);
+                    if ($image) {
+                        @imagewebp($image, $file_path);
+                    }
+                }
+            }
+
+            if ($image) {
+                @imagedestroy($image);
+                return true;
+            }
+        }
+
+        return false;
     }
 }
 
@@ -420,6 +530,7 @@ if (!function_exists('bitstream_render_card')) {
     {
         $options = wp_parse_args($options, [
             'comment_action' => 'toggle',
+            'is_preview'     => false,
         ]);
 
         // Avoid infinite loop by skipping content filter when rendering in single bit context
@@ -558,7 +669,7 @@ if (!function_exists('bitstream_render_card')) {
         $can_quote = current_user_can('edit_posts');
         $can_edit = current_user_can('edit_post', $post_id);
         $can_delete = is_user_logged_in() && current_user_can('delete_post', $post_id);
-        $show_admin_actions = $can_quote || $can_edit || $can_delete;
+        $show_admin_actions = !$options['is_preview'] && ($can_quote || $can_edit || $can_delete);
 ?>
         <footer class="bit-card-footer" style="display:flex;gap:0.75rem;font-size:0.875rem;align-items:center;">
             <div class="bit-card-footer-main-actions">

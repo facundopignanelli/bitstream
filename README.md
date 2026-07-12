@@ -9,6 +9,9 @@ A Modern Microblogging Platform for WordPress.
 
 ## 🎯 Overview
 
+![Welcome to BitStream!](assets/images/intro.png)
+
+
 BitStream transforms WordPress into a powerful, premium microblogging platform with Twitter-like functionality. Share quick thoughts (Bits), reshare external content (ReBits), schedule posts, save drafts, share posts as custom PNG cards, choose and customize your mood, use hashtags, and enjoy a modern, responsive Progressive Web App experience with a clean social-app style timeline.
 
 ---
@@ -62,13 +65,16 @@ BitStream features an integrated Composer and navigation workspace directly on y
 - **Mobile**: A persistent bottom navigation bar (`[Home] [Search] [Compose] [Drafts] [More]`) for layout viewports under 1024px. The center-aligned **Compose** button slides up the composer workspace, **Drafts** displays a full-screen drafts view with a red count badge, and **More** launches a bottom drawer sheet for scheduled list, notifications, settings, and the About widget.
 
 ### Settings Panel
-Manage all configuration options directly on the frontend timeline page via the **Settings** gear link in the mobile More drawer or the desktop sidebar quick links. (Optionally, use the `[bitstream_settings]` shortcode to render the panel standalone).
+Manage all configuration options directly on the frontend timeline page via the **Settings** gear link in the mobile More drawer or the desktop sidebar quick links.
 
 ---
 
 ## ✨ Features
 
 ### 🎨 Modern Social Timeline
+
+![Modern Social Timeline](assets/images/timeline.png)
+
 - **Social-App Style Feed**: Clear, single-column reading experience replacing old masonry layouts.
 - **Adaptive Sidebars**: Left navigation and filter links, right Quick Actions rails, and responsive stacking across device breakpoints.
 - **Interactive Cards**: Rich media support, quoted bits (nested cards), and inline action buttons (comments, likes, share).
@@ -77,6 +83,9 @@ Manage all configuration options directly on the frontend timeline page via the 
 - **Deep-Linked Highlight View**: Direct links containing the `highlight_bit` parameter filter the timeline to show only the targeted post. Features an active filter chip at the top to clear the view and return to the full timeline.
 
 ### 📝 Composer Interface
+
+![Composer Interface](assets/images/composer.png)
+
 - **Unified Feed Composition**: Compose Bits and ReBits directly from the feed page.
 - **Drafts & Auto-Save**: Save posts as drafts, auto-save drafts on page or tab close via `navigator.sendBeacon`, and manage draft items directly on the frontend.
 - **Robust Scheduling**: Plan ahead with a native datetime picker for future publishing (Bits and ReBits).
@@ -87,6 +96,9 @@ Manage all configuration options directly on the frontend timeline page via the 
 - **Timeline Edit Modal Quote Support**: Editing a post that quotes another bit displays the quoted bit preview block inside the edit modal, and allows users to easily clear/remove the quote.
 
 ### 🎭 Mood Status Selector
+
+![Mood Status Selector](assets/images/mood_selector.png)
+
 - **Custom Mood Badges**: Select or create a status update in the format `[User Name] is feeling [emoji] [emotion]` next to your name in timeline posts.
 - **Pure Mood Posts**: Distinctive large card status blocks in the timeline for mood-only updates (posts with no body text or attachments).
 - **Personal Moods Library**: Build a custom saved moods library saved in user profile options. Reorder (Up/Down), delete, or edit custom moods inside the Mood Modal with real-time UI propagation.
@@ -95,12 +107,18 @@ Manage all configuration options directly on the frontend timeline page via the 
 - **Validation**: Enforces valid Unicode emojis with full support for complex compound ZWJ sequences (skin tones, gender signs, flags).
 
 ### 🔗 Enhanced ReBit System
+
+![Enhanced ReBit System](assets/images/rebit_preview.png)
+
 - **Secure OpenGraph Fetcher**: Built-in strict SSRF protection (`wp_safe_remote_get`), timeout retries, URL resolution, and JSON-LD parsing.
 - **Fast Previews**: 24-hour transient caching minimizes external requests for ReBit data.
 - **Manual Overrides**: Edit the fetched title, description, and image directly in the composer before publishing.
 - **Auto-ReBit Detection**: Paste a URL into the composer feed box and it automatically detects the link and configures ReBit options.
 
 ### 📤 Premium Sharing Options
+
+![Premium Sharing Options](assets/images/sharedcard.png)
+
 - **Unified Share Modal**: Click the share icon on any feed card to choose between:
   - **Share Link**: Triggers native OS share sheet (mobile PWA) or copies the URL to the clipboard.
   - **Share as Image**: Generates a pixel-perfect, branded PNG card of the post with a custom watermark and full timestamp, optimized at 1000px wide for social media (e.g., Instagram Stories).
@@ -109,6 +127,8 @@ Manage all configuration options directly on the frontend timeline page via the 
 ---
 
 ## 📱 Progressive Web App (PWA)
+
+![PWA Mobile Layout](assets/images/mobile_nav.png)
 
 BitStream is designed as a first-class, offline-aware Progressive Web App:
 - **Installable**: Installs as a standalone native app on Android, iOS, Windows, and macOS.
@@ -130,6 +150,8 @@ BitStream is designed as a first-class, offline-aware Progressive Web App:
 
 ## 📝 Shortcodes
 
+![Preview Mode](assets/images/preview.png)
+
 ### `[bitstream]` - Display Feed
 The main shortcode for displaying your microblog timeline. For logged-in users with publishing permissions, it automatically integrates the inline Composer at the top of the feed (on desktop) and enables the persistent mobile Bottom Navigation Bar (on mobile) to compose, search, manage drafts, and access settings or drawer options.
 
@@ -142,12 +164,11 @@ The main shortcode for displaying your microblog timeline. For logged-in users w
 | `infinite_scroll` | boolean | false | Enable infinite scroll |
 | `show_load_more` | boolean | true | Show/hide load more button |
 
-### `[bitstream_settings]` - Settings Interface
-Renders the tabbed settings panel on the front-end for logged-in users with the `edit_posts` capability. Accessible via shortcode or direct gear links in the sidebar menu.
-
 ---
 
 ## 🎛️ Front-End Administration & Settings
+
+![Front-End Administration & Settings](assets/images/settings.png)
 
 To keep the WordPress admin clean and focus the application frontend, BitStream 3.0+ completely removes WordPress Admin settings pages in favor of a unified frontend **Settings Modal** (accessible from the quick actions menu or the mobile bottom navigation More drawer):
 
@@ -164,15 +185,16 @@ To keep the WordPress admin clean and focus the application frontend, BitStream 
 
 ### Architecture & Files
 The codebase is written in object-oriented PHP and modern JavaScript/CSS:
-- **Core Controller**: [bitstream.php](file:///d:/OneDrive/Documents/Projects/bitstream/bitstream.php)
-- **Shortcode Definitions**: [class-shortcodes.php](file:///d:/OneDrive/Documents/Projects/bitstream/includes/class-shortcodes.php)
-- **PWA & Manifest Manager**: [class-pwa-manager.php](file:///d:/OneDrive/Documents/Projects/bitstream/includes/class-pwa-manager.php) and [sw.js](file:///d:/OneDrive/Documents/Projects/bitstream/sw.js)
-- **AJAX Router**: [class-ajax-handlers.php](file:///d:/OneDrive/Documents/Projects/bitstream/includes/class-ajax-handlers.php)
-- **Styles & Layout**: [bitstream.css](file:///d:/OneDrive/Documents/Projects/bitstream/assets/css/bitstream.css)
+- **Core Controller**: [bitstream.php](bitstream.php)
+- **Shortcode Definitions**: [class-shortcodes.php](includes/class-shortcodes.php)
+- **PWA & Manifest Manager**: [class-pwa-manager.php](includes/class-pwa-manager.php) and [sw.js](/sw.js)
+- **AJAX Router**: [class-ajax-handlers.php](includes/class-ajax-handlers.php)
+- **Styles & Layout**: [bitstream.css](assets/css/bitstream.css)
 
 ### Requirements
 - **WordPress**: 5.8 or higher
-- **PHP**: 7.4 or higher
+- **PHP**: 7.4 or higher (with `openssl` and either `imagick` or `gd` extensions enabled)
+- **SSL/HTTPS**: Required for PWA features and Web Push Notifications to function (except on `localhost`)
 - **Font Awesome**: Recommended for icons (free version)
 
 ---
@@ -193,6 +215,12 @@ While we don't accept PRs, you're welcome to:
 
 ---
 
+## 📄 License
+
+This project is licensed under the GPL v2 or later License.
+
+---
+
 ## 📜 Changelog
 
-For a detailed history of versions and changes, see [CHANGELOG.md](file:///d:/OneDrive/Documents/Projects/bitstream/CHANGELOG.md).
+For a detailed history of versions and changes, see [CHANGELOG.md](CHANGELOG.md).

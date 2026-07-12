@@ -3,9 +3,11 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.3.0] - 2026-07-11
+## [3.3.0] - 2026-07-12
 
 ### Added
+- **Disable Image Downloads**: Added context-menu, drag-start, and CSS user-selection blocks to prevent copying and saving images from the timeline, galleries, and media viewer.
+- **Image Metadata Stripping**: Added automatic stripping of all EXIF, GPS, and IPTC metadata from uploaded images and their generated sub-sizes (using Imagick with GD fallback) to protect user privacy.
 - **Mood Status & Emotions System**: Added a comprehensive system to share updates in the format `[User] is feeling [emoji] [emotion]` or post pure mood updates in a distinctive card block. Includes a custom moods library in user profiles, push notifications, RSS feeds, and a new filter system to view posts by specific emotions.
 - **Mobile Bottom Navigation & Viewport Routing**: Added a persistent, sticky bottom navigation bar (`[Home] [Search] [Compose] [Drafts] [More]`) for viewports under 1024px. Integrates a slide-up Search & Filter screen, a bottom sheet drawer for "More" options, and displays Drafts and Scheduled posts as full-viewport screens.
 - **Unified Bit & Rebit Editing System**: Consolidated post editing under a single modal (`render_edit_modal()`) that dynamically adapts to Bit, Rebit, and Quote Bit types to allow seamless updates of content, link URLs, media, and quoted posts.
@@ -20,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Timeline Polish & Navigation**: Styled author displays and emotion tags, replaced relative time tooltips with click-to-copy/select timestamps, and updated share links to link directly to the highlight view of a post on the main feed page rather than permalinks.
 - **Timeline Highlights**: Modified the highlight view (`highlight_bit`) to render only the targeted post on the timeline with an option to clear the filter.
 - **Composer Confirmation**: Added a option to save changes directly to Drafts when attempting to close the composer modal with unsaved content.
+
+### Fixed
+- **Edit Paragraph Preservation**: Fixed newlines and paragraphs getting stripped/collapsed when loading posts for editing or prefilling composer fields.
+- **Preview Mode Admin Actions**: Hidden admin actions (edit, delete, quote) on feed cards in preview mode to prevent layout breaking on small/narrow viewports.
 
 ## [3.2.3] - 2026-06-28
 

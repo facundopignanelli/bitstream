@@ -50,11 +50,29 @@ document.addEventListener('DOMContentLoaded', function () {
     // Uses inline flex-basis instead of height so that the flexbox engine
     // can shrink the textarea down when the preview area needs space.
     function bsMobileAutoResize(el) {
-        el.style.height = 'auto';
-        const baseHeight = Math.max(el.scrollHeight, 160);
-        el.style.height = '';
-        el.style.setProperty('flex-basis', baseHeight + 'px', 'important');
+        const form = el.closest('form');
+        let flexItem = el;
+        
+        if (form) {
+            while (flexItem && flexItem.parentNode !== form) {
+                flexItem = flexItem.parentNode;
+            }
+        }
+        if (!flexItem || flexItem === form) {
+            flexItem = el.closest('.bs-textarea-container') || el;
+        }
+
+        let offset = 0;
+        if (flexItem.classList.contains('bs-edit-field')) {
+            offset = 30; // Account for label and margin in the edit field
+        }
+
+        flexItem.style.height = 'auto';
+        const baseHeight = Math.max(el.scrollHeight + offset, 160);
+        flexItem.style.height = '';
+        flexItem.style.setProperty('flex-basis', baseHeight + 'px', 'important');
     }
+    window.bsMobileAutoResize = bsMobileAutoResize;
 
     function updateQuickActionCounter(triggerName) {
         document.querySelectorAll('[data-composer-modal-trigger="' + triggerName + '"]').forEach(trigger => {
@@ -4021,10 +4039,15 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 });
 
-                // Mobile only: grow textarea as user types
-                if (window.matchMedia('(max-width: 1023px)').matches) {
-                    textarea.addEventListener('input', () => bsMobileAutoResize(textarea));
-                }
+                // Mobile only: grow textarea as user types (unconditionally bind, check inside)
+                textarea.addEventListener('input', () => {
+                    if (window.matchMedia('(max-width: 1023px)').matches) {
+                        window.bsMobileAutoResize(textarea);
+                    } else {
+                        const flexItem = textarea.closest('.bs-edit-field') || textarea;
+                        flexItem.style.removeProperty('flex-basis');
+                    }
+                });
             }
         }
 
@@ -4457,7 +4480,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (contentInput) {
                 contentInput.value = isQuoteMode ? '' : (data.content || '');
                 if (window.matchMedia('(max-width: 1023px)').matches) {
-                    bsMobileAutoResize(contentInput);
+                    window.bsMobileAutoResize(contentInput);
                 }
             }
 
@@ -5972,7 +5995,9 @@ jQuery(document).ready(function ($) {
                 const textarea = composer.querySelector('#bitstream-quick-bit-content');
                 if (textarea) {
                     textarea.focus();
-                    if (!isMobile) {
+                    if (isMobile) {
+                        window.bsMobileAutoResize(textarea);
+                    } else {
                         textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }
                 }
@@ -6022,9 +6047,20 @@ jQuery(document).ready(function ($) {
         const textarea = form.querySelector('#bitstream-quick-bit-content');
         const submitNonce = composerRoot.dataset.submitNonce || '';
 
-        // Mobile only: grow textarea as user types
-        if (textarea && window.matchMedia('(max-width: 1023px)').matches) {
-            textarea.addEventListener('input', () => bsMobileAutoResize(textarea));
+        // Mobile only: grow textarea as user types (unconditionally bind, check inside)
+        if (textarea) {
+            textarea.addEventListener('input', () => {
+                if (window.matchMedia('(max-width: 1023px)').matches) {
+                    window.bsMobileAutoResize(textarea);
+                } else {
+                    const flexItem = textarea.closest('.bs-textarea-container') || textarea;
+                    flexItem.style.removeProperty('flex-basis');
+                }
+            });
+            
+            if (window.matchMedia('(max-width: 1023px)').matches && textarea.value) {
+                window.bsMobileAutoResize(textarea);
+            }
         }
 
         // Hidden inputs
@@ -9892,5 +9928,34 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     })();
+
+    // Prevent image downloads (context menu & drag start)
+    document.addEventListener('contextmenu', function (e) {
+        const target = e.target;
+        if (target && target.tagName === 'IMG') {
+            if (target.closest('.bitstream-lightbox') || 
+                target.closest('.bit-card-content') || 
+                target.closest('.bitstream-gallery') ||
+                target.closest('.bitstream-quoted-preview') ||
+                target.closest('.bit-rebit-preview') ||
+                target.closest('.bitstream-media-preview-item')) {
+                e.preventDefault();
+            }
+        }
+    });
+
+    document.addEventListener('dragstart', function (e) {
+        const target = e.target;
+        if (target && target.tagName === 'IMG') {
+            if (target.closest('.bitstream-lightbox') || 
+                target.closest('.bit-card-content') || 
+                target.closest('.bitstream-gallery') ||
+                target.closest('.bitstream-quoted-preview') ||
+                target.closest('.bit-rebit-preview') ||
+                target.closest('.bitstream-media-preview-item')) {
+                e.preventDefault();
+            }
+        }
+    });
 });
 

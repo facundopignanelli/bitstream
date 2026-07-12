@@ -61,6 +61,7 @@ class BitStream_Shortcodes
         $content = preg_replace('#<figure[^>]*>[\s\S]*?</figure>#i', '', $content);
         $content = preg_replace('#<(audio|video)[^>]*>[\s\S]*?</\1>#i', '', $content);
         $content = preg_replace('#<img[^>]*>#i', '', $content);
+        $content = preg_replace('#<(p|div|br|hr)[^>]*>#i', "\n", $content);
 
         return trim(html_entity_decode(wp_strip_all_tags($content), ENT_QUOTES, 'UTF-8'));
     }
@@ -1974,7 +1975,7 @@ class BitStream_Shortcodes
         if ($q->have_posts()) {
             while ($q->have_posts()) {
                 $q->the_post();
-                echo bitstream_render_card(get_the_ID(), false, ['comment_action' => 'link']);
+                echo bitstream_render_card(get_the_ID(), false, ['comment_action' => 'link', 'is_preview' => true]);
             }
         } else {
             echo '<p style="grid-column:1/-1;text-align:center;color:#666;">No Bits found.</p>';
