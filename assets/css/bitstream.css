@@ -5105,6 +5105,9 @@ iframe[src*="youtube-nocookie.com"] {
     flex-direction: column;
     gap: 0.5rem;
 }
+.bs-edit-media[hidden] {
+    display: none !important;
+}
 
 
 
@@ -5447,7 +5450,8 @@ iframe[src*="youtube-nocookie.com"] {
 
     /* Each card takes the full width of the carousel slot */
     .bitstream-composer-preview-carousel>.bitstream-composer-preview-rebit,
-    .bitstream-composer-preview-carousel>.bitstream-composer-preview-media {
+    .bitstream-composer-preview-carousel>.bitstream-composer-preview-media,
+    .bitstream-composer-preview-carousel>.bs-edit-quote-preview {
         flex: 0 0 100% !important;
         min-width: 0 !important;
         scroll-snap-align: start !important;

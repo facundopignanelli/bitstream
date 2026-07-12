@@ -200,10 +200,13 @@ document.addEventListener('DOMContentLoaded', function () {
             previewArea.hidden = !hasVisiblePreviews;
         }
 
-        if (previewEl.id === 'bs-edit-bit-media-preview') {
+        if (previewEl.id === 'bs-edit-bit-media-preview' || previewEl.classList.contains('bs-edit-media-preview-thumb')) {
             const editMediaWrap = previewEl.closest('.bs-edit-media');
             if (editMediaWrap) {
                 editMediaWrap.hidden = attachments.length === 0;
+            }
+            if (typeof syncEditPreviewArea === 'function') {
+                syncEditPreviewArea();
             }
         }
     }
@@ -3289,12 +3292,40 @@ document.addEventListener('DOMContentLoaded', function () {
         syncEditPreviewArea = function() {
             const hasRebit = !bitForm.querySelector('.bs-edit-rebit-preview-container').hidden && bitForm.querySelector('.bs-edit-rebit-url-hidden').value;
             const hasQuote = !bitForm.querySelector('.bs-edit-quote-preview').hidden && parseInt(bitForm.querySelector('.bs-edit-quote-post-id').value || '0', 10) > 0;
+            const mediaPreviewContainer = bitForm.querySelector('.bs-edit-media-preview-container');
+            const hasMedia = mediaPreviewContainer && !mediaPreviewContainer.hidden && (bitForm.querySelector('.bs-edit-attachment-id').value || bitForm.querySelector('.bs-edit-attachment-ids').value);
+            
             const previewArea = bitForm.querySelector('.bs-edit-preview-area');
             const previewCarousel = bitForm.querySelector('.bs-edit-preview-carousel');
             const previewDotsEl = bitForm.querySelector('.bs-edit-preview-dots');
             
+            const activeCards = [];
+            const activeLabels = [];
+            
+            if (hasRebit) {
+                const card = bitForm.querySelector('.bs-edit-rebit-preview-container');
+                if (card) {
+                    activeCards.push(card);
+                    activeLabels.push('Link');
+                }
+            }
+            if (hasQuote) {
+                const card = bitForm.querySelector('.bs-edit-quote-preview');
+                if (card) {
+                    activeCards.push(card);
+                    activeLabels.push('Quote');
+                }
+            }
+            if (hasMedia) {
+                if (mediaPreviewContainer) {
+                    activeCards.push(mediaPreviewContainer);
+                    activeLabels.push('Media');
+                }
+            }
+
+            const anyCardsPresent = activeCards.length > 0;
             if (previewArea) {
-                previewArea.hidden = !(hasRebit || hasQuote);
+                previewArea.hidden = !anyCardsPresent;
             }
 
             if (!previewCarousel || !previewDotsEl) return;
@@ -3305,28 +3336,23 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             const isMobileCarousel = window.innerWidth < 1024;
-            const bothPresent = hasRebit && hasQuote;
+            const multiplePresent = activeCards.length > 1;
 
-            if (!isMobileCarousel || !bothPresent) {
+            if (!isMobileCarousel || !multiplePresent) {
                 previewDotsEl.hidden = true;
                 previewDotsEl.innerHTML = '';
                 return;
             }
 
-            const containerRebit = bitForm.querySelector('.bs-edit-rebit-preview-container');
-            const containerQuote = bitForm.querySelector('.bs-edit-quote-preview');
-            const cards = [containerRebit, containerQuote];
-            const labels = ['Link', 'Quote'];
-
             previewDotsEl.innerHTML = '';
             previewDotsEl.hidden = false;
             previewDotsEl.setAttribute('aria-hidden', 'true');
 
-            cards.forEach(function (card, i) {
+            activeCards.forEach(function (card, i) {
                 const dot = document.createElement('button');
                 dot.type = 'button';
                 dot.className = 'bitstream-composer-preview-dot' + (i === 0 ? ' is-active' : '');
-                dot.setAttribute('aria-label', 'Go to ' + labels[i]);
+                dot.setAttribute('aria-label', 'Go to ' + activeLabels[i]);
                 dot.addEventListener('click', function () {
                     previewCarousel.scrollTo({ left: card.offsetLeft, behavior: 'smooth' });
                 });
@@ -3566,7 +3592,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 editFormIsDirty = true;
             }
 
-            const previewEl = form.querySelector('.bitstream-media-preview') || form.querySelector('.bitstream-composer-preview-media-thumb');
+            const previewEl = form.querySelector('.bs-edit-media-preview-thumb') || form.querySelector('.bitstream-media-preview') || form.querySelector('.bitstream-composer-preview-media-thumb');
             if (!previewEl) {
                 return;
             }
@@ -4306,6 +4332,43 @@ document.addEventListener('DOMContentLoaded', function () {
             bindMediaControls(form);
             if (form === bitForm) {
                 bindLinkMetaControls();
+
+                const editMediaToggleBtn = bitForm.querySelector('.bs-edit-media-toggle-btn');
+                if (editMediaToggleBtn) {
+                    editMediaToggleBtn.addEventListener('click', () => {
+                        const editMedia = bitForm.querySelector('.bs-edit-media');
+                        if (editMedia) {
+                            const mediaField = editMedia.querySelector('.bitstream-media-field');
+                            if (editMedia.hidden) {
+                                editMedia.hidden = false;
+                                if (mediaField) {
+                                    mediaField.classList.add('media-uploader-open');
+                                }
+                            } else {
+                                if (mediaField && !mediaField.classList.contains('media-uploader-open')) {
+                                    mediaField.classList.add('media-uploader-open');
+                                } else {
+                                    editMedia.hidden = true;
+                                    if (mediaField) {
+                                        mediaField.classList.remove('media-uploader-open');
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                const editRebitToggleBtn = bitForm.querySelector('.bs-edit-rebit-toggle-btn');
+                if (editRebitToggleBtn) {
+                    editRebitToggleBtn.addEventListener('click', () => {
+                        const fields = getRebitMetaFields(bitForm);
+                        const modalUrlInput = linkMetaModal ? linkMetaModal.querySelector('#bs-edit-link-meta-url-input') : null;
+                        if (modalUrlInput && fields.urlInput) {
+                            modalUrlInput.value = fields.urlInput.value || '';
+                        }
+                        openLinkMetaModal(bitForm);
+                    });
+                }
             }
 
             const removeBtn = bitForm ? bitForm.querySelector('.bs-edit-rebit-remove-btn') : null;
@@ -4319,6 +4382,13 @@ document.addEventListener('DOMContentLoaded', function () {
             if (quoteRemoveBtn) {
                 quoteRemoveBtn.addEventListener('click', () => {
                     setQuotePreview(form, 0, '');
+                });
+            }
+
+            const editMediaRemoveBtn = form.querySelector('.bs-edit-media-remove-btn');
+            if (editMediaRemoveBtn) {
+                editMediaRemoveBtn.addEventListener('click', () => {
+                    setAttachmentPreview(form, 0, '', '', []);
                 });
             }
         }
@@ -4384,10 +4454,19 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             setQuotePreview(bitForm, quotePostId, quotePreviewHtml);
+
+            const quoteRemoveBtn = bitForm.querySelector('.bs-edit-quote-remove-btn');
+            if (quoteRemoveBtn) {
+                quoteRemoveBtn.style.display = isQuoteMode ? 'none' : '';
+            }
             
             const hasAttachments = data.attachments && data.attachments.length > 0;
             if (editMediaWrap) {
                 editMediaWrap.hidden = !hasAttachments;
+                const mediaField = editMediaWrap.querySelector('.bitstream-media-field');
+                if (mediaField) {
+                    mediaField.classList.remove('media-uploader-open');
+                }
             }
             setAttachmentPreview(bitForm, isQuoteMode ? 0 : attachmentId, isQuoteMode ? '' : attachmentUrl, isQuoteMode ? '' : attachmentMime, isQuoteMode ? [] : (data.attachments || []));
             setScheduleState(bitForm, 'bit', scheduleEnabled && !isQuoteMode, isQuoteMode ? '' : scheduleDatetime);

@@ -2617,16 +2617,30 @@ class BitStream_Shortcodes
                                     </div>
                                     <div class="bs-edit-quote-preview-card"></div>
                                 </div>
+
+                                <!-- Media Preview -->
+                                <div class="bitstream-composer-preview-media bs-edit-media-preview-container" hidden>
+                                    <div class="bitstream-composer-preview-header">
+                                        <span class="bitstream-composer-preview-label">
+                                            <i class="fa-solid fa-photo-film" aria-hidden="true"></i> Media
+                                        </span>
+                                        <div class="bitstream-composer-preview-actions">
+                                            <button type="button" class="bitstream-composer-preview-remove bs-edit-media-remove-btn"
+                                                title="Remove media" aria-label="Remove media">
+                                                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="bitstream-composer-preview-media-thumb bs-edit-media-preview-thumb"></div>
+                                </div>
                             </div>
                             <!-- Dot indicators -->
                             <div class="bitstream-composer-preview-dots bs-edit-preview-dots" hidden aria-hidden="true"></div>
                         </div>
 
-                        <!-- Media preview (Only preview area, no dropzone/upload buttons) -->
+                        <!-- Media preview & upload -->
                         <div class="bs-edit-media" hidden>
-                            <input type="hidden" id="bs-edit-bit-attachment-id" class="bs-edit-attachment-id" name="bit_attachment_id" value="">
-                            <input type="hidden" id="bs-edit-bit-attachment-ids" class="bs-edit-attachment-ids" name="bit_attachment_ids" value="">
-                            <div class="bitstream-media-preview" id="bs-edit-bit-media-preview"></div>
+                            <?php echo self::render_media_field('bs-edit-bit-attachment-id', 'bs-edit-bit-media-preview'); ?>
                         </div>
 
                         <!-- Action buttons row in edit form -->
@@ -2641,6 +2655,16 @@ class BitStream_Shortcodes
                                 style="background: none; border: none; color: #94a3b8; cursor: pointer; padding: 4px; display: none;"
                                 title="Remove mood">
                                 <i class="fa-solid fa-xmark"></i>
+                            </button>
+                            <button type="button" class="bs-edit-media-toggle-btn"
+                                style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1.5px solid #e2e8f0; border-radius: 20px; background: #f8fafc; font-size: 0.9rem; font-weight: 500; cursor: pointer; color: #475569; transition: all 0.2s ease;">
+                                <i class="fa-solid fa-photo-film"></i>
+                                <span class="bs-edit-media-toggle-label">Add Media</span>
+                            </button>
+                            <button type="button" class="bs-edit-rebit-toggle-btn"
+                                style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1.5px solid #e2e8f0; border-radius: 20px; background: #f8fafc; font-size: 0.9rem; font-weight: 500; cursor: pointer; color: #475569; transition: all 0.2s ease;">
+                                <i class="fa-solid fa-link"></i>
+                                <span class="bs-edit-rebit-toggle-label">Add Link</span>
                             </button>
                         </div>
 

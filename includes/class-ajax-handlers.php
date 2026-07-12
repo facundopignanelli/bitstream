@@ -1207,6 +1207,7 @@ class BitStream_Ajax_Handlers
                 
                 $mood_emoji = sanitize_text_field(wp_unslash($_POST['bit_mood_emoji'] ?? ''));
                 $mood_emotion = sanitize_text_field(wp_unslash($_POST['bit_mood_emotion'] ?? ''));
+                $rebit_url = esc_url_raw(wp_unslash($_POST['rebit_url'] ?? ''));
 
                 $quote_post_id = intval($_POST['quote_post_id'] ?? 0);
                 $schedule = $this->build_schedule_args('bit_schedule_enabled', 'bit_schedule_datetime');
@@ -1232,7 +1233,7 @@ class BitStream_Ajax_Handlers
 
                 // Allow saving empty drafts for auto-save
                 if (!$save_as_draft && !$is_auto_draft) {
-                    if (trim(wp_strip_all_tags($content)) === '' && empty($attachment_ids) && empty($mood_emotion)) {
+                    if (trim(wp_strip_all_tags($content)) === '' && empty($attachment_ids) && empty($mood_emotion) && empty($rebit_url) && $quote_post_id <= 0) {
                         wp_send_json_error('Bit content, media, or mood is required.');
                     }
                 }
@@ -1294,7 +1295,6 @@ class BitStream_Ajax_Handlers
                 $this->maybe_save_custom_mood_to_list($author_id, $mood_emoji, $mood_emotion);
 
                 // Save Rebit / Link Preview metadata if attached
-                $rebit_url = esc_url_raw(wp_unslash($_POST['rebit_url'] ?? ''));
                 if (!empty($rebit_url) && filter_var($rebit_url, FILTER_VALIDATE_URL)) {
                     update_post_meta($post_id, 'bitstream_rebit_url', $rebit_url);
                     
