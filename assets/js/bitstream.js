@@ -4983,6 +4983,93 @@ document.addEventListener('DOMContentLoaded', function () {
         clone.classList.add('bit-card-capturing');
         clone.style.margin = '0';
         
+        // Replace video elements in clone with images of their current frame to support image sharing
+        const originalVideos = card.querySelectorAll('video');
+        const clonedVideos = clone.querySelectorAll('video');
+        originalVideos.forEach((video, index) => {
+            const clonedVideo = clonedVideos[index];
+            if (!clonedVideo) return;
+
+            // Try to grab the current video frame — only if a frame is actually decoded
+            let frameDataUrl = '';
+            const hasFrame = video.readyState >= 2 && video.videoWidth > 0;
+            if (hasFrame) {
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    canvas.getContext('2d').drawImage(video, 0, 0);
+                    frameDataUrl = canvas.toDataURL('image/png');
+                } catch (err) {
+                    console.warn('BitStream: Could not draw video frame to canvas (possibly CORS).', err);
+                }
+            }
+
+            // Build replacement: image + play overlay
+            const img = document.createElement('img');
+            img.style.cssText = 'display:block;width:100%;height:auto;border-radius:15px;';
+
+            if (frameDataUrl) {
+                img.src = frameDataUrl;
+            } else if (video.poster) {
+                img.src = video.poster;
+            } else {
+                // Neutral dark placeholder — no blank black box
+                const w = video.clientWidth || 640;
+                const h = video.clientHeight || 360;
+                img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+                    `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect width="100%" height="100%" fill="#1e293b" rx="15"/></svg>`
+                );
+            }
+
+            const videoReplaceContainer = document.createElement('div');
+            videoReplaceContainer.style.cssText = 'position:relative;width:100%;display:block;border-radius:15px;overflow:hidden;';
+
+            const playOverlay = document.createElement('div');
+            playOverlay.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;pointer-events:none;';
+
+            const playCircle = document.createElement('div');
+            playCircle.style.cssText = 'width:50px;height:50px;background:rgba(255,255,255,0.9);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.25);';
+            playCircle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="var(--wp--preset--color--accent-1,#2c6e49)"><path d="M8 5v14l11-7z"/></svg>`;
+
+            playOverlay.appendChild(playCircle);
+            videoReplaceContainer.appendChild(img);
+            videoReplaceContainer.appendChild(playOverlay);
+
+            // Hoist replacement to the outermost mejs/wp-video wrapper to remove the gray container border
+            const outerWrapper = clonedVideo.closest('.mejs-container') || clonedVideo.closest('.wp-video') || clonedVideo.parentNode;
+            if (outerWrapper && outerWrapper !== clone && outerWrapper.parentNode) {
+                outerWrapper.parentNode.replaceChild(videoReplaceContainer, outerWrapper);
+            } else if (clonedVideo.parentNode) {
+                clonedVideo.parentNode.replaceChild(videoReplaceContainer, clonedVideo);
+            }
+        });
+
+        // Replace iframe elements in clone with static placeholders
+        const clonedIframes = clone.querySelectorAll('iframe');
+        clonedIframes.forEach(iframe => {
+            const iframeReplaceContainer = document.createElement('div');
+            iframeReplaceContainer.style.cssText = 'position:relative;width:100%;height:0;padding-bottom:56.25%;background:#1e293b;border-radius:15px;overflow:hidden;';
+
+            const playOverlay = document.createElement('div');
+            playOverlay.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;';
+
+            const playCircle = document.createElement('div');
+            playCircle.style.cssText = 'width:50px;height:50px;background:rgba(255,255,255,0.9);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.25);';
+            playCircle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="var(--wp--preset--color--accent-1,#2c6e49)"><path d="M8 5v14l11-7z"/></svg>`;
+
+            playOverlay.appendChild(playCircle);
+            iframeReplaceContainer.appendChild(playOverlay);
+
+            // Also try to hoist to the outermost embed wrapper
+            const embedWrapper = iframe.closest('.wp-video') || iframe.parentNode;
+            if (embedWrapper && embedWrapper !== clone && embedWrapper.parentNode) {
+                embedWrapper.parentNode.replaceChild(iframeReplaceContainer, embedWrapper);
+            } else if (iframe.parentNode) {
+                iframe.parentNode.replaceChild(iframeReplaceContainer, iframe);
+            }
+        });
+
         wrapper.appendChild(clone);
         document.body.appendChild(wrapper);
         
@@ -8683,6 +8770,12 @@ jQuery(document).ready(function ($) {
     let lightboxMediaList = [];
     let lightboxCurrentIndex = 0;
 
+    // DOM handoff state — tracks the timeline video element moved into the lightbox
+    let lightboxOriginVideo = null;
+    let lightboxOriginParent = null;
+    let lightboxOriginNextSibling = null;
+    let lightboxOriginStyle = '';
+
     function initLightbox() {
         if (document.querySelector('.bitstream-lightbox')) {
             return;
@@ -8739,14 +8832,75 @@ jQuery(document).ready(function ($) {
         lightboxEl.classList.remove('is-open');
         lightboxEl.setAttribute('aria-hidden', 'true');
         document.body.style.overflow = '';
+
         const stage = lightboxEl.querySelector('.bitstream-lightbox-stage');
-        if (stage) {
+
+        if (lightboxOriginVideo) {
+            // Pause and return the video node to its original position in the card
+            lightboxOriginVideo.pause();
+            lightboxOriginVideo.classList.remove('bitstream-lightbox-media');
+            lightboxOriginVideo.setAttribute('style', lightboxOriginStyle);
+            if (lightboxOriginNextSibling) {
+                lightboxOriginParent.insertBefore(lightboxOriginVideo, lightboxOriginNextSibling);
+            } else {
+                lightboxOriginParent.appendChild(lightboxOriginVideo);
+            }
+            lightboxOriginVideo = null;
+            lightboxOriginParent = null;
+            lightboxOriginNextSibling = null;
+            lightboxOriginStyle = '';
+        } else if (stage) {
             const video = stage.querySelector('video');
             if (video) video.pause();
         }
+
         setTimeout(() => {
+            if (stage && !lightboxOriginVideo) stage.innerHTML = '';
             lightboxEl.style.display = 'none';
         }, 250);
+    }
+
+    // Opens the lightbox by physically moving a timeline video node into the stage
+    function openLightboxWithVideo(videoEl) {
+        initLightbox();
+
+        // Pause every other playing video on the page
+        document.querySelectorAll('video').forEach(v => { if (v !== videoEl) v.pause(); });
+
+        // Record origin so we can restore on close
+        lightboxOriginVideo = videoEl;
+        lightboxOriginParent = videoEl.parentNode;
+        lightboxOriginNextSibling = videoEl.nextSibling;
+        lightboxOriginStyle = videoEl.getAttribute('style') || '';
+
+        const stage = lightboxEl.querySelector('.bitstream-lightbox-stage');
+        stage.innerHTML = '';
+
+        // Apply lightbox media class; clear any card-specific inline sizing so CSS governs
+        videoEl.classList.add('bitstream-lightbox-media');
+        videoEl.style.removeProperty('width');
+        videoEl.style.removeProperty('height');
+        videoEl.style.removeProperty('max-height');
+        videoEl.style.removeProperty('margin');
+        videoEl.style.setProperty('max-width', '100%', 'important');
+        videoEl.style.setProperty('border-radius', '4px', 'important');
+        stage.appendChild(videoEl);
+
+        const counter = lightboxEl.querySelector('.bitstream-lightbox-counter');
+        const prevBtn = lightboxEl.querySelector('.bitstream-lightbox-nav-prev');
+        const nextBtn = lightboxEl.querySelector('.bitstream-lightbox-nav-next');
+        counter.textContent = '';
+        prevBtn.style.display = 'none';
+        nextBtn.style.display = 'none';
+
+        lightboxMediaList = [];
+        lightboxCurrentIndex = 0;
+
+        lightboxEl.style.display = 'flex';
+        lightboxEl.offsetHeight; // force reflow for transition
+        lightboxEl.classList.add('is-open');
+        lightboxEl.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
     }
 
     function showLightboxItem(index) {
@@ -8881,6 +9035,11 @@ jQuery(document).ready(function ($) {
                     if (clickY > rect.height - controlsHeight) {
                         return;
                     }
+                    // Video clicked outside controls — hand it off to the lightbox
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openLightboxWithVideo(item);
+                    return;
                 }
 
                 e.preventDefault();

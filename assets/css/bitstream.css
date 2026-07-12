@@ -109,17 +109,19 @@
 .bit-rebit-preview .wp-video-shortcode,
 .bitstream-quoted-preview .wp-video-shortcode,
 .bitstream-og-card .wp-video-shortcode {
-    width: 100% !important;
     max-width: 100% !important;
+    width: auto !important;
     max-height: 560px;
     height: auto !important;
     display: block !important;
+    margin: 0 auto !important;
     visibility: visible !important;
     opacity: 1 !important;
     border-radius: 15px;
     overflow: hidden;
     -webkit-mask-image: -webkit-radial-gradient(white, black);
-    object-fit: contain;
+    background: #fff;
+    color-scheme: light;
 }
 
 /* Remove default black shadow/gradient overlay from native HTML5 video controls */
@@ -129,6 +131,14 @@
 .bitstream-lightbox video::-webkit-media-controls-panel {
     background-image: none !important;
     background: transparent !important;
+}
+
+/* Card video controls: subtle accent tint on the controls panel */
+.bit-card-content video:not(.bitstream-gallery-media)::-webkit-media-controls-panel,
+.bit-rebit-preview video:not(.bitstream-gallery-media)::-webkit-media-controls-panel,
+.bitstream-quoted-preview video:not(.bitstream-gallery-media)::-webkit-media-controls-panel {
+    background-image: none !important;
+    background: rgba(44, 110, 73, 0.07) !important;
 }
 
 /* Landscape/Square images: same width as card content area */
@@ -170,6 +180,7 @@
     opacity: 1 !important;
     border-radius: 15px;
     overflow: hidden;
+    background: #000 !important;
 }
 
 .bit-card-content .mejs-container video,
@@ -5769,8 +5780,8 @@ iframe[src*="youtube-nocookie.com"] {
 }
 
 .bitstream-lightbox-media {
-    width: 100%;
-    height: 100%;
+    width: auto;
+    height: auto;
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
