@@ -5492,8 +5492,7 @@ iframe[src*="youtube-nocookie.com"] {
     }
 
     .bs-edit-field:has(.bs-edit-textarea) {
-        flex: 0 1 160px !important;
-        min-height: 80px !important;
+        flex: 0 0 auto !important;
         display: flex !important;
         flex-direction: column !important;
     }
@@ -5514,6 +5513,12 @@ iframe[src*="youtube-nocookie.com"] {
     }
 
     .bs-edit-media {
+        flex: 0 0 auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    .bs-edit-modal .bitstream-composer-preview-area {
         flex: 0 0 auto !important;
         max-height: none !important;
         overflow: visible !important;
