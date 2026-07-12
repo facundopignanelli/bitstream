@@ -542,6 +542,11 @@ if (!function_exists('bitstream_render_card')) {
             $GLOBALS['bitstream_is_rendering_card'] = true;
             $content = apply_filters('the_content', get_post_field('post_content', $post_id));
             unset($GLOBALS['bitstream_is_rendering_card']);
+
+            // Ensure paragraph formatting is applied even if the theme disables wpautop filter
+            if (strpos($content, '<p>') === false && strpos($content, '<p ') === false) {
+                $content = wpautop($content);
+            }
         }
 
         // Normalize WordPress video shortcode output so feed cards do not depend on

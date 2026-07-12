@@ -677,6 +677,9 @@ class BitStream_Admin_Interface
             $quoted_post = get_post($quoted_id);
             if ($quoted_post && $quoted_post->post_type === 'bit') {
                 $content = apply_filters('the_content', $quoted_post->post_content);
+                if (strpos($content, '<p>') === false && strpos($content, '<p ') === false) {
+                    $content = wpautop($content);
+                }
                 echo '<div class="bitstream-quoted-preview" style="border-radius:13px; box-shadow:0 2px 12px rgba(0,0,0,0.10); padding:16px; background:#fafafa; margin-bottom:20px;">';
                 echo '<strong>Quoting Bit #' . $quoted_id . '</strong><br>' . $content;
                 echo '</div>';

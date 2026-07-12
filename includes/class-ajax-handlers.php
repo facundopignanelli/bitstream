@@ -1915,6 +1915,9 @@ class BitStream_Ajax_Handlers
 
             // Get the content and apply filters
             $content = apply_filters('the_content', $quoted_post->post_content);
+            if (strpos($content, '<p>') === false && strpos($content, '<p ') === false) {
+                $content = wpautop($content);
+            }
 
             // Get author info
             $author = get_userdata($quoted_post->post_author);

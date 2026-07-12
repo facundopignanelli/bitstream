@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Composer Confirmation**: Added a option to save changes directly to Drafts when attempting to close the composer modal with unsaved content.
 
 ### Fixed
-- **Edit Paragraph Preservation**: Fixed newlines and paragraphs getting stripped/collapsed when loading posts for editing or prefilling composer fields.
+- **Edit & Render Paragraph Preservation**: Fixed newlines and paragraphs getting stripped/collapsed when loading posts for editing, prefilling composer fields, or rendering bits on the timeline.
 - **Preview Mode Admin Actions**: Hidden admin actions (edit, delete, quote) on feed cards in preview mode to prevent layout breaking on small/narrow viewports.
 
 ## [3.2.3] - 2026-06-28
