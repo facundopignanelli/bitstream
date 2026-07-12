@@ -3672,14 +3672,19 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             const fields = getRebitMetaFields(metaForm);
+            const urlInput = fields.urlInput;
             const titleInput = fields.titleInput;
             const descInput = fields.descInput;
             const imageInput = fields.imageInput;
             const imageRemovedInput = fields.imageRemovedInput;
 
+            const modalUrlInput = linkMetaModal.querySelector('#bs-edit-link-meta-url-input');
             const visibleTitleInput = linkMetaModal.querySelector('#bs-edit-link-meta-title-input');
             const visibleDescInput = linkMetaModal.querySelector('#bs-edit-link-meta-desc-input');
 
+            if (urlInput && modalUrlInput) {
+                urlInput.value = modalUrlInput.value || '';
+            }
             if (titleInput && visibleTitleInput) {
                 titleInput.value = visibleTitleInput.value || '';
             }
@@ -3700,6 +3705,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
             activeLinkMetaForm = sourceForm || bitForm;
             setLinkMetaPreview();
+
+            const editPostInput = activeLinkMetaForm.querySelector('input[name="edit_post_id"]');
+            const editPostId = editPostInput ? parseInt(editPostInput.value || '0', 10) : 0;
+            const modalUrlInput = linkMetaModal.querySelector('#bs-edit-link-meta-url-input');
+            if (modalUrlInput) {
+                if (editPostId === 0) {
+                    modalUrlInput.removeAttribute('readonly');
+                } else {
+                    modalUrlInput.setAttribute('readonly', 'readonly');
+                }
+            }
+
             linkMetaModal.hidden = false;
         }
 
@@ -4069,7 +4086,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 refetchButton.addEventListener('click', () => {
                     const activeForm = getRebitMetaForm();
                     const fields = getRebitMetaFields(activeForm);
-                    const targetUrl = (fields.urlInput && fields.urlInput.value ? fields.urlInput.value : (modalUrlInput ? modalUrlInput.value : '')).trim();
+                    const targetUrl = (modalUrlInput && modalUrlInput.value ? modalUrlInput.value : (fields.urlInput ? fields.urlInput.value : '')).trim();
                     const editPostInput = activeForm ? activeForm.querySelector('input[name="edit_post_id"]') : null;
 
                     if (!targetUrl) {
@@ -4083,7 +4100,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
 
                     refetchButton.disabled = true;
-                    setStatus('Fetching metadata...');
+                    setLoadingState(true, 'Fetching metadata...');
 
                     const payload = new FormData();
                     payload.append('action', 'bitstream_fetch_og_data');
@@ -4105,6 +4122,9 @@ document.addEventListener('DOMContentLoaded', function () {
                             const og = data.data || {};
                             const activeFields = getRebitMetaFields(getRebitMetaForm());
 
+                            if (activeFields.urlInput) {
+                                activeFields.urlInput.value = targetUrl;
+                            }
                             if (activeFields.titleInput) {
                                 activeFields.titleInput.value = og.title || '';
                             }
@@ -4126,7 +4146,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             if (currentActiveForm === bitForm) {
                                 renderBitFormRebitPreview();
                             }
-                            setStatus(og.cached ? 'Metadata refreshed from cache.' : 'Metadata refreshed.');
+                            clearFormFeedback();
                         })
                         .catch(error => {
                             setErrorState(error.message || 'Could not fetch metadata.');
