@@ -3,7 +3,7 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.3.0] - 2026-07-12
+## [3.3.0] - 2026-07-13
 
 ### Added
 - **Disable Image Downloads**: Added context-menu, drag-start, and CSS user-selection blocks to prevent copying and saving images from the timeline, galleries, and media viewer.
@@ -26,6 +26,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **Edit & Render Paragraph Preservation**: Fixed newlines and paragraphs getting stripped/collapsed when loading posts for editing, prefilling composer fields, or rendering bits on the timeline.
 - **Preview Mode Admin Actions**: Hidden admin actions (edit, delete, quote) on feed cards in preview mode to prevent layout breaking on small/narrow viewports.
+- **Settings Dialog Spacing & Responsive Tabs**: Optimized tab margins, padding, and font sizes to prevent the tab menu from overflowing the dialog on desktop, and adjusted the mobile text-hiding breakpoint to 767px.
+- **Media Cleanup Performance**: Re-engineered database query in media cleanup scanner to target only BitStream-related attachments, preventing PHP execution timeouts on sites with large media libraries.
+- **VAPID Key Generation Error Handling**: Added error display and validation output when VAPID key generation fails due to a missing or disabled PHP OpenSSL extension.
 
 ## [3.2.3] - 2026-06-28
 

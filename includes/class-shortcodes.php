@@ -2234,6 +2234,7 @@ class BitStream_Shortcodes
     private function render_settings_push()
     {
         $updated = false;
+        $error_message = '';
         $test_sent = false;
         $test_count = 0;
 
@@ -2254,7 +2255,11 @@ class BitStream_Shortcodes
                         update_option('bitstream_vapid_public_key', $keys['public_key'], false);
                         update_option('bitstream_vapid_private_key', $keys['private_key'], false);
                         $updated = true;
+                    } else {
+                        $error_message = 'Failed to generate VAPID keys. Please check if the PHP OpenSSL extension is enabled and configured correctly on your server.';
                     }
+                } else {
+                    $error_message = 'PWA Manager component is missing.';
                 }
             }
 
@@ -2303,6 +2308,9 @@ class BitStream_Shortcodes
 
         if ($updated) {
             echo '<div class="notice notice-success" style="padding: 10px; border-left: 4px solid #2c6e49; background: #f0f9f4; margin-bottom: 1rem;"><p style="margin: 0;">Push settings updated successfully.</p></div>';
+        }
+        if (!empty($error_message)) {
+            echo '<div class="notice notice-error" style="padding: 10px; border-left: 4px solid #dc3545; background: #fff5f5; margin-bottom: 1rem;"><p style="margin: 0; color: #dc3545;">' . esc_html($error_message) . '</p></div>';
         }
         if ($test_sent) {
             echo '<div class="notice notice-success" style="padding: 10px; border-left: 4px solid #2c6e49; background: #f0f9f4; margin-bottom: 1rem;"><p style="margin: 0;">Test notification dispatched to ' . intval($test_count) . ' active subscription(s).</p></div>';

@@ -286,19 +286,57 @@ class BitStream_Admin_Interface
             'deleted_items' => [],
         ];
 
-        $query = new WP_Query([
-            'post_type' => 'attachment',
-            'post_status' => 'inherit',
+        global $wpdb;
+
+        // Query only BitStream-managed attachments to prevent PHP execution timeouts on sites with large media libraries
+        $attachments_composer = get_posts([
+            'post_type'      => 'attachment',
+            'post_status'    => 'any',
             'posts_per_page' => -1,
-            'fields' => 'ids',
-            'orderby' => 'ID',
-            'order' => 'ASC',
+            'fields'         => 'ids',
+            'meta_query'     => [
+                [
+                    'key'     => '_bitstream_uploaded_via_composer',
+                    'compare' => 'EXISTS',
+                ]
+            ],
+            'no_found_rows'  => true,
         ]);
+
+        $bit_post_ids = get_posts([
+            'post_type'      => 'bit',
+            'post_status'    => 'any',
+            'posts_per_page' => -1,
+            'fields'         => 'ids',
+            'no_found_rows'  => true,
+        ]);
+
+        $attachments_parent = [];
+        if (!empty($bit_post_ids)) {
+            $attachments_parent = get_posts([
+                'post_type'       => 'attachment',
+                'post_status'     => 'any',
+                'posts_per_page'  => -1,
+                'fields'          => 'ids',
+                'post_parent__in' => $bit_post_ids,
+                'no_found_rows'   => true,
+            ]);
+        }
+
+        $artwork_ids = $wpdb->get_col("
+            SELECT post_id 
+            FROM {$wpdb->postmeta} 
+            WHERE meta_key = '_wp_attached_file' 
+              AND meta_value LIKE '%/bitstream-artwork/%'
+        ");
+        $artwork_ids = !empty($artwork_ids) ? array_map('intval', $artwork_ids) : [];
+
+        $attachment_ids = array_unique(array_merge($attachments_composer, $attachments_parent, $artwork_ids));
 
         $now = time();
         $grace_seconds = 30 * MINUTE_IN_SECONDS;
 
-        foreach ($query->posts as $attachment_id) {
+        foreach ($attachment_ids as $attachment_id) {
             $attachment_id = intval($attachment_id);
             if ($attachment_id <= 0) {
                 continue;
