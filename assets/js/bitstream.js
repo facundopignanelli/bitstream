@@ -46,6 +46,34 @@ document.addEventListener('DOMContentLoaded', function () {
     const BITSTREAM_CHUNKED_UPLOAD_THRESHOLD = 5 * 1024 * 1024;
     const BITSTREAM_UPLOAD_CHUNK_SIZE = 5 * 1024 * 1024;
 
+    // Mobile-only textarea auto-grow: starts at 160px, grows as user types.
+    // Uses inline flex-basis instead of height so that the flexbox engine
+    // can shrink the textarea down when the preview area needs space.
+    function bsMobileAutoResize(el) {
+        const form = el.closest('form');
+        let flexItem = el;
+        
+        if (form) {
+            while (flexItem && flexItem.parentNode !== form) {
+                flexItem = flexItem.parentNode;
+            }
+        }
+        if (!flexItem || flexItem === form) {
+            flexItem = el.closest('.bs-textarea-container') || el;
+        }
+
+        let offset = 0;
+        if (flexItem.classList.contains('bs-edit-field')) {
+            offset = 30; // Account for label and margin in the edit field
+        }
+
+        flexItem.style.height = 'auto';
+        const baseHeight = Math.max(el.scrollHeight + offset, 160);
+        flexItem.style.height = '';
+        flexItem.style.setProperty('flex-basis', baseHeight + 'px', 'important');
+    }
+    window.bsMobileAutoResize = bsMobileAutoResize;
+
     function updateQuickActionCounter(triggerName) {
         document.querySelectorAll('[data-composer-modal-trigger="' + triggerName + '"]').forEach(trigger => {
             const span = trigger.querySelector('span');
@@ -188,6 +216,16 @@ document.addEventListener('DOMContentLoaded', function () {
             previewMedia.hidden = attachments.length === 0;
             const hasVisiblePreviews = Array.from(previewArea.children).some(child => !child.hidden);
             previewArea.hidden = !hasVisiblePreviews;
+        }
+
+        if (previewEl.id === 'bs-edit-bit-media-preview' || previewEl.classList.contains('bs-edit-media-preview-thumb')) {
+            const editMediaWrap = previewEl.closest('.bs-edit-media');
+            if (editMediaWrap) {
+                editMediaWrap.hidden = attachments.length === 0;
+            }
+            if (typeof syncEditPreviewArea === 'function') {
+                syncEditPreviewArea();
+            }
         }
     }
 
@@ -682,7 +720,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     window.showDeleteConfirmation = showDeleteConfirmation;
 
-    function showDiscardConfirmation(message, onConfirm) {
+    function showDiscardConfirmation(message, onConfirm, onSaveDraft = null) {
         let confirmModal = document.querySelector('.bitstream-composer-modal-discard-confirm');
         if (!confirmModal) {
             confirmModal = document.createElement('div');
@@ -702,6 +740,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     </div>
                     <footer class="bitstream-composer-modal-footer">
                         <button type="button" class="bitstream-composer-modal-cancel" data-composer-modal-close="discard-confirm">Cancel</button>
+                        <button type="button" class="bitstream-composer-modal-confirm bitstream-composer-discard-save-btn" style="background-color: var(--wp--preset--color--accent-1, #2c6e49); color: white; display: none;">Save to Drafts</button>
                         <button type="button" class="bitstream-composer-modal-confirm bitstream-composer-discard-confirm-btn is-delete">Discard</button>
                     </footer>
                 </div>
@@ -730,6 +769,23 @@ document.addEventListener('DOMContentLoaded', function () {
         const msgEl = confirmModal.querySelector('.bitstream-discard-confirm-message');
         if (msgEl) {
             msgEl.textContent = message;
+        }
+
+        // Bind save draft button
+        const saveDraftBtn = confirmModal.querySelector('.bitstream-composer-discard-save-btn');
+        if (saveDraftBtn) {
+            if (onSaveDraft) {
+                saveDraftBtn.style.display = '';
+                const newSaveDraftBtn = saveDraftBtn.cloneNode(true);
+                saveDraftBtn.parentNode.replaceChild(newSaveDraftBtn, saveDraftBtn);
+                newSaveDraftBtn.addEventListener('click', () => {
+                    confirmModal.hidden = true;
+                    document.body.style.overflow = '';
+                    onSaveDraft();
+                });
+            } else {
+                saveDraftBtn.style.display = 'none';
+            }
         }
 
         // Bind confirm button
@@ -780,12 +836,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const highlightScheduled = parseInt(params.get('highlight_scheduled') || '0', 10);
         const openComments = parseInt(params.get('open_comments') || '0', 10);
 
-        if (highlightBit > 0) {
-            const bitCard = document.getElementById('bit-' + highlightBit);
-            if (bitCard) {
-                bitCard.classList.add('bitstream-highlight-target');
-            }
-        }
 
         if (openComments > 0) {
             const targetSection = document.getElementById('comments-' + openComments);
@@ -1253,7 +1303,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const pasteButtons = composerRoot.querySelectorAll('.bitstream-media-paste');
             const libraryButtons = composerRoot.querySelectorAll('.bitstream-media-library');
             const dropzones = composerRoot.querySelectorAll('.bitstream-media-dropzone');
-            const cropperModal = composerRoot.querySelector('.bitstream-cropper-modal');
+            const cropperModal = document.querySelector('.bitstream-cropper-modal');
             const cropperImage = cropperModal ? cropperModal.querySelector('.bitstream-cropper-image') : null;
             const cropperSelection = cropperModal ? cropperModal.querySelector('.bitstream-cropper-selection') : null;
             const cropperStage = cropperModal ? cropperModal.querySelector('.bitstream-cropper-stage') : null;
@@ -2154,6 +2204,10 @@ document.addEventListener('DOMContentLoaded', function () {
                                 sizes: { medium: { url: url } }
                             };
 
+                            if (!cropperState) {
+                                return;
+                            }
+
                             if (cropperState.targetInputId === 'bitstream-rebit-attachment-id') {
                                 if (rebitOgImageInput) {
                                     rebitOgImageInput.value = url || '';
@@ -2260,7 +2314,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
             composerRoot.addEventListener('paste', (event) => {
                 const clipboard = event.clipboardData;
-                if (!clipboard || !clipboard.items || !clipboard.items.length) {
+                if (!clipboard) {
+                    return;
+                }
+
+                // If target is a text input/textarea and there's text, let default paste happen
+                const target = event.target;
+                const isTextInput = target.tagName === 'TEXTAREA' || (target.tagName === 'INPUT' && target.type === 'text') || (target.tagName === 'INPUT' && target.type === 'url');
+                if (isTextInput && clipboard.getData('text/plain')) {
+                    return;
+                }
+
+                if (!clipboard.items || !clipboard.items.length) {
                     return;
                 }
 
@@ -2286,8 +2351,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 event.preventDefault();
-                uploadMediaFile(imageFile, mediaTarget.targetInputId, mediaTarget.targetPreviewId);
-                setStatus('Uploading pasted image...');
+                uploadMultipleFiles([imageFile], mediaTarget.targetInputId, mediaTarget.targetPreviewId, {
+                    setStatus: (msg, isError) => setStatus(msg, isError)
+                });
             });
 
             function fetchAttachmentData(attachmentId) {
@@ -3162,6 +3228,13 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (hRebitAttachmentId) hRebitAttachmentId.value = '';
                         if (previewRebitCard) previewRebitCard.innerHTML = '';
                         if (previewRebit) previewRebit.hidden = true;
+                        if (responseData.custom_moods) {
+                            customMoods = responseData.custom_moods;
+                        }
+                        if (hMoodEmoji) hMoodEmoji.value = '';
+                        if (hMoodEmotion) hMoodEmotion.value = '';
+                        if (previewMood) previewMood.hidden = true;
+                        activeEditMoodForm = null;
                         if (previewArea) previewArea.hidden = true;
                         if (textarea) textarea.value = '';
                         form.dataset.composerType = 'bit';
@@ -3219,8 +3292,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const loadingMessage = loadingState ? loadingState.querySelector('p') : null;
         const errorState = modal.querySelector('.bs-edit-modal-error');
         const errorMessage = modal.querySelector('.bs-edit-modal-error-msg');
-        const bitForm = modal.querySelector('.bs-edit-form-bit');
-        const rebitForm = modal.querySelector('.bs-edit-form-rebit');
+        const bitForm = modal.querySelector('.bs-edit-form-unified') || modal.querySelector('.bs-edit-form-bit') || modal.querySelector('.bs-edit-form');
         const linkMetaModal = modal.querySelector('.bs-edit-link-meta-modal');
         const closeButtons = modal.querySelectorAll('[data-bs-edit-modal-close="true"]');
         const submitNonce = modal.dataset.submitNonce || (window.bitstream_ajax && bitstream_ajax.composer_submit_nonce) || '';
@@ -3229,6 +3301,244 @@ document.addEventListener('DOMContentLoaded', function () {
         let ogImageFrame = null;
         let editFormIsDirty = false;
         let isPopulating = false;
+        let activeLinkMetaForm = null;
+        let clearBitFormRebit = () => {};
+        let renderBitFormRebitPreview = () => {};
+        let syncEditPreviewArea = () => {};
+        let _editCarouselScrollHandler = null;
+
+        syncEditPreviewArea = function() {
+            const hasRebit = !bitForm.querySelector('.bs-edit-rebit-preview-container').hidden && bitForm.querySelector('.bs-edit-rebit-url-hidden').value;
+            const hasQuote = !bitForm.querySelector('.bs-edit-quote-preview').hidden && parseInt(bitForm.querySelector('.bs-edit-quote-post-id').value || '0', 10) > 0;
+            const mediaPreviewContainer = bitForm.querySelector('.bs-edit-media-preview-container');
+            const hasMedia = mediaPreviewContainer && !mediaPreviewContainer.hidden && (bitForm.querySelector('.bs-edit-attachment-id').value || bitForm.querySelector('.bs-edit-attachment-ids').value);
+            
+            const previewArea = bitForm.querySelector('.bs-edit-preview-area');
+            const previewCarousel = bitForm.querySelector('.bs-edit-preview-carousel');
+            const previewDotsEl = bitForm.querySelector('.bs-edit-preview-dots');
+            
+            const activeCards = [];
+            const activeLabels = [];
+            
+            if (hasRebit) {
+                const card = bitForm.querySelector('.bs-edit-rebit-preview-container');
+                if (card) {
+                    activeCards.push(card);
+                    activeLabels.push('Link');
+                }
+            }
+            if (hasQuote) {
+                const card = bitForm.querySelector('.bs-edit-quote-preview');
+                if (card) {
+                    activeCards.push(card);
+                    activeLabels.push('Quote');
+                }
+            }
+            if (hasMedia) {
+                if (mediaPreviewContainer) {
+                    activeCards.push(mediaPreviewContainer);
+                    activeLabels.push('Media');
+                }
+            }
+
+            const anyCardsPresent = activeCards.length > 0;
+            if (previewArea) {
+                previewArea.hidden = !anyCardsPresent;
+            }
+
+            if (!previewCarousel || !previewDotsEl) return;
+
+            if (_editCarouselScrollHandler) {
+                previewCarousel.removeEventListener('scroll', _editCarouselScrollHandler);
+                _editCarouselScrollHandler = null;
+            }
+
+            const isMobileCarousel = window.innerWidth < 1024;
+            const multiplePresent = activeCards.length > 1;
+
+            if (!isMobileCarousel || !multiplePresent) {
+                previewDotsEl.hidden = true;
+                previewDotsEl.innerHTML = '';
+                return;
+            }
+
+            previewDotsEl.innerHTML = '';
+            previewDotsEl.hidden = false;
+            previewDotsEl.setAttribute('aria-hidden', 'true');
+
+            activeCards.forEach(function (card, i) {
+                const dot = document.createElement('button');
+                dot.type = 'button';
+                dot.className = 'bitstream-composer-preview-dot' + (i === 0 ? ' is-active' : '');
+                dot.setAttribute('aria-label', 'Go to ' + activeLabels[i]);
+                dot.addEventListener('click', function () {
+                    previewCarousel.scrollTo({ left: card.offsetLeft, behavior: 'smooth' });
+                });
+                previewDotsEl.appendChild(dot);
+            });
+
+            const dots = previewDotsEl.querySelectorAll('.bitstream-composer-preview-dot');
+            let _rafId = null;
+            _editCarouselScrollHandler = function () {
+                if (_rafId) return;
+                _rafId = requestAnimationFrame(function () {
+                    _rafId = null;
+                    const scrollLeft = previewCarousel.scrollLeft;
+                    const width = previewCarousel.offsetWidth;
+                    const activeIndex = width > 0 ? Math.round(scrollLeft / width) : 0;
+                    dots.forEach(function (d, i) {
+                        d.classList.toggle('is-active', i === activeIndex);
+                    });
+                });
+            };
+            previewCarousel.addEventListener('scroll', _editCarouselScrollHandler, { passive: true });
+        };
+
+        clearBitFormRebit = function() {
+            const fields = getRebitMetaFields(bitForm);
+            if (fields.urlInput) fields.urlInput.value = '';
+            if (fields.titleInput) fields.titleInput.value = '';
+            if (fields.descInput) fields.descInput.value = '';
+            if (fields.imageInput) fields.imageInput.value = '';
+            if (fields.imageRemovedInput) fields.imageRemovedInput.value = '0';
+            if (fields.attachmentInput) fields.attachmentInput.value = '';
+
+            const urlInputModal = modal.querySelector('#bs-edit-rebit-url-input');
+            if (urlInputModal) urlInputModal.value = '';
+            
+            const previewContainer = bitForm.querySelector('.bs-edit-rebit-preview-container');
+            if (previewContainer) previewContainer.hidden = true;
+            
+            const previewCard = bitForm.querySelector('.bs-edit-rebit-preview-card');
+            if (previewCard) previewCard.innerHTML = '';
+
+            const toggleBtn = bitForm.querySelector('.bs-edit-rebit-toggle-btn');
+            if (toggleBtn) toggleBtn.style.display = '';
+
+            syncEditPreviewArea();
+        };
+
+        renderBitFormRebitPreview = function() {
+            const urlInput = bitForm.querySelector('.bs-edit-rebit-url-hidden');
+            const url = urlInput ? urlInput.value.trim() : '';
+            const previewContainer = bitForm.querySelector('.bs-edit-rebit-preview-container');
+            const previewCard = bitForm.querySelector('.bs-edit-rebit-preview-card');
+            
+            if (!url) {
+                if (previewContainer) previewContainer.hidden = true;
+                if (previewCard) previewCard.innerHTML = '';
+                syncEditPreviewArea();
+                return;
+            }
+
+            if (previewContainer) previewContainer.hidden = false;
+            syncEditPreviewArea();
+
+            if (previewCard) {
+                previewCard.innerHTML = '<div style="padding: 1rem; text-align: center; color: #94a3b8;"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading preview...</div>';
+            }
+
+            const fd = new FormData();
+            fd.append('action', 'bitstream_render_rebit_preview');
+            fd.append('nonce', bitstream_ajax.og_fetch_nonce);
+            fd.append('rebit_url', url);
+            
+            const titleInput = bitForm.querySelector('.bs-edit-rebit-og-title');
+            const descInput = bitForm.querySelector('.bs-edit-rebit-og-desc');
+            const imageInput = bitForm.querySelector('.bs-edit-rebit-og-image');
+            const imageRemovedInput = bitForm.querySelector('.bs-edit-rebit-og-image-removed');
+            const attachmentInput = bitForm.querySelector('.bs-edit-rebit-attachment-id');
+            
+            fd.append('rebit_og_title', titleInput ? titleInput.value : '');
+            fd.append('rebit_og_desc', descInput ? descInput.value : '');
+            fd.append('rebit_og_image', imageInput ? imageInput.value : '');
+            fd.append('rebit_og_image_removed', imageRemovedInput ? imageRemovedInput.value : '0');
+            fd.append('rebit_attachment_id', attachmentInput ? attachmentInput.value : '');
+
+            fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success) throw new Error(data.data || 'Preview failed.');
+                    const resp = data.data || {};
+                    if (previewCard) {
+                        previewCard.innerHTML = resp.rendered_html || '';
+                        applyMediaDeterrents(previewCard);
+                    }
+                    syncEditPreviewArea();
+                })
+                .catch(() => {
+                    if (previewCard) {
+                        previewCard.innerHTML = '<div style="padding: 1rem; color: #ef4444;"><i class="fa-solid fa-triangle-exclamation"></i> Failed to load link preview.</div>';
+                    }
+                    syncEditPreviewArea();
+                });
+        };
+
+        function fetchOgMetadataForBitForm(url) {
+            if (!url || !window.bitstream_ajax || !bitstream_ajax.og_fetch_nonce) {
+                return;
+            }
+            
+            const previewCard = bitForm.querySelector('.bs-edit-rebit-preview-card');
+            const previewContainer = bitForm.querySelector('.bs-edit-rebit-preview-container');
+            if (previewContainer) previewContainer.hidden = false;
+            syncEditPreviewArea();
+
+            if (previewCard) {
+                previewCard.innerHTML = '<div style="padding: 1rem; text-align: center; color: #94a3b8;"><i class="fa-solid fa-circle-notch fa-spin"></i> Fetching link preview...</div>';
+            }
+
+            const fd = new FormData();
+            fd.append('action', 'bitstream_fetch_og_data');
+            fd.append('nonce', bitstream_ajax.og_fetch_nonce);
+            fd.append('url', url);
+            fd.append('post_id', '0');
+
+            fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success) throw new Error(data.data || 'Fetch failed.');
+                    const og = data.data || {};
+                    const fields = getRebitMetaFields(bitForm);
+                    if (fields.titleInput) fields.titleInput.value = og.title || '';
+                    if (fields.descInput) fields.descInput.value = og.description || '';
+                    if (fields.imageInput) fields.imageInput.value = og.image || '';
+                    if (fields.imageRemovedInput) fields.imageRemovedInput.value = og.image ? '0' : '1';
+                    if (fields.attachmentInput) fields.attachmentInput.value = '';
+                    
+                    renderBitFormRebitPreview();
+                })
+                .catch(() => {
+                    if (previewCard) {
+                        previewCard.innerHTML = '<div style="padding: 1rem; color: #ef4444;"><i class="fa-solid fa-triangle-exclamation"></i> Link preview failed.</div>';
+                    }
+                    syncEditPreviewArea();
+                });
+        }
+
+        function getRebitMetaForm() {
+            return activeLinkMetaForm || bitForm;
+        }
+
+        function getRebitMetaFields(form) {
+            return {
+                urlInput: bitForm.querySelector('#bs-edit-rebit-url') || bitForm.querySelector('.bs-edit-rebit-url-hidden'),
+                attachmentInput: bitForm.querySelector('input[name="rebit_attachment_id"]') || bitForm.querySelector('.bs-edit-rebit-attachment-id'),
+                titleInput: bitForm.querySelector('input[name="rebit_og_title"]') || bitForm.querySelector('.bs-edit-rebit-og-title'),
+                descInput: bitForm.querySelector('input[name="rebit_og_desc"]') || bitForm.querySelector('.bs-edit-rebit-og-desc'),
+                imageInput: bitForm.querySelector('input[name="rebit_og_image"]') || bitForm.querySelector('.bs-edit-og-image'),
+                imageRemovedInput: bitForm.querySelector('input[name="rebit_og_image_removed"]') || bitForm.querySelector('.bs-edit-og-image-removed')
+            };
+        }
+
+        function bitFormHasActiveRebit(form) {
+            if (!form || form !== bitForm) {
+                return false;
+            }
+
+            const fields = getRebitMetaFields(form);
+            return !!(fields.urlInput && !fields.urlInput.disabled && (fields.urlInput.value || '').trim());
+        }
 
         function attemptCloseEditModal() {
             if (editFormIsDirty) {
@@ -3290,9 +3600,6 @@ document.addEventListener('DOMContentLoaded', function () {
             if (bitForm) {
                 bitForm.hidden = form !== bitForm;
             }
-            if (rebitForm) {
-                rebitForm.hidden = form !== rebitForm;
-            }
         }
 
         function setAttachmentPreview(form, attachmentId, attachmentUrl, attachmentMime, attachments) {
@@ -3303,7 +3610,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 editFormIsDirty = true;
             }
 
-            const previewEl = form.querySelector('.bitstream-media-preview') || form.querySelector('.bitstream-composer-preview-media-thumb');
+            const previewEl = form.querySelector('.bs-edit-media-preview-thumb') || form.querySelector('.bitstream-media-preview') || form.querySelector('.bitstream-composer-preview-media-thumb');
             if (!previewEl) {
                 return;
             }
@@ -3324,16 +3631,17 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         function setLinkMetaPreview() {
-            if (!rebitForm || !linkMetaModal) {
+            const metaForm = getRebitMetaForm();
+            if (!metaForm || !linkMetaModal) {
                 return;
             }
 
-            const urlInput = rebitForm.querySelector('#bs-edit-rebit-url');
-            const attachmentInput = rebitForm.querySelector('input[name="rebit_attachment_id"]');
-            const titleInput = rebitForm.querySelector('input[name="rebit_og_title"]');
-            const descInput = rebitForm.querySelector('input[name="rebit_og_desc"]');
-            const imageInput = rebitForm.querySelector('input[name="rebit_og_image"]');
-            const imageRemovedInput = rebitForm.querySelector('input[name="rebit_og_image_removed"]');
+            const fields = getRebitMetaFields(metaForm);
+            const urlInput = fields.urlInput;
+            const attachmentInput = fields.attachmentInput;
+            const titleInput = fields.titleInput;
+            const descInput = fields.descInput;
+            const imageInput = fields.imageInput;
 
             const modalUrlInput = linkMetaModal.querySelector('#bs-edit-link-meta-url-input');
             const visibleTitleInput = linkMetaModal.querySelector('#bs-edit-link-meta-title-input');
@@ -3376,18 +3684,25 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         function syncLinkMetaFields() {
-            if (!rebitForm || !linkMetaModal) {
+            const metaForm = getRebitMetaForm();
+            if (!metaForm || !linkMetaModal) {
                 return;
             }
 
-            const titleInput = rebitForm.querySelector('input[name="rebit_og_title"]');
-            const descInput = rebitForm.querySelector('input[name="rebit_og_desc"]');
-            const imageInput = rebitForm.querySelector('input[name="rebit_og_image"]');
-            const imageRemovedInput = rebitForm.querySelector('input[name="rebit_og_image_removed"]');
+            const fields = getRebitMetaFields(metaForm);
+            const urlInput = fields.urlInput;
+            const titleInput = fields.titleInput;
+            const descInput = fields.descInput;
+            const imageInput = fields.imageInput;
+            const imageRemovedInput = fields.imageRemovedInput;
 
+            const modalUrlInput = linkMetaModal.querySelector('#bs-edit-link-meta-url-input');
             const visibleTitleInput = linkMetaModal.querySelector('#bs-edit-link-meta-title-input');
             const visibleDescInput = linkMetaModal.querySelector('#bs-edit-link-meta-desc-input');
 
+            if (urlInput && modalUrlInput) {
+                urlInput.value = modalUrlInput.value || '';
+            }
             if (titleInput && visibleTitleInput) {
                 titleInput.value = visibleTitleInput.value || '';
             }
@@ -3401,12 +3716,25 @@ document.addEventListener('DOMContentLoaded', function () {
             setLinkMetaPreview();
         }
 
-        function openLinkMetaModal() {
-            if (!linkMetaModal || !rebitForm) {
+        function openLinkMetaModal(sourceForm) {
+            if (!linkMetaModal) {
                 return;
             }
 
+            activeLinkMetaForm = sourceForm || bitForm;
             setLinkMetaPreview();
+
+            const editPostInput = activeLinkMetaForm.querySelector('input[name="edit_post_id"]');
+            const editPostId = editPostInput ? parseInt(editPostInput.value || '0', 10) : 0;
+            const modalUrlInput = linkMetaModal.querySelector('#bs-edit-link-meta-url-input');
+            if (modalUrlInput) {
+                if (editPostId === 0) {
+                    modalUrlInput.removeAttribute('readonly');
+                } else {
+                    modalUrlInput.setAttribute('readonly', 'readonly');
+                }
+            }
+
             linkMetaModal.hidden = false;
         }
 
@@ -3414,6 +3742,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (linkMetaModal) {
                 linkMetaModal.hidden = true;
             }
+            activeLinkMetaForm = null;
         }
 
         function setQuotePreview(form, quotePostId, quotePreviewHtml) {
@@ -3440,6 +3769,9 @@ document.addEventListener('DOMContentLoaded', function () {
             quoteWrap.hidden = !quotePreviewHtml;
             if (quotePreviewHtml) {
                 applyMediaDeterrents(quoteCard);
+            }
+            if (form === bitForm && typeof syncEditPreviewArea === 'function') {
+                syncEditPreviewArea();
             }
         }
 
@@ -3686,7 +4018,16 @@ document.addEventListener('DOMContentLoaded', function () {
             if (textarea) {
                 textarea.addEventListener('paste', (event) => {
                     const clipboardData = event.clipboardData || window.clipboardData;
-                    if (!clipboardData || !clipboardData.files || !clipboardData.files.length) {
+                    if (!clipboardData) {
+                        return;
+                    }
+
+                    // If there is plain text in the clipboard, let the default paste handle it.
+                    if (clipboardData.getData('text/plain')) {
+                        return;
+                    }
+
+                    if (!clipboardData.files || !clipboardData.files.length) {
                         return;
                     }
 
@@ -3698,21 +4039,25 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 });
 
-                // Mobile only: grow textarea as user types
-                if (window.matchMedia('(max-width: 1023px)').matches) {
-                    textarea.addEventListener('input', () => bsMobileAutoResize(textarea));
-                }
+                // Mobile only: grow textarea as user types (unconditionally bind, check inside)
+                textarea.addEventListener('input', () => {
+                    if (window.matchMedia('(max-width: 1023px)').matches) {
+                        window.bsMobileAutoResize(textarea);
+                    } else {
+                        const flexItem = textarea.closest('.bs-edit-field') || textarea;
+                        flexItem.style.removeProperty('flex-basis');
+                    }
+                });
             }
         }
 
         function bindLinkMetaControls() {
-            if (!rebitForm || !linkMetaModal || linkMetaModal.dataset.timelineMetaBound === '1') {
+            if (!bitForm || !linkMetaModal || linkMetaModal.dataset.timelineMetaBound === '1') {
                 return;
             }
 
             linkMetaModal.dataset.timelineMetaBound = '1';
 
-            const openButton = rebitForm.querySelector('.bs-edit-link-meta-open');
             const refetchButton = linkMetaModal.querySelector('.bs-edit-link-meta-refetch');
             const closeButtons = linkMetaModal.querySelectorAll('[data-bs-edit-link-meta-close="true"]');
             const saveButton = linkMetaModal.querySelector('.bs-edit-link-meta-save');
@@ -3722,17 +4067,26 @@ document.addEventListener('DOMContentLoaded', function () {
             const chooseImageButton = linkMetaModal.querySelector('.bs-edit-og-image-select');
             const cropImageButton = linkMetaModal.querySelector('.bs-edit-og-image-crop');
             const clearImageButton = linkMetaModal.querySelector('.bs-edit-og-image-clear');
-            const imageInput = rebitForm.querySelector('input[name="rebit_og_image"]');
-            const imageRemovedInput = rebitForm.querySelector('input[name="rebit_og_image_removed"]');
-            const attachmentInput = rebitForm.querySelector('input[name="rebit_attachment_id"]');
-            const mainUrlInput = rebitForm.querySelector('#bs-edit-rebit-url');
 
-            if (openButton) {
-                openButton.addEventListener('click', () => {
-                    if (modalUrlInput && mainUrlInput) {
-                        modalUrlInput.value = mainUrlInput.value || '';
+            const rebitOpenBtn = bitForm ? bitForm.querySelector('.bs-edit-link-meta-open') : null;
+            if (rebitOpenBtn) {
+                rebitOpenBtn.addEventListener('click', () => {
+                    const fields = getRebitMetaFields(bitForm);
+                    if (modalUrlInput && fields.urlInput) {
+                        modalUrlInput.value = fields.urlInput.value || '';
                     }
-                    openLinkMetaModal();
+                    openLinkMetaModal(bitForm);
+                });
+            }
+
+            const bitOpenBtn = bitForm ? bitForm.querySelector('.bs-edit-bit-link-meta-open') : null;
+            if (bitOpenBtn) {
+                bitOpenBtn.addEventListener('click', () => {
+                    const fields = getRebitMetaFields(bitForm);
+                    if (modalUrlInput && fields.urlInput) {
+                        modalUrlInput.value = fields.urlInput.value || '';
+                    }
+                    openLinkMetaModal(bitForm);
                 });
             }
 
@@ -3744,13 +4098,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 saveButton.addEventListener('click', () => {
                     syncLinkMetaFields();
                     closeLinkMetaModal();
+                    const activeForm = getRebitMetaForm();
+                    if (activeForm === bitForm) {
+                        renderBitFormRebitPreview();
+                    }
                 });
             }
 
             if (refetchButton) {
                 refetchButton.addEventListener('click', () => {
-                    const targetUrl = (mainUrlInput && mainUrlInput.value ? mainUrlInput.value : (modalUrlInput ? modalUrlInput.value : '')).trim();
-                    const editPostInput = rebitForm.querySelector('input[name="edit_post_id"]');
+                    const activeForm = getRebitMetaForm();
+                    const fields = getRebitMetaFields(activeForm);
+                    const targetUrl = (modalUrlInput && modalUrlInput.value ? modalUrlInput.value : (fields.urlInput ? fields.urlInput.value : '')).trim();
+                    const editPostInput = activeForm ? activeForm.querySelector('input[name="edit_post_id"]') : null;
 
                     if (!targetUrl) {
                         setErrorState('Add a link URL first.');
@@ -3763,7 +4123,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
 
                     refetchButton.disabled = true;
-                    setStatus('Fetching metadata...');
+                    setLoadingState(true, 'Fetching metadata...');
 
                     const payload = new FormData();
                     payload.append('action', 'bitstream_fetch_og_data');
@@ -3783,27 +4143,33 @@ document.addEventListener('DOMContentLoaded', function () {
                             }
 
                             const og = data.data || {};
-                            const titleInput = rebitForm.querySelector('input[name="rebit_og_title"]');
-                            const descInput = rebitForm.querySelector('input[name="rebit_og_desc"]');
+                            const activeFields = getRebitMetaFields(getRebitMetaForm());
 
-                            if (titleInput) {
-                                titleInput.value = og.title || '';
+                            if (activeFields.urlInput) {
+                                activeFields.urlInput.value = targetUrl;
                             }
-                            if (descInput) {
-                                descInput.value = og.description || '';
+                            if (activeFields.titleInput) {
+                                activeFields.titleInput.value = og.title || '';
                             }
-                            if (imageInput) {
-                                imageInput.value = og.image || '';
+                            if (activeFields.descInput) {
+                                activeFields.descInput.value = og.description || '';
                             }
-                            if (imageRemovedInput) {
-                                imageRemovedInput.value = og.image ? '0' : '1';
+                            if (activeFields.imageInput) {
+                                activeFields.imageInput.value = og.image || '';
                             }
-                            if (attachmentInput) {
-                                attachmentInput.value = '';
+                            if (activeFields.imageRemovedInput) {
+                                activeFields.imageRemovedInput.value = og.image ? '0' : '1';
+                            }
+                            if (activeFields.attachmentInput) {
+                                activeFields.attachmentInput.value = '';
                             }
 
                             setLinkMetaPreview();
-                            setStatus(og.cached ? 'Metadata refreshed from cache.' : 'Metadata refreshed.');
+                            const currentActiveForm = getRebitMetaForm();
+                            if (currentActiveForm === bitForm) {
+                                renderBitFormRebitPreview();
+                            }
+                            clearFormFeedback();
                         })
                         .catch(error => {
                             setErrorState(error.message || 'Could not fetch metadata.');
@@ -3845,14 +4211,23 @@ document.addEventListener('DOMContentLoaded', function () {
 
                             const attachment = selection.toJSON();
                             const attachmentMime = attachment.mime || attachment.type || '';
-                            setAttachmentPreview(rebitForm, attachment.id || 0, attachment.url || '', attachmentMime);
-                            if (imageInput) {
-                                imageInput.value = attachment.url || '';
+                            const activeForm = getRebitMetaForm();
+                            const activeFields = getRebitMetaFields(activeForm);
+
+                            if (activeFields.attachmentInput) {
+                                activeFields.attachmentInput.value = attachment.id || '';
                             }
-                            if (imageRemovedInput) {
-                                imageRemovedInput.value = '0';
+                            if (activeFields.imageInput) {
+                                activeFields.imageInput.value = attachment.url || '';
                             }
+                            if (activeFields.imageRemovedInput) {
+                                activeFields.imageRemovedInput.value = '0';
+                            }
+
                             setLinkMetaPreview();
+                            if (activeForm === bitForm) {
+                                renderBitFormRebitPreview();
+                            }
                         });
                     }
 
@@ -3862,8 +4237,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (cropImageButton) {
                 cropImageButton.addEventListener('click', () => {
-                    const attachmentId = attachmentInput ? parseInt(attachmentInput.value || '0', 10) : 0;
-                    const imageUrl = imageInput ? (imageInput.value || '').trim() : '';
+                    const activeForm = getRebitMetaForm();
+                    const activeFields = getRebitMetaFields(activeForm);
+                    const attachmentId = activeFields.attachmentInput ? parseInt(activeFields.attachmentInput.value || '0', 10) : 0;
+                    const imageUrl = activeFields.imageInput ? (activeFields.imageInput.value || '').trim() : '';
 
                     const openCropperForAttachment = (preparedAttachmentId) => {
                         if (!preparedAttachmentId) {
@@ -3879,16 +4256,25 @@ document.addEventListener('DOMContentLoaded', function () {
                             cropperOpener('bitstream-rebit-attachment-id', '', {
                                 attachmentId: preparedAttachmentId,
                                 onComplete: (croppedMedia, croppedUrl) => {
+                                    const currentForm = getRebitMetaForm();
+                                    const currentFields = getRebitMetaFields(currentForm);
+
                                     if (croppedMedia && croppedMedia.id) {
-                                        setAttachmentPreview(rebitForm, croppedMedia.id, croppedUrl || croppedMedia.url || '', croppedMedia.mime || 'image/jpeg');
+                                        if (currentFields.attachmentInput) {
+                                            currentFields.attachmentInput.value = croppedMedia.id;
+                                        }
                                     }
-                                    if (imageInput) {
-                                        imageInput.value = croppedUrl || (croppedMedia && croppedMedia.url) || '';
+                                    if (currentFields.imageInput) {
+                                        currentFields.imageInput.value = croppedUrl || (croppedMedia && croppedMedia.url) || '';
                                     }
-                                    if (imageRemovedInput) {
-                                        imageRemovedInput.value = '0';
+                                    if (currentFields.imageRemovedInput) {
+                                        currentFields.imageRemovedInput.value = '0';
                                     }
+
                                     setLinkMetaPreview();
+                                    if (currentForm === bitForm) {
+                                        renderBitFormRebitPreview();
+                                    }
                                 }
                             });
                         } else {
@@ -3931,12 +4317,17 @@ document.addEventListener('DOMContentLoaded', function () {
                             }
 
                             const prepared = data.data || {};
-                            setAttachmentPreview(rebitForm, prepared.id || 0, prepared.url || imageUrl, prepared.mime || 'image/jpeg');
-                            if (imageInput) {
-                                imageInput.value = prepared.url || imageUrl;
+                            const currentForm = getRebitMetaForm();
+                            const currentFields = getRebitMetaFields(currentForm);
+
+                            if (currentFields.attachmentInput) {
+                                currentFields.attachmentInput.value = prepared.id || '';
                             }
-                            if (imageRemovedInput) {
-                                imageRemovedInput.value = '0';
+                            if (currentFields.imageInput) {
+                                currentFields.imageInput.value = prepared.url || imageUrl;
+                            }
+                            if (currentFields.imageRemovedInput) {
+                                currentFields.imageRemovedInput.value = '0';
                             }
                             openCropperForAttachment(prepared.id || 0);
                         })
@@ -3951,14 +4342,23 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (clearImageButton) {
                 const clearLinkImage = () => {
-                    setAttachmentPreview(rebitForm, 0, '', '');
-                    if (imageInput) {
-                        imageInput.value = '';
+                    const activeForm = getRebitMetaForm();
+                    const activeFields = getRebitMetaFields(activeForm);
+
+                    if (activeFields.attachmentInput) {
+                        activeFields.attachmentInput.value = '';
                     }
-                    if (imageRemovedInput) {
-                        imageRemovedInput.value = '1';
+                    if (activeFields.imageInput) {
+                        activeFields.imageInput.value = '';
                     }
+                    if (activeFields.imageRemovedInput) {
+                        activeFields.imageRemovedInput.value = '1';
+                    }
+
                     setLinkMetaPreview();
+                    if (activeForm === bitForm) {
+                        renderBitFormRebitPreview();
+                    }
                 };
 
                 clearImageButton.addEventListener('click', clearLinkImage);
@@ -3973,12 +4373,70 @@ document.addEventListener('DOMContentLoaded', function () {
             form.dataset.timelineModalBound = '1';
             bindScheduleControls(form);
             bindMediaControls(form);
-            if (form === rebitForm) {
+            if (form === bitForm) {
                 bindLinkMetaControls();
+
+                const editMediaToggleBtn = bitForm.querySelector('.bs-edit-media-toggle-btn');
+                if (editMediaToggleBtn) {
+                    editMediaToggleBtn.addEventListener('click', () => {
+                        const editMedia = bitForm.querySelector('.bs-edit-media');
+                        if (editMedia) {
+                            const mediaField = editMedia.querySelector('.bitstream-media-field');
+                            if (editMedia.hidden) {
+                                editMedia.hidden = false;
+                                if (mediaField) {
+                                    mediaField.classList.add('media-uploader-open');
+                                }
+                            } else {
+                                if (mediaField && !mediaField.classList.contains('media-uploader-open')) {
+                                    mediaField.classList.add('media-uploader-open');
+                                } else {
+                                    editMedia.hidden = true;
+                                    if (mediaField) {
+                                        mediaField.classList.remove('media-uploader-open');
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                const editRebitToggleBtn = bitForm.querySelector('.bs-edit-rebit-toggle-btn');
+                if (editRebitToggleBtn) {
+                    editRebitToggleBtn.addEventListener('click', () => {
+                        const fields = getRebitMetaFields(bitForm);
+                        const modalUrlInput = linkMetaModal ? linkMetaModal.querySelector('#bs-edit-link-meta-url-input') : null;
+                        if (modalUrlInput && fields.urlInput) {
+                            modalUrlInput.value = fields.urlInput.value || '';
+                        }
+                        openLinkMetaModal(bitForm);
+                    });
+                }
+            }
+
+            const removeBtn = bitForm ? bitForm.querySelector('.bs-edit-rebit-remove-btn') : null;
+            if (removeBtn) {
+                removeBtn.addEventListener('click', () => {
+                    clearBitFormRebit();
+                });
+            }
+
+            const quoteRemoveBtn = form.querySelector('.bs-edit-quote-remove-btn');
+            if (quoteRemoveBtn) {
+                quoteRemoveBtn.addEventListener('click', () => {
+                    setQuotePreview(form, 0, '');
+                });
+            }
+
+            const editMediaRemoveBtn = form.querySelector('.bs-edit-media-remove-btn');
+            if (editMediaRemoveBtn) {
+                editMediaRemoveBtn.addEventListener('click', () => {
+                    setAttachmentPreview(form, 0, '', '', []);
+                });
             }
         }
 
-        function populateBitForm(data, isQuoteMode) {
+        function populateEditForm(data, isQuoteMode) {
             if (!bitForm) {
                 return;
             }
@@ -3986,11 +4444,19 @@ document.addEventListener('DOMContentLoaded', function () {
             bindFormOnce(bitForm);
             showForm(bitForm);
 
+            const editMediaWrap = bitForm.querySelector('.bs-edit-media');
+
+            const isRebit = (data.post_type === 'rebit');
             const postId = parseInt(data.post_id || '0', 10);
             const editPostInput = bitForm.querySelector('input[name="edit_post_id"]');
+            const composerTypeInput = bitForm.querySelector('.bs-edit-composer-type');
             const contentInput = bitForm.querySelector('#bs-edit-bit-content');
+            const contentLabel = bitForm.querySelector('#bs-edit-content-label');
             const submitButton = bitForm.querySelector('.bs-edit-submit');
             const draftButton = bitForm.querySelector('.bs-edit-save-draft');
+            const urlField = bitForm.querySelector('.bs-edit-url-field');
+            const urlInput = bitForm.querySelector('#bs-edit-rebit-url');
+            
             const attachmentId = parseInt(data.attachment_id || '0', 10);
             const attachmentUrl = data.attachment_url || '';
             const attachmentMime = data.attachment_mime || '';
@@ -3999,8 +4465,12 @@ document.addEventListener('DOMContentLoaded', function () {
             const scheduleEnabled = (data.post_status === 'future' || data.schedule_enabled === '1');
             const scheduleDatetime = data.schedule_datetime || '';
 
+            if (composerTypeInput) {
+                composerTypeInput.value = isRebit ? 'rebit' : 'bit';
+            }
+
             if (modalTitle) {
-                modalTitle.textContent = isQuoteMode ? 'Quote Bit' : 'Edit Bit';
+                modalTitle.textContent = isRebit ? 'Edit Rebit' : (isQuoteMode ? 'Quote Bit' : 'Edit Bit');
             }
 
             if (editPostInput) {
@@ -4010,84 +4480,96 @@ document.addEventListener('DOMContentLoaded', function () {
             if (contentInput) {
                 contentInput.value = isQuoteMode ? '' : (data.content || '');
                 if (window.matchMedia('(max-width: 1023px)').matches) {
-                    bsMobileAutoResize(contentInput);
+                    window.bsMobileAutoResize(contentInput);
                 }
             }
 
+            if (contentLabel) {
+                contentLabel.textContent = isRebit ? 'Commentary' : 'Content';
+            }
+
+            if (urlField) {
+                urlField.hidden = true;
+            }
+
+            if (urlInput) {
+                urlInput.value = isRebit ? (data.rebit_url || '') : '';
+            }
+
             setQuotePreview(bitForm, quotePostId, quotePreviewHtml);
+
+            const quoteRemoveBtn = bitForm.querySelector('.bs-edit-quote-remove-btn');
+            if (quoteRemoveBtn) {
+                quoteRemoveBtn.style.display = isQuoteMode ? 'none' : '';
+            }
+            
+            const hasAttachments = data.attachments && data.attachments.length > 0;
+            if (editMediaWrap) {
+                editMediaWrap.hidden = !hasAttachments;
+                const mediaField = editMediaWrap.querySelector('.bitstream-media-field');
+                if (mediaField) {
+                    mediaField.classList.remove('media-uploader-open');
+                }
+            }
             setAttachmentPreview(bitForm, isQuoteMode ? 0 : attachmentId, isQuoteMode ? '' : attachmentUrl, isQuoteMode ? '' : attachmentMime, isQuoteMode ? [] : (data.attachments || []));
             setScheduleState(bitForm, 'bit', scheduleEnabled && !isQuoteMode, isQuoteMode ? '' : scheduleDatetime);
 
+            // Populate Rebit fields
+            const rebitUrl = isQuoteMode ? '' : (data.rebit_url || '');
+            const fields = getRebitMetaFields(bitForm);
+            if (fields.urlInput) fields.urlInput.value = rebitUrl;
+            if (fields.titleInput) fields.titleInput.value = isQuoteMode ? '' : (data.og_title || '');
+            if (fields.descInput) fields.descInput.value = isQuoteMode ? '' : (data.og_desc || '');
+            if (fields.imageInput) fields.imageInput.value = isQuoteMode ? '' : (data.og_image || '');
+            if (fields.imageRemovedInput) fields.imageRemovedInput.value = '0';
+            if (fields.attachmentInput) fields.attachmentInput.value = isQuoteMode ? '' : (data.rebit_attachment_id || '');
+
+            if (rebitUrl) {
+                const previewContainer = bitForm.querySelector('.bs-edit-rebit-preview-container');
+                if (previewContainer) previewContainer.hidden = false;
+                renderBitFormRebitPreview();
+            } else {
+                const previewContainer = bitForm.querySelector('.bs-edit-rebit-preview-container');
+                if (previewContainer) previewContainer.hidden = true;
+                const previewCard = bitForm.querySelector('.bs-edit-rebit-preview-card');
+                if (previewCard) previewCard.innerHTML = '';
+                syncEditPreviewArea();
+            }
+
+            const rebitRemoveBtn = bitForm.querySelector('.bs-edit-rebit-remove-btn');
+            if (rebitRemoveBtn) {
+                rebitRemoveBtn.style.display = isRebit ? 'none' : '';
+            }
+
+            // Mood integration
+            const moodEmojiInput = bitForm.querySelector('.bs-edit-mood-emoji');
+            const moodEmotionInput = bitForm.querySelector('.bs-edit-mood-emotion');
+            const moodBtn = bitForm.querySelector('.bs-edit-mood-btn');
+            const moodLabel = bitForm.querySelector('.bs-edit-mood-label');
+            const moodRemove = bitForm.querySelector('.bs-edit-mood-remove');
+
+            const moodEmoji = isQuoteMode ? '' : (data.mood_emoji || '');
+            const moodEmotion = isQuoteMode ? '' : (data.mood_emotion || '');
+
+            if (moodEmojiInput) moodEmojiInput.value = moodEmoji;
+            if (moodEmotionInput) moodEmotionInput.value = moodEmotion;
+
+            if (moodBtn && moodLabel && moodRemove) {
+                if (moodEmotion) {
+                    moodLabel.textContent = `${moodEmoji} Feeling ${moodEmotion}`;
+                    parseEmojis(moodLabel);
+                    moodRemove.style.display = 'inline-block';
+                } else {
+                    moodLabel.textContent = 'Add Mood';
+                    moodRemove.style.display = 'none';
+                }
+            }
+
             if (submitButton) {
-                submitButton.textContent = isQuoteMode ? 'Post Bit' : 'Update Bit';
+                submitButton.textContent = isRebit ? 'Update Rebit' : (isQuoteMode ? 'Post Bit' : 'Update Bit');
             }
             if (draftButton) {
                 draftButton.textContent = data.post_status === 'draft' && !isQuoteMode ? 'Update Draft' : 'Save to Drafts';
-            }
-
-            setLoadingState(false);
-            clearFormFeedback();
-            setModalVisible(true);
-        }
-
-        function populateRebitForm(data) {
-            if (!rebitForm) {
-                return;
-            }
-
-            bindFormOnce(rebitForm);
-            showForm(rebitForm);
-
-            const postId = parseInt(data.post_id || '0', 10);
-            const editPostInput = rebitForm.querySelector('input[name="edit_post_id"]');
-            const urlInput = rebitForm.querySelector('#bs-edit-rebit-url');
-            const commentaryInput = rebitForm.querySelector('#bs-edit-rebit-commentary');
-            const ogTitleInput = rebitForm.querySelector('.bs-edit-og-title');
-            const ogDescInput = rebitForm.querySelector('.bs-edit-og-desc');
-            const ogImageInput = rebitForm.querySelector('.bs-edit-og-image');
-            const ogImageRemovedInput = rebitForm.querySelector('.bs-edit-og-image-removed');
-            const submitButton = rebitForm.querySelector('.bs-edit-submit');
-            const draftButton = rebitForm.querySelector('.bs-edit-save-draft');
-            const attachmentId = parseInt(data.attachment_id || '0', 10);
-            const attachmentUrl = data.attachment_url || '';
-            const attachmentMime = data.attachment_mime || '';
-            const scheduleEnabled = (data.post_status === 'future' || data.schedule_enabled === '1');
-            const scheduleDatetime = data.schedule_datetime || '';
-
-            if (modalTitle) {
-                modalTitle.textContent = 'Edit Rebit';
-            }
-
-            if (editPostInput) {
-                editPostInput.value = String(postId || 0);
-            }
-            if (urlInput) {
-                urlInput.value = data.rebit_url || '';
-            }
-            if (commentaryInput) {
-                commentaryInput.value = data.content || '';
-            }
-            if (ogTitleInput) {
-                ogTitleInput.value = data.og_title || '';
-            }
-            if (ogDescInput) {
-                ogDescInput.value = data.og_desc || '';
-            }
-            if (ogImageInput) {
-                ogImageInput.value = data.og_image || '';
-            }
-            if (ogImageRemovedInput) {
-                ogImageRemovedInput.value = '0';
-            }
-
-            setAttachmentPreview(rebitForm, attachmentId, attachmentUrl, attachmentMime);
-            setLinkMetaPreview();
-
-            if (submitButton) {
-                submitButton.textContent = 'Update Rebit';
-            }
-            if (draftButton) {
-                draftButton.textContent = data.post_status === 'draft' ? 'Update Draft' : 'Save to Drafts';
             }
 
             setLoadingState(false);
@@ -4106,7 +4588,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            const composerType = form.dataset.composerType || 'bit';
+            const composerTypeInput = form.querySelector('.bs-edit-composer-type');
+            const composerType = composerTypeInput ? composerTypeInput.value : (form.dataset.composerType || 'bit');
             const editPostInput = form.querySelector('input[name="edit_post_id"]');
             const submitButton = form.querySelector('.bs-edit-submit');
             const draftButton = form.querySelector('.bs-edit-save-draft');
@@ -4124,12 +4607,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 const textarea = form.querySelector('#bs-edit-bit-content');
                 const attachmentInput = form.querySelector('.bs-edit-attachment-id');
                 const quoteInput = form.querySelector('.bs-edit-quote-post-id');
+                const moodInput = form.querySelector('.bs-edit-mood-emotion');
+                const rebitUrlInput = form.querySelector('.bs-edit-rebit-url-hidden');
                 const content = textarea ? textarea.value.trim() : '';
                 const hasMedia = attachmentInput && parseInt(attachmentInput.value || '0', 10) > 0;
                 const hasQuote = quoteInput && parseInt(quoteInput.value || '0', 10) > 0;
+                const hasMood = moodInput && moodInput.value.trim();
+                const hasRebit = rebitUrlInput && rebitUrlInput.value.trim();
 
-                if (!saveAsDraft && !content && !hasMedia && !hasQuote) {
-                    setErrorState('Write something or attach media.');
+                if (!saveAsDraft && !content && !hasMedia && !hasQuote && !hasMood && !hasRebit) {
+                    setErrorState('Write something, attach media, or add a link.');
                     return;
                 }
 
@@ -4272,11 +4759,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     const responseData = data.data || {};
                     isPopulating = true;
-                    if (responseData.post_type === 'rebit' || postType === 'rebit') {
-                        populateRebitForm(responseData);
-                    } else {
-                        populateBitForm(responseData, false);
-                    }
+                    populateEditForm(responseData, false);
                     isPopulating = false;
                     editFormIsDirty = false;
                 })
@@ -4316,7 +4799,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     const responseData = data.data || {};
                     isPopulating = true;
-                    populateBitForm({
+                    populateEditForm({
                         post_id: numericPostId,
                         content: '',
                         quote_post_id: numericPostId,
@@ -4473,19 +4956,356 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     });
 
-    // Copy Link and Quote buttons use delegated handling so dynamically loaded cards work too.
+    // Share and Quote buttons use delegated handling so dynamically loaded cards work too.
+
+    // --- html-to-image dynamic loader ---
+    let _htmlToImageLoaded = false;
+    function loadHtmlToImage() {
+        return new Promise((resolve, reject) => {
+            if (_htmlToImageLoaded && window.htmlToImage) { resolve(); return; }
+            const s = document.createElement('script');
+            s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js';
+            s.onload = () => { _htmlToImageLoaded = true; resolve(); };
+            s.onerror = () => reject(new Error('Failed to load html-to-image'));
+            document.head.appendChild(s);
+        });
+    }
+
+    // --- Capture card as PNG blob ---
+    async function captureBitCard(card) {
+        await loadHtmlToImage();
+        
+        // Create a 500px-wide container to render the clone in the active viewport layout without visual shift
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'position: absolute; top: 0; left: 0; width: 500px; height: 0; overflow: hidden; z-index: -9999; pointer-events: none;';
+        
+        const clone = card.cloneNode(true);
+        clone.classList.add('bit-card-capturing');
+        clone.style.margin = '0';
+        
+        // Replace video elements in clone with images of their current frame to support image sharing
+        const originalVideos = card.querySelectorAll('video');
+        const clonedVideos = clone.querySelectorAll('video');
+        originalVideos.forEach((video, index) => {
+            const clonedVideo = clonedVideos[index];
+            if (!clonedVideo) return;
+
+            // Try to grab the current video frame — only if a frame is actually decoded
+            let frameDataUrl = '';
+            const hasFrame = video.readyState >= 2 && video.videoWidth > 0;
+            if (hasFrame) {
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    canvas.getContext('2d').drawImage(video, 0, 0);
+                    frameDataUrl = canvas.toDataURL('image/png');
+                } catch (err) {
+                    console.warn('BitStream: Could not draw video frame to canvas (possibly CORS).', err);
+                }
+            }
+
+            // Build replacement: image + play overlay
+            const img = document.createElement('img');
+            img.style.cssText = 'display:block;width:100%;height:auto;border-radius:15px;';
+
+            if (frameDataUrl) {
+                img.src = frameDataUrl;
+            } else if (video.poster) {
+                img.src = video.poster;
+            } else {
+                // Neutral dark placeholder — no blank black box
+                const w = video.clientWidth || 640;
+                const h = video.clientHeight || 360;
+                img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+                    `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect width="100%" height="100%" fill="#1e293b" rx="15"/></svg>`
+                );
+            }
+
+            const videoReplaceContainer = document.createElement('div');
+            videoReplaceContainer.style.cssText = 'position:relative;width:100%;display:block;border-radius:15px;overflow:hidden;';
+
+            const playOverlay = document.createElement('div');
+            playOverlay.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;pointer-events:none;';
+
+            const playCircle = document.createElement('div');
+            playCircle.style.cssText = 'width:50px;height:50px;background:rgba(255,255,255,0.9);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.25);';
+            playCircle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="var(--wp--preset--color--accent-1,#2c6e49)"><path d="M8 5v14l11-7z"/></svg>`;
+
+            playOverlay.appendChild(playCircle);
+            videoReplaceContainer.appendChild(img);
+            videoReplaceContainer.appendChild(playOverlay);
+
+            // Hoist replacement to the outermost mejs/wp-video wrapper to remove the gray container border
+            const outerWrapper = clonedVideo.closest('.mejs-container') || clonedVideo.closest('.wp-video') || clonedVideo.parentNode;
+            if (outerWrapper && outerWrapper !== clone && outerWrapper.parentNode) {
+                outerWrapper.parentNode.replaceChild(videoReplaceContainer, outerWrapper);
+            } else if (clonedVideo.parentNode) {
+                clonedVideo.parentNode.replaceChild(videoReplaceContainer, clonedVideo);
+            }
+        });
+
+        // Replace iframe elements in clone with static placeholders
+        const clonedIframes = clone.querySelectorAll('iframe');
+        clonedIframes.forEach(iframe => {
+            const iframeReplaceContainer = document.createElement('div');
+            iframeReplaceContainer.style.cssText = 'position:relative;width:100%;height:0;padding-bottom:56.25%;background:#1e293b;border-radius:15px;overflow:hidden;';
+
+            const playOverlay = document.createElement('div');
+            playOverlay.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;';
+
+            const playCircle = document.createElement('div');
+            playCircle.style.cssText = 'width:50px;height:50px;background:rgba(255,255,255,0.9);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.25);';
+            playCircle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="var(--wp--preset--color--accent-1,#2c6e49)"><path d="M8 5v14l11-7z"/></svg>`;
+
+            playOverlay.appendChild(playCircle);
+            iframeReplaceContainer.appendChild(playOverlay);
+
+            // Also try to hoist to the outermost embed wrapper
+            const embedWrapper = iframe.closest('.wp-video') || iframe.parentNode;
+            if (embedWrapper && embedWrapper !== clone && embedWrapper.parentNode) {
+                embedWrapper.parentNode.replaceChild(iframeReplaceContainer, embedWrapper);
+            } else if (iframe.parentNode) {
+                iframe.parentNode.replaceChild(iframeReplaceContainer, iframe);
+            }
+        });
+
+        wrapper.appendChild(clone);
+        document.body.appendChild(wrapper);
+        
+        // Small delay so CSS transitions settle before capture
+        await new Promise(r => setTimeout(r, 60));
+        let blob;
+        try {
+            let fontEmbedCSS = '';
+            try {
+                fontEmbedCSS = await window.htmlToImage.getFontEmbedCSS(clone);
+            } catch (fontErr) {
+                console.warn('BitStream: Could not pre-embed some fonts due to CORS/network security rules.', fontErr);
+            }
+
+            blob = await window.htmlToImage.toBlob(clone, {
+                pixelRatio: 2,
+                skipFonts: fontEmbedCSS ? false : true,
+                backgroundColor: '#ffffff',
+                fontEmbedCSS: fontEmbedCSS || undefined,
+            });
+        } finally {
+            wrapper.remove();
+        }
+        return blob;
+    }
+
+    // --- Fallback download/copy modal for desktop ---
+    function showShareImageModal(blob, title, url) {
+        const existing = document.getElementById('bitstream-share-image-modal');
+        if (existing) existing.remove();
+
+        const imgUrl = URL.createObjectURL(blob);
+        const modal = document.createElement('div');
+        modal.id = 'bitstream-share-image-modal';
+        modal.className = 'bitstream-composer-modal bitstream-composer-modal-share-image';
+
+        modal.innerHTML = `
+            <div class="bitstream-composer-modal-backdrop" data-composer-modal-close="share-image"></div>
+            <div class="bitstream-composer-modal-dialog" role="dialog" aria-modal="true" aria-label="Share Image">
+                <header class="bitstream-composer-modal-header">
+                    <h3>Share Image</h3>
+                    <button type="button" class="bitstream-composer-modal-close" data-composer-modal-close="share-image" aria-label="Close">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                    </button>
+                </header>
+                <div class="bitstream-composer-modal-body">
+                    <div class="bitstream-share-image-preview">
+                        <img src="${imgUrl}" alt="Post preview">
+                    </div>
+                </div>
+                <footer class="bitstream-composer-modal-footer">
+                    <button type="button" class="bitstream-composer-modal-cancel" data-composer-modal-close="share-image">Cancel</button>
+                    <button type="button" id="bitstream-share-copy-link" class="bitstream-composer-modal-confirm" style="background:#64748b;box-shadow:none;">
+                        <i class="fa-solid fa-link" style="margin-right:0.4rem;"></i>Copy Link
+                    </button>
+                    <button type="button" id="bitstream-share-download" class="bitstream-composer-modal-confirm">
+                        <i class="fa-solid fa-download" style="margin-right:0.4rem;"></i>Download
+                    </button>
+                </footer>
+            </div>`;
+
+        document.body.appendChild(modal);
+        requestAnimationFrame(() => modal.removeAttribute('hidden'));
+
+        modal.querySelector('#bitstream-share-download').addEventListener('click', () => {
+            const a = document.createElement('a');
+            a.href = imgUrl;
+            a.download = `bit-${Date.now()}.png`;
+            a.click();
+        });
+
+        const copyBtn = modal.querySelector('#bitstream-share-copy-link');
+        copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(url).then(() => {
+                copyBtn.innerHTML = '<i class="fa-solid fa-check" style="margin-right:0.4rem;"></i>Copied!';
+                setTimeout(() => {
+                    copyBtn.innerHTML = '<i class="fa-solid fa-link" style="margin-right:0.4rem;"></i>Copy Link';
+                }, 1800);
+            });
+        });
+
+        modal.querySelectorAll('[data-composer-modal-close="share-image"]').forEach(el => {
+            el.addEventListener('click', () => {
+                modal.setAttribute('hidden', '');
+                setTimeout(() => { modal.remove(); URL.revokeObjectURL(imgUrl); }, 300);
+            });
+        });
+    }
+
+    // --- Share options modal (link vs image choice) ---
+    function openShareOptionsModal(card, title, url, shareButton) {
+        const existing = document.getElementById('bitstream-share-options-modal');
+        if (existing) existing.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'bitstream-share-options-modal';
+        modal.className = 'bitstream-composer-modal bitstream-composer-modal-share-options';
+        modal.innerHTML = `
+            <div class="bitstream-composer-modal-backdrop" data-composer-modal-close="share-options"></div>
+            <div class="bitstream-composer-modal-dialog" role="dialog" aria-modal="true" aria-label="Share">
+                <header class="bitstream-composer-modal-header">
+                    <h3>Share</h3>
+                    <button type="button" class="bitstream-composer-modal-close" data-composer-modal-close="share-options" aria-label="Close">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                    </button>
+                </header>
+                <div class="bitstream-composer-modal-body">
+                    <div class="bitstream-share-options-list">
+                        <button type="button" class="bitstream-share-option-btn" id="bitstream-share-link-btn">
+                            <i class="fa-solid fa-link"></i>
+                            <div class="bitstream-share-option-details">
+                                <span class="bitstream-share-option-title">Share Link</span>
+                                <span class="bitstream-share-option-desc">Share or copy the post URL</span>
+                            </div>
+                        </button>
+                        <button type="button" class="bitstream-share-option-btn" id="bitstream-share-image-btn">
+                            <i class="fa-solid fa-image"></i>
+                            <div class="bitstream-share-option-details">
+                                <span class="bitstream-share-option-title">Share as Image</span>
+                                <span class="bitstream-share-option-desc">Generate a card image for stories &amp; statuses</span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+
+        document.body.appendChild(modal);
+        requestAnimationFrame(() => modal.removeAttribute('hidden'));
+
+        const closeModal = () => {
+            modal.setAttribute('hidden', '');
+            setTimeout(() => modal.remove(), 300);
+        };
+
+        modal.querySelectorAll('[data-composer-modal-close="share-options"]').forEach(el => {
+            el.addEventListener('click', closeModal);
+        });
+
+        // Share Link
+        modal.querySelector('#bitstream-share-link-btn').addEventListener('click', async () => {
+            closeModal();
+            if (navigator.share) {
+                try { await navigator.share({ title, url }); } catch (_) { /* cancelled */ }
+            } else {
+                await navigator.clipboard.writeText(url);
+                // Brief toast feedback using the share button icon
+                const shareBtn = card.querySelector('.bit-share i');
+                if (shareBtn) {
+                    const orig = shareBtn.className;
+                    shareBtn.className = 'fa-solid fa-check';
+                    setTimeout(() => { shareBtn.className = orig; }, 1500);
+                }
+            }
+        });
+
+        // Share as Image
+        modal.querySelector('#bitstream-share-image-btn').addEventListener('click', async () => {
+            const imgBtn = modal.querySelector('#bitstream-share-image-btn i');
+            if (imgBtn) imgBtn.className = 'fa-solid fa-spinner fa-spin';
+
+            // Check for a server-cached image first
+            const cachedUrl = shareButton.dataset.shareImage;
+            let blob;
+
+            if (cachedUrl) {
+                try {
+                    const resp = await fetch(cachedUrl);
+                    if (resp.ok) {
+                        blob = await resp.blob();
+                    }
+                } catch (_) { /* fall through to fresh render */ }
+            }
+
+            if (!blob) {
+                // No cache — render fresh
+                try {
+                    blob = await captureBitCard(card);
+                } catch (err) {
+                    closeModal();
+                    console.error('BitStream: card capture failed', err);
+                    return;
+                }
+
+                // Upload to server in background (fire-and-forget)
+                if (window.bitstream_ajax && window.bitstream_ajax.ajax_url) {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const fd = new FormData();
+                        fd.append('action', 'bitstream_save_share_image');
+                        fd.append('nonce', bitstream_ajax.save_share_image_nonce);
+                        fd.append('post_id', shareButton.dataset.postId || '');
+                        fd.append('image_data', reader.result);
+                        fetch(bitstream_ajax.ajax_url, { method: 'POST', body: fd })
+                            .then(r => r.json())
+                            .then(json => {
+                                if (json.success && json.data && json.data.url) {
+                                    // Update the button so subsequent shares use the cache
+                                    shareButton.dataset.shareImage = json.data.url;
+                                }
+                            })
+                            .catch(() => {});
+                    };
+                    reader.readAsDataURL(blob);
+                }
+            }
+
+            closeModal();
+
+            // Copy URL to clipboard so it's ready to paste as a link sticker in Instagram, etc.
+            try { await navigator.clipboard.writeText(url); } catch (_) { /* clipboard may be unavailable */ }
+
+            const file = new File([blob], `bitstream-${Date.now()}.png`, { type: 'image/png' });
+
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({ files: [file], title, url });
+                    return;
+                } catch (e) {
+                    if (e.name === 'AbortError') return;
+                    // fall through to modal fallback
+                }
+            }
+
+            showShareImageModal(blob, title, url);
+        });
+    }
+
     document.addEventListener('click', (event) => {
-        const permalinkButton = event.target.closest('.bit-permalink');
-        if (permalinkButton) {
+        const shareButton = event.target.closest('.bit-share');
+        if (shareButton) {
             event.preventDefault();
-            const url = permalinkButton.dataset.url;
-            navigator.clipboard.writeText(url);
-            const icon = permalinkButton.querySelector('i');
-            if (icon) {
-                icon.classList.remove('pulse');
-                void icon.offsetWidth;
-                icon.classList.add('pulse');
-                setTimeout(() => icon.classList.remove('pulse'), 300);
+            const url = shareButton.dataset.url;
+            const title = shareButton.dataset.title || '';
+            const card = shareButton.closest('.bit-card');
+            if (card) {
+                openShareOptionsModal(card, title, url, shareButton);
             }
             return;
         }
@@ -4636,116 +5456,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
         });
     });
-
-    // Floating BitStream menu functionality
-    function initFloatingMenu() {
-        const bitstreamToggle = document.querySelector('.bitstream-toggle');
-        const bitstreamDropdown = document.querySelector('.bitstream-dropdown');
-
-        if (!bitstreamToggle || !bitstreamDropdown) {
-            return; // Elements not found
-        }
-
-        let isOpen = false;
-
-        // Function to open dropdown
-        function openDropdown() {
-            console.log('Opening dropdown'); // Debug log
-            isOpen = true;
-            bitstreamDropdown.style.opacity = '1';
-            bitstreamDropdown.style.visibility = 'visible';
-            bitstreamDropdown.style.transform = 'translateY(0)';
-            bitstreamDropdown.style.pointerEvents = 'auto';
-            bitstreamToggle.style.background = '#1f4d35';
-            bitstreamToggle.style.transform = 'scale(1.1)';
-        }
-
-        // Function to close dropdown
-        function closeDropdown() {
-            console.log('Closing dropdown'); // Debug log
-            isOpen = false;
-            bitstreamDropdown.style.opacity = '0';
-            bitstreamDropdown.style.visibility = 'hidden';
-            bitstreamDropdown.style.transform = 'translateY(10px)';
-            bitstreamDropdown.style.pointerEvents = 'none';
-            bitstreamToggle.style.background = '#2c6e49';
-            bitstreamToggle.style.transform = 'scale(1)';
-        }
-
-        // Unified event handler for both click and touch
-        function handleToggle(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Toggle button activated, isOpen:', isOpen); // Debug log
-
-            if (isOpen) {
-                closeDropdown();
-            } else {
-                openDropdown();
-            }
-        }
-
-        // Add both click and touchstart for maximum compatibility
-        bitstreamToggle.addEventListener('click', handleToggle);
-        bitstreamToggle.addEventListener('touchstart', handleToggle);
-
-        // Prevent double-firing on devices that support both
-        bitstreamToggle.addEventListener('touchend', (e) => {
-            e.preventDefault();
-        });
-
-        // Add hover effects for desktop only (check if touch device)
-        const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-        if (!isTouch) {
-            bitstreamToggle.addEventListener('mouseenter', () => {
-                if (!isOpen) {
-                    bitstreamToggle.style.background = '#1f4d35';
-                    bitstreamToggle.style.transform = 'scale(1.05)';
-                }
-            });
-
-            bitstreamToggle.addEventListener('mouseleave', () => {
-                if (!isOpen) {
-                    bitstreamToggle.style.background = '#2c6e49';
-                    bitstreamToggle.style.transform = 'scale(1)';
-                }
-            });
-        }
-
-        // Add hover effects for dropdown links (desktop only)
-        if (!isTouch) {
-            // Use event delegation since links might not exist when this runs
-            bitstreamDropdown.addEventListener('mouseenter', (e) => {
-                if (e.target.classList.contains('bitstream-dropdown-link')) {
-                    e.target.style.background = '#f5f5f5';
-                }
-            });
-            bitstreamDropdown.addEventListener('mouseleave', (e) => {
-                if (e.target.classList.contains('bitstream-dropdown-link')) {
-                    e.target.style.background = 'white';
-                }
-            });
-        }
-
-        // Close dropdown when clicking/touching outside
-        function handleOutsideClick(e) {
-            if (!e.target.closest('.bitstream-menu') && isOpen) {
-                closeDropdown();
-            }
-        }
-
-        document.addEventListener('click', handleOutsideClick);
-        document.addEventListener('touchstart', handleOutsideClick);
-
-        console.log('Floating menu initialized'); // Debug log
-    }
-
-    // Initialize floating menu (try multiple times if needed)
-    initFloatingMenu();
-
-    // Also try after a short delay in case elements are loaded later
-    setTimeout(initFloatingMenu, 500);
-    setTimeout(initFloatingMenu, 1000);
 
     // Fix responsive embeds (YouTube, etc.)
     function makeEmbedsResponsive() {
@@ -5012,18 +5722,37 @@ document.addEventListener('DOMContentLoaded', function () {
         scope.querySelectorAll('audio, video').forEach(bindMediaSessionForElement);
     }
 
+    function parseEmojis(container) {
+        if (typeof twemoji === 'undefined' || !container) return;
+        twemoji.parse(container, {
+            folder: 'svg',
+            ext: '.svg'
+        });
+    }
+    window.parseEmojis = parseEmojis;
+
+    function parseTimelineCards() {
+        document.querySelectorAll('.bit-card:not([data-emoji-parsed])').forEach(card => {
+            card.setAttribute('data-emoji-parsed', 'true');
+            parseEmojis(card);
+        });
+    }
+    window.parseTimelineCards = parseTimelineCards;
+
     // Run on page load
     makeEmbedsResponsive();
     initMediaSession(document);
     adjustCardMediaDimensions(document);
+    parseTimelineCards();
 
     // Run when new content is loaded (for infinite scroll)
     const observer = new MutationObserver(() => {
         makeEmbedsResponsive();
         initMediaSession(document);
         adjustCardMediaDimensions(document);
-        initFloatingMenu(); // Re-init floating menu if new content added
+
         initCommentToggles(); // Re-init comment toggles for new content
+        parseTimelineCards();
     });
 
     observer.observe(document.body, {
@@ -5081,28 +5810,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const scrollTrigger = document.querySelector('.bitstream-scroll-trigger');
     const isInfiniteScroll = feed.dataset.infiniteScroll === 'true';
 
-    const sidebarPanels = document.querySelectorAll('.bitstream-feed-sidebar-panel');
     const archiveYears = document.querySelectorAll('.bitstream-archive-year');
-
-    function syncSidebarPanelState() {
-        if (!sidebarPanels.length) {
-            return;
-        }
-
-        const isDesktop = window.innerWidth >= 1024;
-
-        if (isDesktop) {
-            // Remove inline styles to let desktop CSS take over
-            sidebarPanels.forEach(panel => {
-                panel.style.display = '';
-            });
-            // Reset active mobile tabs state
-            const tabsNav = document.querySelector('.bitstream-mobile-tabs-nav');
-            if (tabsNav) {
-                tabsNav.querySelectorAll('button').forEach(b => b.classList.remove('is-active'));
-            }
-        }
-    }
 
     function syncArchiveYearState() {
         if (!archiveYears.length) {
@@ -5124,18 +5832,15 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-
-
     archiveYears.forEach(year => {
         year.addEventListener('toggle', () => {
             year.dataset.userToggled = 'true';
         });
     });
 
-    syncSidebarPanelState();
     syncArchiveYearState();
-    window.addEventListener('resize', syncSidebarPanelState);
     window.addEventListener('resize', syncArchiveYearState);
+
 
     function loadNextPage() {
         const nextPage = parseInt(feed.dataset.page) + 1;
@@ -5156,6 +5861,7 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('filter_month', feed.dataset.filterMonth || '');
         formData.append('filter_search', feed.dataset.filterSearch || '');
         formData.append('filter_hashtag', feed.dataset.filterHashtag || '');
+        formData.append('filter_emotion', feed.dataset.filterEmotion || '');
         formData.append('highlight_bit', feed.dataset.highlightBit || '0');
 
         fetch(bitstream_ajax.ajax_url, {
@@ -5167,7 +5873,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(html => {
                 const temp = document.createElement('div');
                 temp.innerHTML = html;
-                const newCards = temp.querySelectorAll('.bit-card');
+                const newCards = temp.querySelectorAll(':scope > .bit-card');
 
                 // Append new cards to feed
                 newCards.forEach(card => {
@@ -5317,6 +6023,22 @@ function applyCommentStyles() {
 jQuery(document).ready(function ($) {
     applyCommentStyles();
 
+    // Toggle full timestamp next to relative timestamp on click
+    document.addEventListener('click', (e) => {
+        const timestampEl = e.target.closest('.bit-timestamp');
+        if (timestampEl) {
+            e.preventDefault();
+            const fullSpan = timestampEl.querySelector('.bit-timestamp-full');
+            if (fullSpan) {
+                if (fullSpan.style.display === 'none') {
+                    fullSpan.style.display = 'inline';
+                } else {
+                    fullSpan.style.display = 'none';
+                }
+            }
+        }
+    });
+
     // Hashtag-aware search: redirect #tag searches to hashtag filter
     document.querySelectorAll('.bitstream-filter-search').forEach(form => {
         form.addEventListener('submit', (e) => {
@@ -5360,7 +6082,9 @@ jQuery(document).ready(function ($) {
                 const textarea = composer.querySelector('#bitstream-quick-bit-content');
                 if (textarea) {
                     textarea.focus();
-                    if (!isMobile) {
+                    if (isMobile) {
+                        window.bsMobileAutoResize(textarea);
+                    } else {
                         textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }
                 }
@@ -5381,6 +6105,9 @@ jQuery(document).ready(function ($) {
                     const statusEl = composer.querySelector('.bitstream-sidebar-composer-status');
                     if (statusEl) statusEl.textContent = '';
                 }
+                if (typeof window.bitstreamSyncBottomNav === 'function') {
+                    window.bitstreamSyncBottomNav();
+                }
             }
         } else {
             e.preventDefault();
@@ -5392,21 +6119,12 @@ jQuery(document).ready(function ($) {
                 feedUrl.searchParams.set('show_drafts', '1');
             } else if (modalName === 'scheduled-list') {
                 feedUrl.searchParams.set('show_scheduled', '1');
+            } else if (modalName === 'settings') {
+                feedUrl.searchParams.set('show_settings', '1');
             }
             window.location.href = feedUrl.toString();
         }
     });
-
-    // Mobile-only textarea auto-grow: starts at 160px, grows as user types.
-    // Uses inline flex-basis instead of height so that the flexbox engine
-    // can shrink the textarea down when the preview area needs space.
-    function bsMobileAutoResize(el) {
-        el.style.height = 'auto';
-        const baseHeight = Math.max(el.scrollHeight, 160);
-        el.style.height = '';
-        el.style.setProperty('flex-basis', baseHeight + 'px', 'important');
-    }
-
     document.querySelectorAll('.bitstream-composer').forEach(composerRoot => {
         const form = composerRoot.querySelector('.bitstream-sidebar-composer-form');
         if (!form) return;
@@ -5416,9 +6134,20 @@ jQuery(document).ready(function ($) {
         const textarea = form.querySelector('#bitstream-quick-bit-content');
         const submitNonce = composerRoot.dataset.submitNonce || '';
 
-        // Mobile only: grow textarea as user types
-        if (textarea && window.matchMedia('(max-width: 1023px)').matches) {
-            textarea.addEventListener('input', () => bsMobileAutoResize(textarea));
+        // Mobile only: grow textarea as user types (unconditionally bind, check inside)
+        if (textarea) {
+            textarea.addEventListener('input', () => {
+                if (window.matchMedia('(max-width: 1023px)').matches) {
+                    window.bsMobileAutoResize(textarea);
+                } else {
+                    const flexItem = textarea.closest('.bs-textarea-container') || textarea;
+                    flexItem.style.removeProperty('flex-basis');
+                }
+            });
+            
+            if (window.matchMedia('(max-width: 1023px)').matches && textarea.value) {
+                window.bsMobileAutoResize(textarea);
+            }
         }
 
         // Hidden inputs
@@ -5441,6 +6170,8 @@ jQuery(document).ready(function ($) {
         const hScheduleEnabled = form.querySelector('#bitstream-composer-schedule-enabled');
         const hScheduleDatetime = form.querySelector('#bitstream-composer-schedule-datetime');
         const hEditPostId = form.querySelector('#bitstream-composer-edit-post-id');
+        const hMoodEmoji = form.querySelector('#bitstream-composer-mood-emoji');
+        const hMoodEmotion = form.querySelector('#bitstream-composer-mood-emotion');
         let renderRebitLivePreview, updateModalImagePreview;
 
         // Preview containers
@@ -5453,6 +6184,13 @@ jQuery(document).ready(function ($) {
         const previewMediaThumb = form.querySelector('.bitstream-composer-preview-media-thumb');
         const previewSchedule = form.querySelector('.bitstream-composer-preview-schedule');
         const previewScheduleDate = form.querySelector('.bitstream-composer-preview-schedule-date');
+        const previewMood = form.querySelector('.bitstream-composer-preview-mood');
+        const previewMoodText = form.querySelector('.bitstream-composer-preview-mood-text');
+
+        // Mood modal elements
+        const moodModal = composerRoot.querySelector('.bitstream-composer-modal-mood');
+        let customMoods = (window.bitstream_ajax && bitstream_ajax.custom_moods) || [];
+        let activeEditMoodForm = null;
         const previewDraft = null;
         const previewDraftLabel = null;
 
@@ -5503,9 +6241,10 @@ jQuery(document).ready(function ($) {
             const hasRebit = previewRebit && !previewRebit.hidden;
             const hasMedia = previewMedia && !previewMedia.hidden;
             const hasSched = previewSchedule && !previewSchedule.hidden;
+            const hasMood = previewMood && !previewMood.hidden;
             const hasDraft = previewDraft && !previewDraft.hidden;
-            if (previewArea) previewArea.hidden = !(hasRebit || hasMedia || hasSched || hasDraft);
-            if (textarea) textarea.required = !(hasRebit || hasMedia);
+            if (previewArea) previewArea.hidden = !(hasRebit || hasMedia || hasSched || hasDraft || hasMood);
+            if (textarea) textarea.required = !(hasRebit || hasMedia || hasMood);
 
             // Carousel dot indicators — only on mobile/tablet (<1024px)
             if (!previewCarousel || !previewDotsEl) return;
@@ -5569,9 +6308,20 @@ jQuery(document).ready(function ($) {
             const modal = composerRoot.querySelector('.bitstream-composer-modal-' + name);
             if (modal) {
                 modal.hidden = false;
+                if (activeEditMoodForm) {
+                    composerRoot.dataset.fromEditModal = 'true';
+                } else {
+                    delete composerRoot.dataset.fromEditModal;
+                }
                 const isMobile = window.innerWidth < 1024;
                 if (isMobile) {
                     composerRoot.hidden = false;
+                }
+
+                if (name === 'settings') {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('show_settings', '1');
+                    window.history.replaceState({}, '', url.toString());
                 }
 
                 if (name === 'media') {
@@ -5627,10 +6377,49 @@ jQuery(document).ready(function ($) {
                         updateModalImagePreview();
                     }
                 }
+
+                if (name === 'mood') {
+                    const currentEmoji = activeEditMoodForm 
+                        ? (activeEditMoodForm.querySelector('.bs-edit-mood-emoji').value || '') 
+                        : (hMoodEmoji.value || '');
+                    const currentEmotion = activeEditMoodForm 
+                        ? (activeEditMoodForm.querySelector('.bs-edit-mood-emotion').value || '') 
+                        : (hMoodEmotion.value || '');
+
+                    modal.querySelectorAll('.bitstream-mood-btn').forEach(btn => btn.classList.remove('is-active'));
+                    
+                    const customEmojiInput = modal.querySelector('#bitstream-mood-custom-emoji');
+                    const customEmotionInput = modal.querySelector('#bitstream-mood-custom-emotion');
+                    setCustomEmojiDisplay('');
+                    if (customEmotionInput) customEmotionInput.value = '';
+
+                    let foundPredefined = false;
+                    if (currentEmotion) {
+                        modal.querySelectorAll('.bitstream-mood-btn').forEach(btn => {
+                            if (btn.dataset.emotion.toLowerCase() === currentEmotion.toLowerCase() && btn.dataset.emoji === currentEmoji) {
+                                btn.classList.add('is-active');
+                                foundPredefined = true;
+                            }
+                        });
+
+                        if (!foundPredefined) {
+                            setCustomEmojiDisplay(currentEmoji);
+                            if (customEmotionInput) customEmotionInput.value = currentEmotion;
+                        }
+                    }
+
+                    renderSavedMoods();
+                }
+            }
+            if (typeof window.bitstreamSyncBottomNav === 'function') {
+                window.bitstreamSyncBottomNav();
             }
         }
         function clearComposer() {
             if (form) form.reset();
+            if (typeof window.closeAllBsEmojiPickers === 'function') {
+                window.closeAllBsEmojiPickers();
+            }
             if (hAttachmentId) hAttachmentId.value = '';
             if (hAttachmentIds) hAttachmentIds.value = '';
             if (previewMediaThumb) previewMediaThumb.innerHTML = '';
@@ -5649,6 +6438,10 @@ jQuery(document).ready(function ($) {
             if (hScheduleDatetime) hScheduleDatetime.value = '';
             if (previewSchedule) previewSchedule.hidden = true;
             if (previewDraft) previewDraft.hidden = true;
+            if (hMoodEmoji) hMoodEmoji.value = '';
+            if (hMoodEmotion) hMoodEmotion.value = '';
+            if (previewMood) previewMood.hidden = true;
+            activeEditMoodForm = null;
             if (hEditPostId) hEditPostId.value = '0';
             form.dataset.composerType = 'bit';
             if (submitBtn) submitBtn.textContent = 'Post Bit';
@@ -5661,6 +6454,9 @@ jQuery(document).ready(function ($) {
 
         function closeModal(name, keepPosterOpen = false) {
             setStatus('');
+            if (typeof window.closeAllBsEmojiPickers === 'function') {
+                window.closeAllBsEmojiPickers();
+            }
             if (name === 'composer') {
                 const content = textarea ? textarea.value.trim() : '';
                 const hasRebit = hRebitUrl && hRebitUrl.value.trim();
@@ -5672,6 +6468,10 @@ jQuery(document).ready(function ($) {
                         delete composerRoot.dataset.quickActionSource;
                         composerRoot.querySelectorAll('.bitstream-composer-modal').forEach(m => m.hidden = true);
                         clearComposer();
+                    }, () => {
+                        if (composerSaveDraftActionBtn) {
+                            composerSaveDraftActionBtn.click();
+                        }
                     });
                     return;
                 }
@@ -5681,6 +6481,13 @@ jQuery(document).ready(function ($) {
             } else {
                 const modal = composerRoot.querySelector('.bitstream-composer-modal-' + name);
                 if (modal) {
+                    const isMobile = window.innerWidth < 1024;
+                    const isFromEditModal = composerRoot.dataset.fromEditModal === 'true';
+
+                    if (name === 'mood') {
+                        activeEditMoodForm = null;
+                    }
+
                     if (name === 'rebit') {
                         const mRebitUrl = modal.querySelector('#bitstream-composer-modal-rebit-url');
                         const urlVal = mRebitUrl ? mRebitUrl.value.trim() : '';
@@ -5688,7 +6495,6 @@ jQuery(document).ready(function ($) {
                         if (urlVal && urlVal !== currentUrl) {
                             showDiscardConfirmation('Are you sure you want to discard this ReBit link?', () => {
                                 modal.hidden = true;
-                                const isMobile = window.innerWidth < 1024;
                                 const quickActionSource = composerRoot.dataset.quickActionSource || '';
                                 const shouldCloseComposer = isMobile && !keepPosterOpen && quickActionSource === 'new-rebit';
                                 if (shouldCloseComposer) {
@@ -5700,18 +6506,37 @@ jQuery(document).ready(function ($) {
                         }
                     }
                     modal.hidden = true;
-                    const isMobile = window.innerWidth < 1024;
-                    const quickActionSource = composerRoot.dataset.quickActionSource || '';
-                    const shouldCloseComposer = isMobile && !keepPosterOpen && (
-                        name === 'drafts'
-                        || name === 'scheduled-list'
-                        || (name === 'rebit' && quickActionSource === 'new-rebit')
-                    );
-                    if (shouldCloseComposer) {
-                        composerRoot.hidden = true;
-                        delete composerRoot.dataset.quickActionSource;
+
+                    if (isFromEditModal) {
+                        if (isMobile) {
+                            composerRoot.hidden = true;
+                        }
+                        delete composerRoot.dataset.fromEditModal;
+                    } else {
+                        const quickActionSource = composerRoot.dataset.quickActionSource || '';
+                        const shouldCloseComposer = isMobile && !keepPosterOpen && (
+                            name === 'drafts'
+                            || name === 'scheduled-list'
+                            || name === 'settings'
+                            || name === 'about'
+                            || (name === 'rebit' && quickActionSource === 'new-rebit')
+                        );
+                        if (shouldCloseComposer) {
+                            composerRoot.hidden = true;
+                            delete composerRoot.dataset.quickActionSource;
+                        }
+                    }
+
+                    if (name === 'settings') {
+                        const url = new URL(window.location.href);
+                        url.searchParams.delete('show_settings');
+                        url.searchParams.delete('settings_tab');
+                        window.history.replaceState({}, '', url.toString());
                     }
                 }
+            }
+            if (typeof window.bitstreamSyncBottomNav === 'function') {
+                window.bitstreamSyncBottomNav();
             }
         }
 
@@ -5779,9 +6604,970 @@ jQuery(document).ready(function ($) {
                         submitBtn.textContent = isRebit ? 'Publish Rebit' : 'Post Bit';
                     }
                 }
+                if (type === 'mood') {
+                    if (hMoodEmoji) hMoodEmoji.value = '';
+                    if (hMoodEmotion) hMoodEmotion.value = '';
+                    if (previewMood) previewMood.hidden = true;
+                    activeEditMoodForm = null;
+                }
                 syncPreviewArea();
             });
         });
+
+        // ==========================================
+        // Emoji Picker Factory
+        // ==========================================
+
+        (function () {
+            let _emojiData = null;
+            let _emojiDataPromise = null;
+            const _activePickers = [];
+
+            window.closeAllBsEmojiPickers = function () {
+                _activePickers.forEach(p => p.close());
+            };
+
+            const CATEGORY_ORDER = [
+                'Smileys & Emotion',
+                'People & Body',
+                'Animals & Nature',
+                'Food & Drink',
+                'Travel & Places',
+                'Activities',
+                'Objects',
+                'Symbols',
+                'Flags',
+            ];
+
+            const CATEGORY_ICONS = {
+                'Smileys & Emotion':  '1F600',
+                'People & Body':      '1F44B',
+                'Animals & Nature':   '1F436',
+                'Food & Drink':       '1F355',
+                'Travel & Places':    '2708-FE0F',
+                'Activities':         '26BD',
+                'Objects':            '1F4A1',
+                'Symbols':            '267E-FE0F',
+                'Flags':              '1F3C1',
+            };
+
+            const TONE_COLORS = [
+                { tone: '',      color: '#FFCC22', label: 'Default' },
+                { tone: '1F3FB', color: '#FFDBB4', label: 'Light' },
+                { tone: '1F3FC', color: '#C68642', label: 'Medium-Light' },
+                { tone: '1F3FD', color: '#8D5524', label: 'Medium' },
+                { tone: '1F3FE', color: '#5C3317', label: 'Medium-Dark' },
+                { tone: '1F3FF', color: '#2C1810', label: 'Dark' },
+            ];
+
+            function unifiedToChar(unified) {
+                return String.fromCodePoint(...unified.split('-').map(cp => parseInt(cp, 16)));
+            }
+
+            function getBsRecentEmoji() {
+                try { return JSON.parse(localStorage.getItem('bitstream_recent_emoji') || '[]'); }
+                catch { return []; }
+            }
+
+            function addBsRecentEmoji(emoji) {
+                let arr = getBsRecentEmoji().filter(e => e !== emoji);
+                arr.unshift(emoji);
+                localStorage.setItem('bitstream_recent_emoji', JSON.stringify(arr.slice(0, 24)));
+            }
+
+            function getBsEmojiTone() {
+                return localStorage.getItem('bitstream_emoji_tone') || '';
+            }
+
+            function setBsEmojiTone(tone) {
+                localStorage.setItem('bitstream_emoji_tone', tone);
+            }
+
+            function loadBsEmojiData() {
+                if (_emojiData) return Promise.resolve(_emojiData);
+                if (_emojiDataPromise) return _emojiDataPromise;
+
+                const primaryUrl = 'https://cdn.jsdelivr.net/npm/emoji-datasource@latest/emoji_pretty.json';
+                const localUrl = (window.bitstream_ajax && bitstream_ajax.plugin_url)
+                    ? bitstream_ajax.plugin_url + 'assets/js/emoji_pretty.json'
+                    : null;
+
+                const processRawData = (raw) => {
+                    const categories = {};
+                    const map = {};
+                    raw.sort((a, b) => a.sort_order - b.sort_order);
+                    for (const entry of raw) {
+                        if (entry.category === 'Component') continue;
+                        if (!categories[entry.category]) categories[entry.category] = [];
+                        categories[entry.category].push(entry);
+                        map[entry.unified] = entry;
+                    }
+                    _emojiData = { categories, map, all: raw.filter(e => e.category !== 'Component') };
+                    return _emojiData;
+                };
+
+                _emojiDataPromise = fetch(primaryUrl)
+                    .then(r => {
+                        if (!r.ok) throw new Error('CDN response not ok');
+                        return r.json();
+                    })
+                    .catch(err => {
+                        console.warn('Emoji Picker CDN fetch failed, trying local fallback...', err);
+                        if (!localUrl) throw err;
+                        return fetch(localUrl).then(r => {
+                            if (!r.ok) throw new Error('Local fallback failed');
+                            return r.json();
+                        });
+                    })
+                    .then(processRawData)
+                    .catch(err => {
+                        _emojiDataPromise = null; // allow retry
+                        return Promise.reject(err);
+                    });
+                return _emojiDataPromise;
+            }
+
+            function createBsEmojiPicker() {
+                // Build picker element
+                const tabsHtml = [
+                    `<button type="button" class="bs-emoji-tab" data-category="recent" title="Recently used"><i class="fa-solid fa-clock-rotate-left"></i></button>`,
+                    ...CATEGORY_ORDER.map(cat =>
+                        `<button type="button" class="bs-emoji-tab" data-category="${cat}" title="${cat}">${unifiedToChar(CATEGORY_ICONS[cat])}</button>`
+                    )
+                ].join('');
+
+                const tonesHtml = TONE_COLORS.map(t =>
+                    `<button type="button" class="bs-tone-swatch" data-tone="${t.tone}" style="background:${t.color};" title="${t.label}"></button>`
+                ).join('');
+
+                const pickerEl = document.createElement('div');
+                pickerEl.className = 'bs-emoji-picker';
+                pickerEl.setAttribute('hidden', '');
+                pickerEl.setAttribute('role', 'dialog');
+                pickerEl.setAttribute('aria-label', 'Emoji picker');
+                pickerEl.innerHTML = `
+                    <div class="bs-emoji-picker-top">
+                        <input type="text" class="bs-emoji-picker-search" placeholder="Search emoji\u2026" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                        <button type="button" class="bs-emoji-tone-toggle" title="Skin tone" aria-label="Change skin tone"></button>
+                    </div>
+                    <div class="bs-emoji-tone-row" hidden>${tonesHtml}</div>
+                    <div class="bs-emoji-picker-tabs">${tabsHtml}</div>
+                    <div class="bs-emoji-picker-body">
+                        <div class="bs-emoji-picker-status bs-emoji-picker-empty" hidden>No emoji found</div>
+                        <div class="bs-emoji-picker-status bs-emoji-picker-error" hidden>
+                            <p>Couldn\u2019t load emoji data.</p>
+                            <button type="button" class="bs-emoji-retry-btn">Try again</button>
+                        </div>
+                        <div class="bs-emoji-picker-status bs-emoji-picker-loading" hidden>
+                            <i class="fa-solid fa-spinner fa-spin"></i> Loading\u2026
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(pickerEl);
+
+                const searchInput = pickerEl.querySelector('.bs-emoji-picker-search');
+                const toneToggle  = pickerEl.querySelector('.bs-emoji-tone-toggle');
+                const toneRow     = pickerEl.querySelector('.bs-emoji-tone-row');
+                const toneSwatches = pickerEl.querySelectorAll('.bs-tone-swatch');
+                const tabEls      = pickerEl.querySelectorAll('.bs-emoji-tab');
+                const emptyEl     = pickerEl.querySelector('.bs-emoji-picker-empty');
+                const errorEl     = pickerEl.querySelector('.bs-emoji-picker-error');
+                const loadingEl   = pickerEl.querySelector('.bs-emoji-picker-loading');
+                const retryBtn    = pickerEl.querySelector('.bs-emoji-retry-btn');
+                const bodyContainer = pickerEl.querySelector('.bs-emoji-picker-body');
+
+                const categoryGrids = {}; // Cache map: categoryName -> DOMElement
+
+                // Dedicated grid for search results
+                const searchGrid = document.createElement('div');
+                searchGrid.className = 'bs-emoji-grid';
+                searchGrid.hidden = true;
+                bodyContainer.appendChild(searchGrid);
+
+                let activeCategory = 'Smileys & Emotion';
+                let isOpen = false;
+                let _onSelect = null;
+                let _outsideHandler = null;
+                let _searchTimeout = null;
+
+                // Parse category tab emoji with Twemoji
+                parseEmojis(pickerEl.querySelector('.bs-emoji-picker-tabs'));
+
+                function updateToneToggle() {
+                    const tone = getBsEmojiTone();
+                    const found = TONE_COLORS.find(t => t.tone === tone) || TONE_COLORS[0];
+                    toneToggle.style.background = found.color;
+                    toneSwatches.forEach(s => s.classList.toggle('is-active', s.dataset.tone === tone));
+                }
+                updateToneToggle();
+
+                function clearCachedGrids() {
+                    Object.keys(categoryGrids).forEach(key => {
+                        categoryGrids[key].remove();
+                        delete categoryGrids[key];
+                    });
+                }
+
+                function setState(state) {
+                    emptyEl.hidden   = state !== 'empty';
+                    errorEl.hidden   = state !== 'error';
+                    loadingEl.hidden = state !== 'loading';
+
+                    if (state !== 'grid') {
+                        searchGrid.hidden = true;
+                        Object.values(categoryGrids).forEach(g => g.hidden = true);
+                    }
+                }
+
+                function createGridElement(entries) {
+                    const gridEl = document.createElement('div');
+                    gridEl.className = 'bs-emoji-grid';
+                    gridEl.hidden = true;
+
+                    entries.forEach(entry => {
+                        const char = unifiedToChar(entry.unified);
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'bs-emoji-btn';
+                        btn.dataset.unified = entry.unified;
+                        btn.dataset.emoji = char;
+                        btn.title = entry.short_name.replace(/_/g, ' ');
+                        if (entry.skin_variations && Object.keys(entry.skin_variations).length) {
+                            btn.dataset.hasTones = '1';
+                        }
+                        btn.textContent = char;
+                        gridEl.appendChild(btn);
+                    });
+
+                    parseEmojis(gridEl);
+                    gridEl.querySelectorAll('.bs-emoji-btn').forEach(btn => {
+                        if (!btn.querySelector('img')) btn.style.display = 'none';
+                    });
+
+                    return gridEl;
+                }
+
+                function renderCategory(category) {
+                    if (!_emojiData) return;
+
+                    searchGrid.hidden = true;
+                    Object.keys(categoryGrids).forEach(key => {
+                        categoryGrids[key].hidden = true;
+                    });
+
+                    if (category === 'recent') {
+                        if (categoryGrids.recent) {
+                            categoryGrids.recent.remove();
+                        }
+                        const recent = getBsRecentEmoji();
+                        if (!recent.length) {
+                            setState('empty');
+                            return;
+                        }
+                        const entries = recent.flatMap(char => {
+                            const entry = Object.values(_emojiData.map).find(e => unifiedToChar(e.unified) === char);
+                            return entry ? [entry] : [];
+                        });
+                        const recentGrid = createGridElement(entries);
+                        bodyContainer.appendChild(recentGrid);
+                        categoryGrids.recent = recentGrid;
+
+                        const visibleCount = recentGrid.querySelectorAll('.bs-emoji-btn:not([style*="display: none"])').length;
+                        if (visibleCount === 0) {
+                            setState('empty');
+                        } else {
+                            recentGrid.hidden = false;
+                            setState('grid');
+                        }
+                        return;
+                    }
+
+                    if (!categoryGrids[category]) {
+                        const entries = _emojiData.categories[category] || [];
+                        if (!entries.length) {
+                            setState('empty');
+                            return;
+                        }
+                        const newGrid = createGridElement(entries);
+                        bodyContainer.appendChild(newGrid);
+                        categoryGrids[category] = newGrid;
+                    }
+
+                    const activeGrid = categoryGrids[category];
+                    const visibleCount = activeGrid.querySelectorAll('.bs-emoji-btn:not([style*="display: none"])').length;
+                    if (visibleCount === 0) {
+                        setState('empty');
+                    } else {
+                        activeGrid.hidden = false;
+                        setState('grid');
+                    }
+                }
+
+                function renderSearch(query) {
+                    if (!_emojiData) return;
+
+                    Object.keys(categoryGrids).forEach(key => {
+                        categoryGrids[key].hidden = true;
+                    });
+
+                    const q = query.toLowerCase().trim();
+                    const qUnderscore = q.replace(/\s+/g, '_');
+                    const results = _emojiData.all.filter(e => {
+                        const name = (e.name || '').toLowerCase();
+                        return e.short_names.some(n => n.includes(qUnderscore)) || name.includes(q);
+                    });
+
+                    searchGrid.innerHTML = '';
+                    results.forEach(entry => {
+                        const char = unifiedToChar(entry.unified);
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'bs-emoji-btn';
+                        btn.dataset.unified = entry.unified;
+                        btn.dataset.emoji = char;
+                        btn.title = entry.short_name.replace(/_/g, ' ');
+                        if (entry.skin_variations && Object.keys(entry.skin_variations).length) {
+                            btn.dataset.hasTones = '1';
+                        }
+                        btn.textContent = char;
+                        searchGrid.appendChild(btn);
+                    });
+
+                    parseEmojis(searchGrid);
+                    searchGrid.querySelectorAll('.bs-emoji-btn').forEach(btn => {
+                        if (!btn.querySelector('img')) btn.style.display = 'none';
+                    });
+
+                    const visibleCount = searchGrid.querySelectorAll('.bs-emoji-btn:not([style*="display: none"])').length;
+                    if (visibleCount === 0) {
+                        setState('empty');
+                    } else {
+                        searchGrid.hidden = false;
+                        setState('grid');
+                    }
+                }
+
+                function setActiveTab(category) {
+                    activeCategory = category;
+                    tabEls.forEach(t => t.classList.toggle('is-active', t.dataset.category === category));
+                }
+
+                function positionPicker(triggerEl) {
+                    const rect = triggerEl.getBoundingClientRect();
+                    const pickerH = 400;
+                    const vp = { w: window.innerWidth, h: window.innerHeight };
+                    const navH = window.innerWidth < 1024 ? 56 : 0;
+
+                    // Match nearest modal dialog width if inside one
+                    const dialog = triggerEl.closest('.bitstream-composer-modal-dialog, .bs-edit-modal-dialog');
+                    let pickerW = 320;
+                    let left = rect.left;
+
+                    if (dialog) {
+                        const dialogRect = dialog.getBoundingClientRect();
+                        pickerW = dialogRect.width;
+                        left = dialogRect.left;
+                        
+                        if (window.innerWidth < 1024) {
+                            const margin = 16;
+                            pickerW = Math.min(320, vp.w - (margin * 2));
+                            left = (vp.w - pickerW) / 2;
+                            pickerEl.style.width = pickerW + 'px';
+                            pickerEl.style.borderRadius = '16px';
+                        } else {
+                            pickerEl.style.width = pickerW + 'px';
+                            pickerEl.style.borderRadius = '0 0 20px 20px';
+                        }
+                    } else {
+                        if (window.innerWidth < 1024) {
+                            const margin = 16;
+                            pickerW = Math.min(320, vp.w - (margin * 2));
+                            pickerEl.style.width = pickerW + 'px';
+                        } else {
+                            pickerW = 320;
+                            pickerEl.style.width = '320px';
+                        }
+                        pickerEl.style.borderRadius = '16px';
+                    }
+
+                    let top = (rect.bottom + 6 + pickerH < vp.h - navH)
+                        ? rect.bottom + 6
+                        : rect.top - pickerH - 6;
+
+                    if (!dialog) {
+                        if (left + pickerW > vp.w - 8) left = vp.w - pickerW - 8;
+                        if (left < 8) left = 8;
+                    }
+                    if (top < 8) top = 8;
+
+                    pickerEl.style.top  = top + 'px';
+                    pickerEl.style.left = left + 'px';
+                }
+
+                // Picker inner body clicks
+                bodyContainer.addEventListener('click', e => {
+                    const btn = e.target.closest('.bs-emoji-btn');
+                    if (!btn) return;
+                    let emoji = btn.dataset.emoji;
+                    const tone = getBsEmojiTone();
+                    if (btn.dataset.hasTones && tone && _emojiData) {
+                        const entry = _emojiData.map[btn.dataset.unified];
+                        if (entry && entry.skin_variations && entry.skin_variations[tone]) {
+                            emoji = unifiedToChar(entry.skin_variations[tone].unified);
+                        }
+                    }
+                    addBsRecentEmoji(emoji);
+                    if (_onSelect) _onSelect(emoji);
+                    close();
+                });
+
+                // Tab clicks
+                tabEls.forEach(tab => {
+                    tab.addEventListener('click', () => {
+                        searchInput.value = '';
+                        setActiveTab(tab.dataset.category);
+                        renderCategory(activeCategory);
+                    });
+                });
+
+                // Search
+                searchInput.addEventListener('input', () => {
+                    clearTimeout(_searchTimeout);
+                    _searchTimeout = setTimeout(() => {
+                        const q = searchInput.value.trim();
+                        if (!q) {
+                            setActiveTab(activeCategory);
+                            renderCategory(activeCategory);
+                        } else {
+                            tabEls.forEach(t => t.classList.remove('is-active'));
+                            renderSearch(q);
+                        }
+                    }, 180);
+                });
+
+                // Tone toggle
+                toneToggle.addEventListener('click', e => {
+                    e.stopPropagation();
+                    toneRow.hidden = !toneRow.hidden;
+                });
+
+                toneSwatches.forEach(swatch => {
+                    swatch.addEventListener('click', e => {
+                        e.stopPropagation();
+                        setBsEmojiTone(swatch.dataset.tone);
+                        updateToneToggle();
+                        toneRow.hidden = true;
+                        clearCachedGrids();
+                        const q = searchInput.value.trim();
+                        if (q) renderSearch(q); else renderCategory(activeCategory);
+                    });
+                });
+
+                // Retry on load failure
+                retryBtn.addEventListener('click', () => {
+                    setState('loading');
+                    loadBsEmojiData()
+                        .then(() => renderCategory(activeCategory))
+                        .catch(() => setState('error'));
+                });
+
+                // Escape key
+                pickerEl.addEventListener('keydown', e => {
+                    if (e.key === 'Escape') close();
+                });
+
+                // Prevent outside-click handler from triggering on inner clicks
+                pickerEl.addEventListener('mousedown', e => e.stopPropagation());
+
+                function open(triggerEl, onSelectCallback) {
+                    if (isOpen) { close(); return; }
+                    window.closeAllBsEmojiPickers();
+                    _onSelect = onSelectCallback;
+                    isOpen = true;
+                    pickerEl.removeAttribute('hidden');
+                    positionPicker(triggerEl);
+
+                    const initialTab = getBsRecentEmoji().length > 0 ? 'recent' : 'Smileys & Emotion';
+                    setActiveTab(initialTab);
+                    setState('loading');
+                    searchInput.value = '';
+
+                    loadBsEmojiData()
+                        .then(() => renderCategory(activeCategory))
+                        .catch(() => setState('error'));
+
+                    // Delay outside-click listener so the triggering click doesn't close immediately
+                    setTimeout(() => {
+                        _outsideHandler = () => close();
+                        document.addEventListener('mousedown', _outsideHandler);
+                    }, 0);
+                }
+
+                function close() {
+                    if (!isOpen) return;
+                    isOpen = false;
+                    _onSelect = null;
+                    pickerEl.setAttribute('hidden', '');
+                    toneRow.hidden = true;
+                    if (_outsideHandler) {
+                        document.removeEventListener('mousedown', _outsideHandler);
+                        _outsideHandler = null;
+                    }
+                }
+
+                const pickerInst = { open, close };
+                _activePickers.push(pickerInst);
+                return pickerInst;
+            }
+
+            window.createBsEmojiPicker = createBsEmojiPicker;
+        })();
+
+        // ==========================================
+        // Mood Modal Implementation
+        // ==========================================
+
+        const moodPredefinedButtons = moodModal ? moodModal.querySelectorAll('.bitstream-mood-btn') : [];
+        const customEmojiInput = moodModal ? moodModal.querySelector('#bitstream-mood-custom-emoji') : null;
+        const customEmotionInput = moodModal ? moodModal.querySelector('#bitstream-mood-custom-emotion') : null;
+        const moodDoneBtn = moodModal ? moodModal.querySelector('.bitstream-composer-mood-done') : null;
+        const emojiTriggerBtn = moodModal ? moodModal.querySelector('#bitstream-mood-emoji-trigger') : null;
+
+        const savedMoodsGrid = moodModal ? moodModal.querySelector('.bitstream-saved-moods-grid') : null;
+        const savedMoodsEditList = moodModal ? moodModal.querySelector('.bitstream-saved-moods-edit-list') : null;
+        const manageMoodsBtn = moodModal ? moodModal.querySelector('.bitstream-manage-moods-btn') : null;
+        let isManagingMoods = false;
+        let moodEditsMap = {};
+
+        // One shared picker instance for the entire mood modal
+        const moodEmojiPicker = (typeof createBsEmojiPicker === 'function') ? createBsEmojiPicker() : null;
+
+        // One shared picker instance for inserting emojis into text inputs/areas
+        const textEmojiPicker = (typeof createBsEmojiPicker === 'function') ? createBsEmojiPicker() : null;
+
+        function insertEmojiAtCursor(inputEl, emoji) {
+            if (!inputEl) return;
+            const startPos = inputEl.selectionStart;
+            const endPos = inputEl.selectionEnd;
+            const text = inputEl.value;
+            const before = text.substring(0, startPos);
+            const after = text.substring(endPos, text.length);
+            inputEl.value = before + emoji + after;
+            inputEl.selectionStart = inputEl.selectionEnd = startPos + emoji.length;
+            inputEl.focus();
+            inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        // Delegate click handler to document body to handle any present or dynamic .bs-insert-emoji-btn
+        document.body.addEventListener('click', (e) => {
+            const btn = e.target.closest('.bs-insert-emoji-btn');
+            if (!btn || !textEmojiPicker) return;
+            e.preventDefault();
+            const targetSelector = btn.getAttribute('data-target-input');
+            const targetInput = document.querySelector(targetSelector);
+            if (targetInput) {
+                textEmojiPicker.open(btn, (emoji) => {
+                    insertEmojiAtCursor(targetInput, emoji);
+                });
+            }
+        });
+
+        // Sync trigger button appearance with the hidden emoji input value
+        function setCustomEmojiDisplay(emoji) {
+            if (customEmojiInput) customEmojiInput.value = emoji || '';
+            if (!emojiTriggerBtn) return;
+            if (emoji) {
+                emojiTriggerBtn.textContent = emoji;
+                parseEmojis(emojiTriggerBtn);
+                emojiTriggerBtn.style.color = 'inherit';
+                emojiTriggerBtn.style.borderColor = 'var(--wp--preset--color--accent-1, #2c6e49)';
+            } else {
+                emojiTriggerBtn.innerHTML = '<i class="fa-solid fa-plus" style="font-size: 1rem;" aria-hidden="true"></i>';
+                emojiTriggerBtn.style.color = '#94a3b8';
+                emojiTriggerBtn.style.borderColor = '';
+            }
+        }
+
+        if (moodModal) {
+            parseEmojis(moodModal);
+        }
+
+        function renderSavedMoods() {
+            if (!savedMoodsGrid || !savedMoodsEditList) return;
+
+            if (manageMoodsBtn) {
+                if (customMoods.length === 0) {
+                    manageMoodsBtn.style.display = 'none';
+                    isManagingMoods = false;
+                } else {
+                    manageMoodsBtn.style.display = 'flex';
+                    manageMoodsBtn.innerHTML = isManagingMoods 
+                        ? '<i class="fa-solid fa-check"></i> Done' 
+                        : '<i class="fa-solid fa-gear"></i> Manage';
+                }
+            }
+
+            if (isManagingMoods) {
+                savedMoodsGrid.style.display = 'none';
+                savedMoodsEditList.style.display = 'flex';
+                savedMoodsEditList.innerHTML = '';
+
+                customMoods.forEach((mood, index) => {
+                    const row = document.createElement('div');
+                    row.className = 'bitstream-mood-manage-item';
+                    row.innerHTML = `
+                        <div class="bitstream-mood-manage-info" style="display: flex; gap: 6px; align-items: center; flex: 1; margin-right: 10px;">
+                            <span class="bs-mood-emoji-display" data-index="${index}" title="Click to change emoji" style="display: flex; align-items: center; justify-content: center; width: 36px; height: 32px; flex-shrink: 0; border: 1.5px solid #e2e8f0; border-radius: 8px; background: #fff; cursor: pointer; box-sizing: border-box; font-size: 1.1rem;">${mood.emoji}</span>
+                            <input type="text" class="bs-mood-edit-emotion" data-index="${index}" value="${mood.emotion}" style="flex: 1; height: 32px; border: 1.5px solid #e2e8f0; border-radius: 8px; background: #fff; padding: 0 8px; box-sizing: border-box; font-size: 0.85rem;">
+                        </div>
+                        <div class="bitstream-mood-manage-actions">
+                            <button type="button" class="bitstream-mood-sort-btn bs-mood-up" data-index="${index}" ${index === 0 ? 'disabled' : ''} title="Move Up"><i class="fa-solid fa-arrow-up"></i></button>
+                            <button type="button" class="bitstream-mood-sort-btn bs-mood-down" data-index="${index}" ${index === customMoods.length - 1 ? 'disabled' : ''} title="Move Down"><i class="fa-solid fa-arrow-down"></i></button>
+                            <button type="button" class="bitstream-mood-delete-btn bs-mood-delete" data-index="${index}" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    `;
+                    savedMoodsEditList.appendChild(row);
+
+                    // Render the emoji via Twemoji
+                    const emojiSpan = row.querySelector('.bs-mood-emoji-display');
+                    parseEmojis(emojiSpan);
+
+                    // Clicking the span opens the picker; selection updates the span and records the edit
+                    emojiSpan.addEventListener('click', () => {
+                        if (!moodEmojiPicker) return;
+                        const idx = parseInt(emojiSpan.dataset.index, 10);
+                        const oldEmoji   = customMoods[idx].emoji;
+                        const oldEmotion = customMoods[idx].emotion;
+                        moodEmojiPicker.open(emojiSpan, (emoji) => {
+                            customMoods[idx].emoji = emoji;
+                            const oldKey = `${oldEmoji}|${oldEmotion}`;
+                            if (oldEmotion && (oldEmoji !== emoji)) {
+                                moodEditsMap[oldKey] = { emoji, emotion: oldEmotion };
+                            }
+                            emojiSpan.textContent = emoji;
+                            parseEmojis(emojiSpan);
+                        });
+                    });
+                });
+
+
+                let focusOldEmoji = '';
+                let focusOldEmotion = '';
+
+                savedMoodsEditList.querySelectorAll('.bs-mood-edit-emotion').forEach(input => {
+                    input.addEventListener('focus', () => {
+                        const idx = parseInt(input.dataset.index, 10);
+                        focusOldEmoji = customMoods[idx].emoji;
+                        focusOldEmotion = customMoods[idx].emotion;
+                    });
+
+                    input.addEventListener('change', () => {
+                        const idx = parseInt(input.dataset.index, 10);
+                        const oldKey = `${focusOldEmoji}|${focusOldEmotion}`;
+                        customMoods[idx].emotion = input.value.trim();
+                        const newEmoji   = customMoods[idx].emoji;
+                        const newEmotion = customMoods[idx].emotion;
+                        if (newEmotion && (focusOldEmoji !== newEmoji || focusOldEmotion !== newEmotion)) {
+                            moodEditsMap[oldKey] = { emoji: newEmoji, emotion: newEmotion };
+                        }
+                    });
+                });
+
+
+                savedMoodsEditList.querySelectorAll('.bs-mood-up').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const idx = parseInt(btn.dataset.index, 10);
+                        if (idx > 0) {
+                            const temp = customMoods[idx];
+                            customMoods[idx] = customMoods[idx - 1];
+                            customMoods[idx - 1] = temp;
+                            renderSavedMoods();
+                        }
+                    });
+                });
+
+                savedMoodsEditList.querySelectorAll('.bs-mood-down').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const idx = parseInt(btn.dataset.index, 10);
+                        if (idx < customMoods.length - 1) {
+                            const temp = customMoods[idx];
+                            customMoods[idx] = customMoods[idx + 1];
+                            customMoods[idx + 1] = temp;
+                            renderSavedMoods();
+                        }
+                    });
+                });
+
+                savedMoodsEditList.querySelectorAll('.bs-mood-delete').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const idx = parseInt(btn.dataset.index, 10);
+                        customMoods.splice(idx, 1);
+                        renderSavedMoods();
+                    });
+                });
+
+            } else {
+                savedMoodsGrid.style.display = 'grid';
+                savedMoodsEditList.style.display = 'none';
+                savedMoodsGrid.innerHTML = '';
+
+                const currentEmoji = activeEditMoodForm 
+                    ? (activeEditMoodForm.querySelector('.bs-edit-mood-emoji').value || '') 
+                    : (hMoodEmoji.value || '');
+                const currentEmotion = activeEditMoodForm 
+                    ? (activeEditMoodForm.querySelector('.bs-edit-mood-emotion').value || '') 
+                    : (hMoodEmotion.value || '');
+
+                customMoods.forEach(mood => {
+                    const isActive = mood.emotion.toLowerCase() === currentEmotion.toLowerCase() && mood.emoji === currentEmoji;
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'bitstream-mood-btn' + (isActive ? ' is-active' : '');
+                    btn.dataset.emoji = mood.emoji;
+                    btn.dataset.emotion = mood.emotion;
+                    btn.style.cssText = 'display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease;';
+                    btn.innerHTML = `
+                        <span style="font-size: 1.8rem; margin-bottom: 4px;">${mood.emoji}</span>
+                        <span style="font-size: 0.85rem; font-weight: 500; color: #475569;">${mood.emotion}</span>
+                    `;
+                    
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        moodModal.querySelectorAll('.bitstream-mood-btn').forEach(b => b.classList.remove('is-active'));
+                        btn.classList.add('is-active');
+                        setCustomEmojiDisplay('');
+                        if (customEmotionInput) customEmotionInput.value = '';
+                    });
+
+                    savedMoodsGrid.appendChild(btn);
+                });
+                parseEmojis(savedMoodsGrid);
+            }
+        }
+
+        if (manageMoodsBtn) {
+            manageMoodsBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (isManagingMoods) {
+                    isManagingMoods = false;
+                    renderSavedMoods();
+                    syncCustomMoodsToServer();
+                } else {
+                    isManagingMoods = true;
+                    moodEditsMap = {};
+                    renderSavedMoods();
+                }
+            });
+        }
+
+        function propagateMoodEditsToTimeline(edits) {
+            if (!edits || Object.keys(edits).length === 0) return;
+
+            document.querySelectorAll('.bit-card').forEach(card => {
+                const headerMoodEl = card.querySelector('.bit-mood-status');
+                if (headerMoodEl) {
+                    const strong = headerMoodEl.querySelector('strong');
+                    const emotion = strong ? strong.textContent.trim() : '';
+                    const text = headerMoodEl.textContent;
+                    for (const oldKey in edits) {
+                        const [oldEmoji, oldEmotion] = oldKey.split('|');
+                        if (emotion.toLowerCase() === oldEmotion.toLowerCase() || text.includes(oldEmotion)) {
+                            headerMoodEl.innerHTML = `is feeling ${edits[oldKey].emoji} <strong style="color:var(--wp--preset--color--accent-1, #2c6e49);">${edits[oldKey].emotion}</strong>`;
+                            parseEmojis(headerMoodEl);
+                        }
+                    }
+                }
+
+                const pureMoodEl = card.querySelector('.bit-card-pure-mood');
+                if (pureMoodEl) {
+                    const strong = pureMoodEl.querySelector('.bit-pure-mood-text strong');
+                    const emojiSpan = pureMoodEl.querySelector('.bit-pure-mood-emoji');
+                    const emotion = strong ? strong.textContent.trim() : '';
+                    
+                    let updated = false;
+                    for (const oldKey in edits) {
+                        const [oldEmoji, oldEmotion] = oldKey.split('|');
+                        if (emotion.toLowerCase() === oldEmotion.toLowerCase()) {
+                            if (strong) strong.textContent = edits[oldKey].emotion;
+                            if (emojiSpan) {
+                                emojiSpan.textContent = edits[oldKey].emoji;
+                                updated = true;
+                            }
+                        }
+                    }
+                    if (updated) {
+                        parseEmojis(pureMoodEl);
+                    }
+                }
+            });
+        }
+
+        function syncCustomMoodsToServer() {
+            if (!window.bitstream_ajax || !bitstream_ajax.ajax_url || !submitNonce) return;
+
+            const syncPayload = new FormData();
+            syncPayload.append('action', 'bitstream_save_custom_moods');
+            syncPayload.append('nonce', submitNonce);
+            syncPayload.append('moods', JSON.stringify(customMoods));
+            syncPayload.append('edits', JSON.stringify(moodEditsMap));
+
+            fetch(bitstream_ajax.ajax_url, {
+                method: 'POST',
+                credentials: 'same-origin',
+                body: syncPayload
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.data && data.data.custom_moods) {
+                    customMoods = data.data.custom_moods;
+                    propagateMoodEditsToTimeline(moodEditsMap);
+                    moodEditsMap = {};
+                }
+            })
+            .catch(err => console.error('BitStream: Error syncing custom moods:', err));
+        }
+
+        moodPredefinedButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                moodModal.querySelectorAll('.bitstream-mood-btn').forEach(b => b.classList.remove('is-active'));
+                btn.classList.add('is-active');
+                setCustomEmojiDisplay('');
+                if (customEmotionInput) customEmotionInput.value = '';
+            });
+        });
+
+        const clearHighlights = () => {
+            moodModal.querySelectorAll('.bitstream-mood-btn').forEach(b => b.classList.remove('is-active'));
+        };
+
+        // Wire emoji picker to the custom mood trigger button
+        if (emojiTriggerBtn && moodEmojiPicker) {
+            emojiTriggerBtn.addEventListener('click', () => {
+                clearHighlights();
+                moodEmojiPicker.open(emojiTriggerBtn, (emoji) => {
+                    setCustomEmojiDisplay(emoji);
+                });
+            });
+        }
+
+        if (customEmotionInput) customEmotionInput.addEventListener('input', clearHighlights);
+
+        if (moodDoneBtn) {
+            moodDoneBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                let emoji = '';
+                let emotion = '';
+
+                const activeBtn = moodModal.querySelector('.bitstream-mood-btn.is-active');
+                if (activeBtn) {
+                    emoji = activeBtn.dataset.emoji || '';
+                    emotion = activeBtn.dataset.emotion || '';
+                } else {
+                    emoji = customEmojiInput ? customEmojiInput.value.trim() : '';
+                    emotion = customEmotionInput ? customEmotionInput.value.trim() : '';
+                }
+
+                if (emotion && !emoji) {
+                    emoji = '😊';
+                }
+
+                if (activeEditMoodForm) {
+                    const editEmojiInput = activeEditMoodForm.querySelector('.bs-edit-mood-emoji');
+                    const editEmotionInput = activeEditMoodForm.querySelector('.bs-edit-mood-emotion');
+                    const editMoodLabel = activeEditMoodForm.querySelector('.bs-edit-mood-label');
+                    const editMoodRemove = activeEditMoodForm.querySelector('.bs-edit-mood-remove');
+
+                    if (editEmojiInput) editEmojiInput.value = emoji;
+                    if (editEmotionInput) editEmotionInput.value = emotion;
+
+                    if (editMoodLabel && editMoodRemove) {
+                        if (emotion) {
+                            editMoodLabel.textContent = `${emoji} Feeling ${emotion}`;
+                            parseEmojis(editMoodLabel);
+                            editMoodRemove.style.display = 'inline-block';
+                        } else {
+                            editMoodLabel.textContent = 'Add Mood';
+                            editMoodRemove.style.display = 'none';
+                        }
+                    }
+                    activeEditMoodForm = null;
+                } else {
+                    if (hMoodEmoji) hMoodEmoji.value = emoji;
+                    if (hMoodEmotion) hMoodEmotion.value = emotion;
+
+                    if (previewMood && previewMoodText) {
+                        if (emotion) {
+                            previewMoodText.textContent = `${emoji} Feeling ${emotion}`;
+                            parseEmojis(previewMoodText);
+                            previewMood.hidden = false;
+                        } else {
+                            previewMoodText.textContent = '';
+                            previewMood.hidden = true;
+                        }
+                    }
+                    syncPreviewArea();
+                }
+
+                closeModal('mood');
+            });
+        }
+
+        if (previewMood) {
+            const editBtn = previewMood.querySelector('.bitstream-composer-preview-edit');
+            const removeBtn = previewMood.querySelector('.bitstream-composer-preview-remove');
+
+            if (editBtn) {
+                editBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    activeEditMoodForm = null;
+                    openModal('mood');
+                });
+            }
+
+            if (removeBtn) {
+                removeBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (hMoodEmoji) hMoodEmoji.value = '';
+                    if (hMoodEmotion) hMoodEmotion.value = '';
+                    previewMood.hidden = true;
+                    syncPreviewArea();
+                });
+            }
+        }
+
+        const wireTimelineEditMoodButtons = (editForm) => {
+            const editMoodBtn = editForm.querySelector('.bs-edit-mood-btn');
+            const editMoodRemove = editForm.querySelector('.bs-edit-mood-remove');
+
+            if (editMoodBtn) {
+                editMoodBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    activeEditMoodForm = editForm;
+                    openModal('mood');
+                });
+            }
+
+            if (editMoodRemove) {
+                editMoodRemove.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const editEmojiInput = editForm.querySelector('.bs-edit-mood-emoji');
+                    const editEmotionInput = editForm.querySelector('.bs-edit-mood-emotion');
+                    const editMoodLabel = editForm.querySelector('.bs-edit-mood-label');
+
+                    if (editEmojiInput) editEmojiInput.value = '';
+                    if (editEmotionInput) editEmotionInput.value = '';
+                    if (editMoodLabel) editMoodLabel.textContent = 'Add Mood';
+                    editMoodRemove.style.display = 'none';
+                });
+            }
+        };
+
+        const editForm = document.querySelector('.bs-edit-form-unified') || document.querySelector('.bs-edit-form-bit') || document.querySelector('.bs-edit-form');
+        if (editForm) wireTimelineEditMoodButtons(editForm);
 
         // DRY Helper: Load draft or scheduled post into composer
         function loadPostIntoComposer(postId) {
@@ -6397,6 +8183,9 @@ jQuery(document).ready(function ($) {
         if (urlParams.has('show_scheduled') || urlParams.get('composer_tab') === 'scheduled') {
             openModal('scheduled-list');
         }
+        if (urlParams.has('show_settings') || urlParams.get('composer_tab') === 'settings') {
+            openModal('settings');
+        }
         if (urlParams.has('show_rebit') || urlParams.get('composer_tab') === 'rebit') {
             const rebitBtn = composerRoot.querySelector('[data-composer-modal="rebit"]');
             if (rebitBtn) {
@@ -6614,6 +8403,7 @@ jQuery(document).ready(function ($) {
             const content = textarea ? textarea.value.trim() : '';
             const hasMedia = hAttachmentId && parseInt(hAttachmentId.value || '0', 10) > 0;
             const hasRebit = hRebitUrl && hRebitUrl.value.trim();
+            const hasMood = hMoodEmotion && hMoodEmotion.value.trim();
 
             let effectiveType = composerType;
             if (composerType === 'bit' && !hasMedia && !hasRebit && content) {
@@ -6623,7 +8413,7 @@ jQuery(document).ready(function ($) {
                 } catch { }
             }
 
-            if (effectiveType === 'bit' && !content && !hasMedia) { setStatus('Write something or attach media.', true); return; }
+            if (effectiveType === 'bit' && !content && !hasMedia && !hasMood) { setStatus('Write something or attach media.', true); return; }
 
             setStatus(effectiveType === 'rebit' ? 'Posting ReBit...' : 'Posting...');
             if (submitBtn) submitBtn.disabled = true;
@@ -6679,6 +8469,10 @@ jQuery(document).ready(function ($) {
                     if (submitBtn) submitBtn.disabled = false;
                 });
         });
+
+        window.bitstreamCloseModal = closeModal;
+        window.bitstreamOpenModal = openModal;
+        window.bitstreamClearComposer = clearComposer;
     });
 
     // Handle standard WP comment form submission via AJAX (also handles moved forms for nested replies)
@@ -6810,7 +8604,7 @@ jQuery(document).ready(function ($) {
                     const html = await response.text();
                     const temp = document.createElement('div');
                     temp.innerHTML = html;
-                    let newCards = Array.from(temp.querySelectorAll('.bit-card'));
+                    let newCards = Array.from(temp.querySelectorAll(':scope > .bit-card'));
 
                     if (maxPosts > 0) {
                         const remaining = maxPosts - loadedCount;
@@ -6871,10 +8665,31 @@ jQuery(document).ready(function ($) {
                     return;
                 }
 
-                // Navigate via URL so the page reloads with fresh data
+                // Toggle active class on tab buttons
+                settingsTabButtons.forEach(btn => {
+                    btn.classList.remove('is-active');
+                    btn.setAttribute('aria-selected', 'false');
+                });
+                button.classList.add('is-active');
+                button.setAttribute('aria-selected', 'true');
+
+                // Toggle visibility on settings panels
+                const panels = settingsRoot.querySelectorAll('.bitstream-settings-panel');
+                panels.forEach(panel => {
+                    if (panel.id === `bitstream-settings-panel-${selectedTab}`) {
+                        panel.classList.add('is-active');
+                        panel.hidden = false;
+                    } else {
+                        panel.classList.remove('is-active');
+                        panel.hidden = true;
+                    }
+                });
+
+                // Update URL parameter in history without reloading
                 const url = new URL(window.location.href);
                 url.searchParams.set('settings_tab', selectedTab);
-                window.location.href = url.toString();
+                url.searchParams.set('show_settings', '1');
+                window.history.replaceState({}, '', url.toString());
             });
         });
 
@@ -6955,6 +8770,12 @@ jQuery(document).ready(function ($) {
     let lightboxMediaList = [];
     let lightboxCurrentIndex = 0;
 
+    // DOM handoff state — tracks the timeline video element moved into the lightbox
+    let lightboxOriginVideo = null;
+    let lightboxOriginParent = null;
+    let lightboxOriginNextSibling = null;
+    let lightboxOriginStyle = '';
+
     function initLightbox() {
         if (document.querySelector('.bitstream-lightbox')) {
             return;
@@ -7011,14 +8832,75 @@ jQuery(document).ready(function ($) {
         lightboxEl.classList.remove('is-open');
         lightboxEl.setAttribute('aria-hidden', 'true');
         document.body.style.overflow = '';
+
         const stage = lightboxEl.querySelector('.bitstream-lightbox-stage');
-        if (stage) {
+
+        if (lightboxOriginVideo) {
+            // Pause and return the video node to its original position in the card
+            lightboxOriginVideo.pause();
+            lightboxOriginVideo.classList.remove('bitstream-lightbox-media');
+            lightboxOriginVideo.setAttribute('style', lightboxOriginStyle);
+            if (lightboxOriginNextSibling) {
+                lightboxOriginParent.insertBefore(lightboxOriginVideo, lightboxOriginNextSibling);
+            } else {
+                lightboxOriginParent.appendChild(lightboxOriginVideo);
+            }
+            lightboxOriginVideo = null;
+            lightboxOriginParent = null;
+            lightboxOriginNextSibling = null;
+            lightboxOriginStyle = '';
+        } else if (stage) {
             const video = stage.querySelector('video');
             if (video) video.pause();
         }
+
         setTimeout(() => {
+            if (stage && !lightboxOriginVideo) stage.innerHTML = '';
             lightboxEl.style.display = 'none';
         }, 250);
+    }
+
+    // Opens the lightbox by physically moving a timeline video node into the stage
+    function openLightboxWithVideo(videoEl) {
+        initLightbox();
+
+        // Pause every other playing video on the page
+        document.querySelectorAll('video').forEach(v => { if (v !== videoEl) v.pause(); });
+
+        // Record origin so we can restore on close
+        lightboxOriginVideo = videoEl;
+        lightboxOriginParent = videoEl.parentNode;
+        lightboxOriginNextSibling = videoEl.nextSibling;
+        lightboxOriginStyle = videoEl.getAttribute('style') || '';
+
+        const stage = lightboxEl.querySelector('.bitstream-lightbox-stage');
+        stage.innerHTML = '';
+
+        // Apply lightbox media class; clear any card-specific inline sizing so CSS governs
+        videoEl.classList.add('bitstream-lightbox-media');
+        videoEl.style.removeProperty('width');
+        videoEl.style.removeProperty('height');
+        videoEl.style.removeProperty('max-height');
+        videoEl.style.removeProperty('margin');
+        videoEl.style.setProperty('max-width', '100%', 'important');
+        videoEl.style.setProperty('border-radius', '4px', 'important');
+        stage.appendChild(videoEl);
+
+        const counter = lightboxEl.querySelector('.bitstream-lightbox-counter');
+        const prevBtn = lightboxEl.querySelector('.bitstream-lightbox-nav-prev');
+        const nextBtn = lightboxEl.querySelector('.bitstream-lightbox-nav-next');
+        counter.textContent = '';
+        prevBtn.style.display = 'none';
+        nextBtn.style.display = 'none';
+
+        lightboxMediaList = [];
+        lightboxCurrentIndex = 0;
+
+        lightboxEl.style.display = 'flex';
+        lightboxEl.offsetHeight; // force reflow for transition
+        lightboxEl.classList.add('is-open');
+        lightboxEl.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
     }
 
     function showLightboxItem(index) {
@@ -7153,6 +9035,11 @@ jQuery(document).ready(function ($) {
                     if (clickY > rect.height - controlsHeight) {
                         return;
                     }
+                    // Video clicked outside controls — hand it off to the lightbox
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openLightboxWithVideo(item);
+                    return;
                 }
 
                 e.preventDefault();
@@ -7470,6 +9357,30 @@ jQuery(document).ready(function ($) {
         return outputArray;
     }
 
+    // Clicking a quoted bit takes you to that bit
+    document.addEventListener('click', (event) => {
+        const quotedPreview = event.target.closest('.bitstream-quoted-preview');
+        if (quotedPreview) {
+            // Do not navigate if user clicked on an interactive element inside
+            const interactive = event.target.closest('a, button, input, textarea, select, option, audio, video, iframe, [role="button"]');
+            if (interactive) {
+                return;
+            }
+
+            // Do not navigate if the user is selecting text
+            const selection = window.getSelection();
+            if (selection && selection.toString().trim() !== '') {
+                return;
+            }
+
+            const permalink = quotedPreview.dataset.permalink;
+            if (permalink) {
+                event.preventDefault();
+                window.location.href = permalink;
+            }
+        }
+    });
+
     // Clean up one-time URL parameters so they don't persist on page reload
     function cleanupUrlParams() {
         if (typeof window.history.replaceState !== 'function') {
@@ -7477,7 +9388,6 @@ jQuery(document).ready(function ($) {
         }
         const url = new URL(window.location.href);
         const paramsToRemove = [
-            'highlight_bit',
             'highlight_draft',
             'highlight_scheduled',
             'open_comments',
@@ -7508,3 +9418,703 @@ jQuery(document).ready(function ($) {
     }
     setTimeout(cleanupUrlParams, 300);
 });
+
+// ── MOBILE BOTTOM NAVIGATION ─────────────────────────────────────────────────
+//   Handles Home, Search screen, Compose, and More sheet.
+//   Buttons only exist on mobile (<1024px) so this is effectively a no-op on desktop.
+// ─────────────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    const navHome    = document.getElementById('bs-nav-home');
+    const navSearch  = document.getElementById('bs-nav-search');
+    const navCompose = document.getElementById('bs-nav-compose');
+    const navDrafts  = document.getElementById('bs-nav-drafts');
+    const navMore    = document.getElementById('bs-nav-more');
+
+    const searchScreen  = document.getElementById('bs-search-screen');
+    const searchClose   = document.getElementById('bs-search-screen-close');
+
+    const moreSheet     = document.getElementById('bs-more-sheet');
+    const moreBackdrop  = document.getElementById('bs-more-backdrop');
+    const moreClose     = document.getElementById('bs-more-sheet-close');
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    function syncBottomNavActiveState() {
+        const composerEl = document.querySelector('.bitstream-composer');
+        const isComposerOpen = composerEl && !composerEl.hidden;
+        
+        let activeBtn = null;
+        
+        if (isComposerOpen) {
+            const draftsModal = composerEl.querySelector('.bitstream-composer-modal-drafts');
+            const scheduledModal = composerEl.querySelector('.bitstream-composer-modal-scheduled-list');
+            const settingsModal = composerEl.querySelector('.bitstream-composer-modal-settings');
+            const aboutModalEl = document.getElementById('bs-about-modal');
+            
+            const isDraftsOpen = draftsModal && !draftsModal.hidden;
+            const isScheduledOpen = scheduledModal && !scheduledModal.hidden;
+            const isSettingsOpen = settingsModal && !settingsModal.hidden;
+            const isAboutOpen = aboutModalEl && !aboutModalEl.hidden;
+            
+            if (isDraftsOpen) {
+                activeBtn = navDrafts;
+            } else if (isScheduledOpen || isSettingsOpen || isAboutOpen) {
+                activeBtn = navMore;
+            } else {
+                activeBtn = navCompose;
+            }
+        } else if (searchScreen && !searchScreen.hidden) {
+            activeBtn = navSearch;
+        } else if (moreSheet && !moreSheet.hidden) {
+            activeBtn = navMore;
+        } else {
+            const feedUrl = navHome ? navHome.dataset.feedUrl : '';
+            const isOnFeed = feedUrl && window.location.pathname === new URL(feedUrl, window.location.origin).pathname;
+            const hasParams = window.location.search.length > 0;
+            if (isOnFeed && !hasParams) {
+                activeBtn = navHome;
+            }
+        }
+        
+        if (navHome) {
+            const params = new URLSearchParams(window.location.search);
+            const hasHighlight = params.has('highlight_bit') && parseInt(params.get('highlight_bit') || '0', 10) > 0;
+            const feedEl = document.querySelector('.bitstream-feed');
+            const feedHighlight = feedEl && feedEl.dataset.highlightBit && parseInt(feedEl.dataset.highlightBit, 10) > 0;
+            const isHighlightView = hasHighlight || feedHighlight;
+            
+            const icon = navHome.querySelector('i');
+            const span = navHome.querySelector('span');
+            if (isHighlightView) {
+                if (icon) {
+                    icon.className = 'fa-solid fa-arrow-left';
+                }
+                if (span) {
+                    span.textContent = 'Back';
+                }
+                navHome.setAttribute('aria-label', 'Go back to timeline');
+                navHome.setAttribute('title', 'Go back to timeline');
+            } else {
+                if (icon) {
+                    icon.className = 'fa-solid fa-house';
+                }
+                if (span) {
+                    span.textContent = 'Home';
+                }
+                navHome.setAttribute('aria-label', 'Home');
+                navHome.removeAttribute('title');
+            }
+        }
+        
+        [navHome, navSearch, navCompose, navDrafts, navMore].forEach(btn => {
+            if (btn) {
+                btn.classList.toggle('is-active', btn === activeBtn);
+            }
+        });
+    }
+    window.bitstreamSyncBottomNav = syncBottomNavActiveState;
+
+    function closeSearch() {
+        if (searchScreen) {
+            searchScreen.hidden = true;
+        }
+        syncBottomNavActiveState();
+    }
+
+    function openSearch() {
+        closeMore();
+        if (searchScreen) {
+            searchScreen.hidden = false;
+        }
+        syncBottomNavActiveState();
+    }
+
+    // Prepopulate search input if search screen is opened and filter search parameter is in URL
+    if (searchScreen) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const activeSearch = urlParams.get('bitstream_search');
+        if (activeSearch) {
+            const searchInput = searchScreen.querySelector('input[type="search"]');
+            if (searchInput) searchInput.value = activeSearch;
+        }
+    }
+
+    function closeMore() {
+        if (moreSheet)    moreSheet.hidden    = true;
+        if (moreBackdrop) moreBackdrop.hidden = true;
+        syncBottomNavActiveState();
+    }
+
+    // Expose closeMore/closeSearch globally so trigger handler can call them
+    window.bitstreamCloseMore = closeMore;
+    window.bitstreamCloseSearch = closeSearch;
+
+    function openMore() {
+        closeSearch();
+        if (moreSheet)    moreSheet.hidden    = false;
+        if (moreBackdrop) moreBackdrop.hidden = false;
+        syncBottomNavActiveState();
+    }
+
+    // ── Home ─────────────────────────────────────────────────────────────────
+    if (navHome) {
+        const feedUrl = navHome.dataset.feedUrl;
+        const isOnFeed = feedUrl && window.location.pathname === new URL(feedUrl, window.location.origin).pathname;
+
+        navHome.addEventListener('click', (e) => {
+            // Check if composer has unsaved changes before leaving/scrolling
+            const composerEl = document.querySelector('.bitstream-composer');
+            if (composerEl && !composerEl.hidden) {
+                const content = composerEl.querySelector('#bitstream-quick-bit-content');
+                const hasRebit = composerEl.querySelector('#bitstream-composer-rebit-url');
+                const hasMedia = composerEl.querySelector('#bitstream-composer-attachment-id');
+                
+                const contentVal = content ? content.value.trim() : '';
+                const rebitVal = hasRebit ? hasRebit.value.trim() : '';
+                const mediaVal = hasMedia && parseInt(hasMedia.value || '0', 10) > 0;
+                
+                if (contentVal || rebitVal || mediaVal) {
+                    e.preventDefault();
+                    if (typeof window.showDiscardConfirmation === 'function') {
+                        window.showDiscardConfirmation('Are you sure you want to discard your draft?', () => {
+                            composerEl.hidden = true;
+                            composerEl.querySelectorAll('.bitstream-composer-modal').forEach(m => m.hidden = true);
+                            const clearFn = window.bitstreamClearComposer || (typeof clearComposer === 'function' ? clearComposer : null);
+                            if (clearFn) clearFn();
+                            if (isOnFeed) {
+                                executeHomeClick();
+                            } else if (feedUrl) {
+                                window.location.href = feedUrl;
+                            }
+                        }, () => {
+                            const saveBtn = composerEl.querySelector('.bitstream-composer-save-draft-action');
+                            if (saveBtn) saveBtn.click();
+                        });
+                    } else if (confirm('Are you sure you want to discard your draft?')) {
+                        composerEl.hidden = true;
+                        composerEl.querySelectorAll('.bitstream-composer-modal').forEach(m => m.hidden = true);
+                        const clearFn = window.bitstreamClearComposer || (typeof clearComposer === 'function' ? clearComposer : null);
+                        if (clearFn) clearFn();
+                        if (isOnFeed) {
+                            executeHomeClick();
+                        } else if (feedUrl) {
+                            window.location.href = feedUrl;
+                        }
+                    }
+                    return;
+                } else {
+                    composerEl.hidden = true;
+                    composerEl.querySelectorAll('.bitstream-composer-modal').forEach(m => m.hidden = true);
+                }
+            }
+
+            e.preventDefault();
+            if (isOnFeed) {
+                executeHomeClick();
+            } else if (feedUrl) {
+                window.location.href = feedUrl;
+            }
+
+            function executeHomeClick() {
+                closeSearch();
+                closeMore();
+
+                if (isOnFeed && feedUrl) {
+                    // Scroll up first
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    
+                    // Reset URL in background
+                    window.history.pushState({}, document.title, feedUrl);
+                    
+                    // Fetch the clean feed in the background
+                    fetch(feedUrl)
+                        .then(response => response.text())
+                        .then(htmlText => {
+                            const parser = new DOMParser();
+                            const doc = parser.parseFromString(htmlText, 'text/html');
+                            
+                            const newFeed = doc.querySelector('.bitstream-feed');
+                            const currentFeed = document.querySelector('.bitstream-feed');
+                            
+                            if (newFeed && currentFeed) {
+                                // Replace inner HTML of the feed
+                                currentFeed.innerHTML = newFeed.innerHTML;
+                                
+                                // Reset dataset attributes on currentFeed
+                                currentFeed.dataset.page = newFeed.dataset.page || '1';
+                                currentFeed.dataset.maxPage = newFeed.dataset.maxPage || '1';
+                                currentFeed.dataset.filterType = 'all';
+                                currentFeed.dataset.filterMonth = '';
+                                currentFeed.dataset.filterSearch = '';
+                                currentFeed.dataset.filterHashtag = '';
+                                currentFeed.dataset.filterEmotion = '';
+                                currentFeed.removeAttribute('data-highlight-bit');
+                                
+                                // Sync active likes and comments
+                                if (typeof syncLikeButtonState === 'function') syncLikeButtonState(currentFeed);
+                                if (typeof initCommentToggles === 'function') initCommentToggles();
+                            }
+                            
+                            // Update Load More button visibility
+                            const newLoadMore = doc.getElementById('bitstream-load-more');
+                            const currentLoadMore = document.getElementById('bitstream-load-more');
+                            if (currentLoadMore) {
+                                if (newLoadMore) {
+                                    currentLoadMore.style.display = '';
+                                    currentLoadMore.textContent = 'Load More';
+                                } else {
+                                    currentLoadMore.style.display = 'none';
+                                }
+                            }
+                            
+                            // Reset active filters display
+                            const newActiveFilters = doc.querySelector('.bitstream-active-filters');
+                            const currentActiveFilters = document.querySelector('.bitstream-active-filters');
+                            if (currentActiveFilters) {
+                                if (newActiveFilters) {
+                                    currentActiveFilters.innerHTML = newActiveFilters.innerHTML;
+                                    currentActiveFilters.style.display = '';
+                                } else {
+                                    currentActiveFilters.innerHTML = '';
+                                    currentActiveFilters.style.display = 'none';
+                                }
+                            } else if (newActiveFilters) {
+                                const parent = currentFeed.parentNode;
+                                const temp = document.createElement('div');
+                                temp.innerHTML = newActiveFilters.outerHTML;
+                                parent.insertBefore(temp.firstElementChild, currentFeed);
+                            }
+
+                            // Infinite scroll scrollTrigger visibility
+                            const currentScrollTrigger = document.querySelector('.bitstream-scroll-trigger');
+                            const newScrollTrigger = doc.querySelector('.bitstream-scroll-trigger');
+                            if (currentScrollTrigger) {
+                                currentScrollTrigger.style.display = newScrollTrigger ? '' : 'none';
+                            }
+                            
+                            // Clear search inputs and active search list items in the search screen
+                            const searchInputs = document.querySelectorAll('form.bitstream-filter-search input[name="bitstream_search"]');
+                            searchInputs.forEach(input => input.value = '');
+                            
+                            const filterLinks = document.querySelectorAll('.bitstream-filter-link');
+                            filterLinks.forEach(link => {
+                                const text = link.textContent.trim().toLowerCase();
+                                const isAll = text === 'all' || text === 'all dates';
+                                link.classList.toggle('is-active', isAll);
+                            });
+                            
+                            syncBottomNavActiveState();
+                        });
+                } else if (feedUrl) {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    setTimeout(() => {
+                        window.location.href = feedUrl;
+                    }, 300);
+                } else {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    syncBottomNavActiveState();
+                }
+            }
+        });
+    }
+
+    // ── Search ───────────────────────────────────────────────────────────────
+    if (navSearch) {
+        navSearch.addEventListener('click', (e) => {
+            // Check if composer has unsaved changes before leaving
+            const composerEl = document.querySelector('.bitstream-composer');
+            if (composerEl && !composerEl.hidden) {
+                const content = composerEl.querySelector('#bitstream-quick-bit-content');
+                const hasRebit = composerEl.querySelector('#bitstream-composer-rebit-url');
+                const hasMedia = composerEl.querySelector('#bitstream-composer-attachment-id');
+                
+                const contentVal = content ? content.value.trim() : '';
+                const rebitVal = hasRebit ? hasRebit.value.trim() : '';
+                const mediaVal = hasMedia && parseInt(hasMedia.value || '0', 10) > 0;
+                
+                if (contentVal || rebitVal || mediaVal) {
+                    e.preventDefault();
+                    if (typeof window.showDiscardConfirmation === 'function') {
+                        window.showDiscardConfirmation('Are you sure you want to discard your draft?', () => {
+                            composerEl.hidden = true;
+                            composerEl.querySelectorAll('.bitstream-composer-modal').forEach(m => m.hidden = true);
+                            const clearFn = window.bitstreamClearComposer || (typeof clearComposer === 'function' ? clearComposer : null);
+                            if (clearFn) clearFn();
+                            toggleSearch();
+                        }, () => {
+                            const saveBtn = composerEl.querySelector('.bitstream-composer-save-draft-action');
+                            if (saveBtn) saveBtn.click();
+                        });
+                    } else if (confirm('Are you sure you want to discard your draft?')) {
+                        composerEl.hidden = true;
+                        composerEl.querySelectorAll('.bitstream-composer-modal').forEach(m => m.hidden = true);
+                        const clearFn = window.bitstreamClearComposer || (typeof clearComposer === 'function' ? clearComposer : null);
+                        if (clearFn) clearFn();
+                        toggleSearch();
+                    }
+                    return;
+                } else {
+                    composerEl.hidden = true;
+                    composerEl.querySelectorAll('.bitstream-composer-modal').forEach(m => m.hidden = true);
+                }
+            }
+
+            toggleSearch();
+        });
+    }
+
+    function toggleSearch() {
+        if (searchScreen && !searchScreen.hidden) {
+            closeSearch();
+        } else {
+            openSearch();
+        }
+    }
+
+    if (searchClose) {
+        searchClose.addEventListener('click', closeSearch);
+    }
+
+    // ── Compose ──────────────────────────────────────────────────────────────
+    if (navCompose) {
+        navCompose.addEventListener('click', (e) => {
+            e.preventDefault();
+            const composerEl = document.querySelector('.bitstream-composer');
+            if (composerEl) {
+                if (!composerEl.hidden) {
+                    if (typeof window.bitstreamCloseModal === 'function') {
+                        window.bitstreamCloseModal('composer');
+                    } else {
+                        composerEl.hidden = true;
+                        syncBottomNavActiveState();
+                    }
+                } else {
+                    closeSearch();
+                    closeMore();
+                    composerEl.hidden = false;
+                    syncBottomNavActiveState();
+                    const textarea = composerEl.querySelector('#bitstream-quick-bit-content');
+                    if (textarea) textarea.focus();
+                }
+            } else {
+                // Not on feed page — navigate to composer URL
+                const composerBaseUrl = (window.bitstream_ajax && bitstream_ajax.composer_url)
+                    ? bitstream_ajax.composer_url
+                    : window.location.href;
+                const url = new URL(composerBaseUrl, window.location.origin);
+                url.searchParams.set('composer_tab', 'bit');
+                window.location.href = url.toString();
+            }
+        });
+    }
+
+    // ── Drafts Click Intercept to Toggle ───────────────────────────────────────
+    if (navDrafts) {
+        navDrafts.addEventListener('click', (e) => {
+            const composerEl = document.querySelector('.bitstream-composer');
+            if (composerEl) {
+                const draftsModal = composerEl.querySelector('.bitstream-composer-modal-drafts');
+                if (draftsModal && !draftsModal.hidden) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (typeof window.bitstreamCloseModal === 'function') {
+                        window.bitstreamCloseModal('drafts');
+                    } else {
+                        draftsModal.hidden = true;
+                        composerEl.hidden = true;
+                        syncBottomNavActiveState();
+                    }
+                }
+            }
+        });
+    }
+
+    // ── More ─────────────────────────────────────────────────────────────────
+    if (navMore) {
+        navMore.addEventListener('click', () => {
+            if (moreSheet && !moreSheet.hidden) {
+                closeMore();
+            } else {
+                openMore();
+            }
+        });
+    }
+
+    if (moreClose)    moreClose.addEventListener('click', closeMore);
+    if (moreBackdrop) {
+        moreBackdrop.addEventListener('click', closeMore);
+        moreBackdrop.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            closeMore();
+        }, { passive: false });
+        moreBackdrop.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            closeMore();
+        }, { passive: false });
+        moreBackdrop.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            closeMore();
+        }, { passive: false });
+    }
+
+    // Close More sheet and Search screen if a composer modal/screen trigger is clicked
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('[data-composer-modal-trigger]')) {
+            if (typeof window.bitstreamCloseMore === 'function') window.bitstreamCloseMore();
+            if (typeof window.bitstreamCloseSearch === 'function') window.bitstreamCloseSearch();
+        }
+    });
+
+    // ── Standalone About Modal ───────────────────────────────────────────────
+    const aboutTrigger = document.getElementById('bs-more-about-trigger');
+    const aboutModal   = document.getElementById('bs-about-modal');
+
+    function openAboutModal() {
+        closeMore();
+        if (aboutModal) {
+            aboutModal.hidden = false;
+        }
+        syncBottomNavActiveState();
+    }
+
+    function closeAboutModal() {
+        if (aboutModal) {
+            aboutModal.hidden = true;
+        }
+        syncBottomNavActiveState();
+    }
+
+    if (aboutTrigger) {
+        aboutTrigger.addEventListener('click', (e) => {
+            e.preventDefault();
+            openAboutModal();
+        });
+    }
+
+    const aboutCloseBtn = document.getElementById('bs-about-modal-close-btn');
+    const aboutCancelBtn = document.getElementById('bs-about-modal-cancel-btn');
+    const aboutBackdrop = document.getElementById('bs-about-modal-close-backdrop');
+
+    if (aboutCloseBtn)  aboutCloseBtn.addEventListener('click', closeAboutModal);
+    if (aboutCancelBtn) aboutCancelBtn.addEventListener('click', closeAboutModal);
+    if (aboutBackdrop)  aboutBackdrop.addEventListener('click', closeAboutModal);
+
+    // Initialize active nav state on page load
+    syncBottomNavActiveState();
+
+    // ── Hashtag Suggestions Autocomplete Popup ──────────────────────────────
+    (function() {
+        let activeTextarea = null;
+        let popupEl = null;
+        let isOpen = false;
+        let matches = [];
+        let selectedIndex = 0;
+        let queryStart = -1;
+        let query = '';
+
+        function isTargetTextarea(el) {
+            if (!el || el.tagName !== 'TEXTAREA') return false;
+            return el.closest('.bitstream-composer') || el.closest('.bs-edit-modal') || el.classList.contains('bs-edit-textarea') || el.classList.contains('bitstream-composer-textarea');
+        }
+
+        function closePopup() {
+            if (!isOpen) return;
+            isOpen = false;
+            if (popupEl) {
+                popupEl.remove();
+                popupEl = null;
+            }
+        }
+
+        function openPopup(textarea, hashIndex, tagText) {
+            activeTextarea = textarea;
+            queryStart = hashIndex;
+            query = tagText;
+
+            const allTags = [];
+            if (window.bitstream_ajax && bitstream_ajax.hashtags) {
+                for (const [tag, count] of Object.entries(bitstream_ajax.hashtags)) {
+                    allTags.push({ tag, count: parseInt(count, 10) });
+                }
+            }
+            allTags.sort((a, b) => b.count - a.count);
+
+            let filtered = [];
+            if (!query) {
+                filtered = allTags.slice(0, 5);
+            } else {
+                const q = query.toLowerCase();
+                filtered = allTags.filter(t => t.tag.toLowerCase().includes(q));
+            }
+
+            if (filtered.length === 0) {
+                closePopup();
+                return;
+            }
+
+            matches = filtered;
+            if (selectedIndex >= matches.length) {
+                selectedIndex = 0;
+            }
+
+            if (!popupEl) {
+                popupEl = document.createElement('div');
+                popupEl.className = 'bitstream-hashtag-autocomplete-inline';
+                
+                // Insert directly after the textarea container to keep emoji picker positioned correctly
+                const container = textarea.closest('.bs-textarea-container') || textarea;
+                container.parentNode.insertBefore(popupEl, container.nextSibling);
+
+                popupEl.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                });
+
+                popupEl.addEventListener('click', (e) => {
+                    const item = e.target.closest('.bs-hashtag-item');
+                    if (item) {
+                        insertTag(item.dataset.tag);
+                    }
+                });
+            }
+
+            popupEl.innerHTML = matches.map((m, idx) => `
+                <div class="bs-hashtag-item${idx === selectedIndex ? ' is-active' : ''}" data-tag="${m.tag}">
+                    <span class="bs-hashtag-symbol">#</span><span class="bs-hashtag-name">${m.tag}</span>
+                    <span class="bs-hashtag-count">${m.count}</span>
+                </div>
+            `).join('');
+
+            isOpen = true;
+        }
+
+        function insertTag(tag) {
+            if (!activeTextarea) return;
+            const val = activeTextarea.value;
+            const caretPos = activeTextarea.selectionStart;
+
+            const textAfterCaret = val.substring(caretPos);
+            const endOfWordMatch = textAfterCaret.match(/^[A-Za-z0-9_\u00C0-\u024F]*/u);
+            const endOfWordLength = endOfWordMatch ? endOfWordMatch[0].length : 0;
+
+            const before = val.substring(0, queryStart);
+            const after = val.substring(caretPos + endOfWordLength);
+            const insertion = '#' + tag + ' ';
+
+            activeTextarea.value = before + insertion + after;
+            const newCursorPos = queryStart + insertion.length;
+            activeTextarea.selectionStart = activeTextarea.selectionEnd = newCursorPos;
+            activeTextarea.focus();
+
+            activeTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+            closePopup();
+        }
+
+        // Event delegation
+        document.addEventListener('input', (e) => {
+            const textarea = e.target;
+            if (!isTargetTextarea(textarea)) return;
+
+            const value = textarea.value;
+            const caretPos = textarea.selectionStart;
+            const textBeforeCaret = value.substring(0, caretPos);
+
+            const hashIndex = textBeforeCaret.lastIndexOf('#');
+            if (hashIndex !== -1) {
+                const tagText = textBeforeCaret.substring(hashIndex + 1);
+                const charBeforeHash = hashIndex === 0 ? ' ' : textBeforeCaret[hashIndex - 1];
+
+                const isWordBoundary = hashIndex === 0 || /\s/.test(charBeforeHash);
+                const hasSpaceInTag = /\s/.test(tagText);
+                const isValidTag = /^[A-Za-z0-9_\u00C0-\u024F]*$/u.test(tagText);
+
+                if (isWordBoundary && !hasSpaceInTag && isValidTag) {
+                    openPopup(textarea, hashIndex, tagText);
+                } else {
+                    closePopup();
+                }
+            } else {
+                closePopup();
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            const textarea = e.target;
+            if (!isTargetTextarea(textarea) || !isOpen) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selectedIndex = (selectedIndex + 1) % matches.length;
+                updateHighlight();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selectedIndex = (selectedIndex - 1 + matches.length) % matches.length;
+                updateHighlight();
+            } else if (e.key === 'Enter' || e.key === 'Tab') {
+                e.preventDefault();
+                if (matches[selectedIndex]) {
+                    insertTag(matches[selectedIndex].tag);
+                }
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                closePopup();
+            }
+        }, true);
+
+        document.addEventListener('mousedown', (e) => {
+            if (!isOpen) return;
+            if (e.target !== activeTextarea && (!popupEl || !popupEl.contains(e.target))) {
+                closePopup();
+            }
+        });
+
+        document.addEventListener('focusout', () => {
+            setTimeout(() => {
+                if (isOpen && document.activeElement !== activeTextarea && (!popupEl || !popupEl.contains(document.activeElement))) {
+                    closePopup();
+                }
+            }, 100);
+        });
+
+        function updateHighlight() {
+            if (!popupEl) return;
+            const items = popupEl.querySelectorAll('.bs-hashtag-item');
+            items.forEach((item, idx) => {
+                item.classList.toggle('is-active', idx === selectedIndex);
+                if (idx === selectedIndex) {
+                    item.scrollIntoView({ block: 'nearest' });
+                }
+            });
+        }
+    })();
+
+    // Prevent image downloads (context menu & drag start)
+    document.addEventListener('contextmenu', function (e) {
+        const target = e.target;
+        if (target && target.tagName === 'IMG') {
+            if (target.closest('.bitstream-lightbox') || 
+                target.closest('.bit-card-content') || 
+                target.closest('.bitstream-gallery') ||
+                target.closest('.bitstream-quoted-preview') ||
+                target.closest('.bit-rebit-preview') ||
+                target.closest('.bitstream-media-preview-item')) {
+                e.preventDefault();
+            }
+        }
+    });
+
+    document.addEventListener('dragstart', function (e) {
+        const target = e.target;
+        if (target && target.tagName === 'IMG') {
+            if (target.closest('.bitstream-lightbox') || 
+                target.closest('.bit-card-content') || 
+                target.closest('.bitstream-gallery') ||
+                target.closest('.bitstream-quoted-preview') ||
+                target.closest('.bit-rebit-preview') ||
+                target.closest('.bitstream-media-preview-item')) {
+                e.preventDefault();
+            }
+        }
+    });
+});
+

@@ -14,7 +14,6 @@ class BitStream_PWA_Manager {
     
     public function __construct() {
         add_action('wp_head', [$this, 'pwa_assets']);
-        add_action('wp_footer', [$this, 'render_floating_bitstream_button']);
         add_action('init', [$this, 'add_service_worker_rewrite']);
         add_action('init', [$this, 'add_shortcut_rewrite']);
         add_action('template_redirect', [$this, 'serve_service_worker']);
@@ -72,6 +71,13 @@ class BitStream_PWA_Manager {
             // Use a query-var endpoint to avoid redirect chains on /sw.js when rewrites are unavailable.
             $sw_url = add_query_arg('bitstream_sw', 'main', home_url('/'));
             
+            $scope_path = wp_make_link_relative(home_url('/bitstream/'));
+            if (empty($scope_path)) {
+                $scope_path = '/bitstream/';
+            } else {
+                $scope_path = '/' . ltrim($scope_path, '/');
+            }
+            
             $app_title = 'BitStream';
             $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
             if (strpos($host, 'beta') !== false) {
@@ -124,7 +130,7 @@ class BitStream_PWA_Manager {
                     
                     // Then register the new service worker with correct scope
                     navigator.serviceWorker.register(resolvedSwUrl.pathname + resolvedSwUrl.search, {
-                        scope: "/bitstream/",
+                        scope: "'.esc_js($scope_path).'",
                         updateViaCache: "none"
                     }).then(function(registration) {
                         console.log("BitStream PWA registered with scope:", registration.scope);
@@ -146,181 +152,23 @@ class BitStream_PWA_Manager {
     }
 
     /**
-     * Render floating BitStream button for admins
-     */
-    public function render_floating_bitstream_button() {
-        global $post;
-        
-        // Only show to users who can edit posts
-        if (!current_user_can('edit_posts')) {
-            return;
-        }
-
-        // Only show on BitStream-related pages
-        $is_bit_archive = is_post_type_archive('bit');
-        $has_feed_shortcode = is_a($post, 'WP_Post') &&
-                     (has_shortcode($post->post_content, 'bitstream') ||
-                      has_shortcode($post->post_content, 'bitstream_latest'));
-        $is_bitstream_page = isset($_SERVER['REQUEST_URI']) && 
-                            strpos($_SERVER['REQUEST_URI'], '/bitstream/') !== false;
-        
-        // Only show the floating button on BitStream-related pages
-        if (!($is_bit_archive || $has_feed_shortcode || $is_bitstream_page)) {
-            return;
-        }
-
-        $quick_actions_html = '';
-        if (class_exists('BitStream_Shortcodes')) {
-            $quick_actions_html = BitStream_Shortcodes::render_quick_action_links('bitstream-dropdown-link');
-        }
-
-        if (empty($quick_actions_html)) {
-            return;
-        }
-        ?>
-        <style>
-        /* Mobile-specific fixes for floating BitStream menu */
-        @media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
-            #bitstream-floating-menu {
-                display: none !important;
-            }
-        }
-
-        @media (max-width: 768px) {
-            #bitstream-floating-menu {
-                bottom: 20px !important;
-                right: 20px !important;
-            }
-            .bitstream-toggle {
-                width: 56px !important;
-                height: 56px !important;
-                font-size: 20px !important;
-                touch-action: manipulation !important;
-                -webkit-touch-callout: none !important;
-            }
-            .bitstream-dropdown {
-                min-width: 160px !important;
-                bottom: 65px !important;
-                right: -10px !important;
-            }
-            .bitstream-dropdown a {
-                padding: 10px 12px !important;
-                font-size: 14px !important;
-                touch-action: manipulation !important;
-                -webkit-touch-callout: none !important;
-            }
-        }
-
-        .bitstream-dropdown-link {
-            display: flex;
-            align-items: center;
-            padding: 12px 16px;
-            text-decoration: none;
-            color: #333;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .bitstream-dropdown-link + .bitstream-dropdown-link {
-            border-top: 1px solid #eee;
-        }
-
-        .bitstream-dropdown-link i {
-            margin-right: 8px;
-            color: #2c6e49;
-            pointer-events: none;
-        }
-        
-        /* Force proper touch behavior */
-        .bitstream-toggle {
-            touch-action: manipulation !important;
-            -webkit-user-select: none !important;
-            -moz-user-select: none !important;
-            -ms-user-select: none !important;
-            user-select: none !important;
-        }
-        </style>
-        <div id="bitstream-floating-menu" style="position: fixed; bottom: 30px; right: 30px; z-index: 9999;">
-            <div class="bitstream-menu">
-                <button class="bitstream-toggle" 
-                    style="display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; background: #2c6e49; color: white; border-radius: 15px; border: none; box-shadow: 0 4px 12px rgba(44,110,73,0.25); transition: all 0.3s ease; font-size: 24px; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; touch-action: manipulation;"
-                        title="Quick Actions"
-                        type="button"
-                        aria-label="Open BitStream quick actions menu">
-                    <i class="fa-solid fa-plus" style="margin: 0; pointer-events: none;"></i>
-                </button>
-                <div class="bitstream-dropdown" style="position: absolute; bottom: 70px; right: 0; background: white; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.15); min-width: 180px; opacity: 0; visibility: hidden; transform: translateY(10px); transition: all 0.3s ease; pointer-events: none;">
-                    <?php echo $quick_actions_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-                </div>
-            </div>
-        </div>
-        
-        <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const toggle = document.querySelector('.bitstream-toggle');
-            const dropdown = document.querySelector('.bitstream-dropdown');
-            
-            if (toggle && dropdown) {
-                toggle.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    const isVisible = dropdown.style.opacity === '1';
-                    
-                    if (isVisible) {
-                        // Hide dropdown
-                        dropdown.style.opacity = '0';
-                        dropdown.style.visibility = 'hidden';
-                        dropdown.style.transform = 'translateY(10px)';
-                        dropdown.style.pointerEvents = 'none';
-                        toggle.style.transform = 'rotate(0deg)';
-                    } else {
-                        // Show dropdown
-                        dropdown.style.opacity = '1';
-                        dropdown.style.visibility = 'visible';
-                        dropdown.style.transform = 'translateY(0)';
-                        dropdown.style.pointerEvents = 'auto';
-                        toggle.style.transform = 'rotate(45deg)';
-                    }
-                });
-                
-                // Close dropdown when clicking outside
-                document.addEventListener('click', function(e) {
-                    if (!toggle.contains(e.target) && !dropdown.contains(e.target)) {
-                        dropdown.style.opacity = '0';
-                        dropdown.style.visibility = 'hidden';
-                        dropdown.style.transform = 'translateY(10px)';
-                        dropdown.style.pointerEvents = 'none';
-                        toggle.style.transform = 'rotate(0deg)';
-                    }
-                });
-                
-                // Prevent dropdown clicks from closing it
-                dropdown.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                });
-            }
-        });
-        </script>
-        <?php
-    }
-
-    /**
      * Add rewrite rules for Service Worker file
      */
     public function add_service_worker_rewrite() {
         add_rewrite_rule('^sw\.js$', 'index.php?bitstream_sw=main', 'top');
         
         // Flush rewrite rules if they haven't been flushed for this version
-        if (!get_option('bitstream_sw_rewrite_flushed_v3.2.3')) {
+        if (!get_option('bitstream_sw_rewrite_flushed_v3.3.0')) {
             flush_rewrite_rules(false);
-            update_option('bitstream_sw_rewrite_flushed_v3.2.3', true);
+            update_option('bitstream_sw_rewrite_flushed_v3.3.0', true);
+            delete_option('bitstream_sw_rewrite_flushed_v3.2.3'); // Remove old flag
             delete_option('bitstream_sw_rewrite_flushed_v3.2.2'); // Remove old flag
             delete_option('bitstream_sw_rewrite_flushed_v3.2.1'); // Remove old flag
             delete_option('bitstream_sw_rewrite_flushed_v3.2.0'); // Remove old flag
             delete_option('bitstream_sw_rewrite_flushed_v2'); // Remove old flag
             delete_option('bitstream_sw_rewrite_flushed'); // Remove old flag
             if (defined('WP_DEBUG') && WP_DEBUG) {
-                error_log('BitStream: Service Worker rewrite rules flushed (v3.2.3)');
+                error_log('BitStream: Service Worker rewrite rules flushed (v3.3.0)');
             }
         }
     }
@@ -333,15 +181,16 @@ class BitStream_PWA_Manager {
         add_rewrite_rule('^bitstream/new-rebit/?$', 'index.php?bitstream_action=new-rebit', 'top');
         
         // Ensure rewrite rules are flushed when this version loads
-        if (!get_option('bitstream_rewrite_flushed_v3.2.3')) {
+        if (!get_option('bitstream_rewrite_flushed_v3.3.0')) {
             flush_rewrite_rules(false);
-            update_option('bitstream_rewrite_flushed_v3.2.3', true);
+            update_option('bitstream_rewrite_flushed_v3.3.0', true);
+            delete_option('bitstream_rewrite_flushed_v3.2.3'); // Remove old flag
             delete_option('bitstream_rewrite_flushed_v3.2.2'); // Remove old flag
             delete_option('bitstream_rewrite_flushed_v3.2.1'); // Remove old flag
             delete_option('bitstream_rewrite_flushed_v3.2.0'); // Remove old flag
             delete_option('bitstream_rewrite_flushed_v2.3.0'); // Remove old flag
             if (defined('WP_DEBUG') && WP_DEBUG) {
-                error_log('BitStream: Rewrite rules flushed for v3.2.3 (share target support)');
+                error_log('BitStream: Rewrite rules flushed for v3.3.0 (share target support)');
             }
         }
     }
@@ -443,8 +292,85 @@ class BitStream_PWA_Manager {
             $manifest_data = json_decode($manifest_content, true);
         }
 
+        // Dynamically compute paths based on home_url() and BITSTREAM_PLUGIN_URL
+        $home_url = home_url('/');
+        $site_path = wp_make_link_relative($home_url);
+        if (empty($site_path)) {
+            $site_path = '/';
+        } else {
+            $site_path = '/' . ltrim($site_path, '/');
+        }
+        
+        // Scope should cover the entire WordPress site to capture any deep link (e.g. single posts)
+        $manifest_data['scope'] = $site_path;
+        
+        // Start URL should be the composer/feed URL relative to the domain
+        $composer_url = $this->get_composer_url(['pwa' => '1']);
+        $start_url = wp_make_link_relative($composer_url);
+        if (empty($start_url)) {
+            $start_url = '/bitstream/?pwa=1';
+        } else {
+            $start_url = '/' . ltrim($start_url, '/');
+        }
+        $manifest_data['start_url'] = $start_url;
+
+        // Share target action should be the new-bit URL
+        if (isset($manifest_data['share_target'])) {
+            $new_bit_url = wp_make_link_relative(home_url('/bitstream/new-bit/'));
+            if (empty($new_bit_url)) {
+                $new_bit_url = '/bitstream/new-bit/';
+            } else {
+                $new_bit_url = '/' . ltrim($new_bit_url, '/');
+            }
+            $manifest_data['share_target']['action'] = $new_bit_url;
+        }
+
+        // Shortcuts
+        if (isset($manifest_data['shortcuts']) && is_array($manifest_data['shortcuts'])) {
+            foreach ($manifest_data['shortcuts'] as &$shortcut) {
+                if (isset($shortcut['url'])) {
+                    if (strpos($shortcut['url'], 'new-bit') !== false) {
+                        $new_bit_url = wp_make_link_relative(home_url('/bitstream/new-bit/'));
+                        $shortcut['url'] = empty($new_bit_url) ? '/bitstream/new-bit/' : '/' . ltrim($new_bit_url, '/');
+                    } elseif (strpos($shortcut['url'], 'new-rebit') !== false) {
+                        $new_rebit_url = wp_make_link_relative(home_url('/bitstream/new-rebit/'));
+                        $shortcut['url'] = empty($new_rebit_url) ? '/bitstream/new-rebit/' : '/' . ltrim($new_rebit_url, '/');
+                    }
+                }
+                if (isset($shortcut['icons']) && is_array($shortcut['icons'])) {
+                    foreach ($shortcut['icons'] as &$icon) {
+                        if (isset($icon['src'])) {
+                            $basename = basename($icon['src']);
+                            $icon_url = wp_make_link_relative(BITSTREAM_PLUGIN_URL . 'assets/images/' . $basename);
+                            $icon['src'] = empty($icon_url) ? '/wp-content/plugins/bitstream/assets/images/' . $basename : '/' . ltrim($icon_url, '/');
+                        }
+                    }
+                }
+            }
+        }
+
+        // Main icons
+        if (isset($manifest_data['icons']) && is_array($manifest_data['icons'])) {
+            foreach ($manifest_data['icons'] as &$icon) {
+                if (isset($icon['src'])) {
+                    $basename = basename($icon['src']);
+                    $icon_url = wp_make_link_relative(BITSTREAM_PLUGIN_URL . 'assets/images/' . $basename);
+                    $icon['src'] = empty($icon_url) ? '/wp-content/plugins/bitstream/assets/images/' . $basename : '/' . ltrim($icon_url, '/');
+                }
+            }
+        }
+
+        // Link Handling & Launch Control
+        $manifest_data['handle_links'] = 'preferred';
+        $manifest_data['launch_handler'] = [
+            'client_mode' => 'navigate-existing'
+        ];
+
         // Check if host contains "beta"
-        $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
+        $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['SERVER_NAME'] : '';
+        if (empty($host) && isset($_SERVER['HTTP_HOST'])) {
+            $host = $_SERVER['HTTP_HOST'];
+        }
         if (strpos($host, 'beta') !== false) {
             if (isset($manifest_data['name'])) {
                 $manifest_data['name'] = 'BS BETA';
@@ -1372,12 +1298,23 @@ class BitStream_PWA_Manager {
             }
             
             $is_empty_content = empty($content);
-            if ($is_empty_content) {
-                $content = 'New update posted!';
-            }
-            
+
+            $mood_emoji   = get_post_meta($post_id, '_bitstream_mood_emoji', true);
+            $mood_emotion = get_post_meta($post_id, '_bitstream_mood_emotion', true);
+
             $data['title'] = 'New BitStream Post';
-            $data['body'] = $content;
+
+            if ($is_empty_content && !empty($mood_emotion)) {
+                // Mood-only bit: match timeline format
+                $post_author  = get_the_author();
+                $data['body'] = $post_author . ' is feeling ' . trim($mood_emoji . ' ' . $mood_emotion);
+            } else {
+                if ($is_empty_content) {
+                    $content = 'New update posted!';
+                }
+                $mood_prefix = !empty($mood_emotion) ? trim($mood_emoji . ' ' . $mood_emotion) . ' — ' : '';
+                $data['body'] = $mood_prefix . $content;
+            }
             $base_url = class_exists('BitStream_Shortcodes') ? BitStream_Shortcodes::get_feed_page_url() : home_url('/bitstream/');
             $data['url'] = add_query_arg('highlight_bit', $post_id, $base_url);
             

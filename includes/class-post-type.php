@@ -83,10 +83,12 @@ class BitStream_Post_Type
 
             $like = $wildcard . $wpdb->esc_like($term) . $wildcard;
             $meta_conditions[] = $wpdb->prepare(
-                "(bitstream_search_meta.meta_key IN (%s, %s, %s) AND bitstream_search_meta.meta_value LIKE %s)",
+                "(bitstream_search_meta.meta_key IN (%s, %s, %s, %s, %s) AND bitstream_search_meta.meta_value LIKE %s)",
                 '_bitstream_og_title',
                 '_bitstream_og_desc',
                 'bitstream_rebit_url',
+                '_bitstream_mood_emotion',
+                '_bitstream_mood_emoji',
                 $like
             );
         }

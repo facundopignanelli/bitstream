@@ -3,6 +3,33 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.0] - 2026-07-13
+
+### Added
+- **Disable Image Downloads**: Added context-menu, drag-start, and CSS user-selection blocks to prevent copying and saving images from the timeline, galleries, and media viewer.
+- **Image Metadata Stripping**: Added automatic stripping of all EXIF, GPS, and IPTC metadata from uploaded images and their generated sub-sizes (using Imagick with GD fallback) to protect user privacy.
+- **Mood Status & Emotions System**: Added a comprehensive system to share updates in the format `[User] is feeling [emoji] [emotion]` or post pure mood updates in a distinctive card block. Includes a custom moods library in user profiles, push notifications, RSS feeds, and a new filter system to view posts by specific emotions.
+- **Mobile Bottom Navigation & Viewport Routing**: Added a persistent, sticky bottom navigation bar (`[Home] [Search] [Compose] [Drafts] [More]`) for viewports under 1024px. Integrates a slide-up Search & Filter screen, a bottom sheet drawer for "More" options, and displays Drafts and Scheduled posts as full-viewport screens.
+- **Unified Bit & Rebit Editing System**: Consolidated post editing under a single modal (`render_edit_modal()`) that dynamically adapts to Bit, Rebit, and Quote Bit types to allow seamless updates of content, link URLs, media, and quoted posts.
+- **Quote Bit Rebit URL & Metadata Support**: Added support for attaching Rebit link content (external URLs and embeds) directly to Quote Bits, including editing URLs and OG metadata.
+- **Unified Sharing & PNG Card Generator**: Added a unified Share modal supporting native OS sharing, clipboard copying, and generating a branded 1000px wide PNG card of a post with a watermark.
+- **Rich Input & Integrations**: Added a custom emoji picker (supporting search and global skin tones) and a keyboard-navigable hashtag autocomplete popup that queries previously used tags.
+- **Frontend Settings Modal**: Added a frontend Settings modal for administrators, moving the configuration interface out of the WordPress Admin menu.
+- **PWA Deep-linking**: Added PWA deep-linking support via manifest handle links and launch handler.
+- **UX Enhancements**: Added click-to-highlight/scroll navigation for quoted bits, and an optional settings checkbox to hide the welcome intro box.
+
+### Changed
+- **Timeline Polish & Navigation**: Styled author displays and emotion tags, replaced relative time tooltips with click-to-copy/select timestamps, and updated share links to link directly to the highlight view of a post on the main feed page rather than permalinks.
+- **Timeline Highlights**: Modified the highlight view (`highlight_bit`) to render only the targeted post on the timeline with an option to clear the filter.
+- **Composer Confirmation**: Added a option to save changes directly to Drafts when attempting to close the composer modal with unsaved content.
+
+### Fixed
+- **Edit & Render Paragraph Preservation**: Fixed newlines and paragraphs getting stripped/collapsed when loading posts for editing, prefilling composer fields, or rendering bits on the timeline.
+- **Preview Mode Admin Actions**: Hidden admin actions (edit, delete, quote) on feed cards in preview mode to prevent layout breaking on small/narrow viewports.
+- **Settings Dialog Spacing & Responsive Tabs**: Optimized tab margins, padding, and font sizes to prevent the tab menu from overflowing the dialog on desktop, and adjusted the mobile text-hiding breakpoint to 767px.
+- **Media Cleanup Performance**: Re-engineered database query in media cleanup scanner to target only BitStream-related attachments, preventing PHP execution timeouts on sites with large media libraries.
+- **VAPID Key Generation Error Handling**: Added error display and validation output when VAPID key generation fails due to a missing or disabled PHP OpenSSL extension.
+
 ## [3.2.3] - 2026-06-28
 
 ### Added

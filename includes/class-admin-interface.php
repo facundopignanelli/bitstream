@@ -133,18 +133,6 @@ class BitStream_Admin_Interface
             1
         );
         add_action('admin_print_styles-' . $composer_hook, [$this, 'enqueue_admin_composer_assets']);
-
-        // 2. Settings (Unified Settings Page)
-        $settings_hook = add_submenu_page(
-            'edit.php?post_type=bit',
-            'Settings',
-            'Settings',
-            'edit_posts',
-            'bitstream-settings',
-        [$this, 'settings_admin_page'],
-            2
-        );
-        add_action('admin_print_styles-' . $settings_hook, [$this, 'enqueue_admin_settings_assets']);
     }
 
     /**
@@ -170,25 +158,6 @@ class BitStream_Admin_Interface
         echo '</div>';
     }
 
-    public function settings_admin_page()
-    {
-        echo '<div class="wrap">';
-        echo '<h1>' . esc_html__('BitStream Settings', 'bitstream') . '</h1>';
-        echo '<div style="margin-top: 20px;">';
-        if (class_exists('BitStream_Plugin')) {
-            $plugin = BitStream_Plugin::get_instance();
-            $shortcodes = $plugin ? $plugin->get_component('shortcodes') : null;
-            if ($shortcodes && method_exists($shortcodes, 'render_settings')) {
-                echo $shortcodes->render_settings([]);
-            } else {
-                echo do_shortcode('[bitstream_settings]');
-            }
-        } else {
-            echo do_shortcode('[bitstream_settings]');
-        }
-        echo '</div>';
-        echo '</div>';
-    }
 
     /**
      * Enqueue CSS/JS for the admin composer page
@@ -197,23 +166,14 @@ class BitStream_Admin_Interface
     {
         wp_enqueue_media();
         wp_enqueue_style('bitstream-css', BITSTREAM_PLUGIN_URL . 'assets/css/bitstream.css', [], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/css/bitstream.css'));
-        wp_enqueue_script('bitstream-js', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream.js', ['jquery'], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/js/bitstream.js'), true);
+        wp_enqueue_script('bitstream-js', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream.js', ['jquery', 'twemoji'], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/js/bitstream.js'), true);
 
         wp_localize_script('bitstream-js', 'bitstream_ajax', array_merge(BitStream_Ajax_Handlers::get_localized_data(), [
             'admin_page_redirect' => admin_url('edit.php?post_type=bit')
         ]));
     }
 
-    /**
-     * Enqueue CSS/JS for the admin settings page
-     */
-    public function enqueue_admin_settings_assets()
-    {
-        wp_enqueue_style('bitstream-css', BITSTREAM_PLUGIN_URL . 'assets/css/bitstream.css', [], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/css/bitstream.css'));
-        wp_enqueue_script('bitstream-js', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream.js', ['jquery'], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/js/bitstream.js'), true);
 
-        wp_localize_script('bitstream-js', 'bitstream_ajax', BitStream_Ajax_Handlers::get_localized_data());
-    }
 
     /**
      * Determine whether an attachment is likely managed by BitStream.
@@ -326,19 +286,57 @@ class BitStream_Admin_Interface
             'deleted_items' => [],
         ];
 
-        $query = new WP_Query([
-            'post_type' => 'attachment',
-            'post_status' => 'inherit',
+        global $wpdb;
+
+        // Query only BitStream-managed attachments to prevent PHP execution timeouts on sites with large media libraries
+        $attachments_composer = get_posts([
+            'post_type'      => 'attachment',
+            'post_status'    => 'any',
             'posts_per_page' => -1,
-            'fields' => 'ids',
-            'orderby' => 'ID',
-            'order' => 'ASC',
+            'fields'         => 'ids',
+            'meta_query'     => [
+                [
+                    'key'     => '_bitstream_uploaded_via_composer',
+                    'compare' => 'EXISTS',
+                ]
+            ],
+            'no_found_rows'  => true,
         ]);
+
+        $bit_post_ids = get_posts([
+            'post_type'      => 'bit',
+            'post_status'    => 'any',
+            'posts_per_page' => -1,
+            'fields'         => 'ids',
+            'no_found_rows'  => true,
+        ]);
+
+        $attachments_parent = [];
+        if (!empty($bit_post_ids)) {
+            $attachments_parent = get_posts([
+                'post_type'       => 'attachment',
+                'post_status'     => 'any',
+                'posts_per_page'  => -1,
+                'fields'          => 'ids',
+                'post_parent__in' => $bit_post_ids,
+                'no_found_rows'   => true,
+            ]);
+        }
+
+        $artwork_ids = $wpdb->get_col("
+            SELECT post_id 
+            FROM {$wpdb->postmeta} 
+            WHERE meta_key = '_wp_attached_file' 
+              AND meta_value LIKE '%/bitstream-artwork/%'
+        ");
+        $artwork_ids = !empty($artwork_ids) ? array_map('intval', $artwork_ids) : [];
+
+        $attachment_ids = array_unique(array_merge($attachments_composer, $attachments_parent, $artwork_ids));
 
         $now = time();
         $grace_seconds = 30 * MINUTE_IN_SECONDS;
 
-        foreach ($query->posts as $attachment_id) {
+        foreach ($attachment_ids as $attachment_id) {
             $attachment_id = intval($attachment_id);
             if ($attachment_id <= 0) {
                 continue;
@@ -717,6 +715,9 @@ class BitStream_Admin_Interface
             $quoted_post = get_post($quoted_id);
             if ($quoted_post && $quoted_post->post_type === 'bit') {
                 $content = apply_filters('the_content', $quoted_post->post_content);
+                if (strpos($content, '<p>') === false && strpos($content, '<p ') === false) {
+                    $content = wpautop($content);
+                }
                 echo '<div class="bitstream-quoted-preview" style="border-radius:13px; box-shadow:0 2px 12px rgba(0,0,0,0.10); padding:16px; background:#fafafa; margin-bottom:20px;">';
                 echo '<strong>Quoting Bit #' . $quoted_id . '</strong><br>' . $content;
                 echo '</div>';

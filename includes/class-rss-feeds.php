@@ -41,6 +41,7 @@ class BitStream_RSS_Feeds {
         add_rewrite_rule('^bitstream/feed/?$', 'index.php?bitstream_feed=all', 'top');
         add_rewrite_rule('^bitstream/feed/bits/?$', 'index.php?bitstream_feed=bits', 'top');
         add_rewrite_rule('^bitstream/feed/rebits/?$', 'index.php?bitstream_feed=rebits', 'top');
+        add_rewrite_rule('^bitstream/feed/emotions/?$', 'index.php?bitstream_feed=emotions', 'top');
         
         // Handle the custom query var
         add_action('template_redirect', [$this, 'handle_feed_request']);
@@ -86,6 +87,7 @@ class BitStream_RSS_Feeds {
             echo '<link rel="alternate" type="application/rss+xml" title="BitStream Feed" href="' . esc_url(home_url('/bitstream/feed/')) . '">' . "\n";
             echo '<link rel="alternate" type="application/rss+xml" title="BitStream Bits Only" href="' . esc_url(home_url('/bitstream/feed/bits/')) . '">' . "\n";
             echo '<link rel="alternate" type="application/rss+xml" title="BitStream ReBits Only" href="' . esc_url(home_url('/bitstream/feed/rebits/')) . '">' . "\n";
+            echo '<link rel="alternate" type="application/rss+xml" title="BitStream Emotions Only" href="' . esc_url(home_url('/bitstream/feed/emotions/')) . '">' . "\n";
         }
     }
     
@@ -119,6 +121,13 @@ class BitStream_RSS_Feeds {
                 'compare' => '!='
             ];
             $title_suffix = ' - ReBits Only';
+        } elseif ($type === 'emotions') {
+            $meta_query[] = [
+                'key' => '_bitstream_mood_emotion',
+                'value' => '',
+                'compare' => '!='
+            ];
+            $title_suffix = ' - Emotions Only';
         }
         
         $query = new WP_Query([
@@ -162,6 +171,10 @@ class BitStream_RSS_Feeds {
             }
             $date = get_the_date('D, d M Y H:i:s +0000');
             
+            // Mood
+            $mood_emoji   = get_post_meta($post_id, '_bitstream_mood_emoji', true);
+            $mood_emotion = get_post_meta($post_id, '_bitstream_mood_emotion', true);
+
             // Generate title
             $title = 'Bit #' . date('Y-m-d', strtotime(get_the_date())) . ':' . str_pad($post_id % 1000, 3, '0', STR_PAD_LEFT);
             if ($rebit_url) {
@@ -189,6 +202,16 @@ class BitStream_RSS_Feeds {
                 }
             } else {
                 $description = wp_kses_post(wpautop($content));
+            }
+
+            if (!empty($mood_emotion)) {
+                if (empty($content) && empty($rebit_url)) {
+                    // Mood-only bit: use timeline format as the entire description
+                    $description = '<p>' . esc_html($author) . ' is feeling ' . esc_html(trim($mood_emoji . ' ' . $mood_emotion)) . '</p>';
+                } else {
+                    // Regular bit with a mood: append it
+                    $description .= '<p><strong>Feeling:</strong> ' . esc_html(trim($mood_emoji . ' ' . $mood_emotion)) . '</p>';
+                }
             }
 
             $safe_description = wp_kses_post($description);
