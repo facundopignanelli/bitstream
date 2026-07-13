@@ -218,7 +218,6 @@ var iconsLoaded = window.iconsLoaded;
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('BitStream: DOM loaded, setting up icon picker...');
     updateNewMappingPreview(); // Initialize the preview
 });
 
@@ -227,8 +226,6 @@ function loadFontAwesomeIcons() {
     if (iconsLoaded) return Promise.resolve();
     
     return new Promise((resolve, reject) => {
-        console.log('Loading Font Awesome icons from JSON file...');
-        
         // Try to load from JSON file first
         fetch('<?php echo plugin_dir_url(__FILE__) . '../assets/json/fontawesome6_free.json'; ?>')
             .then(response => {
@@ -238,18 +235,15 @@ function loadFontAwesomeIcons() {
                 return response.json();
             })
             .then(data => {
-                console.log('Successfully loaded icons from JSON:', data);
                 window.iconLibrary = iconLibrary = data;
                 window.iconsLoaded = iconsLoaded = true;
-                console.log('Loaded', data.brands?.length || 0, 'brand icons,', data.solid?.length || 0, 'solid icons,', data.regular?.length || 0, 'regular icons');
                 resolve();
             })
             .catch(error => {
-                console.log('Failed to load JSON file, using fallback:', error);
+                console.warn('Failed to load JSON file, using fallback:', error);
                 // Fall back to hardcoded icons
                 window.iconLibrary = iconLibrary = getFallbackIcons();
                 window.iconsLoaded = iconsLoaded = true;
-                console.log('Using fallback icon library with', iconLibrary.brands.length + iconLibrary.solid.length + iconLibrary.regular.length, 'icons');
                 resolve();
             });
     });
@@ -555,35 +549,21 @@ document.addEventListener('keydown', function(event) {
 
 // Enhanced event handling for icon picker
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('BitStream: DOM loaded, setting up icon picker...');
-    
     // Initialize the new mapping preview
     updateNewMappingPreview();
     
-    // Test if our function exists
-    console.log('openIconPicker function exists:', typeof window.openIconPicker);
-    console.log('updateNewMappingPreview function exists:', typeof window.updateNewMappingPreview);
-    
     // Add click listeners to all icon picker buttons
     const iconPickerButtons = document.querySelectorAll('button[onclick*="openIconPicker"]');
-    console.log('Found icon picker buttons:', iconPickerButtons.length);
     
     iconPickerButtons.forEach(function(button, index) {
-        console.log('Setting up button', index, ':', button);
-        
         // Add both onclick backup and direct event listener
         button.addEventListener('click', function(e) {
-            console.log('=== BUTTON CLICKED ===');
-            console.log('Button clicked:', this);
-            console.log('Onclick attribute:', this.getAttribute('onclick'));
-            
             // Extract input ID from onclick attribute
             const onclickValue = this.getAttribute('onclick');
             const match = onclickValue ? onclickValue.match(/openIconPicker\('([^']+)'\)/) : null;
             
             if (match) {
                 const inputId = match[1];
-                console.log('Extracted input ID:', inputId);
                 
                 // Call function directly
                 if (typeof window.openIconPicker === 'function') {

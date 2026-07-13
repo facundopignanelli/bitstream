@@ -19,29 +19,6 @@ define('BITSTREAM_VERSION', '3.3.0');
 define('BITSTREAM_PLUGIN_PATH', plugin_dir_path(__FILE__));
 define('BITSTREAM_PLUGIN_URL', plugin_dir_url(__FILE__));
 
-add_action('admin_notices', function() {
-    $dir = BITSTREAM_PLUGIN_PATH;
-    $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir));
-    echo '<div class="notice notice-info"><p><strong>BitStream Search:</strong><br>';
-    foreach ($iterator as $file) {
-        if ($file->isDir()) continue;
-        $filepath = $file->getPathname();
-        if (strpos($filepath, 'node_modules') !== false || strpos($filepath, '.git') !== false) continue;
-        $content = file_get_contents($filepath);
-        if (strpos($content, '280') !== false) {
-            echo esc_html($filepath) . ':<br>';
-            $lines = explode("\n", $content);
-            foreach ($lines as $num => $line) {
-                if (strpos($line, '280') !== false) {
-                    echo 'Line ' . ($num + 1) . ': ' . esc_html(trim($line)) . '<br>';
-                }
-            }
-            echo '<br>';
-        }
-    }
-    echo '</p></div>';
-});
-
 /**
  * Main BitStream Plugin Class
  */
