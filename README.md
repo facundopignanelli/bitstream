@@ -183,13 +183,21 @@ To keep the WordPress admin clean and focus the application frontend, BitStream 
 
 ## 🔧 Technical Details
 
-### Architecture & Files
-The codebase is written in object-oriented PHP and modern JavaScript/CSS:
-- **Core Controller**: [bitstream.php](bitstream.php)
-- **Shortcode Definitions**: [class-shortcodes.php](includes/class-shortcodes.php)
-- **PWA & Manifest Manager**: [class-pwa-manager.php](includes/class-pwa-manager.php) and [sw.js](/sw.js)
-- **AJAX Router**: [class-ajax-handlers.php](includes/class-ajax-handlers.php)
-- **Styles & Layout**: [bitstream.css](assets/css/bitstream.css)
+### Architecture & Modular Design
+The codebase is structured around object-oriented PHP controllers and a clean, modular JavaScript and CSS asset architecture:
+- **Core Controller**: [bitstream.php](bitstream.php) — Bootstraps plugin lifecycle, constants, and helper wrappers.
+- **Shortcode Definitions**: [class-shortcodes.php](includes/class-shortcodes.php) — Compiles feed layouts, settings tabs, and modal HTML templates.
+- **PWA & Manifest Manager**: [class-pwa-manager.php](includes/class-pwa-manager.php) and [sw.js](/sw.js) — Manages service worker lifecycle, PWA manifest generation, VAPID push notifications, dynamic rewrite flushes, and background upload handoffs.
+- **AJAX Router**: [class-ajax-handlers.php](includes/class-ajax-handlers.php) — Handles asynchronous frontend operations (composer submission, media upload, likes with dual user/IP tracking, draft counts, and attachment cleanups).
+- **Display & Renderer Engine**: [class-content-display.php](includes/class-content-display.php) — Handles card markup generation, nested quote cards, OpenGraph previews, hashtag indexing, and attachment usage tracking.
+- **Modular Frontend Assets**: JavaScript modules under `assets/js/` (`bitstream-lightbox.js`, `bitstream-cropper.js`, `bitstream-uploader.js`, `bitstream-composer.js`, `bitstream-timeline.js`) organized cleanly under the `window.BitStream` namespace.
+- **Consolidated CSS Architecture**: All card, quote, ReBit, single-bit, and mood layout rules are extracted into structured CSS classes in [bitstream.css](assets/css/bitstream.css), eliminating inline `style="..."` bloat.
+
+### Performance & Security Hardening
+- **Dual Voter Tracking**: Prevents duplicate vote inflation using user IDs for logged-in users and IP hashes for anonymous visitors in `_bitstream_liked_by` postmeta.
+- **Optimized Attachment Deletion**: Prunes orphaned attachments on post trashing using parent linkage and ID tracking, eliminating N+1 database queries per deletion.
+- **Database-Level Hashtag Indexing**: Replaces memory-intensive regex loops with indexed postmeta lookups and optimized SQL joins.
+- **Lightweight Draft Counters**: Counts author drafts via direct prepared `$wpdb->get_var()` queries instead of heavy `WP_Query` instantiations during submission flows.
 
 ### Requirements
 - **WordPress**: 5.8 or higher

@@ -166,7 +166,7 @@ class BitStream_Admin_Interface
     {
         wp_enqueue_media();
         wp_enqueue_style('bitstream-css', BITSTREAM_PLUGIN_URL . 'assets/css/bitstream.css', [], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/css/bitstream.css'));
-        wp_enqueue_script('bitstream-js', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream.js', ['jquery', 'twemoji'], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/js/bitstream.js'), true);
+        wp_enqueue_script('bitstream-js');
 
         wp_localize_script('bitstream-js', 'bitstream_ajax', array_merge(BitStream_Ajax_Handlers::get_localized_data(), [
             'admin_page_redirect' => admin_url('edit.php?post_type=bit')
@@ -204,73 +204,7 @@ class BitStream_Admin_Interface
         return false;
     }
 
-    /**
-     * Check if an attachment is referenced by non-trash content/meta across the site.
-     */
-    private function attachment_is_used_sitewide($attachment_id)
-    {
-        global $wpdb;
 
-        if ($attachment_id <= 0 || get_post_type($attachment_id) !== 'attachment') {
-            return true;
-        }
-
-        $attachment = get_post($attachment_id);
-        if (!$attachment) {
-            return true;
-        }
-
-        $parent_id = intval($attachment->post_parent);
-        if ($parent_id > 0) {
-            $parent = get_post($parent_id);
-            if ($parent && !in_array($parent->post_status, ['trash', 'auto-draft'], true)) {
-                return true;
-            }
-        }
-
-        $meta_ref = $wpdb->get_var($wpdb->prepare(
-            "SELECT pm.post_id
-             FROM {$wpdb->postmeta} pm
-             INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
-             WHERE pm.meta_value = %d
-               AND p.post_status NOT IN ('trash','auto-draft')
-             LIMIT 1",
-            $attachment_id
-        ));
-        if (!empty($meta_ref)) {
-            return true;
-        }
-
-
-        $attachment_url = wp_get_attachment_url($attachment_id);
-        if ($attachment_url) {
-            $url_like = '%' . $wpdb->esc_like($attachment_url) . '%';
-            $url_ref = $wpdb->get_var($wpdb->prepare(
-                "SELECT ID FROM {$wpdb->posts}
-                 WHERE post_status NOT IN ('trash','auto-draft','inherit')
-                   AND post_content LIKE %s
-                 LIMIT 1",
-                $url_like
-            ));
-            if (!empty($url_ref)) {
-                return true;
-            }
-        }
-
-        $class_like = '%wp-image-' . intval($attachment_id) . '%';
-        $class_ref = $wpdb->get_var($wpdb->prepare(
-            "SELECT ID FROM {$wpdb->posts}
-             WHERE post_status NOT IN ('trash','auto-draft','inherit')
-               AND post_content LIKE %s
-             LIMIT 1",
-            $class_like
-        ));
-        if (!empty($class_ref)) {
-            return true;
-        }
-
-        return false;
-    }
 
     /**
      * Scan and optionally delete orphaned BitStream-managed media.
@@ -354,7 +288,7 @@ class BitStream_Admin_Interface
                 continue;
             }
 
-            if ($this->attachment_is_used_sitewide($attachment_id)) {
+            if (BitStream_Content_Display::is_attachment_used($attachment_id)) {
                 $results['protected']++;
                 continue;
             }
@@ -371,6 +305,54 @@ class BitStream_Admin_Interface
                 }
                 else {
                     $results['errors']++;
+                }
+            }
+        }
+
+        // Clean up temporary upload chunks older than 24 hours
+        $uploads_dir = wp_upload_dir();
+        if (empty($uploads_dir['error'])) {
+            $chunks_dir = trailingslashit($uploads_dir['basedir']) . 'bitstream-chunks';
+            if (file_exists($chunks_dir) && is_dir($chunks_dir)) {
+                $user_dirs = glob(trailingslashit($chunks_dir) . '*', GLOB_ONLYDIR);
+                if ($user_dirs) {
+                    foreach ($user_dirs as $user_dir) {
+                        $upload_dirs = glob(trailingslashit($user_dir) . '*', GLOB_ONLYDIR);
+                        if ($upload_dirs) {
+                            foreach ($upload_dirs as $upload_dir_path) {
+                                $files = glob(trailingslashit($upload_dir_path) . '*.part');
+                                $all_deleted = true;
+                                if ($files) {
+                                    foreach ($files as $file) {
+                                        if (file_exists($file)) {
+                                            $mtime = filemtime($file);
+                                            if ($mtime && ($now - $mtime) > DAY_IN_SECONDS) {
+                                                if ($perform_delete) {
+                                                    @unlink($file);
+                                                }
+                                            } else {
+                                                $all_deleted = false;
+                                            }
+                                        }
+                                    }
+                                }
+                                // If performing delete and all chunks in this folder were deleted/old, remove folder
+                                if ($perform_delete && $all_deleted) {
+                                    $remaining = glob(trailingslashit($upload_dir_path) . '*');
+                                    if (empty($remaining)) {
+                                        @rmdir($upload_dir_path);
+                                    }
+                                }
+                            }
+                        }
+                        // Remove user directory if empty
+                        if ($perform_delete) {
+                            $remaining_uploads = glob(trailingslashit($user_dir) . '*');
+                            if (empty($remaining_uploads)) {
+                                @rmdir($user_dir);
+                            }
+                        }
+                    }
                 }
             }
         }

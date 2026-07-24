@@ -20,6 +20,9 @@ Repository-wide instructions for BitStream work in this workspace.
 
 ## Memory and preferences
 - If a rule is important for this repository, keep it here as well so it is visible in the workspace.
+- **Pre-flight Check**: Before executing any changes, proposing new code, or searching for a function, you must first read ARCHITECTURE.md to locate the relevant files. Use this index to target your file reads precisely, rather than scanning or guessing across the entire workspace.
+- **Continuous Documentation**: Whenever you add a new feature, create a new hook, or modify the structural routing of the plugin, you must update ARCHITECTURE.md as part of your final wrap-up. Never leave the index out of sync with the codebase.
+- **Avoid Reinventing the Wheel**: Always rely on ARCHITECTURE.md to utilize existing project patterns before building new UI components or backend features.
 
 ## Modal design system
 All modals in BitStream use a single unified design. **Always use `bitstream-composer-modal-*` classes** for new modals — do not invent new modal class names.

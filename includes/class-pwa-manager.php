@@ -152,25 +152,38 @@ class BitStream_PWA_Manager {
     }
 
     /**
+     * Helper to dynamically flush rewrite rules once per version update
+     */
+    private function maybe_flush_rewrites() {
+        static $flushed_on_request = false;
+        if ($flushed_on_request) {
+            return;
+        }
+        $flushed_on_request = true;
+
+        $flushed_version = get_option('bitstream_flushed_version');
+        if ($flushed_version !== BITSTREAM_VERSION) {
+            flush_rewrite_rules(false);
+            update_option('bitstream_flushed_version', BITSTREAM_VERSION);
+            
+            // Clean up old version-specific options from the database
+            global $wpdb;
+            $wpdb->query(
+                "DELETE FROM {$wpdb->options} WHERE option_name LIKE 'bitstream_sw_rewrite_flushed_%' OR option_name LIKE 'bitstream_rewrite_flushed_%'"
+            );
+
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('BitStream: PWA rewrite rules flushed dynamically for v' . BITSTREAM_VERSION);
+            }
+        }
+    }
+
+    /**
      * Add rewrite rules for Service Worker file
      */
     public function add_service_worker_rewrite() {
         add_rewrite_rule('^sw\.js$', 'index.php?bitstream_sw=main', 'top');
-        
-        // Flush rewrite rules if they haven't been flushed for this version
-        if (!get_option('bitstream_sw_rewrite_flushed_v3.3.0')) {
-            flush_rewrite_rules(false);
-            update_option('bitstream_sw_rewrite_flushed_v3.3.0', true);
-            delete_option('bitstream_sw_rewrite_flushed_v3.2.3'); // Remove old flag
-            delete_option('bitstream_sw_rewrite_flushed_v3.2.2'); // Remove old flag
-            delete_option('bitstream_sw_rewrite_flushed_v3.2.1'); // Remove old flag
-            delete_option('bitstream_sw_rewrite_flushed_v3.2.0'); // Remove old flag
-            delete_option('bitstream_sw_rewrite_flushed_v2'); // Remove old flag
-            delete_option('bitstream_sw_rewrite_flushed'); // Remove old flag
-            if (defined('WP_DEBUG') && WP_DEBUG) {
-                error_log('BitStream: Service Worker rewrite rules flushed (v3.3.0)');
-            }
-        }
+        $this->maybe_flush_rewrites();
     }
 
     /**
@@ -179,20 +192,7 @@ class BitStream_PWA_Manager {
     public function add_shortcut_rewrite() {
         add_rewrite_rule('^bitstream/new-bit/?$', 'index.php?bitstream_action=new-bit', 'top');
         add_rewrite_rule('^bitstream/new-rebit/?$', 'index.php?bitstream_action=new-rebit', 'top');
-        
-        // Ensure rewrite rules are flushed when this version loads
-        if (!get_option('bitstream_rewrite_flushed_v3.3.0')) {
-            flush_rewrite_rules(false);
-            update_option('bitstream_rewrite_flushed_v3.3.0', true);
-            delete_option('bitstream_rewrite_flushed_v3.2.3'); // Remove old flag
-            delete_option('bitstream_rewrite_flushed_v3.2.2'); // Remove old flag
-            delete_option('bitstream_rewrite_flushed_v3.2.1'); // Remove old flag
-            delete_option('bitstream_rewrite_flushed_v3.2.0'); // Remove old flag
-            delete_option('bitstream_rewrite_flushed_v2.3.0'); // Remove old flag
-            if (defined('WP_DEBUG') && WP_DEBUG) {
-                error_log('BitStream: Rewrite rules flushed for v3.3.0 (share target support)');
-            }
-        }
+        $this->maybe_flush_rewrites();
     }
 
     /**
@@ -1323,7 +1323,7 @@ class BitStream_PWA_Manager {
             if (!empty($rebit_url)) {
                 $data['title'] = 'New ReBit Post';
                 
-                $rebit_title = get_post_meta($post_id, 'bitstream_rebit_og_title', true);
+                $rebit_title = get_post_meta($post_id, '_bitstream_og_title', true);
                 if (empty($rebit_title)) {
                     $rebit_title = $rebit_url;
                 }
@@ -1335,7 +1335,7 @@ class BitStream_PWA_Manager {
                 }
                 
                 // Add OpenGraph image preview if available
-                $rebit_image = get_post_meta($post_id, 'bitstream_rebit_og_image', true);
+                $rebit_image = get_post_meta($post_id, '_bitstream_og_image', true);
                 if (!empty($rebit_image)) {
                     $data['image'] = $rebit_image;
                 }

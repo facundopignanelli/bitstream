@@ -169,13 +169,13 @@ class BitStream_OG_Fetcher
 
         // 7. OG Image Absolutization (handle relative image paths)
         if (!empty($og_img) && !preg_match('/^https?:\/\//i', $og_img)) {
-            if (str_starts_with($og_img, '//')) {
+            if (strpos($og_img, '//') === 0) {
                 $og_img = 'https:' . $og_img;
             }
             else {
                 $parsed = wp_parse_url($url);
                 $base = ($parsed['scheme'] ?? 'https') . '://' . ($parsed['host'] ?? '');
-                if (str_starts_with($og_img, '/')) {
+                if (strpos($og_img, '/') === 0) {
                     $og_img = $base . $og_img;
                 }
                 else {
@@ -252,7 +252,7 @@ class BitStream_OG_Fetcher
         }
 
         return [
-            'title' => !empty($author) ? $author . ' on ' . (str_contains($url, 'x.com') ? 'X' : 'Twitter') : '',
+            'title' => !empty($author) ? $author . ' on ' . (strpos($url, 'x.com') !== false ? 'X' : 'Twitter') : '',
             'description' => $tweet_text,
             'image' => $og_image,
             'url' => $url,

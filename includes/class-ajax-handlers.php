@@ -242,87 +242,8 @@ class BitStream_Ajax_Handlers
                     $ids[] = intval($id);
                 }
             }
-
-            if (preg_match_all('/(?:src|href)=["\']([^"\']+)["\']/i', $content, $matches)) {
-                foreach ($matches[1] as $url) {
-                    $attachment_id = attachment_url_to_postid($url);
-                    if ($attachment_id > 0) {
-                        $ids[] = intval($attachment_id);
-                    }
-                }
-            }
         }
-
         return array_values(array_unique(array_filter(array_map('intval', $ids))));
-    }
-
-    /**
-     * Check if an attachment is still referenced by any other post.
-     */
-    private function is_attachment_used_elsewhere($attachment_id, $exclude_post_id, $excluded_post_ids = [])
-    {
-        global $wpdb;
-
-        $excluded_post_ids = is_array($excluded_post_ids) ? $excluded_post_ids : [];
-        $excluded_post_ids[] = intval($exclude_post_id);
-        $excluded_post_ids = array_values(array_unique(array_filter(array_map('intval', $excluded_post_ids))));
-        if (empty($excluded_post_ids)) {
-            $excluded_post_ids = [0];
-        }
-
-        $attachment = get_post($attachment_id);
-        if (!$attachment || $attachment->post_type !== 'attachment') {
-            return true;
-        }
-
-        $parent_id = intval($attachment->post_parent);
-        if ($parent_id > 0 && !in_array($parent_id, $excluded_post_ids, true)) {
-            return true;
-        }
-
-        $excluded_placeholders = implode(',', array_fill(0, count($excluded_post_ids), '%d'));
-        $meta_query = "SELECT pm.post_id
-                         FROM {$wpdb->postmeta} pm
-                         INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
-                         WHERE pm.meta_value = %d
-                             AND pm.post_id NOT IN ({$excluded_placeholders})
-                             AND p.post_status NOT IN ('trash','auto-draft')
-                         LIMIT 1";
-        $meta_query_args = array_merge([$attachment_id], $excluded_post_ids);
-        $meta_ref = $wpdb->get_var($wpdb->prepare($meta_query, $meta_query_args));
-        if (!empty($meta_ref)) {
-            return true;
-        }
-
-        $attachment_url = wp_get_attachment_url($attachment_id);
-        if ($attachment_url) {
-            $url_like = '%' . $wpdb->esc_like($attachment_url) . '%';
-            $url_ref = $wpdb->get_var($wpdb->prepare(
-                "SELECT ID FROM {$wpdb->posts}
-                 WHERE ID <> %d
-                   AND post_status NOT IN ('trash','auto-draft','inherit')
-                   AND post_content LIKE %s
-                 LIMIT 1",
-                $exclude_post_id,
-                $url_like
-            ));
-            if (!empty($url_ref)) {
-                return true;
-            }
-        }
-
-        $class_like = '%wp-image-' . intval($attachment_id) . '%';
-        $class_ref = $wpdb->get_var($wpdb->prepare(
-            "SELECT ID FROM {$wpdb->posts}
-             WHERE ID <> %d
-               AND post_status NOT IN ('trash','auto-draft','inherit')
-               AND post_content LIKE %s
-             LIMIT 1",
-            $exclude_post_id,
-            $class_like
-        ));
-
-        return !empty($class_ref);
     }
 
     /**
@@ -347,7 +268,7 @@ class BitStream_Ajax_Handlers
                 continue;
             }
 
-            if ($this->is_attachment_used_elsewhere($attachment_id, $post_id, $excluded_reference_posts)) {
+            if (BitStream_Content_Display::is_attachment_used($attachment_id, array_merge([$post_id], $excluded_reference_posts))) {
                 continue;
             }
 
@@ -391,35 +312,7 @@ class BitStream_Ajax_Handlers
         update_post_meta($attachment_id, '_bitstream_uploaded_via_composer', 1);
         update_post_meta($attachment_id, '_bitstream_upload_created_at', time());
 
-        $preview_url = $file_url;
-        if (strpos($file_type['type'], 'image/') === 0) {
-            // Find the largest browser-safe generated size first
-            $metadata = wp_get_attachment_metadata($attachment_id);
-            $best_size = '';
-            if (!empty($metadata['sizes'])) {
-                // Priority list of sizes from largest to smallest, excluding thumbnail
-                $sizes_to_check = ['large', 'medium_large', 'medium'];
-                foreach ($sizes_to_check as $size) {
-                    if (isset($metadata['sizes'][$size])) {
-                        $best_size = $size;
-                        break;
-                    }
-                }
-            }
-
-            if ($best_size) {
-                $preview_url = wp_get_attachment_image_url($attachment_id, $best_size);
-            } else {
-                $preview_url = wp_get_attachment_image_url($attachment_id, 'medium');
-            }
-
-            if (!$preview_url) {
-                $preview_url = wp_get_attachment_image_url($attachment_id, 'full');
-            }
-            if (!$preview_url) {
-                $preview_url = $file_url;
-            }
-        }
+        $preview_url = $this->get_best_preview_url($attachment_id, $file_url);
 
         return [
             'id' => $attachment_id,
@@ -745,7 +638,9 @@ class BitStream_Ajax_Handlers
      */
     private function build_schedule_args($schedule_enabled_key, $schedule_datetime_key)
     {
-        $schedule_enabled = !empty($_POST[$schedule_enabled_key]) && $_POST[$schedule_enabled_key] === '1';
+        $schedule_enabled = (!empty($_POST[$schedule_enabled_key]) && $_POST[$schedule_enabled_key] === '1')
+                         || (!empty($_POST['bit_schedule_enabled']) && $_POST['bit_schedule_enabled'] === '1')
+                         || (!empty($_POST['rebit_schedule_enabled']) && $_POST['rebit_schedule_enabled'] === '1');
 
         if (!$schedule_enabled) {
             return [
@@ -756,7 +651,7 @@ class BitStream_Ajax_Handlers
             ];
         }
 
-        $datetime_raw = sanitize_text_field(wp_unslash($_POST[$schedule_datetime_key] ?? ''));
+        $datetime_raw = sanitize_text_field(wp_unslash($_POST[$schedule_datetime_key] ?? $_POST['bit_schedule_datetime'] ?? $_POST['rebit_schedule_datetime'] ?? ''));
         if (empty($datetime_raw)) {
             throw new Exception('Please choose a date and time to schedule this post.');
         }
@@ -767,7 +662,7 @@ class BitStream_Ajax_Handlers
             throw new Exception('Invalid schedule date/time format.');
         }
 
-        if ($dt->getTimestamp() <= current_time('timestamp')) {
+        if ($dt->getTimestamp() <= time()) {
             throw new Exception('Scheduled time must be in the future.');
         }
 
@@ -951,43 +846,61 @@ class BitStream_Ajax_Handlers
 
             $file_url = wp_get_attachment_url($attachment_id);
             $mime_type = get_post_mime_type($attachment_id);
-
-            $preview_url = $file_url;
-            if (strpos($mime_type, 'image/') === 0) {
-                // Find the largest browser-safe generated size first
-                $metadata = wp_get_attachment_metadata($attachment_id);
-                $best_size = '';
-                if (!empty($metadata['sizes'])) {
-                    $sizes_to_check = ['large', 'medium_large', 'medium'];
-                    foreach ($sizes_to_check as $size) {
-                        if (isset($metadata['sizes'][$size])) {
-                            $best_size = $size;
-                            break;
-                        }
-                    }
-                }
-
-                if ($best_size) {
-                    $preview_url = wp_get_attachment_image_url($attachment_id, $best_size);
-                } else {
-                    $preview_url = wp_get_attachment_image_url($attachment_id, 'medium');
-                }
-
-                if (!$preview_url) {
-                    $preview_url = wp_get_attachment_image_url($attachment_id, 'full');
-                }
-            }
+            $preview_url = $this->get_best_preview_url($attachment_id, $file_url);
 
             wp_send_json_success([
                 'id' => $attachment_id,
                 'url' => $file_url,
-                'preview_url' => $preview_url ?: $file_url,
+                'preview_url' => $preview_url,
                 'mime' => $mime_type,
             ]);
         }
         catch (Exception $e) {
             wp_send_json_error($e->getMessage() ?: 'Could not get attachment data.');
         }
+    }
+
+    /**
+     * Get the best preview image URL for an attachment, falling back to full/original URL.
+     *
+     * @param int $attachment_id
+     * @param string $fallback_url
+     * @return string
+     */
+    private function get_best_preview_url($attachment_id, $fallback_url = '')
+    {
+        if (empty($fallback_url)) {
+            $fallback_url = wp_get_attachment_url($attachment_id);
+        }
+
+        $mime_type = get_post_mime_type($attachment_id);
+        if (strpos((string)$mime_type, 'image/') !== 0) {
+            return $fallback_url;
+        }
+
+        $metadata = wp_get_attachment_metadata($attachment_id);
+        $best_size = '';
+        if (!empty($metadata['sizes'])) {
+            $sizes_to_check = ['large', 'medium_large', 'medium'];
+            foreach ($sizes_to_check as $size) {
+                if (isset($metadata['sizes'][$size])) {
+                    $best_size = $size;
+                    break;
+                }
+            }
+        }
+
+        if ($best_size) {
+            $preview_url = wp_get_attachment_image_url($attachment_id, $best_size);
+        } else {
+            $preview_url = wp_get_attachment_image_url($attachment_id, 'medium');
+        }
+
+        if (!$preview_url) {
+            $preview_url = wp_get_attachment_image_url($attachment_id, 'full');
+        }
+
+        return $preview_url ?: $fallback_url;
     }
 
     /**
@@ -1134,7 +1047,7 @@ class BitStream_Ajax_Handlers
             // Check if we should delete the original to save space
             // Only delete if it was a temporary upload via composer and NOT used elsewhere
             $was_temp = get_post_meta($attachment_id, '_bitstream_uploaded_via_composer', true);
-            if ($was_temp && !$this->is_attachment_used_elsewhere($attachment_id, 0)) {
+            if ($was_temp && !BitStream_Content_Display::is_attachment_used($attachment_id)) {
                 wp_delete_attachment($attachment_id, true);
             }
 
@@ -1238,11 +1151,7 @@ class BitStream_Ajax_Handlers
                     }
                 }
 
-                $media_markup = $this->build_media_markup($attachment_ids);
-                $post_content = $content;
-                if (!empty($media_markup)) {
-                    $post_content .= (empty($post_content) ? '' : "\n\n") . $media_markup;
-                }
+                $post_content = $this->assemble_post_content($content, $attachment_ids);
 
                 $post_args = [
                     'post_type' => 'bit',
@@ -1275,24 +1184,6 @@ class BitStream_Ajax_Handlers
                 else {
                     delete_post_meta($post_id, '_bitstream_quoted_bit');
                 }
-
-                if (!empty($attachment_ids)) {
-                    $this->assign_attachments_to_bit($post_id, $attachment_ids);
-                }
-                else {
-                    delete_post_meta($post_id, '_bitstream_attachment_id');
-                    delete_post_meta($post_id, '_bitstream_attachment_ids');
-                }
-
-                if (!empty($mood_emotion)) {
-                    update_post_meta($post_id, '_bitstream_mood_emoji', $mood_emoji);
-                    update_post_meta($post_id, '_bitstream_mood_emotion', $mood_emotion);
-                } else {
-                    delete_post_meta($post_id, '_bitstream_mood_emoji');
-                    delete_post_meta($post_id, '_bitstream_mood_emotion');
-                }
-
-                $this->maybe_save_custom_mood_to_list($author_id, $mood_emoji, $mood_emotion);
 
                 // Save Rebit / Link Preview metadata if attached
                 if (!empty($rebit_url) && filter_var($rebit_url, FILTER_VALIDATE_URL)) {
@@ -1329,29 +1220,8 @@ class BitStream_Ajax_Handlers
                     delete_post_meta($post_id, '_bitstream_rebit_attachment_id');
                 }
 
-                wp_send_json_success([
-                    'message' => $save_as_draft
-                    ? ($is_update ? 'Draft updated successfully.' : 'Saved as draft.')
-                    : ($is_update
-                    ? ($schedule['is_scheduled'] ? 'Bit updated and scheduled successfully.' : 'Bit updated successfully.')
-                    : ($schedule['is_scheduled'] ? 'Bit scheduled successfully.' : 'Bit published successfully.')),
-                    'post_id' => $post_id,
-                    'permalink' => get_permalink($post_id),
-                    'view_url' => ($save_as_draft || $schedule['is_scheduled']) ? get_preview_post_link($post_id) : get_permalink($post_id),
-                    'edit_url' => get_edit_post_link($post_id, ''),
-                    'rendered_html' => $is_update ? bitstream_render_card($post_id) : $this->sanitize_live_preview_markup(bitstream_render_card($post_id)),
-                    'is_scheduled' => $schedule['is_scheduled'],
-                    'is_draft' => $save_as_draft || $is_auto_draft,
-                    'was_updated' => $is_update,
-                    'draft_count' => (int) (new WP_Query([
-                        'post_type' => 'bit',
-                        'post_status' => 'draft',
-                        'author' => $author_id,
-                        'posts_per_page' => 1,
-                        'fields' => 'ids',
-                    ]))->found_posts,
-                    'custom_moods' => get_user_meta($author_id, '_bitstream_custom_moods', true) ?: [],
-                ]);
+                $this->persist_common_metadata($post_id, $author_id, $attachment_ids, $mood_emoji, $mood_emotion);
+                $this->build_composer_response($post_id, $author_id, $is_update, $save_as_draft, $is_auto_draft, $schedule, 'Bit');
             }
 
             $is_bit_to_rebit_conversion = $is_update && empty(get_post_meta($edit_post_id, 'bitstream_rebit_url', true));
@@ -1370,10 +1240,10 @@ class BitStream_Ajax_Handlers
             $manual_image = esc_url_raw(wp_unslash($_POST['rebit_og_image'] ?? ''));
             $manual_image_removed = !empty($_POST['rebit_og_image_removed']) && strval($_POST['rebit_og_image_removed']) === '1';
             
-            $attachment_ids_raw = sanitize_text_field(wp_unslash($_POST['rebit_attachment_ids'] ?? ''));
+            $attachment_ids_raw = sanitize_text_field(wp_unslash($_POST['rebit_attachment_ids'] ?? $_POST['bit_attachment_ids'] ?? ''));
             $attachment_ids = array_filter(array_map('intval', explode(',', $attachment_ids_raw)));
             if (empty($attachment_ids)) {
-                $single_id = $this->get_valid_attachment_id($_POST['rebit_attachment_id'] ?? 0);
+                $single_id = $this->get_valid_attachment_id($_POST['rebit_attachment_id'] ?? $_POST['bit_attachment_id'] ?? 0);
                 if ($single_id > 0) {
                     $attachment_ids[] = $single_id;
                 }
@@ -1413,17 +1283,19 @@ class BitStream_Ajax_Handlers
             $og_desc = !empty($manual_desc) ? $manual_desc : ($og_data['description'] ?? '');
             $og_image = $manual_image_removed ? '' : (!empty($manual_image) ? $manual_image : ($og_data['image'] ?? ''));
 
-            if (!empty($attachment_ids)) {
+            if (!empty($attachment_ids) && empty($manual_image)) {
                 $attachment_image = wp_get_attachment_image_url($attachment_ids[0], 'large');
                 if ($attachment_image) {
                     $og_image = $attachment_image;
                 }
             }
 
+            $post_content = $this->assemble_post_content($commentary, $attachment_ids);
+
             $post_args = [
                 'post_type' => 'bit',
                 'post_status' => $schedule['post_status'],
-                'post_content' => $commentary,
+                'post_content' => $post_content,
                 'comment_status' => 'open',
                 'post_date' => $schedule['post_date'],
                 'post_date_gmt' => $schedule['post_date_gmt'],
@@ -1444,7 +1316,7 @@ class BitStream_Ajax_Handlers
 
             update_post_meta($post_id, 'bitstream_rebit_url', esc_url_raw($url));
             update_post_meta($post_id, '_bitstream_og_title', sanitize_text_field($og_title));
-            update_post_meta($post_id, '_bitstream_og_desc', sanitize_text_field($og_desc));
+            update_post_meta($post_id, '_bitstream_og_desc', sanitize_textarea_field($og_desc));
             update_post_meta($post_id, '_bitstream_og_image', esc_url_raw($og_image));
             update_post_meta($post_id, '_bitstream_og_fetched', time());
 
@@ -1452,46 +1324,8 @@ class BitStream_Ajax_Handlers
                 delete_post_meta($post_id, '_bitstream_quoted_bit');
             }
 
-            if (!empty($attachment_ids)) {
-                $this->assign_attachments_to_bit($post_id, $attachment_ids);
-            }
-            else {
-                delete_post_meta($post_id, '_bitstream_attachment_id');
-                delete_post_meta($post_id, '_bitstream_attachment_ids');
-            }
-
-            if (!empty($mood_emotion)) {
-                update_post_meta($post_id, '_bitstream_mood_emoji', $mood_emoji);
-                update_post_meta($post_id, '_bitstream_mood_emotion', $mood_emotion);
-            } else {
-                delete_post_meta($post_id, '_bitstream_mood_emoji');
-                delete_post_meta($post_id, '_bitstream_mood_emotion');
-            }
-
-            $this->maybe_save_custom_mood_to_list($author_id, $mood_emoji, $mood_emotion);
-
-            wp_send_json_success([
-                'message' => $save_as_draft
-                ? ($is_update ? 'Draft updated successfully.' : 'Saved as draft.')
-                : ($is_update
-                ? ($schedule['is_scheduled'] ? 'Rebit updated and scheduled successfully.' : 'Rebit updated successfully.')
-                : ($schedule['is_scheduled'] ? 'Rebit scheduled successfully.' : 'Rebit published successfully.')),
-                'post_id' => $post_id,
-                'permalink' => get_permalink($post_id),
-                'view_url' => ($save_as_draft || $schedule['is_scheduled']) ? get_preview_post_link($post_id) : get_permalink($post_id),
-                'edit_url' => get_edit_post_link($post_id, ''),
-                'rendered_html' => $is_update ? bitstream_render_card($post_id) : $this->sanitize_live_preview_markup(bitstream_render_card($post_id)),
-                'is_scheduled' => $schedule['is_scheduled'],
-                'is_draft' => $save_as_draft || $is_auto_draft,
-                'was_updated' => $is_update,
-                'draft_count' => (int) (new WP_Query([
-                    'post_type' => 'bit',
-                    'post_status' => 'draft',
-                    'author' => $author_id,
-                    'posts_per_page' => 1,
-                    'fields' => 'ids',
-                ]))->found_posts,
-                'custom_moods' => get_user_meta($author_id, '_bitstream_custom_moods', true) ?: [],
+            $this->persist_common_metadata($post_id, $author_id, $attachment_ids, $mood_emoji, $mood_emotion);
+            $this->build_composer_response($post_id, $author_id, $is_update, $save_as_draft, $is_auto_draft, $schedule, 'Rebit', [
                 'og' => [
                     'title' => $og_title,
                     'description' => $og_desc,
@@ -1502,6 +1336,99 @@ class BitStream_Ajax_Handlers
         catch (Exception $e) {
             wp_send_json_error($e->getMessage() ?: 'An error occurred while creating the post.');
         }
+    }
+
+    /**
+     * Build post content with media markup appended.
+     *
+     * @param string $content
+     * @param array  $attachment_ids
+     * @return string
+     */
+    private function assemble_post_content($content, array $attachment_ids = [])
+    {
+        $media_markup = $this->build_media_markup($attachment_ids);
+        $post_content = $content;
+        if (!empty($media_markup)) {
+            $post_content .= (empty($post_content) ? '' : "\n\n") . $media_markup;
+        }
+        return $post_content;
+    }
+
+    /**
+     * Persist attachment linkage, mood tags, and user post count flushes.
+     *
+     * @param int    $post_id
+     * @param int    $author_id
+     * @param array  $attachment_ids
+     * @param string $mood_emoji
+     * @param string $mood_emotion
+     */
+    private function persist_common_metadata($post_id, $author_id, array $attachment_ids, $mood_emoji, $mood_emotion)
+    {
+        if (!empty($attachment_ids)) {
+            $this->assign_attachments_to_bit($post_id, $attachment_ids);
+        } else {
+            delete_post_meta($post_id, '_bitstream_attachment_id');
+            delete_post_meta($post_id, '_bitstream_attachment_ids');
+        }
+
+        if (!empty($mood_emotion)) {
+            update_post_meta($post_id, '_bitstream_mood_emoji', $mood_emoji);
+            update_post_meta($post_id, '_bitstream_mood_emotion', $mood_emotion);
+        } else {
+            delete_post_meta($post_id, '_bitstream_mood_emoji');
+            delete_post_meta($post_id, '_bitstream_mood_emotion');
+        }
+
+        $this->maybe_save_custom_mood_to_list($author_id, $mood_emoji, $mood_emotion);
+
+        if (class_exists('BitStream_Shortcodes')) {
+            BitStream_Shortcodes::flush_user_post_counts($author_id);
+        }
+    }
+
+    /**
+     * Build and send standard composer submission JSON success response.
+     *
+     * @param int    $post_id
+     * @param int    $author_id
+     * @param bool   $is_update
+     * @param bool   $save_as_draft
+     * @param bool   $is_auto_draft
+     * @param array  $schedule
+     * @param string $item_label
+     * @param array  $extra
+     */
+    private function build_composer_response($post_id, $author_id, $is_update, $save_as_draft, $is_auto_draft, array $schedule, $item_label = 'Bit', array $extra = [])
+    {
+        $message = $save_as_draft
+            ? ($is_update ? 'Draft updated successfully.' : 'Saved as draft.')
+            : ($is_update
+                ? ($schedule['is_scheduled'] ? "{$item_label} updated and scheduled successfully." : "{$item_label} updated successfully.")
+                : ($schedule['is_scheduled'] ? "{$item_label} scheduled successfully." : "{$item_label} published successfully."));
+
+        global $wpdb;
+        $draft_count = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'bit' AND post_status = 'draft' AND post_author = %d",
+            $author_id
+        ));
+
+        $response = array_merge([
+            'message'       => $message,
+            'post_id'       => $post_id,
+            'permalink'     => get_permalink($post_id),
+            'view_url'      => ($save_as_draft || $schedule['is_scheduled']) ? get_preview_post_link($post_id) : get_permalink($post_id),
+            'edit_url'      => get_edit_post_link($post_id, ''),
+            'rendered_html' => $is_update ? BitStream_Content_Display::render_card($post_id) : $this->sanitize_live_preview_markup(BitStream_Content_Display::render_card($post_id)),
+            'is_scheduled'  => $schedule['is_scheduled'],
+            'is_draft'      => $save_as_draft || $is_auto_draft,
+            'was_updated'   => $is_update,
+            'draft_count'   => $draft_count,
+            'custom_moods'  => get_user_meta($author_id, '_bitstream_custom_moods', true) ?: [],
+        ], $extra);
+
+        wp_send_json_success($response);
     }
 
     /**
@@ -1523,18 +1450,44 @@ class BitStream_Ajax_Handlers
                 wp_send_json_error('Post not found or not published.');
             }
 
+            // Determine unique voter identifier (User ID for logged-in, IP hash for anonymous)
+            if (is_user_logged_in()) {
+                $identifier = 'user_' . get_current_user_id();
+            } else {
+                $ip = sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'] ?? ''));
+                $identifier = 'ip_' . md5($ip);
+            }
+
+            $liked_by = get_post_meta($post_id, '_bitstream_liked_by', true);
+            if (!is_array($liked_by)) {
+                $liked_by = [];
+            }
+
             $current = (int)get_post_meta($post_id, '_bitstream_likes', true);
             $type = (isset($_POST['type']) && $_POST['type'] === 'unlike') ? 'unlike' : 'like';
+            $is_already_liked = in_array($identifier, $liked_by, true);
 
-            if ($type === 'unlike') {
-                $new_count = max(0, $current - 1);
-            }
-            else {
-                $new_count = $current + 1;
+            if ($type === 'like') {
+                if (!$is_already_liked) {
+                    $liked_by[] = $identifier;
+                    update_post_meta($post_id, '_bitstream_liked_by', array_values(array_unique($liked_by)));
+                    $new_count = $current + 1;
+                    update_post_meta($post_id, '_bitstream_likes', $new_count);
+                } else {
+                    $new_count = $current;
+                }
+            } else {
+                if ($is_already_liked) {
+                    $liked_by = array_values(array_diff($liked_by, [$identifier]));
+                    update_post_meta($post_id, '_bitstream_liked_by', $liked_by);
+                    $new_count = max(0, $current - 1);
+                    update_post_meta($post_id, '_bitstream_likes', $new_count);
+                } else {
+                    $new_count = $current;
+                }
             }
 
-            update_post_meta($post_id, '_bitstream_likes', $new_count);
-            wp_send_json_success(['likes' => $new_count]);
+            wp_send_json_success(['likes' => $new_count, 'liked' => ($type === 'like')]);
 
         }
         catch (Exception $e) {
@@ -1695,7 +1648,7 @@ class BitStream_Ajax_Handlers
         if ($q->have_posts()) {
             while ($q->have_posts()) {
                 $q->the_post();
-                echo bitstream_render_card(get_the_ID(), false, [
+                echo BitStream_Content_Display::render_card(get_the_ID(), false, [
                     'comment_action' => $is_preview_mode ? 'link' : 'toggle',
                     'is_preview'      => $is_preview_mode,
                 ]);
@@ -1858,7 +1811,7 @@ class BitStream_Ajax_Handlers
             update_post_meta($preview_post_id, '_bitstream_og_desc', sanitize_text_field($og_desc));
             update_post_meta($preview_post_id, '_bitstream_og_image', esc_url_raw($og_image));
 
-            $rendered_html = $this->sanitize_live_preview_markup(bitstream_render_rebit_section($preview_post_id));
+            $rendered_html = $this->sanitize_live_preview_markup(BitStream_Content_Display::render_rebit_section($preview_post_id));
             wp_delete_post($preview_post_id, true);
 
             wp_send_json_success([
@@ -1924,7 +1877,7 @@ class BitStream_Ajax_Handlers
             $author_name = $author ? $author->display_name : 'Unknown';
 
             // Get timestamp
-            $timestamp = human_time_diff(get_post_time('U', false, $quoted_post), current_time('timestamp')) . ' ago';
+            $timestamp = human_time_diff(get_post_time('U', true, $quoted_post), time()) . ' ago';
 
             wp_send_json_success([
                 'content' => $content,
@@ -1992,14 +1945,34 @@ class BitStream_Ajax_Handlers
                 }
             }
 
+            $rebit_attachment_id = 0;
+            if ($is_rebit) {
+                $rebit_attachment_id = intval(get_post_meta($post_id, '_bitstream_rebit_attachment_id', true));
+                if ($rebit_attachment_id <= 0) {
+                    $rebit_attachment_id = $attachment_id;
+                }
+            }
+
+            // Strip media markup from the post body for textarea editing
+            $content = (string)$post->post_content;
+            $content = strip_shortcodes($content);
+            $content = preg_replace('#<div[^>]*class="[^"]*bitstream-gallery[^"]*"[^>]*>[\s\S]*?</div>#i', '', $content);
+            $content = preg_replace('#<figure[^>]*>[\s\S]*?</figure>#i', '', $content);
+            $content = preg_replace('#<(audio|video)[^>]*>[\s\S]*?</\1>#i', '', $content);
+            $content = preg_replace('#<img[^>]*>#i', '', $content);
+            $content = preg_replace('#<(p|div|br|hr)[^>]*>#i', "\n", $content);
+            $content = trim(html_entity_decode(wp_strip_all_tags($content), ENT_QUOTES, 'UTF-8'));
+
             $data = [
                 'post_id'       => $post_id,
-                'content'       => $post->post_content,
+                'post_type'     => $is_rebit ? 'rebit' : 'bit',
+                'content'       => $content,
                 'is_rebit'      => $is_rebit,
                 'rebit_url'     => $is_rebit ? $rebit_url : '',
-                'og_title'      => $is_rebit ? get_post_meta($post_id, 'bitstream_rebit_og_title', true) : '',
-                'og_desc'       => $is_rebit ? get_post_meta($post_id, 'bitstream_rebit_og_desc', true) : '',
-                'og_image'      => $is_rebit ? get_post_meta($post_id, 'bitstream_rebit_og_image', true) : '',
+                'og_title'      => $is_rebit ? get_post_meta($post_id, '_bitstream_og_title', true) : '',
+                'og_desc'       => $is_rebit ? get_post_meta($post_id, '_bitstream_og_desc', true) : '',
+                'og_image'      => $is_rebit ? get_post_meta($post_id, '_bitstream_og_image', true) : '',
+                'rebit_attachment_id' => $rebit_attachment_id > 0 ? $rebit_attachment_id : 0,
                 'attachment_url'    => $attachment_id > 0 ? wp_get_attachment_url($attachment_id) : '',
                 'attachment_mime'   => $attachment_id > 0 ? get_post_mime_type($attachment_id) : '',
                 'attachment_id' => $attachment_id > 0 ? $attachment_id : '',
@@ -2097,14 +2070,24 @@ class BitStream_Ajax_Handlers
             $content = preg_replace('#<(p|div|br|hr)[^>]*>#i', "\n", $content);
             $content = trim(html_entity_decode(wp_strip_all_tags($content), ENT_QUOTES, 'UTF-8'));
 
+            $rebit_attachment_id = 0;
+            if ($is_rebit) {
+                $rebit_attachment_id = intval(get_post_meta($post_id, '_bitstream_rebit_attachment_id', true));
+                if ($rebit_attachment_id <= 0) {
+                    $rebit_attachment_id = $attachment_id;
+                }
+            }
+
             $data = [
                 'post_id'           => $post_id,
+                'post_type'         => $is_rebit ? 'rebit' : 'bit',
                 'content'           => $content,
                 'is_rebit'          => $is_rebit,
                 'rebit_url'         => $is_rebit ? $rebit_url : '',
                 'og_title'          => $is_rebit ? get_post_meta($post_id, '_bitstream_og_title', true) : '',
                 'og_desc'           => $is_rebit ? get_post_meta($post_id, '_bitstream_og_desc', true) : '',
                 'og_image'          => $is_rebit ? get_post_meta($post_id, '_bitstream_og_image', true) : '',
+                'rebit_attachment_id' => $rebit_attachment_id > 0 ? $rebit_attachment_id : 0,
                 'attachment_id'     => $attachment_id > 0 ? $attachment_id : '',
                 'attachment_ids'    => $attachment_ids_str,
                 'attachments'       => $attachments_data,
@@ -2237,8 +2220,8 @@ class BitStream_Ajax_Handlers
 
             if ($is_quote) {
                 $data['quote_post_id'] = $quote_post_id;
-                if (function_exists('bitstream_render_nested_quoted_card')) {
-                    $data['quote_preview_html'] = bitstream_render_nested_quoted_card($quote_post_id);
+                if (class_exists('BitStream_Content_Display')) {
+                    $data['quote_preview_html'] = BitStream_Content_Display::render_nested_quoted_card($quote_post_id);
                 }
             } else {
                 $data['quote_post_id'] = 0;
@@ -2273,8 +2256,8 @@ class BitStream_Ajax_Handlers
                 wp_send_json_error('Post not found.');
             }
 
-            $quote_preview_html = function_exists('bitstream_render_nested_quoted_card')
-                ? bitstream_render_nested_quoted_card($post_id)
+            $quote_preview_html = class_exists('BitStream_Content_Display')
+                ? BitStream_Content_Display::render_nested_quoted_card($post_id)
                 : '';
 
             if ($quote_preview_html === '') {
@@ -2344,31 +2327,47 @@ class BitStream_Ajax_Handlers
                         continue;
                     }
 
-                    // Find and update all posts by this author with old mood metadata
-                    $post_ids = get_posts([
-                        'post_type' => ['bit', 'rebit'],
-                        'post_status' => 'any',
-                        'author' => $user_id,
-                        'posts_per_page' => -1,
-                        'fields' => 'ids',
-                        'meta_query' => [
-                            'relation' => 'AND',
-                            [
-                                'key' => '_bitstream_mood_emoji',
-                                'value' => $old_emoji,
-                                'compare' => '='
-                            ],
-                            [
-                                'key' => '_bitstream_mood_emotion',
-                                'value' => $old_emotion,
-                                'compare' => '='
-                            ]
-                        ]
-                    ]);
+                    global $wpdb;
+                    $matched_post_ids = $wpdb->get_col($wpdb->prepare(
+                        "SELECT DISTINCT p.ID
+                         FROM {$wpdb->posts} p
+                         INNER JOIN {$wpdb->postmeta} pm1 ON p.ID = pm1.post_id
+                         INNER JOIN {$wpdb->postmeta} pm2 ON p.ID = pm2.post_id
+                         WHERE p.post_type = 'bit'
+                           AND p.post_author = %d
+                           AND pm1.meta_key = '_bitstream_mood_emoji'
+                           AND pm1.meta_value = %s
+                           AND pm2.meta_key = '_bitstream_mood_emotion'
+                           AND pm2.meta_value = %s",
+                        $user_id,
+                        $old_emoji,
+                        $old_emotion
+                    ));
 
-                    foreach ($post_ids as $pid) {
-                        update_post_meta($pid, '_bitstream_mood_emoji', $new_emoji);
-                        update_post_meta($pid, '_bitstream_mood_emotion', $new_emotion);
+                    if (!empty($matched_post_ids)) {
+                        $placeholders = implode(',', array_fill(0, count($matched_post_ids), '%d'));
+                        
+                        // Update emoji in one query
+                        $wpdb->query($wpdb->prepare(
+                            "UPDATE {$wpdb->postmeta}
+                             SET meta_value = %s
+                             WHERE meta_key = '_bitstream_mood_emoji'
+                               AND post_id IN ({$placeholders})",
+                            array_merge([$new_emoji], $matched_post_ids)
+                        ));
+
+                        // Update emotion in one query
+                        $wpdb->query($wpdb->prepare(
+                            "UPDATE {$wpdb->postmeta}
+                             SET meta_value = %s
+                             WHERE meta_key = '_bitstream_mood_emotion'
+                               AND post_id IN ({$placeholders})",
+                            array_merge([$new_emotion], $matched_post_ids)
+                        ));
+
+                        foreach ($matched_post_ids as $pid) {
+                            clean_post_cache($pid);
+                        }
                     }
                 }
             }

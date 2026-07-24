@@ -163,6 +163,11 @@ class BitStream_Post_Type
         if (get_post_type($post_id) !== 'bit')
             return;
 
+        $current_title = get_post_field('post_title', $post_id);
+        if (preg_match('/^Bit #\d{4}-\d{2}-\d{2}:\d{3}$/', $current_title)) {
+            return;
+        }
+
         remove_action('save_post', [$this, 'auto_generate_title']);
 
         $post_date = get_post_field('post_date', $post_id);

@@ -1,5 +1,5 @@
 // BitStream Service Worker - PWA Support
-const CACHE_NAME = 'bitstream-v3.3.0';
+const CACHE_NAME = 'bitstream-v3.4.0';
 
 const siteUrl = typeof BITSTREAM_SITE_URL !== 'undefined' ? BITSTREAM_SITE_URL : '/bitstream/';
 const FEED_PATH = (function() {
