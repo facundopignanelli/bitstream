@@ -150,6 +150,7 @@ class BitStream_Ajax_Handlers
         add_action('wp_ajax_bitstream_save_share_image', [$this, 'handle_save_share_image']);
         add_action('wp_ajax_bitstream_save_custom_moods', [$this, 'handle_save_custom_moods']);
         add_action('post_updated', [$this, 'handle_post_updated'], 10, 3);
+        add_action('save_post_bit', [$this, 'handle_save_post_bit'], 20, 3);
     }
 
     /**
@@ -342,7 +343,7 @@ class BitStream_Ajax_Handlers
      */
     public function handle_post_updated($post_id, $post_after, $post_before)
     {
-        if ($post_after->post_type !== 'bit') {
+        if (!is_object($post_after) || $post_after->post_type !== 'bit') {
             return;
         }
         $this->clear_share_image_cache($post_id);
@@ -350,11 +351,40 @@ class BitStream_Ajax_Handlers
     }
 
     /**
+     * Invalidate share image cache when a bit is saved/updated via WP Admin or hooks.
+     */
+    public function handle_save_post_bit($post_id, $post = null, $update = false)
+    {
+        if (wp_is_post_revision($post_id) || (is_object($post) && $post->post_status === 'auto-draft')) {
+            return;
+        }
+        if ($update) {
+            $this->clear_share_image_cache($post_id);
+            $this->clear_share_image_cache_for_quoters($post_id);
+        }
+    }
+
+    /**
      * Delete a cached share image file and its post meta.
      */
-    private function clear_share_image_cache($post_id)
+    public function clear_share_image_cache($post_id)
     {
+        $post_id = intval($post_id);
+        if ($post_id <= 0) {
+            return;
+        }
+
         $path = get_post_meta($post_id, '_bitstream_share_image_path', true);
+        if (!$path) {
+            $url = get_post_meta($post_id, '_bitstream_share_image_url', true);
+            if ($url) {
+                $upload_dir = wp_upload_dir();
+                if (strpos($url, $upload_dir['baseurl']) !== false) {
+                    $path = str_replace($upload_dir['baseurl'], $upload_dir['basedir'], $url);
+                }
+            }
+        }
+
         if ($path && file_exists($path)) {
             @unlink($path);
         }
@@ -365,7 +395,7 @@ class BitStream_Ajax_Handlers
     /**
      * Invalidate share image caches for all bits that quote the given post.
      */
-    private function clear_share_image_cache_for_quoters($quoted_post_id)
+    public function clear_share_image_cache_for_quoters($quoted_post_id)
     {
         global $wpdb;
         $ids = $wpdb->get_col($wpdb->prepare(
@@ -1118,7 +1148,7 @@ class BitStream_Ajax_Handlers
                     }
                 }
                 
-                $mood_emoji = sanitize_text_field(wp_unslash($_POST['bit_mood_emoji'] ?? ''));
+                $mood_emoji = wp_strip_all_tags(sanitize_text_field(wp_unslash($_POST['bit_mood_emoji'] ?? '')));
                 $mood_emotion = sanitize_text_field(wp_unslash($_POST['bit_mood_emotion'] ?? ''));
                 $rebit_url = esc_url_raw(wp_unslash($_POST['rebit_url'] ?? ''));
 
@@ -1220,7 +1250,7 @@ class BitStream_Ajax_Handlers
                     delete_post_meta($post_id, '_bitstream_rebit_attachment_id');
                 }
 
-                $this->persist_common_metadata($post_id, $author_id, $attachment_ids, $mood_emoji, $mood_emotion);
+                $this->persist_common_metadata($post_id, $author_id, $attachment_ids, $mood_emoji, $mood_emotion, $is_update);
                 $this->build_composer_response($post_id, $author_id, $is_update, $save_as_draft, $is_auto_draft, $schedule, 'Bit');
             }
 
@@ -1324,7 +1354,7 @@ class BitStream_Ajax_Handlers
                 delete_post_meta($post_id, '_bitstream_quoted_bit');
             }
 
-            $this->persist_common_metadata($post_id, $author_id, $attachment_ids, $mood_emoji, $mood_emotion);
+            $this->persist_common_metadata($post_id, $author_id, $attachment_ids, $mood_emoji, $mood_emotion, $is_update);
             $this->build_composer_response($post_id, $author_id, $is_update, $save_as_draft, $is_auto_draft, $schedule, 'Rebit', [
                 'og' => [
                     'title' => $og_title,
@@ -1356,15 +1386,16 @@ class BitStream_Ajax_Handlers
     }
 
     /**
-     * Persist attachment linkage, mood tags, and user post count flushes.
+     * Persist attachment links, mood metadata, and flush post count caches.
      *
      * @param int    $post_id
      * @param int    $author_id
      * @param array  $attachment_ids
      * @param string $mood_emoji
      * @param string $mood_emotion
+     * @param bool   $is_update
      */
-    private function persist_common_metadata($post_id, $author_id, array $attachment_ids, $mood_emoji, $mood_emotion)
+    private function persist_common_metadata($post_id, $author_id, array $attachment_ids, $mood_emoji, $mood_emotion, $is_update = false)
     {
         if (!empty($attachment_ids)) {
             $this->assign_attachments_to_bit($post_id, $attachment_ids);
@@ -1382,6 +1413,11 @@ class BitStream_Ajax_Handlers
         }
 
         $this->maybe_save_custom_mood_to_list($author_id, $mood_emoji, $mood_emotion);
+
+        if ($is_update) {
+            $this->clear_share_image_cache($post_id);
+            $this->clear_share_image_cache_for_quoters($post_id);
+        }
 
         if (class_exists('BitStream_Shortcodes')) {
             BitStream_Shortcodes::flush_user_post_counts($author_id);

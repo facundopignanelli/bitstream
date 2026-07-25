@@ -6,6 +6,7 @@ Repository-wide instructions for BitStream work in this workspace.
 - Keep changes minimal and focused on the requested task.
 - Do not modify unrelated files or revert user changes.
 - Prefer existing project patterns and keep the current UI/behavior stable unless the user explicitly asks for a change.
+- **Modularity over monoliths**: When adding a new feature or substantial block of logic, prefer creating a new file (JS module, PHP include, CSS partial, etc.) rather than appending hundreds of lines to an already-large file. Split by concern — one file per feature area is better than one mega-file. Wire the new file in via `wp_enqueue_script`, `require_once`, `@import`, or whatever mechanism the project already uses. Update ARCHITECTURE.md to register the new file.
 
 ## Versioning and release notes
 - Do not bump the plugin version unless the user explicitly asks for a version bump.

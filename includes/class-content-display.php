@@ -340,9 +340,12 @@ class BitStream_Content_Display
     /**
      * Parse and save hashtags for a bit post.
      */
-    public function save_post_hashtags($post_id, $post)
+    public function save_post_hashtags($post_id, $post = null)
     {
-        if (wp_is_post_revision($post_id) || $post->post_status === 'auto-draft') {
+        if (!$post || !is_object($post)) {
+            $post = get_post($post_id);
+        }
+        if (!$post || wp_is_post_revision($post_id) || $post->post_status === 'auto-draft') {
             return;
         }
 

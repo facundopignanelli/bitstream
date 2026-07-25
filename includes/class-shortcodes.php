@@ -48,6 +48,105 @@ class BitStream_Shortcodes
     }
 
     /**
+     * Render preview content and meta badges for an item in Drafts or Scheduled list.
+     */
+    private static function render_composer_item_preview($post_id, $context = 'draft')
+    {
+        $post_id = intval($post_id);
+        if ($post_id <= 0) {
+            return;
+        }
+
+        $rebit_url = get_post_meta($post_id, 'bitstream_rebit_url', true);
+        $is_rebit = !empty($rebit_url);
+        $og_title = get_post_meta($post_id, '_bitstream_og_title', true);
+        $rebit_display_title = !empty($og_title) ? $og_title : $rebit_url;
+
+        $raw_content = get_post_field('post_content', $post_id);
+        $clean_content = trim(wp_strip_all_tags($raw_content));
+
+        $mood_emoji = wp_strip_all_tags(get_post_meta($post_id, '_bitstream_mood_emoji', true));
+        $mood_emotion = get_post_meta($post_id, '_bitstream_mood_emotion', true);
+
+        $quote_id = intval(get_post_meta($post_id, '_bitstream_quoted_bit', true));
+
+        // Media count check
+        $media_count = 0;
+        $attachment_ids_meta = get_post_meta($post_id, '_bitstream_attachment_ids', true);
+        if (!empty($attachment_ids_meta)) {
+            $ids = array_filter(array_map('intval', explode(',', $attachment_ids_meta)));
+            $media_count = count($ids);
+        }
+        if ($media_count <= 0) {
+            $single_att = intval(get_post_meta($post_id, '_bitstream_attachment_id', true));
+            $rebit_att = intval(get_post_meta($post_id, '_bitstream_rebit_attachment_id', true));
+            $og_img = get_post_meta($post_id, '_bitstream_og_image', true);
+            $thumb = has_post_thumbnail($post_id);
+            if ($single_att > 0 || $rebit_att > 0 || $thumb || !empty($og_img)) {
+                $media_count = 1;
+            } else {
+                $children = get_children([
+                    'post_parent' => $post_id,
+                    'post_type'   => 'attachment',
+                    'post_status' => 'inherit',
+                    'fields'      => 'ids',
+                ]);
+                $media_count = count($children);
+            }
+        }
+
+        echo '<strong>' . ($is_rebit ? 'Rebit' : 'Bit') . '</strong>';
+
+        if ($is_rebit && !empty($rebit_display_title)) {
+            echo '<div class="bitstream-composer-item-rebit-preview">';
+            echo '<i class="fa-solid fa-link" aria-hidden="true"></i>';
+            echo '<span>' . esc_html(wp_trim_words($rebit_display_title, 12)) . '</span>';
+            echo '</div>';
+        }
+
+        if ($clean_content !== '') {
+            echo '<p>' . esc_html(wp_trim_words($clean_content, 16)) . '</p>';
+        } elseif (!$is_rebit && empty($mood_emotion) && $media_count <= 0 && $quote_id <= 0) {
+            echo '<p class="bitstream-composer-item-empty">(Empty draft)</p>';
+        }
+
+        if (!empty($mood_emotion) || $media_count > 0 || $quote_id > 0) {
+            echo '<div class="bitstream-composer-item-badges">';
+
+            if (!empty($mood_emotion)) {
+                echo '<span class="bitstream-item-badge bitstream-item-badge-mood">';
+                if (!empty($mood_emoji)) {
+                    echo '<span class="bs-badge-emoji">' . esc_html($mood_emoji) . '</span> ';
+                }
+                echo 'Feeling ' . esc_html($mood_emotion);
+                echo '</span>';
+            }
+
+            if ($media_count > 0) {
+                echo '<span class="bitstream-item-badge bitstream-item-badge-media">';
+                echo '<i class="fa-solid fa-image" aria-hidden="true"></i> ';
+                echo ($media_count > 1 ? esc_html($media_count . ' Media') : 'Media');
+                echo '</span>';
+            }
+
+            if ($quote_id > 0) {
+                echo '<span class="bitstream-item-badge bitstream-item-badge-quote">';
+                echo '<i class="fa-solid fa-quote-left" aria-hidden="true"></i> Quote';
+                echo '</span>';
+            }
+
+            echo '</div>';
+        }
+
+        if ($context === 'scheduled') {
+            echo '<small>Scheduled for ' . esc_html(get_the_date('Y-m-d H:i', $post_id)) . '</small>';
+        } else {
+            echo '<small>Last modified ' . esc_html(get_the_modified_date('Y-m-d H:i', $post_id)) . '</small>';
+        }
+    }
+
+
+    /**
      * Strip media markup from a Bit body for textarea editing.
      */
     private function get_editable_text_content($content)
@@ -815,10 +914,7 @@ class BitStream_Shortcodes
                                         data-type="<?php echo esc_attr($row_type); ?>"
                                         data-post-id="<?php echo esc_attr($draft_id); ?>">
                                         <div class="bitstream-composer-draft-info">
-                                            <strong><?php echo $is_rebit ? 'Rebit' : 'Bit'; ?></strong>
-                                            <p><?php echo esc_html(wp_trim_words(get_post_field('post_content', $draft_id), 16)); ?></p>
-                                            <small>Last modified
-                                                <?php echo esc_html(get_the_modified_date('Y-m-d H:i', $draft_id)); ?></small>
+                                            <?php self::render_composer_item_preview($draft_id, 'draft'); ?>
                                         </div>
                                         <div class="bitstream-composer-draft-actions">
                                             <button type="button" class="bitstream-composer-draft-load bitstream-composer-action-btn"
@@ -1015,11 +1111,7 @@ class BitStream_Shortcodes
                                         data-type="<?php echo esc_attr($row_type); ?>"
                                         data-post-id="<?php echo esc_attr($scheduled_id); ?>">
                                         <div class="bitstream-composer-scheduled-info">
-                                            <strong><?php echo $is_rebit ? 'Rebit' : 'Bit'; ?></strong>
-                                            <p><?php echo esc_html(wp_trim_words(get_post_field('post_content', $scheduled_id), 16)); ?>
-                                            </p>
-                                            <small>Scheduled for
-                                                <?php echo esc_html(get_the_date('Y-m-d H:i', $scheduled_id)); ?></small>
+                                            <?php self::render_composer_item_preview($scheduled_id, 'scheduled'); ?>
                                         </div>
                                         <div class="bitstream-composer-scheduled-actions">
                                             <button type="button"

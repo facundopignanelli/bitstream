@@ -54,6 +54,7 @@
                 const hEditPostId = form.querySelector('#bitstream-composer-edit-post-id');
                 const hMoodEmoji = form.querySelector('#bitstream-composer-mood-emoji');
                 const hMoodEmotion = form.querySelector('#bitstream-composer-mood-emotion');
+                const hQuotePostId = form.querySelector('#bitstream-composer-quote-post-id');
                 let renderRebitLivePreview, updateModalImagePreview;
 
                 // Preview containers
@@ -198,6 +199,12 @@
                         const isMobile = window.innerWidth < 1024;
                         if (isMobile) {
                             composerRoot.hidden = false;
+                        }
+
+                        if (name === 'drafts' || name === 'scheduled-list') {
+                            if (typeof window.parseEmojis === 'function') {
+                                window.parseEmojis(modal);
+                            }
                         }
 
                         if (name === 'settings') {
@@ -345,7 +352,9 @@
                         const content = textarea ? textarea.value.trim() : '';
                         const hasRebit = hRebitUrl && hRebitUrl.value.trim();
                         const hasMedia = hAttachmentId && parseInt(hAttachmentId.value || '0', 10) > 0;
-                        if (content || hasRebit || hasMedia) {
+                        const hasMood = hMoodEmotion && hMoodEmotion.value.trim();
+                        const hasQuote = hQuotePostId && parseInt(hQuotePostId.value || '0', 10) > 0;
+                        if (content || hasRebit || hasMedia || hasMood || hasQuote) {
                             if (typeof window.showDiscardConfirmation === 'function') {
                                 window.showDiscardConfirmation('Are you sure you want to discard your draft?', () => {
                                     composerFormIsDirty = false;
@@ -428,9 +437,22 @@
                     }
                 }
 
-                // Wire action buttons
-                composerRoot.querySelectorAll('.bitstream-composer-action-btn[data-composer-modal]').forEach(btn => {
-                    btn.addEventListener('click', () => openModal(btn.dataset.composerModal));
+                // Wire all modal triggers (action buttons, bottom nav items, drawer rows, right rail items)
+                document.addEventListener('click', (e) => {
+                    const trigger = e.target.closest('[data-composer-modal-trigger], [data-composer-modal]');
+                    if (!trigger || trigger.hasAttribute('data-composer-modal-close')) return;
+
+                    const modalName = trigger.dataset.composerModalTrigger || trigger.dataset.composerModal;
+                    if (modalName) {
+                        e.preventDefault();
+                        if (typeof window.bitstreamCloseMore === 'function') {
+                            window.bitstreamCloseMore();
+                        }
+                        if (typeof window.bitstreamCloseSearch === 'function') {
+                            window.bitstreamCloseSearch();
+                        }
+                        openModal(modalName);
+                    }
                 });
 
                 // Wire all close triggers
@@ -550,6 +572,31 @@
                         return String.fromCodePoint(...unified.split('-').map(cp => parseInt(cp, 16)));
                     }
 
+                    const TWEMOJI_BASE = 'https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/';
+
+                    function unifiedToTwemojiUrl(unified) {
+                        const cleaned = unified.toLowerCase().replace(/-fe0f/g, '');
+                        return TWEMOJI_BASE + cleaned + '.svg';
+                    }
+
+                    function createEmojiImg(unified, char) {
+                        const img = document.createElement('img');
+                        img.className = 'emoji';
+                        img.draggable = false;
+                        img.alt = char;
+                        img.style.opacity = '0';
+                        img.src = unifiedToTwemojiUrl(unified);
+                        img.loading = 'lazy';
+                        img.addEventListener('load', () => { img.style.opacity = ''; });
+                        img.addEventListener('error', () => {
+                            const span = document.createElement('span');
+                            span.className = 'bitstream-native-emoji';
+                            span.textContent = char;
+                            img.replaceWith(span);
+                        });
+                        return img;
+                    }
+
                     function getBsRecentEmoji() {
                         try { return JSON.parse(localStorage.getItem('bitstream_recent_emoji') || '[]'); }
                         catch { return []; }
@@ -613,17 +660,11 @@
                         return _emojiDataPromise;
                     }
 
-                    function parseLocalEmojis(el) {
-                        if (typeof window.parseEmojis === 'function') {
-                            window.parseEmojis(el);
-                        }
-                    }
-
                     function createBsEmojiPicker() {
                         const tabsHtml = [
                             `<button type="button" class="bs-emoji-tab" data-category="recent" title="Recently used"><i class="fa-solid fa-clock-rotate-left"></i></button>`,
                             ...CATEGORY_ORDER.map(cat =>
-                                `<button type="button" class="bs-emoji-tab" data-category="${cat}" title="${cat}">${unifiedToChar(CATEGORY_ICONS[cat])}</button>`
+                                `<button type="button" class="bs-emoji-tab" data-category="${cat}" title="${cat}"><img class="emoji" draggable="false" alt="${unifiedToChar(CATEGORY_ICONS[cat])}" src="${unifiedToTwemojiUrl(CATEGORY_ICONS[cat])}" loading="lazy"></button>`
                             )
                         ].join('');
 
@@ -680,7 +721,7 @@
                         let _outsideHandler = null;
                         let _searchTimeout = null;
 
-                        parseLocalEmojis(pickerEl.querySelector('.bs-emoji-picker-tabs'));
+                        // Tab icons are rendered as direct <img> tags, no twemoji parse needed
 
                         function updateToneToggle() {
                             const tone = getBsEmojiTone();
@@ -724,11 +765,9 @@
                                 if (entry.skin_variations && Object.keys(entry.skin_variations).length) {
                                     btn.dataset.hasTones = '1';
                                 }
-                                btn.textContent = char;
+                                btn.appendChild(createEmojiImg(entry.unified, char));
                                 gridEl.appendChild(btn);
                             });
-
-                            parseLocalEmojis(gridEl);
 
                             return gridEl;
                         }
@@ -736,6 +775,7 @@
                         function renderCategory(category) {
                             if (!_emojiData) return;
 
+                            bodyContainer.scrollTop = 0;
                             searchGrid.hidden = true;
                             Object.keys(categoryGrids).forEach(key => {
                                 categoryGrids[key].hidden = true;
@@ -792,6 +832,7 @@
                         function renderSearch(query) {
                             if (!_emojiData) return;
 
+                            bodyContainer.scrollTop = 0;
                             Object.keys(categoryGrids).forEach(key => {
                                 categoryGrids[key].hidden = true;
                             });
@@ -815,11 +856,9 @@
                                 if (entry.skin_variations && Object.keys(entry.skin_variations).length) {
                                     btn.dataset.hasTones = '1';
                                 }
-                                btn.textContent = char;
+                                btn.appendChild(createEmojiImg(entry.unified, char));
                                 searchGrid.appendChild(btn);
                             });
-
-                            parseLocalEmojis(searchGrid);
 
                             const visibleCount = searchGrid.querySelectorAll('.bs-emoji-btn:not([style*="display: none"])').length;
                             if (visibleCount === 0) {
@@ -1531,6 +1570,22 @@
                                 if (previewMedia) previewMedia.hidden = true;
                             }
 
+                            if (d.mood_emotion) {
+                                if (hMoodEmoji) hMoodEmoji.value = d.mood_emoji || '';
+                                if (hMoodEmotion) hMoodEmotion.value = d.mood_emotion || '';
+                                if (previewMoodText) {
+                                    previewMoodText.textContent = `${d.mood_emoji || ''} Feeling ${d.mood_emotion}`.trim();
+                                    if (typeof window.parseEmojis === 'function') window.parseEmojis(previewMoodText);
+                                }
+                                if (previewMood) previewMood.hidden = false;
+                            } else {
+                                if (hMoodEmoji) hMoodEmoji.value = '';
+                                if (hMoodEmotion) hMoodEmotion.value = '';
+                                if (previewMood) previewMood.hidden = true;
+                            }
+
+                            if (textarea) textarea.required = !(d.is_rebit || (d.attachment_id && parseInt(d.attachment_id, 10) > 0) || d.mood_emotion);
+
                             if (d.schedule_enabled === '1' && d.schedule_datetime) {
                                 if (hScheduleEnabled) hScheduleEnabled.value = '1';
                                 if (hScheduleDatetime) hScheduleDatetime.value = d.schedule_datetime;
@@ -1786,6 +1841,9 @@
                 // ── DRAFTS MODAL ──
                 const draftsModal = composerRoot.querySelector('.bitstream-composer-modal-drafts');
                 if (draftsModal) {
+                    if (typeof window.parseEmojis === 'function') {
+                        window.parseEmojis(draftsModal);
+                    }
                     const draftFilterBtns = draftsModal.querySelectorAll('.bitstream-composer-drafts-filter-btn');
                     const draftItems = draftsModal.querySelectorAll('.bitstream-composer-draft-item');
                     draftFilterBtns.forEach(btn => {
@@ -1857,7 +1915,9 @@
                         const content = textarea ? textarea.value.trim() : '';
                         const hasRebit = hRebitUrl && hRebitUrl.value.trim();
                         const hasMedia = hAttachmentId && parseInt(hAttachmentId.value || '0', 10) > 0;
-                        if (!content && !hasRebit && !hasMedia) { setStatus('Nothing to save.', true); return; }
+                        const hasMood = hMoodEmotion && hMoodEmotion.value.trim();
+                        const hasQuote = hQuotePostId && parseInt(hQuotePostId.value || '0', 10) > 0;
+                        if (!content && !hasRebit && !hasMedia && !hasMood && !hasQuote) { setStatus('Nothing to save.', true); return; }
 
                         composerSaveDraftActionBtn.disabled = true;
                         const originalHtml = composerSaveDraftActionBtn.innerHTML;
@@ -1942,6 +2002,9 @@
                 // ── SCHEDULED LIST MODAL ──
                 const scheduledListModal = composerRoot.querySelector('.bitstream-composer-modal-scheduled-list');
                 if (scheduledListModal) {
+                    if (typeof window.parseEmojis === 'function') {
+                        window.parseEmojis(scheduledListModal);
+                    }
                     const schedFilterBtns = scheduledListModal.querySelectorAll('.bitstream-composer-scheduled-filter-btn');
                     const schedItems = scheduledListModal.querySelectorAll('.bitstream-composer-scheduled-item');
                     schedFilterBtns.forEach(btn => {
@@ -2171,7 +2234,9 @@
                     const content = textarea ? textarea.value.trim() : '';
                     const hasRebit = hRebitUrl && hRebitUrl.value.trim();
                     const hasMedia = hAttachmentId && parseInt(hAttachmentId.value || '0', 10) > 0;
-                    if (!content && !hasRebit && !hasMedia) return;
+                    const hasMood = hMoodEmotion && hMoodEmotion.value.trim();
+                    const hasQuote = hQuotePostId && parseInt(hQuotePostId.value || '0', 10) > 0;
+                    if (!content && !hasRebit && !hasMedia && !hasMood && !hasQuote) return;
 
                     const fd = new FormData(form);
                     fd.append('action', 'bitstream_submit_composer');
@@ -2219,6 +2284,7 @@
                     const hasMedia = hAttachmentId && parseInt(hAttachmentId.value || '0', 10) > 0;
                     const hasRebit = hRebitUrl && hRebitUrl.value.trim();
                     const hasMood = hMoodEmotion && hMoodEmotion.value.trim();
+                    const hasQuote = hQuotePostId && parseInt(hQuotePostId.value || '0', 10) > 0;
 
                     let effectiveType = composerType;
                     if (composerType === 'bit' && !hasMedia && !hasRebit && content) {
@@ -2228,7 +2294,7 @@
                         } catch { }
                     }
 
-                    if (effectiveType === 'bit' && !content && !hasMedia && !hasMood) { setStatus('Write something or attach media.', true); return; }
+                    if (effectiveType === 'bit' && !content && !hasMedia && !hasMood && !hasQuote) { setStatus('Write something or attach media.', true); return; }
 
                     setStatus(effectiveType === 'rebit' ? 'Posting ReBit...' : 'Posting...');
                     if (submitBtn) submitBtn.disabled = true;

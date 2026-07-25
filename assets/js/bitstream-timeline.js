@@ -933,6 +933,11 @@
             const textarea = form.querySelector('.bs-edit-textarea');
             if (textarea) {
                 textarea.addEventListener('paste', (event) => {
+                    const editPostInput = form.querySelector('input[name="edit_post_id"]');
+                    const isEditMode = editPostInput && parseInt(editPostInput.value || '0', 10) > 0;
+                    if (isEditMode) {
+                        return;
+                    }
                     const clipboardData = event.clipboardData || window.clipboardData;
                     if (!clipboardData) {
                         return;
@@ -1039,7 +1044,10 @@
                     }
 
                     refetchButton.disabled = true;
-                    setLoadingState(true, 'Fetching metadata...');
+                    if (!refetchButton.dataset.origHtml) {
+                        refetchButton.dataset.origHtml = refetchButton.innerHTML;
+                    }
+                    refetchButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Fetching...';
 
                     const payload = new FormData();
                     payload.append('action', 'bitstream_fetch_og_data');
@@ -1091,6 +1099,10 @@
                             setErrorState(error.message || 'Could not fetch metadata.');
                         })
                         .finally(() => {
+                            if (refetchButton.dataset.origHtml) {
+                                refetchButton.innerHTML = refetchButton.dataset.origHtml;
+                                delete refetchButton.dataset.origHtml;
+                            }
                             refetchButton.disabled = false;
                         });
                 });
@@ -1482,6 +1494,11 @@
                 }
             }
 
+            const actionsRow = bitForm.querySelector('.bs-edit-actions-row');
+            if (actionsRow) {
+                actionsRow.style.display = isQuoteMode ? 'flex' : 'none';
+            }
+
             if (submitButton) {
                 submitButton.textContent = isRebit ? 'Update Rebit' : (isQuoteMode ? 'Post Bit' : 'Update Bit');
             }
@@ -1555,13 +1572,38 @@
                 }
             }
 
-            if (submitButton) {
-                submitButton.disabled = true;
+            clearFormFeedback();
+            const isUpdate = parseInt(editPostInput ? (editPostInput.value || '0') : '0', 10) > 0;
+            const actionText = saveAsDraft
+                ? (isUpdate ? 'Updating draft...' : 'Saving draft...')
+                : (isUpdate ? 'Updating...' : 'Publishing...');
+
+            const activeBtn = saveAsDraft ? draftButton : submitButton;
+            if (activeBtn) {
+                if (!activeBtn.dataset.origHtml) {
+                    activeBtn.dataset.origHtml = activeBtn.innerHTML;
+                }
+                activeBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> ' + actionText;
             }
-            if (draftButton) {
-                draftButton.disabled = true;
-            }
-            setLoadingState(true, saveAsDraft ? 'Saving draft...' : 'Publishing...');
+            if (submitButton) submitButton.disabled = true;
+            if (draftButton) draftButton.disabled = true;
+
+            const restoreSubmitButtons = () => {
+                if (submitButton) {
+                    if (submitButton.dataset.origHtml) {
+                        submitButton.innerHTML = submitButton.dataset.origHtml;
+                        delete submitButton.dataset.origHtml;
+                    }
+                    submitButton.disabled = false;
+                }
+                if (draftButton) {
+                    if (draftButton.dataset.origHtml) {
+                        draftButton.innerHTML = draftButton.dataset.origHtml;
+                        delete draftButton.dataset.origHtml;
+                    }
+                    draftButton.disabled = false;
+                }
+            };
 
             const payload = new FormData(form);
             payload.append('action', 'bitstream_submit_composer');
@@ -1635,14 +1677,8 @@
                     window.location.href = feedUrl.toString();
                 })
                 .catch(error => {
+                    restoreSubmitButtons();
                     setErrorState(error.message || 'Could not save post.');
-                    setLoadingState(false);
-                    if (submitButton) {
-                        submitButton.disabled = false;
-                    }
-                    if (draftButton) {
-                        draftButton.disabled = false;
-                    }
                 });
         }
 
@@ -1652,8 +1688,12 @@
                 return false;
             }
 
+            if (modalTitle) {
+                modalTitle.textContent = (postType === 'rebit') ? 'Edit Rebit' : 'Edit Bit';
+            }
+
             setModalVisible(true);
-            setLoadingState(true, 'Loading post…');
+            setLoadingState(true, (postType === 'rebit') ? 'Loading rebit…' : 'Loading bit…');
             clearFormFeedback();
             showForm(null);
 
@@ -1691,6 +1731,10 @@
             const numericPostId = parseInt(postId || '0', 10);
             if (!numericPostId || !window.bitstream_ajax || !bitstream_ajax.ajax_url || !submitNonce) {
                 return false;
+            }
+
+            if (modalTitle) {
+                modalTitle.textContent = 'Quote Bit';
             }
 
             setModalVisible(true);
@@ -2532,6 +2576,7 @@
         twemoji.parse(container, {
             folder: 'svg',
             ext: '.svg',
+            base: 'https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/',
             callback: (icon, options) => {
                 const cleanIcon = icon.replace(/-fe0f/g, '');
                 return ''.concat(options.base, options.size, '/', cleanIcon, options.ext);
@@ -3172,12 +3217,16 @@
                     const content = composerEl.querySelector('#bitstream-quick-bit-content');
                     const hasRebit = composerEl.querySelector('#bitstream-composer-rebit-url');
                     const hasMedia = composerEl.querySelector('#bitstream-composer-attachment-id');
+                    const hasMood = composerEl.querySelector('#bitstream-composer-mood-emotion');
+                    const hasQuote = composerEl.querySelector('#bitstream-composer-quote-post-id');
                     
                     const contentVal = content ? content.value.trim() : '';
                     const rebitVal = hasRebit ? hasRebit.value.trim() : '';
                     const mediaVal = hasMedia && parseInt(hasMedia.value || '0', 10) > 0;
+                    const moodVal = hasMood ? hasMood.value.trim() : '';
+                    const quoteVal = hasQuote && parseInt(hasQuote.value || '0', 10) > 0;
                     
-                    if (contentVal || rebitVal || mediaVal) {
+                    if (contentVal || rebitVal || mediaVal || moodVal || quoteVal) {
                         e.preventDefault();
                         showDiscardConfirmation('Are you sure you want to discard your draft?', () => {
                             composerEl.hidden = true;
@@ -3282,12 +3331,16 @@
                     const content = composerEl.querySelector('#bitstream-quick-bit-content');
                     const hasRebit = composerEl.querySelector('#bitstream-composer-rebit-url');
                     const hasMedia = composerEl.querySelector('#bitstream-composer-attachment-id');
+                    const hasMood = composerEl.querySelector('#bitstream-composer-mood-emotion');
+                    const hasQuote = composerEl.querySelector('#bitstream-composer-quote-post-id');
                     
                     const contentVal = content ? content.value.trim() : '';
                     const rebitVal = hasRebit ? hasRebit.value.trim() : '';
                     const mediaVal = hasMedia && parseInt(hasMedia.value || '0', 10) > 0;
+                    const moodVal = hasMood ? hasMood.value.trim() : '';
+                    const quoteVal = hasQuote && parseInt(hasQuote.value || '0', 10) > 0;
                     
-                    if (contentVal || rebitVal || mediaVal) {
+                    if (contentVal || rebitVal || mediaVal || moodVal || quoteVal) {
                         e.preventDefault();
                         showDiscardConfirmation('Are you sure you want to discard your draft?', () => {
                             composerEl.hidden = true;
@@ -3369,12 +3422,46 @@
         }
 
         if (navMore) {
-            navMore.addEventListener('click', () => {
+            navMore.addEventListener('click', (e) => {
                 if (moreSheet && !moreSheet.hidden) {
                     closeMore();
-                } else {
-                    openMore();
+                    return;
                 }
+
+                const composerEl = document.querySelector('.bitstream-composer');
+                if (composerEl && !composerEl.hidden) {
+                    const content = composerEl.querySelector('#bitstream-quick-bit-content');
+                    const hasRebit = composerEl.querySelector('#bitstream-composer-rebit-url');
+                    const hasMedia = composerEl.querySelector('#bitstream-composer-attachment-id');
+                    const hasMood = composerEl.querySelector('#bitstream-composer-mood-emotion');
+                    const hasQuote = composerEl.querySelector('#bitstream-composer-quote-post-id');
+                    
+                    const contentVal = content ? content.value.trim() : '';
+                    const rebitVal = hasRebit ? hasRebit.value.trim() : '';
+                    const mediaVal = hasMedia && parseInt(hasMedia.value || '0', 10) > 0;
+                    const moodVal = hasMood ? hasMood.value.trim() : '';
+                    const quoteVal = hasQuote && parseInt(hasQuote.value || '0', 10) > 0;
+                    
+                    if (contentVal || rebitVal || mediaVal || moodVal || quoteVal) {
+                        e.preventDefault();
+                        showDiscardConfirmation('Are you sure you want to discard your draft?', () => {
+                            composerEl.hidden = true;
+                            composerEl.querySelectorAll('.bitstream-composer-modal').forEach(m => m.hidden = true);
+                            const clearFn = window.bitstreamClearComposer;
+                            if (clearFn) clearFn();
+                            openMore();
+                        }, () => {
+                            const saveBtn = composerEl.querySelector('.bitstream-composer-save-draft-action');
+                            if (saveBtn) saveBtn.click();
+                        });
+                        return;
+                    } else {
+                        composerEl.hidden = true;
+                        composerEl.querySelectorAll('.bitstream-composer-modal').forEach(m => m.hidden = true);
+                    }
+                }
+
+                openMore();
             });
         }
 
