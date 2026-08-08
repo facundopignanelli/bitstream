@@ -1864,6 +1864,83 @@
                     }
                 }
 
+                // ── PASTE MEDIA HANDLER ──
+                function handlePastedMedia(files) {
+                    if (!files || files.length === 0) return;
+
+                    const uploadFn = window.uploadMultipleFiles || (window.BitStream && window.BitStream.Media && window.BitStream.Media.uploadMultipleFiles);
+                    if (typeof uploadFn !== 'function') {
+                        setStatus('Media uploader is unavailable.', true);
+                        return;
+                    }
+
+                    const modalAttachmentId = 'bitstream-composer-modal-media-attachment-id';
+                    const modalPreviewId = 'bitstream-composer-modal-media-preview';
+
+                    setStatus('Processing pasted image...');
+
+                    uploadFn(files, modalAttachmentId, modalPreviewId, {
+                        setStatus: (msg, isError) => setStatus(msg, isError)
+                    }).then(() => {
+                        const mMediaPreview = mediaModal ? mediaModal.querySelector('#bitstream-composer-modal-media-preview') : null;
+                        const attachments = mMediaPreview ? (typeof window.getExistingAttachments === 'function' ? window.getExistingAttachments(mMediaPreview) : []) : [];
+
+                        if (attachments.length > 0) {
+                            if (previewMediaThumb && typeof window.updateAttachmentsList === 'function') {
+                                window.updateAttachmentsList(previewMediaThumb, attachments);
+                            } else {
+                                const attachId = attachments[0].id;
+                                const attachIds = attachments.map(item => item.id).join(',');
+                                if (hAttachmentId) hAttachmentId.value = String(attachId);
+                                if (hAttachmentIds) hAttachmentIds.value = attachIds;
+                                if (previewMedia) previewMedia.hidden = false;
+                            }
+                            syncPreviewArea();
+                            setStatus('Pasted image attached.');
+                        }
+                    }).catch(err => {
+                        console.error('BitStream: Pasted image upload failed:', err);
+                        setStatus(err.message || 'Image upload failed.', true);
+                    });
+                }
+
+                composerRoot.addEventListener('bitstream:paste-media', (e) => {
+                    const files = e.detail && e.detail.files;
+                    if (files && files.length > 0) {
+                        handlePastedMedia(files);
+                    }
+                });
+
+                composerRoot.addEventListener('paste', (e) => {
+                    if (e.defaultPrevented) return;
+                    const clipboardData = e.clipboardData || window.clipboardData;
+                    if (!clipboardData) return;
+
+                    const mediaFiles = [];
+                    if (clipboardData.files && clipboardData.files.length > 0) {
+                        for (let i = 0; i < clipboardData.files.length; i++) {
+                            const f = clipboardData.files[i];
+                            if (f.type && (f.type.startsWith('image/') || f.type.startsWith('video/'))) {
+                                mediaFiles.push(f);
+                            }
+                        }
+                    }
+                    if (mediaFiles.length === 0 && clipboardData.items && clipboardData.items.length > 0) {
+                        for (let i = 0; i < clipboardData.items.length; i++) {
+                            const item = clipboardData.items[i];
+                            if (item.type && (item.type.startsWith('image/') || item.type.startsWith('video/'))) {
+                                const f = item.getAsFile();
+                                if (f) mediaFiles.push(f);
+                            }
+                        }
+                    }
+
+                    if (mediaFiles.length > 0) {
+                        e.preventDefault();
+                        handlePastedMedia(mediaFiles);
+                    }
+                });
+
                 // ── DRAFTS MODAL ──
                 const draftsModal = composerRoot.querySelector('.bitstream-composer-modal-drafts');
                 if (draftsModal) {

@@ -943,16 +943,25 @@
                         return;
                     }
 
-                    if (clipboardData.getData('text/plain')) {
-                        return;
+                    const validFiles = [];
+                    if (clipboardData.files && clipboardData.files.length > 0) {
+                        for (let i = 0; i < clipboardData.files.length; i++) {
+                            const f = clipboardData.files[i];
+                            if (f.type && (f.type.startsWith('image/') || f.type.startsWith('video/'))) {
+                                validFiles.push(f);
+                            }
+                        }
+                    }
+                    if (validFiles.length === 0 && clipboardData.items && clipboardData.items.length > 0) {
+                        for (let i = 0; i < clipboardData.items.length; i++) {
+                            const item = clipboardData.items[i];
+                            if (item.type && (item.type.startsWith('image/') || item.type.startsWith('video/'))) {
+                                const f = item.getAsFile();
+                                if (f) validFiles.push(f);
+                            }
+                        }
                     }
 
-                    if (!clipboardData.files || !clipboardData.files.length) {
-                        return;
-                    }
-
-                    const files = clipboardData.files;
-                    const validFiles = Array.from(files).filter(file => file.type.startsWith('image/') || file.type.startsWith('video/'));
                     if (validFiles.length > 0) {
                         event.preventDefault();
                         uploadFiles(validFiles);

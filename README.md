@@ -89,7 +89,7 @@ Manage all configuration options directly on the frontend timeline page via the 
 - **Unified Feed Composition**: Compose Bits and ReBits directly from the feed page.
 - **Drafts & Auto-Save**: Save posts as drafts, auto-save drafts on page or tab close via `navigator.sendBeacon`, and manage draft items directly on the frontend.
 - **Robust Scheduling**: Plan ahead with a native datetime picker for future publishing (Bits and ReBits).
-- **Rich Media Grids**: Drag-and-drop uploads, attaching up to 10 images or videos per post, custom image cropper, and video support.
+- **Rich Media Grids & Direct Clipboard Paste**: Drag-and-drop uploads, direct clipboard image pasting (`Ctrl+V` / `Cmd+V`) into the composer without opening upload dialogs, attaching up to 10 images or videos per post, custom image cropper, and video support.
 - **Fullscreen Lightbox**: Pop up gallery view allowing users to zoom in and expand single or multi-media images and videos directly from the timeline.
 - **Live Hashtag & URL Highlighting**: Real-time inline styling for `#hashtags` (theme accent color) and `http://`/`https://` URLs (underlined blue) inside the composer and edit modals as you type.
 - **Caret-Anchored Hashtag Autocomplete**: Type `#` inside the composer or edit modals to display a floating suggestion menu anchored directly under the active cursor with keyboard (`ArrowUp`/`ArrowDown`/`Enter`/`Tab`) and touch support.

@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Contenteditable Micro-Editor with Live Hashtag & URL Highlighting**: Upgraded composer and timeline edit modal textareas to a `contenteditable` micro-editor module (`bitstream-editor.js`). Features real-time `#hashtag` accent coloring, `http://`/`https://` URL underline highlighting, caret-anchored hashtag autocomplete popup (`Range.getBoundingClientRect()`), inline Twemoji rendering, HTML entity escaping to prevent DOM XSS, and a plain-text paste sanitizer fallback for older browsers.
+- **Direct Clipboard Image Paste in Composer**: Added support for pasting images directly from the clipboard (`Ctrl+V` / `Cmd+V`) into the composer editor (`bitstream-editor.js` & `bitstream-composer.js`). Pasted images are automatically processed, compressed if necessary, uploaded to the WordPress media library, and attached to the bit with live thumbnail previews without needing to open the media upload dialog.
 
 ### Changed
 - **Remove Options to Add Images, Links, or Moods from Edit Bit Screen**: Dynamically hid the "Add Mood", "Add Media", and "Add Link" action buttons (`.bs-edit-actions-row`) and image paste uploads when editing an existing post in the edit modal, while preserving these options when composing a new quote bit.

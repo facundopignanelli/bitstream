@@ -288,10 +288,10 @@ This index serves as the primary map for understanding the backend and frontend 
 * **Description**: Multi-file and chunked uploader script. Manages file compression, progress queues, and dynamic upload forms. Exposed under `window.BitStream.Media`.
 
 ### [assets/js/bitstream-editor.js](assets/js/bitstream-editor.js)
-* **Description**: Contenteditable micro-editor script. Powers live `#hashtag` coloring, `http://` URL highlighting, caret-anchored autocomplete popup, inline Twemoji rendering, DOM selection range preservation, and plain-text paste sanitization. Exposed under `window.BitStream.Editor`.
+* **Description**: Contenteditable micro-editor script. Powers live `#hashtag` coloring, `http://` URL highlighting, caret-anchored autocomplete popup, inline Twemoji rendering, DOM selection range preservation, plain-text paste sanitization, and clipboard image paste detection (`bitstream:paste-media`). Exposed under `window.BitStream.Editor`.
 
 ### [assets/js/bitstream-composer.js](assets/js/bitstream-composer.js)
-* **Description**: Composer and settings controller script. Powers character counters, settings forms, PWA share payloads, drafts lists, scheduled list drawers, predefined/custom moods, and twemoji lazy-parsing. Exposed under `window.BitStream.Composer`.
+* **Description**: Composer and settings controller script. Powers character counters, settings forms, PWA share payloads, drafts lists, scheduled list drawers, direct clipboard image paste handling, predefined/custom moods, and twemoji lazy-parsing. Exposed under `window.BitStream.Composer`.
 
 ### [assets/js/bitstream-timeline.js](assets/js/bitstream-timeline.js)
 * **Description**: Timeline viewer and utilities script. Manages page scroll pagination, comments toggling/styling, media session metadata tracking, exposing hashtag data (`getHashtags()`), push notifications registration, and image download protections. Exposed under `window.BitStream.Timeline`.

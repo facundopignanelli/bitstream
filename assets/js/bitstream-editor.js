@@ -496,10 +496,47 @@
             syncHiddenInput(editor);
         });
 
-        // 2. Paste Sanitizer (Older browser & rich HTML fallback)
+        // 2. Paste Sanitizer & Image Clipboard Handler
         editor.addEventListener('paste', function (e) {
+            const clipboardData = e.clipboardData || window.clipboardData;
+            if (!clipboardData) return;
+
+            const mediaFiles = [];
+            if (clipboardData.files && clipboardData.files.length > 0) {
+                for (let i = 0; i < clipboardData.files.length; i++) {
+                    const f = clipboardData.files[i];
+                    if (f.type && (f.type.startsWith('image/') || f.type.startsWith('video/'))) {
+                        mediaFiles.push(f);
+                    }
+                }
+            }
+            if (mediaFiles.length === 0 && clipboardData.items && clipboardData.items.length > 0) {
+                for (let i = 0; i < clipboardData.items.length; i++) {
+                    const item = clipboardData.items[i];
+                    if (item.type && (item.type.startsWith('image/') || item.type.startsWith('video/'))) {
+                        const f = item.getAsFile();
+                        if (f) mediaFiles.push(f);
+                    }
+                }
+            }
+
+            if (mediaFiles.length > 0) {
+                e.preventDefault();
+                const text = clipboardData.getData('text/plain');
+                if (text && !text.startsWith('data:image/') && !text.startsWith('blob:')) {
+                    insertAtCaret(editor, text);
+                }
+                const customEvent = new CustomEvent('bitstream:paste-media', {
+                    bubbles: true,
+                    cancelable: true,
+                    detail: { files: mediaFiles, editor: editor }
+                });
+                editor.dispatchEvent(customEvent);
+                return;
+            }
+
             e.preventDefault();
-            const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+            const text = clipboardData.getData('text/plain');
             insertAtCaret(editor, text);
         });
 
