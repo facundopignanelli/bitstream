@@ -642,9 +642,10 @@ class BitStream_Shortcodes
                     <form class="bitstream-sidebar-composer-form bitstream-composer-form"
                         data-composer-type="<?php echo esc_attr($composer_type_prefill); ?>">
                         <div class="bs-textarea-container" style="position: relative; width: 100%;">
-                            <textarea id="bitstream-quick-bit-content" name="bit_content" rows="3"
-                                placeholder="What's on your mind?" required
-                                class="bitstream-composer-field bitstream-composer-textarea" style="padding-right: 36px;"><?php echo esc_textarea($bit_content_prefill); ?></textarea>
+                            <div id="bitstream-quick-bit-content" class="bitstream-composer-field bitstream-composer-textarea"
+                                contenteditable="plaintext-only" role="textbox" aria-multiline="true"
+                                data-placeholder="What's on your mind?" style="padding-right: 36px;"><?php echo esc_html($bit_content_prefill); ?></div>
+                            <input type="hidden" id="bitstream-quick-bit-content-value" name="bit_content" value="<?php echo esc_attr($bit_content_prefill); ?>">
                             <button type="button" class="bs-insert-emoji-btn" data-target-input="#bitstream-quick-bit-content" title="Insert Emoji" aria-label="Insert Emoji" style="position: absolute; right: 8px; bottom: 8px; background: none; border: none; font-size: 1.1rem; color: #94a3b8; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; transition: color 0.15s;">
                                 <i class="fa-regular fa-face-smile" aria-hidden="true"></i>
                             </button>
@@ -2720,8 +2721,10 @@ class BitStream_Shortcodes
                         <div class="bs-edit-field">
                             <label class="bs-edit-label" for="bs-edit-bit-content" id="bs-edit-content-label">Content</label>
                             <div class="bs-textarea-container" style="position: relative; width: 100%;">
-                                <textarea id="bs-edit-bit-content" name="bit_content" class="bs-edit-textarea" rows="5"
-                                    placeholder="What's happening?" style="padding-right: 38px;"></textarea>
+                                <div id="bs-edit-bit-content" class="bs-edit-textarea"
+                                    contenteditable="plaintext-only" role="textbox" aria-multiline="true"
+                                    data-placeholder="What's happening?" style="padding-right: 38px;"></div>
+                                <input type="hidden" id="bs-edit-bit-content-value" name="bit_content" value="">
                                 <button type="button" class="bs-insert-emoji-btn" data-target-input="#bs-edit-bit-content" title="Insert Emoji" aria-label="Insert Emoji" style="position: absolute; right: 8px; bottom: 8px; background: none; border: none; font-size: 1.1rem; color: #94a3b8; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; transition: color 0.15s;">
                                     <i class="fa-regular fa-face-smile" aria-hidden="true"></i>
                                 </button>

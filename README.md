@@ -91,8 +91,9 @@ Manage all configuration options directly on the frontend timeline page via the 
 - **Robust Scheduling**: Plan ahead with a native datetime picker for future publishing (Bits and ReBits).
 - **Rich Media Grids**: Drag-and-drop uploads, attaching up to 10 images or videos per post, custom image cropper, and video support.
 - **Fullscreen Lightbox**: Pop up gallery view allowing users to zoom in and expand single or multi-media images and videos directly from the timeline.
-- **Hashtag Suggestions Autocomplete**: Type `#` inside the composer or edit modals to receive immediate suggestions of previously used hashtags sorted by count, featuring keyboard navigation (`ArrowUp`/`ArrowDown`/`Enter`/`Tab`) and a mobile-friendly inline stacked layout.
-- **Rich Emoji Insertion**: Integrated custom emoji picker triggers inside the composer and edit form textareas, placing a subtle shortcut inside the text fields for seamless rich emoji composition.
+- **Live Hashtag & URL Highlighting**: Real-time inline styling for `#hashtags` (theme accent color) and `http://`/`https://` URLs (underlined blue) inside the composer and edit modals as you type.
+- **Caret-Anchored Hashtag Autocomplete**: Type `#` inside the composer or edit modals to display a floating suggestion menu anchored directly under the active cursor with keyboard (`ArrowUp`/`ArrowDown`/`Enter`/`Tab`) and touch support.
+- **Inline Twemoji Composition**: Typed or inserted emojis dynamically convert to SVG vector Twemoji graphics directly inside the editing field.
 - **Timeline Edit Modal Quote Support**: Editing a post that quotes another bit displays the quoted bit preview block inside the edit modal, and allows users to easily clear/remove the quote.
 
 ### 🎭 Mood Status Selector

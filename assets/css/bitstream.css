@@ -286,6 +286,78 @@
     box-shadow: 0 0 0 2px rgba(44, 110, 73, 0.15);
 }
 
+/* Contenteditable Micro-Editor Styles */
+.bitstream-composer-textarea[contenteditable],
+.bs-edit-textarea[contenteditable] {
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+.bitstream-composer-textarea[contenteditable]:empty::before,
+.bs-edit-textarea[contenteditable]:empty::before {
+    content: attr(data-placeholder);
+    color: #94a3b8;
+    pointer-events: none;
+    display: block;
+}
+
+.bs-editor-hashtag {
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    font-weight: 500;
+}
+
+.bs-editor-url {
+    color: #2563eb;
+    text-decoration: underline;
+}
+
+.bs-editor-autocomplete-popup {
+    position: absolute;
+    z-index: 100001;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    max-height: 200px;
+    overflow-y: auto;
+    min-width: 180px;
+    padding: 4px;
+}
+
+.bs-editor-autocomplete-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 12px;
+    font-size: 0.88rem;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #1a202c;
+    transition: background 0.12s ease;
+}
+
+.bs-editor-autocomplete-item:hover,
+.bs-editor-autocomplete-item.is-active {
+    background: #f1f5f9;
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+}
+
+.bs-editor-autocomplete-item .bs-tag-name {
+    font-weight: 500;
+}
+
+.bs-editor-autocomplete-item .bs-tag-count {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    background: #f8fafc;
+    padding: 2px 6px;
+    border-radius: 10px;
+}
+
 /* Action buttons row */
 .bitstream-composer-actions-row {
     display: flex;

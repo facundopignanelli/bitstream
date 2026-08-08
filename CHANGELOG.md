@@ -5,6 +5,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.4.0] - 2026-XX-XX
 
+### Added
+- **Contenteditable Micro-Editor with Live Hashtag & URL Highlighting**: Upgraded composer and timeline edit modal textareas to a `contenteditable` micro-editor module (`bitstream-editor.js`). Features real-time `#hashtag` accent coloring, `http://`/`https://` URL underline highlighting, caret-anchored hashtag autocomplete popup (`Range.getBoundingClientRect()`), inline Twemoji rendering, HTML entity escaping to prevent DOM XSS, and a plain-text paste sanitizer fallback for older browsers.
+
 ### Changed
 - **Remove Options to Add Images, Links, or Moods from Edit Bit Screen**: Dynamically hid the "Add Mood", "Add Media", and "Add Link" action buttons (`.bs-edit-actions-row`) and image paste uploads when editing an existing post in the edit modal, while preserving these options when composing a new quote bit.
 - **Modularize Client-Side JavaScript**: Deconstructed the monolithic 10,000+ line `assets/js/bitstream.js` script into five focused, separate module files (`bitstream-lightbox.js`, `bitstream-cropper.js`, `bitstream-uploader.js`, `bitstream-composer.js`, and `bitstream-timeline.js`) under `assets/js/`. Converted the main `bitstream.js` file into a lightweight bootstrapper that registers and initializes these modules on `DOMContentLoaded`. Registered the modular scripts in WordPress with dynamic cache-busting version hashes based on `filemtime` and linked them as dependencies of the main `bitstream-js` handle, simplifying enqueues in all display, admin, and block editor interfaces to use a single handle.

@@ -56,6 +56,7 @@ class BitStream_Plugin
         wp_register_script('bitstream-lightbox', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream-lightbox.js', [], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/js/bitstream-lightbox.js'), true);
         wp_register_script('bitstream-cropper', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream-cropper.js', [], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/js/bitstream-cropper.js'), true);
         wp_register_script('bitstream-uploader', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream-uploader.js', [], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/js/bitstream-uploader.js'), true);
+        wp_register_script('bitstream-editor', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream-editor.js', [], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/js/bitstream-editor.js'), true);
         wp_register_script('bitstream-composer', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream-composer.js', [], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/js/bitstream-composer.js'), true);
         wp_register_script('bitstream-timeline', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream-timeline.js', [], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/js/bitstream-timeline.js'), true);
 
@@ -63,7 +64,7 @@ class BitStream_Plugin
         wp_register_script(
             'bitstream-js',
             BITSTREAM_PLUGIN_URL . 'assets/js/bitstream.js',
-            ['jquery', 'twemoji', 'bitstream-lightbox', 'bitstream-cropper', 'bitstream-uploader', 'bitstream-composer', 'bitstream-timeline'],
+            ['jquery', 'twemoji', 'bitstream-lightbox', 'bitstream-cropper', 'bitstream-uploader', 'bitstream-editor', 'bitstream-composer', 'bitstream-timeline'],
             BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/js/bitstream.js'),
             true
         );

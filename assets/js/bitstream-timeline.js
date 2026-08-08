@@ -1405,7 +1405,13 @@
             }
 
             if (contentInput) {
-                contentInput.value = isQuoteMode ? '' : (data.content || '');
+                const val = isQuoteMode ? '' : (data.content || '');
+                if (window.BitStream && window.BitStream.Editor) {
+                    window.BitStream.Editor.init(contentInput);
+                    window.BitStream.Editor.setTextContent(contentInput, val);
+                } else {
+                    contentInput.textContent = val;
+                }
                 if (window.matchMedia('(max-width: 1023px)').matches) {
                     if (typeof window.bsMobileAutoResize === 'function') {
                         window.bsMobileAutoResize(contentInput);
@@ -1542,7 +1548,7 @@
                 const quoteInput = form.querySelector('.bs-edit-quote-post-id');
                 const moodInput = form.querySelector('.bs-edit-mood-emotion');
                 const rebitUrlInput = form.querySelector('.bs-edit-rebit-url-hidden');
-                const content = textarea ? textarea.value.trim() : '';
+                const content = textarea ? (window.BitStream && window.BitStream.Editor ? window.BitStream.Editor.getEditorValue(textarea) : (textarea.value || '')).trim() : '';
                 const hasMedia = attachmentInput && parseInt(attachmentInput.value || '0', 10) > 0;
                 const hasQuote = quoteInput && parseInt(quoteInput.value || '0', 10) > 0;
                 const hasMood = moodInput && moodInput.value.trim();
@@ -1617,7 +1623,7 @@
 
             if (effectiveType === 'rebit' && composerType === 'bit') {
                 const textarea = form.querySelector('#bs-edit-bit-content');
-                const content = textarea ? textarea.value.trim() : '';
+                const content = textarea ? (window.BitStream && window.BitStream.Editor ? window.BitStream.Editor.getEditorValue(textarea) : (textarea.value || '')).trim() : '';
                 if (content) {
                     payload.set('rebit_url', content);
                     payload.delete('bit_content');
@@ -2573,6 +2579,26 @@
 
     function parseEmojis(container) {
         if (typeof twemoji === 'undefined' || !container) return;
+        if (container.hasAttribute && (container.hasAttribute('contenteditable') || container.getAttribute('role') === 'textbox')) {
+            return;
+        }
+
+        const editables = Array.from(container.querySelectorAll('[contenteditable], [role="textbox"]'));
+        if (editables.length > 0) {
+            Array.from(container.children).forEach(child => {
+                if (!child.hasAttribute('contenteditable') && child.getAttribute('role') !== 'textbox' && !child.querySelector('[contenteditable]')) {
+                    parseEmojis(child);
+                } else if (!child.hasAttribute('contenteditable') && child.getAttribute('role') !== 'textbox') {
+                    Array.from(child.children).forEach(subChild => {
+                        if (!subChild.hasAttribute('contenteditable') && subChild.getAttribute('role') !== 'textbox') {
+                            parseEmojis(subChild);
+                        }
+                    });
+                }
+            });
+            return;
+        }
+
         twemoji.parse(container, {
             folder: 'svg',
             ext: '.svg',
@@ -3504,182 +3530,15 @@
         if (aboutBackdrop)  aboutBackdrop.addEventListener('click', closeAboutModal);
     }
 
-    function initHashtagSuggestions() {
-        let activeTextarea = null;
-        let popupEl = null;
-        let isOpen = false;
-        let matches = [];
-        let selectedIndex = 0;
-        let queryStart = -1;
-        let query = '';
-
-        function isTargetTextarea(el) {
-            if (!el || el.tagName !== 'TEXTAREA') return false;
-            return el.closest('.bitstream-composer') || el.closest('.bs-edit-modal') || el.classList.contains('bs-edit-textarea') || el.classList.contains('bitstream-composer-textarea');
-        }
-
-        function closePopup() {
-            if (!isOpen) return;
-            isOpen = false;
-            if (popupEl) {
-                popupEl.remove();
-                popupEl = null;
+    function getHashtags() {
+        const allTags = [];
+        if (window.bitstream_ajax && bitstream_ajax.hashtags) {
+            for (const [tag, count] of Object.entries(bitstream_ajax.hashtags)) {
+                allTags.push({ tag, count: parseInt(count, 10) });
             }
         }
-
-        function openPopup(textarea, hashIndex, tagText) {
-            activeTextarea = textarea;
-            queryStart = hashIndex;
-            query = tagText;
-
-            const allTags = [];
-            if (window.bitstream_ajax && bitstream_ajax.hashtags) {
-                for (const [tag, count] of Object.entries(bitstream_ajax.hashtags)) {
-                    allTags.push({ tag, count: parseInt(count, 10) });
-                }
-            }
-            allTags.sort((a, b) => b.count - a.count);
-
-            let filtered = [];
-            if (!query) {
-                filtered = allTags.slice(0, 5);
-            } else {
-                const q = query.toLowerCase();
-                filtered = allTags.filter(t => t.tag.toLowerCase().includes(q));
-            }
-
-            if (filtered.length === 0) {
-                closePopup();
-                return;
-            }
-
-            matches = filtered;
-            if (selectedIndex >= matches.length) {
-                selectedIndex = 0;
-            }
-
-            if (!popupEl) {
-                popupEl = document.createElement('div');
-                popupEl.className = 'bitstream-hashtag-autocomplete-inline';
-                
-                const container = textarea.closest('.bs-textarea-container') || textarea;
-                container.parentNode.insertBefore(popupEl, container.nextSibling);
-
-                popupEl.addEventListener('mousedown', (e) => { e.preventDefault(); });
-                popupEl.addEventListener('click', (e) => {
-                    const item = e.target.closest('.bs-hashtag-item');
-                    if (item) insertTag(item.dataset.tag);
-                });
-            }
-
-            popupEl.innerHTML = matches.map((m, idx) => `
-                <div class="bs-hashtag-item${idx === selectedIndex ? ' is-active' : ''}" data-tag="${m.tag}">
-                    <span class="bs-hashtag-symbol">#</span><span class="bs-hashtag-name">${m.tag}</span>
-                    <span class="bs-hashtag-count">${m.count}</span>
-                </div>
-            `).join('');
-
-            isOpen = true;
-        }
-
-        function insertTag(tag) {
-            if (!activeTextarea) return;
-            const val = activeTextarea.value;
-            const caretPos = activeTextarea.selectionStart;
-
-            const textAfterCaret = val.substring(caretPos);
-            const endOfWordMatch = textAfterCaret.match(/^[A-Za-z0-9_\u00C0-\u024F]*/u);
-            const endOfWordLength = endOfWordMatch ? endOfWordMatch[0].length : 0;
-
-            const before = val.substring(0, queryStart);
-            const after = val.substring(caretPos + endOfWordLength);
-            const insertion = '#' + tag + ' ';
-
-            activeTextarea.value = before + insertion + after;
-            const newCursorPos = queryStart + insertion.length;
-            activeTextarea.selectionStart = activeTextarea.selectionEnd = newCursorPos;
-            activeTextarea.focus();
-
-            activeTextarea.dispatchEvent(new Event('input', { bubbles: true }));
-            closePopup();
-        }
-
-        document.addEventListener('input', (e) => {
-            const textarea = e.target;
-            if (!isTargetTextarea(textarea)) return;
-
-            const value = textarea.value;
-            const caretPos = textarea.selectionStart;
-            const textBeforeCaret = value.substring(0, caretPos);
-
-            const hashIndex = textBeforeCaret.lastIndexOf('#');
-            if (hashIndex !== -1) {
-                const tagText = textBeforeCaret.substring(hashIndex + 1);
-                const charBeforeHash = hashIndex === 0 ? ' ' : textBeforeCaret[hashIndex - 1];
-
-                const isWordBoundary = hashIndex === 0 || /\s/.test(charBeforeHash);
-                const hasSpaceInTag = /\s/.test(tagText);
-                const isValidTag = /^[A-Za-z0-9_\u00C0-\u024F]*$/u.test(tagText);
-
-                if (isWordBoundary && !hasSpaceInTag && isValidTag) {
-                    openPopup(textarea, hashIndex, tagText);
-                } else {
-                    closePopup();
-                }
-            } else {
-                closePopup();
-            }
-        });
-
-        document.addEventListener('keydown', (e) => {
-            const textarea = e.target;
-            if (!isTargetTextarea(textarea) || !isOpen) return;
-
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                selectedIndex = (selectedIndex + 1) % matches.length;
-                updateHighlight();
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                selectedIndex = (selectedIndex - 1 + matches.length) % matches.length;
-                updateHighlight();
-            } else if (e.key === 'Enter' || e.key === 'Tab') {
-                e.preventDefault();
-                if (matches[selectedIndex]) {
-                    insertTag(matches[selectedIndex].tag);
-                }
-            } else if (e.key === 'Escape') {
-                e.preventDefault();
-                e.stopPropagation();
-                closePopup();
-            }
-        }, true);
-
-        document.addEventListener('mousedown', (e) => {
-            if (!isOpen) return;
-            if (e.target !== activeTextarea && (!popupEl || !popupEl.contains(e.target))) {
-                closePopup();
-            }
-        });
-
-        document.addEventListener('focusout', () => {
-            setTimeout(() => {
-                if (isOpen && document.activeElement !== activeTextarea && (!popupEl || !popupEl.contains(document.activeElement))) {
-                    closePopup();
-                }
-            }, 100);
-        });
-
-        function updateHighlight() {
-            if (!popupEl) return;
-            const items = popupEl.querySelectorAll('.bs-hashtag-item');
-            items.forEach((item, idx) => {
-                item.classList.toggle('is-active', idx === selectedIndex);
-                if (idx === selectedIndex) {
-                    item.scrollIntoView({ block: 'nearest' });
-                }
-            });
-        }
+        allTags.sort((a, b) => b.count - a.count);
+        return allTags;
     }
 
     function initImageDownloadProtection() {
@@ -3781,7 +3640,6 @@
             bindTimelineEvents();
             initPushNotifications();
             initBottomNavAndSheets();
-            initHashtagSuggestions();
             initImageDownloadProtection();
             cleanupUrlParams();
             parseTimelineCards();
@@ -3794,6 +3652,7 @@
         showDeleteConfirmation: showDeleteConfirmation,
         showDiscardConfirmation: showDiscardConfirmation,
         initTimelineEditModal: initTimelineEditModal,
-        openTimelineQuoteModal: openTimelineQuoteModal
+        openTimelineQuoteModal: openTimelineQuoteModal,
+        getHashtags: getHashtags
     };
 })();

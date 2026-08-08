@@ -14,6 +14,10 @@
 
                 // Mobile only: grow textarea as user types (unconditionally bind, check inside)
                 if (textarea) {
+                    if (window.BitStream && window.BitStream.Editor) {
+                        window.BitStream.Editor.init(textarea);
+                    }
+
                     textarea.addEventListener('input', () => {
                         if (window.matchMedia('(max-width: 1023px)').matches) {
                             if (typeof window.bsMobileAutoResize === 'function') {
@@ -25,7 +29,7 @@
                         }
                     });
                     
-                    if (window.matchMedia('(max-width: 1023px)').matches && textarea.value) {
+                    if (window.matchMedia('(max-width: 1023px)').matches && (window.BitStream && window.BitStream.Editor ? window.BitStream.Editor.getEditorValue(textarea) : (textarea.value || ''))) {
                         if (typeof window.bsMobileAutoResize === 'function') {
                             window.bsMobileAutoResize(textarea);
                         }
@@ -324,7 +328,13 @@
                     if (previewRebitCard) previewRebitCard.innerHTML = '';
                     if (previewRebit) previewRebit.hidden = true;
                     if (previewArea) previewArea.hidden = true;
-                    if (textarea) textarea.value = '';
+                    if (textarea) {
+                        if (window.BitStream && window.BitStream.Editor) {
+                            window.BitStream.Editor.setEditorValue(textarea, '');
+                        } else {
+                            textarea.value = '';
+                        }
+                    }
                     if (hScheduleEnabled) hScheduleEnabled.value = '0';
                     if (hScheduleDatetime) hScheduleDatetime.value = '';
                     if (previewSchedule) previewSchedule.hidden = true;
@@ -349,7 +359,7 @@
                         window.closeAllBsEmojiPickers();
                     }
                     if (name === 'composer') {
-                        const content = textarea ? textarea.value.trim() : '';
+                        const content = textarea ? (window.BitStream && window.BitStream.Editor ? window.BitStream.Editor.getEditorValue(textarea) : (textarea.value || '')).trim() : '';
                         const hasRebit = hRebitUrl && hRebitUrl.value.trim();
                         const hasMedia = hAttachmentId && parseInt(hAttachmentId.value || '0', 10) > 0;
                         const hasMood = hMoodEmotion && hMoodEmotion.value.trim();
@@ -791,7 +801,8 @@
                                     return;
                                 }
                                 const entries = recent.flatMap(char => {
-                                    const entry = Object.values(_emojiData.map).find(e => unifiedToChar(e.unified) === char);
+                                    const cleanChar = char.replace(/\uFE0F/g, '');
+                                    const entry = Object.values(_emojiData.map).find(e => unifiedToChar(e.unified).replace(/\uFE0F/g, '') === cleanChar);
                                     return entry ? [entry] : [];
                                 });
                                 const recentGrid = createGridElement(entries);
@@ -1023,15 +1034,24 @@
 
                 function insertEmojiAtCursor(inputEl, emoji) {
                     if (!inputEl) return;
-                    const startPos = inputEl.selectionStart;
-                    const endPos = inputEl.selectionEnd;
-                    const text = inputEl.value;
-                    const before = text.substring(0, startPos);
-                    const after = text.substring(endPos, text.length);
-                    inputEl.value = before + emoji + after;
-                    inputEl.selectionStart = inputEl.selectionEnd = startPos + emoji.length;
-                    inputEl.focus();
-                    inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+                    if (inputEl.hasAttribute('contenteditable') || inputEl.getAttribute('role') === 'textbox') {
+                        if (window.BitStream && window.BitStream.Editor && typeof window.BitStream.Editor.insertAtCaret === 'function') {
+                            window.BitStream.Editor.insertAtCaret(inputEl, emoji);
+                        } else {
+                            inputEl.focus();
+                            document.execCommand('insertText', false, emoji);
+                        }
+                    } else {
+                        const startPos = inputEl.selectionStart || 0;
+                        const endPos = inputEl.selectionEnd || 0;
+                        const text = inputEl.value || '';
+                        const before = text.substring(0, startPos);
+                        const after = text.substring(endPos, text.length);
+                        inputEl.value = before + emoji + after;
+                        inputEl.selectionStart = inputEl.selectionEnd = startPos + emoji.length;
+                        inputEl.focus();
+                        inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
                 }
 
                 // Delegate click handler to document body to handle any present or dynamic .bs-insert-emoji-btn
@@ -1489,7 +1509,13 @@
                             if (!data.success) throw new Error(data.data || 'Could not load post data.');
                             const d = data.data || {};
 
-                            if (textarea) textarea.value = d.content || '';
+                            if (textarea) {
+                                if (window.BitStream && window.BitStream.Editor) {
+                                    window.BitStream.Editor.setEditorValue(textarea, d.content || '');
+                                } else {
+                                    textarea.value = d.content || '';
+                                }
+                            }
                             if (hEditPostId) hEditPostId.value = String(postId);
 
                             if (d.is_rebit && d.rebit_url) {
@@ -1662,7 +1688,7 @@
                         fd.append('action', 'bitstream_render_rebit_preview');
                         fd.append('nonce', bitstream_ajax.og_fetch_nonce);
                         fd.append('rebit_url', url);
-                        fd.append('rebit_commentary', textarea ? textarea.value : '');
+                        fd.append('rebit_commentary', textarea ? (window.BitStream && window.BitStream.Editor ? window.BitStream.Editor.getEditorValue(textarea) : (textarea.value || '')) : '');
                         fd.append('rebit_og_title', mRebitTitle ? mRebitTitle.value : '');
                         fd.append('rebit_og_desc', mRebitDesc ? mRebitDesc.value : '');
                         fd.append('rebit_og_image', hRebitOgImage ? hRebitOgImage.value : '');
@@ -1912,7 +1938,7 @@
                         e.preventDefault();
                         if (!window.bitstream_ajax || !submitNonce) { setStatus('Cannot save draft.', true); return; }
 
-                        const content = textarea ? textarea.value.trim() : '';
+                        const content = textarea ? (window.BitStream && window.BitStream.Editor ? window.BitStream.Editor.getEditorValue(textarea) : (textarea.value || '')).trim() : '';
                         const hasRebit = hRebitUrl && hRebitUrl.value.trim();
                         const hasMedia = hAttachmentId && parseInt(hAttachmentId.value || '0', 10) > 0;
                         const hasMood = hMoodEmotion && hMoodEmotion.value.trim();
@@ -2153,7 +2179,11 @@
                             }
 
                             if (cleanText && textarea) {
-                                textarea.value = cleanText;
+                                if (window.BitStream && window.BitStream.Editor) {
+                                    window.BitStream.Editor.setEditorValue(textarea, cleanText);
+                                } else {
+                                    textarea.value = cleanText;
+                                }
                                 textarea.dispatchEvent(new Event('input', { bubbles: true }));
                             }
 
@@ -2231,7 +2261,7 @@
                     if (!composerFormIsDirty) return;
                     if (!window.bitstream_ajax || !bitstream_ajax.ajax_url || !submitNonce) return;
 
-                    const content = textarea ? textarea.value.trim() : '';
+                    const content = textarea ? (window.BitStream && window.BitStream.Editor ? window.BitStream.Editor.getEditorValue(textarea) : (textarea.value || '')).trim() : '';
                     const hasRebit = hRebitUrl && hRebitUrl.value.trim();
                     const hasMedia = hAttachmentId && parseInt(hAttachmentId.value || '0', 10) > 0;
                     const hasMood = hMoodEmotion && hMoodEmotion.value.trim();
@@ -2280,7 +2310,7 @@
                     if (!window.bitstream_ajax || !submitNonce) { setStatus('Submit unavailable.', true); return; }
 
                     const composerType = form.dataset.composerType || 'bit';
-                    const content = textarea ? textarea.value.trim() : '';
+                    const content = textarea ? (window.BitStream && window.BitStream.Editor ? window.BitStream.Editor.getEditorValue(textarea) : (textarea.value || '')).trim() : '';
                     const hasMedia = hAttachmentId && parseInt(hAttachmentId.value || '0', 10) > 0;
                     const hasRebit = hRebitUrl && hRebitUrl.value.trim();
                     const hasMood = hMoodEmotion && hMoodEmotion.value.trim();
