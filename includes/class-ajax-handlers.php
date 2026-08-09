@@ -2282,7 +2282,7 @@ class BitStream_Ajax_Handlers
                 wp_send_json_error('Insufficient permissions.');
             }
 
-            $post_id = intval($_POST['post_id'] ?? 0);
+            $post_id = intval($_POST['post_id'] ?? $_POST['quote_post_id'] ?? 0);
             if ($post_id <= 0) {
                 wp_send_json_error('Invalid post ID.');
             }

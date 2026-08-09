@@ -408,6 +408,15 @@
     background: rgba(200, 30, 30, 0.15);
 }
 
+.bitstream-composer-action-btn:disabled,
+.bitstream-composer-action-btn.is-disabled {
+    opacity: 0.35;
+    cursor: not-allowed !important;
+    transform: none !important;
+    background: transparent !important;
+    color: #94a3b8 !important;
+}
+
 /* Preview area */
 .bitstream-composer-preview-area {
     display: flex;
@@ -455,6 +464,102 @@
     border-radius: 10px;
     background: #fbfdfc;
     padding: 0.55rem;
+}
+
+/* Quoted Bit Single Card Preview */
+.bitstream-composer-preview-quote {
+    position: relative;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+}
+
+.bitstream-composer-preview-quote .bit-card-quoted-nested {
+    margin: 0 !important;
+    position: relative;
+}
+
+.bitstream-composer-preview-quote .bit-card-quoted-nested .bit-card-header {
+    padding-right: 2.2rem;
+}
+
+.bitstream-composer-preview-quote .bitstream-composer-quote-remove {
+    position: absolute;
+    top: 0.95rem;
+    right: 0.95rem;
+    z-index: 10;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.05);
+    color: #64748b;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.bitstream-composer-preview-quote .bitstream-composer-quote-remove:hover {
+    background: #fee2e2;
+    color: #ef4444;
+    transform: scale(1.1);
+}
+
+/* Composer Edit Mode Banner */
+.bitstream-composer-edit-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 10px;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.65rem;
+    animation: bitstreamFadeIn 0.2s ease-out;
+}
+
+.bitstream-composer-edit-banner[hidden] {
+    display: none !important;
+}
+
+.bitstream-composer-edit-banner-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+}
+
+.bitstream-composer-edit-cancel-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: rgba(200, 30, 30, 0.08);
+    color: #c81e1e;
+    border: 1px solid rgba(200, 30, 30, 0.2);
+    border-radius: 16px;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.bitstream-composer-edit-cancel-btn:hover {
+    background: rgba(200, 30, 30, 0.18);
+}
+
+.bitstream-composer-preview-quote-card {
+    font-size: 0.85rem;
+    line-height: 1.4;
+    overflow: hidden;
+    margin-top: 0.35rem;
 }
 
 .bitstream-composer-preview-header {

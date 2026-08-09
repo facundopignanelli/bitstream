@@ -1698,103 +1698,20 @@
         }
 
         openTimelineEditModal = function (postId, postType) {
-            const numericPostId = parseInt(postId || '0', 10);
-            if (!numericPostId || !window.bitstream_ajax || !bitstream_ajax.ajax_url || !submitNonce) {
-                return false;
+            if (window.BitStream && window.BitStream.Composer && typeof window.BitStream.Composer.openEdit === 'function') {
+                window.BitStream.Composer.openEdit(postId, postType);
+                return true;
             }
-
-            if (modalTitle) {
-                modalTitle.textContent = (postType === 'rebit') ? 'Edit Rebit' : 'Edit Bit';
-            }
-
-            setModalVisible(true);
-            setLoadingState(true, (postType === 'rebit') ? 'Loading rebit…' : 'Loading bit…');
-            clearFormFeedback();
-            showForm(null);
-
-            const payload = new FormData();
-            payload.append('action', 'bitstream_get_post_edit_data');
-            payload.append('nonce', submitNonce);
-            payload.append('post_id', String(numericPostId));
-
-            fetch(bitstream_ajax.ajax_url, {
-                method: 'POST',
-                credentials: 'same-origin',
-                body: payload
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.success) {
-                        throw new Error(data.data || 'Could not load post data.');
-                    }
-
-                    const responseData = data.data || {};
-                    isPopulating = true;
-                    populateEditForm(responseData, false);
-                    isPopulating = false;
-                    editFormIsDirty = false;
-                })
-                .catch(error => {
-                    setErrorState(error.message || 'Could not load post data.');
-                });
-
-            return true;
+            return false;
         };
         window.openTimelineEditModal = openTimelineEditModal;
 
         openTimelineQuoteModal = function (postId) {
-            const numericPostId = parseInt(postId || '0', 10);
-            if (!numericPostId || !window.bitstream_ajax || !bitstream_ajax.ajax_url || !submitNonce) {
-                return false;
+            if (window.BitStream && window.BitStream.Composer && typeof window.BitStream.Composer.openQuote === 'function') {
+                window.BitStream.Composer.openQuote(postId);
+                return true;
             }
-
-            if (modalTitle) {
-                modalTitle.textContent = 'Quote Bit';
-            }
-
-            setModalVisible(true);
-            setLoadingState(true, 'Loading quote preview…');
-            clearFormFeedback();
-            showForm(null);
-
-            const payload = new FormData();
-            payload.append('action', 'bitstream_get_quote_preview');
-            payload.append('nonce', submitNonce);
-            payload.append('post_id', String(numericPostId));
-
-            fetch(bitstream_ajax.ajax_url, {
-                method: 'POST',
-                credentials: 'same-origin',
-                body: payload
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.success) {
-                        throw new Error(data.data || 'Could not load quote preview.');
-                    }
-
-                    const responseData = data.data || {};
-                    isPopulating = true;
-                    populateEditForm({
-                        post_id: numericPostId,
-                        content: '',
-                        quote_post_id: numericPostId,
-                        quote_preview_html: responseData.quote_preview_html || '',
-                        attachment_id: 0,
-                        attachment_url: '',
-                        attachment_mime: '',
-                        post_status: 'publish',
-                        schedule_enabled: '0',
-                        schedule_datetime: ''
-                    }, true);
-                    isPopulating = false;
-                    editFormIsDirty = false;
-                })
-                .catch(error => {
-                    setErrorState(error.message || 'Could not load quote preview.');
-                });
-
-            return true;
+            return false;
         };
         window.openTimelineQuoteModal = openTimelineQuoteModal;
 
@@ -2208,10 +2125,8 @@
         if (quoteButton) {
             event.preventDefault();
             const postId = quoteButton.dataset.postId;
-            if (typeof initTimelineEditModal === 'function') {
-                initTimelineEditModal();
-            }
-            if (postId && typeof openTimelineQuoteModal === 'function' && openTimelineQuoteModal(postId)) {
+            if (postId && window.BitStream && window.BitStream.Composer && typeof window.BitStream.Composer.openQuote === 'function') {
+                window.BitStream.Composer.openQuote(postId);
                 const icon = quoteButton.querySelector('i');
                 if (icon) {
                     icon.classList.remove('pulse');
@@ -2253,7 +2168,8 @@
         const postId = button.dataset.postId;
         const postType = (button.dataset.postType === 'rebit') ? 'rebit' : 'bit';
 
-        if (typeof openTimelineEditModal === 'function' && openTimelineEditModal(postId, postType)) {
+        if (postId && window.BitStream && window.BitStream.Composer && typeof window.BitStream.Composer.openEdit === 'function') {
+            window.BitStream.Composer.openEdit(postId, postType);
             const icon = button.querySelector('i');
             if (icon) {
                 icon.classList.remove('pulse');
@@ -2264,19 +2180,13 @@
             return;
         }
 
-        if (typeof initTimelineEditModal === 'function') {
-            initTimelineEditModal();
-            if (typeof openTimelineEditModal === 'function' && openTimelineEditModal(postId, postType)) {
-                const icon = button.querySelector('i');
-                if (icon) {
-                    icon.classList.remove('pulse');
-                    void icon.offsetWidth;
-                    icon.classList.add('pulse');
-                    setTimeout(() => icon.classList.remove('pulse'), 300);
-                }
-                return;
-            }
-        }
+        const basePosterUrl = (window.bitstream_ajax && bitstream_ajax.composer_url)
+            ? bitstream_ajax.composer_url
+            : (window.location.origin + '/bitstream/');
+        const editUrl = new URL(basePosterUrl, window.location.origin);
+        editUrl.searchParams.set('edit_post_id', postId);
+
+        window.location.href = editUrl.toString();
 
         const composer = document.querySelector('.bitstream-composer');
         if (composer && typeof composer.bitstreamLoadPostIntoComposer === 'function') {

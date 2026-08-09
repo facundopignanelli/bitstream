@@ -29,7 +29,9 @@
                 if (tag === 'img') {
                     text += node.getAttribute('alt') || node.getAttribute('data-emoji') || '';
                 } else if (tag === 'br') {
-                    text += '\n';
+                    if (!text.endsWith('\n')) {
+                        text += '\n';
+                    }
                 } else if (tag === 'div' || tag === 'p') {
                     if (text.length > 0 && !text.endsWith('\n')) {
                         text += '\n';
@@ -171,10 +173,6 @@
 
         if (lastIndex < val.length) {
             result += escapeHTML(val.slice(lastIndex));
-        }
-
-        if (val.endsWith('\n')) {
-            result += '<br>';
         }
 
         return result;

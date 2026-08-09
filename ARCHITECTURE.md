@@ -95,13 +95,12 @@ This index serves as the primary map for understanding the backend and frontend 
     * `render_feed($atts)`: Outputs the complete microblogging timeline layout (filters, search, composer modals, scheduled drawers, profiles, and hashtag widgets).
     * `render_settings($atts)`: Emits settings interface panels (personalization, custom moods, domain mappings, RSS, notifications, advanced options).
     * `render_settings_moods()`: Renders the layout and controls for custom mood sorting, deletion, and additions inside settings.
-    * `render_timeline_edit_modal()`: Inserts hidden popup editor templates into the footer.
+    * `render_timeline_edit_modal()`: Deprecated helper (editing and quoting now execute within the unified main composer).
     * `get_primary_attachment_id($post_id)`: Resolves thumbnail images or associated attachment paths.
     * `get_editable_text_content($content)`: Cleans posts from shortcode/html tags for editing inside textareas.
     * `hide_mobile_admin_bar($show)`: Hides standard administrative bars on mobile timeline layouts.
 * **Registered Hooks**:
   * Action: `wp_enqueue_scripts` -> `enqueue_shortcode_assets`
-  * Action: `wp_footer` -> `render_timeline_edit_modal`
   * Filter: `show_admin_bar` -> `hide_mobile_admin_bar`
   * Action: `clean_post_cache` -> `clear_feed_page_url_cache`
   * Action: `transition_post_status` -> `flush_user_post_counts_on_transition`
@@ -291,7 +290,7 @@ This index serves as the primary map for understanding the backend and frontend 
 * **Description**: Contenteditable micro-editor script. Powers live `#hashtag` coloring, `http://` URL highlighting, caret-anchored autocomplete popup, inline Twemoji rendering, DOM selection range preservation, plain-text paste sanitization, and clipboard image paste detection (`bitstream:paste-media`). Exposed under `window.BitStream.Editor`.
 
 ### [assets/js/bitstream-composer.js](assets/js/bitstream-composer.js)
-* **Description**: Composer and settings controller script. Powers character counters, settings forms, PWA share payloads, drafts lists, scheduled list drawers, direct clipboard image paste handling, predefined/custom moods, and twemoji lazy-parsing. Exposed under `window.BitStream.Composer`.
+* **Description**: Composer and settings controller script. Powers character counters, settings forms, PWA share payloads, drafts lists, scheduled list drawers, direct clipboard image paste handling, predefined/custom moods, twemoji lazy-parsing, and unified Composer Edit & Quote Modes (`openEdit`, `openQuote`, `cancelEdit`, and auto-stashed draft protection). Exposed under `window.BitStream.Composer`.
 
 ### [assets/js/bitstream-timeline.js](assets/js/bitstream-timeline.js)
 * **Description**: Timeline viewer and utilities script. Manages page scroll pagination, comments toggling/styling, media session metadata tracking, exposing hashtag data (`getHashtags()`), push notifications registration, and image download protections. Exposed under `window.BitStream.Timeline`.

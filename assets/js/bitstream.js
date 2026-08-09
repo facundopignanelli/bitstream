@@ -57,29 +57,20 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 
-// Mobile-only textarea auto-grow: starts at 160px, grows as user types.
+// Textarea auto-grow helper: resizes element cleanly without mutating parent container flex-basis
 function bsMobileAutoResize(el) {
-    const form = el.closest('form');
-    let flexItem = el;
-    
-    if (form) {
-        while (flexItem && flexItem.parentNode !== form) {
-            flexItem = flexItem.parentNode;
-        }
-    }
-    if (!flexItem || flexItem === form) {
-        flexItem = el.closest('.bs-textarea-container') || el;
+    if (!el) return;
+
+    // Contenteditable elements (.bitstream-composer-textarea, .bitstream-editor) expand naturally via CSS
+    if (el.isContentEditable || el.classList.contains('bitstream-editor') || el.classList.contains('bitstream-composer-textarea')) {
+        el.style.height = 'auto';
+        return;
     }
 
-    let offset = 0;
-    if (flexItem.classList.contains('bs-edit-field')) {
-        offset = 30; // Account for label and margin in the edit field
-    }
-
-    flexItem.style.height = 'auto';
-    const baseHeight = Math.max(el.scrollHeight + offset, 160);
-    flexItem.style.height = '';
-    flexItem.style.setProperty('flex-basis', baseHeight + 'px', 'important');
+    // For standard textareas, adjust height directly on the textarea element itself
+    el.style.height = 'auto';
+    const newHeight = Math.max(el.scrollHeight, 80);
+    el.style.height = newHeight + 'px';
 }
 
 function updateQuickActionCounter(triggerName) {

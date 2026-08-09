@@ -91,10 +91,10 @@ Manage all configuration options directly on the frontend timeline page via the 
 - **Robust Scheduling**: Plan ahead with a native datetime picker for future publishing (Bits and ReBits).
 - **Rich Media Grids & Direct Clipboard Paste**: Drag-and-drop uploads, direct clipboard image pasting (`Ctrl+V` / `Cmd+V`) into the composer without opening upload dialogs, attaching up to 10 images or videos per post, custom image cropper, and video support.
 - **Fullscreen Lightbox**: Pop up gallery view allowing users to zoom in and expand single or multi-media images and videos directly from the timeline.
-- **Live Hashtag & URL Highlighting**: Real-time inline styling for `#hashtags` (theme accent color) and `http://`/`https://` URLs (underlined blue) inside the composer and edit modals as you type.
-- **Caret-Anchored Hashtag Autocomplete**: Type `#` inside the composer or edit modals to display a floating suggestion menu anchored directly under the active cursor with keyboard (`ArrowUp`/`ArrowDown`/`Enter`/`Tab`) and touch support.
+- **Live Hashtag & URL Highlighting**: Real-time inline styling for `#hashtags` (theme accent color) and `http://`/`https://` URLs (underlined blue) inside the composer as you type.
+- **Caret-Anchored Hashtag Autocomplete**: Type `#` inside the composer to display a floating suggestion menu anchored directly under the active cursor with keyboard (`ArrowUp`/`ArrowDown`/`Enter`/`Tab`) and touch support.
 - **Inline Twemoji Composition**: Typed or inserted emojis dynamically convert to SVG vector Twemoji graphics directly inside the editing field.
-- **Timeline Edit Modal Quote Support**: Editing a post that quotes another bit displays the quoted bit preview block inside the edit modal, and allows users to easily clear/remove the quote.
+- **Unified Composer Edit & Quote Workflows**: Quoting a post or editing an existing Bit/Rebit routes directly into the main Composer (with a top "Editing Bit #ID" banner, full toolbar access, and auto-stashed draft protection), retiring separate edit modal popups.
 
 ### 🎭 Mood Status Selector
 

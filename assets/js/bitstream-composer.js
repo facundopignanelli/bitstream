@@ -73,6 +73,11 @@
                 const previewScheduleDate = form.querySelector('.bitstream-composer-preview-schedule-date');
                 const previewMood = form.querySelector('.bitstream-composer-preview-mood');
                 const previewMoodText = form.querySelector('.bitstream-composer-preview-mood-text');
+                const editBanner = form.querySelector('#bitstream-composer-edit-banner');
+                const editBannerTitle = form.querySelector('#bitstream-composer-edit-title');
+                const editCancelBtn = form.querySelector('#bitstream-composer-edit-cancel-btn');
+                const previewQuote = form.querySelector('.bitstream-composer-preview-quote');
+                const previewQuoteCard = form.querySelector('.bitstream-composer-preview-quote-card');
 
                 // Mood modal elements
                 const moodModal = composerRoot.querySelector('.bitstream-composer-modal-mood');
@@ -87,6 +92,7 @@
                 // Save Draft Button
                 const composerSaveDraftBtn = null;
                 const composerSaveDraftActionBtn = form.querySelector('.bitstream-composer-save-draft-action');
+                const scheduleBtn = form.querySelector('[data-composer-modal="schedule"]');
 
                 function setStatus(msg, isError = false) {
                     if (!statusEl) return;
@@ -130,8 +136,9 @@
                     const hasSched = previewSchedule && !previewSchedule.hidden;
                     const hasMood = previewMood && !previewMood.hidden;
                     const hasDraft = previewDraft && !previewDraft.hidden;
-                    if (previewArea) previewArea.hidden = !(hasRebit || hasMedia || hasSched || hasDraft || hasMood);
-                    if (textarea) textarea.required = !(hasRebit || hasMedia || hasMood);
+                    const hasQuote = previewQuote && !previewQuote.hidden;
+                    if (previewArea) previewArea.hidden = !(hasRebit || hasMedia || hasSched || hasDraft || hasMood || hasQuote);
+                    if (textarea) textarea.required = !(hasRebit || hasMedia || hasMood || hasQuote);
 
                     // Carousel dot indicators — only on mobile/tablet (<1024px)
                     if (!previewCarousel || !previewDotsEl) return;
@@ -192,6 +199,10 @@
                 // Modal open/close helpers
                 function openModal(name) {
                     setStatus('');
+                    if (name === 'composer') {
+                        composerRoot.hidden = false;
+                        return;
+                    }
                     const modal = composerRoot.querySelector('.bitstream-composer-modal-' + name);
                     if (modal) {
                         modal.hidden = false;
@@ -310,6 +321,224 @@
                         window.bitstreamSyncBottomNav();
                     }
                 }
+                let stashedDraft = null;
+
+                function enterEditMode(postId, postType = 'bit') {
+                    const currentContent = textarea ? (window.BitStream && window.BitStream.Editor ? window.BitStream.Editor.getEditorValue(textarea) : (textarea.value || '')).trim() : '';
+                    const hasMedia = hAttachmentId && parseInt(hAttachmentId.value || '0', 10) > 0;
+                    const hasMood = hMoodEmotion && hMoodEmotion.value.trim();
+                    const hasRebit = hRebitUrl && hRebitUrl.value.trim();
+                    const hasQuote = hQuotePostId && parseInt(hQuotePostId.value || '0', 10) > 0;
+
+                    if (!hEditPostId || parseInt(hEditPostId.value || '0', 10) <= 0) {
+                        if (currentContent || hasMedia || hasMood || hasRebit || hasQuote) {
+                            stashedDraft = {
+                                content: currentContent,
+                                attachmentId: hAttachmentId ? hAttachmentId.value : '',
+                                attachmentIds: hAttachmentIds ? hAttachmentIds.value : '',
+                                rebitUrl: hRebitUrl ? hRebitUrl.value : '',
+                                rebitOgTitle: hRebitOgTitle ? hRebitOgTitle.value : '',
+                                rebitOgDesc: hRebitOgDesc ? hRebitOgDesc.value : '',
+                                rebitOgImage: hRebitOgImage ? hRebitOgImage.value : '',
+                                moodEmoji: hMoodEmoji ? hMoodEmoji.value : '',
+                                moodEmotion: hMoodEmotion ? hMoodEmotion.value : '',
+                                quotePostId: hQuotePostId ? hQuotePostId.value : '',
+                                previewMediaHtml: previewMediaThumb ? previewMediaThumb.innerHTML : '',
+                                previewRebitHtml: previewRebitCard ? previewRebitCard.innerHTML : '',
+                                previewQuoteHtml: previewQuoteCard ? previewQuoteCard.innerHTML : '',
+                                hasMedia: previewMedia ? !previewMedia.hidden : false,
+                                hasRebit: previewRebit ? !previewRebit.hidden : false,
+                                hasMood: previewMood ? !previewMood.hidden : false,
+                                hasQuote: previewQuote ? !previewQuote.hidden : false
+                            };
+                        }
+                    }
+
+                    if (hEditPostId) hEditPostId.value = String(postId);
+                    if (editBanner) editBanner.hidden = false;
+                    if (editBannerTitle) editBannerTitle.textContent = postType === 'rebit' ? `Editing Rebit #${postId}` : `Editing Bit #${postId}`;
+                    if (submitBtn) submitBtn.textContent = postType === 'rebit' ? 'Update Rebit' : 'Update Bit';
+                    if (composerSaveDraftActionBtn) composerSaveDraftActionBtn.style.display = 'none';
+
+                    if (window.innerWidth >= 1024) {
+                        composerRoot.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        composerRoot.classList.remove('pulse-highlight');
+                        void composerRoot.offsetWidth;
+                        composerRoot.classList.add('pulse-highlight');
+                        setTimeout(() => composerRoot.classList.remove('pulse-highlight'), 1000);
+                    } else {
+                        openModal('composer');
+                    }
+                }
+
+                function exitEditMode() {
+                    if (hEditPostId) hEditPostId.value = '0';
+                    if (editBanner) editBanner.hidden = true;
+                    if (submitBtn) submitBtn.textContent = 'Post Bit';
+                    if (composerSaveDraftActionBtn) composerSaveDraftActionBtn.style.display = 'block';
+                    if (scheduleBtn) {
+                        scheduleBtn.disabled = false;
+                        scheduleBtn.classList.remove('is-disabled');
+                        scheduleBtn.title = 'Schedule';
+                    }
+
+                    if (stashedDraft) {
+                        if (textarea) {
+                            if (window.BitStream && window.BitStream.Editor) {
+                                window.BitStream.Editor.setEditorValue(textarea, stashedDraft.content);
+                            } else {
+                                textarea.value = stashedDraft.content;
+                            }
+                        }
+                        if (hAttachmentId) hAttachmentId.value = stashedDraft.attachmentId;
+                        if (hAttachmentIds) hAttachmentIds.value = stashedDraft.attachmentIds;
+                        if (hRebitUrl) hRebitUrl.value = stashedDraft.rebitUrl;
+                        if (hRebitOgTitle) hRebitOgTitle.value = stashedDraft.rebitOgTitle;
+                        if (hRebitOgDesc) hRebitOgDesc.value = stashedDraft.rebitOgDesc;
+                        if (hRebitOgImage) hRebitOgImage.value = stashedDraft.rebitOgImage;
+                        if (hMoodEmoji) hMoodEmoji.value = stashedDraft.moodEmoji;
+                        if (hMoodEmotion) hMoodEmotion.value = stashedDraft.moodEmotion;
+                        if (hQuotePostId) hQuotePostId.value = stashedDraft.quotePostId;
+
+                        if (previewMediaThumb) previewMediaThumb.innerHTML = stashedDraft.previewMediaHtml;
+                        if (previewMedia) previewMedia.hidden = !stashedDraft.hasMedia;
+                        if (previewRebitCard) previewRebitCard.innerHTML = stashedDraft.previewRebitHtml;
+                        if (previewRebit) previewRebit.hidden = !stashedDraft.hasRebit;
+                        if (previewMoodText && stashedDraft.moodEmotion) {
+                            previewMoodText.textContent = (stashedDraft.moodEmoji ? stashedDraft.moodEmoji + ' ' : '') + 'Feeling ' + stashedDraft.moodEmotion;
+                        }
+                        if (previewMood) previewMood.hidden = !stashedDraft.hasMood;
+                        if (previewQuoteCard) previewQuoteCard.innerHTML = stashedDraft.previewQuoteHtml;
+                        if (previewQuote) previewQuote.hidden = !stashedDraft.hasQuote;
+
+                        stashedDraft = null;
+                    } else {
+                        clearComposer();
+                    }
+                    syncPreviewArea();
+                }
+
+                function loadEditPostData(postId, postType = 'bit') {
+                    enterEditMode(postId, postType);
+                    setStatus('Loading post data…');
+
+                    const fd = new FormData();
+                    fd.append('action', 'bitstream_get_post_edit_data');
+                    fd.append('nonce', submitNonce);
+                    fd.append('post_id', postId);
+
+                    fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
+                        .then(r => r.json())
+                        .then(res => {
+                            if (!res.success || !res.data) throw new Error(res.data || 'Could not load post data.');
+                            const data = res.data;
+
+                            if (textarea) {
+                                if (window.BitStream && window.BitStream.Editor) {
+                                    window.BitStream.Editor.setEditorValue(textarea, data.content || '');
+                                } else {
+                                    textarea.value = data.content || '';
+                                }
+                            }
+                            if (hMoodEmoji) hMoodEmoji.value = data.mood_emoji || '';
+                            if (hMoodEmotion) hMoodEmotion.value = data.mood_emotion || '';
+                            if (previewMood && previewMoodText) {
+                                if (data.mood_emotion) {
+                                    previewMoodText.textContent = (data.mood_emoji ? data.mood_emoji + ' ' : '') + 'Feeling ' + data.mood_emotion;
+                                    previewMood.hidden = false;
+                                } else {
+                                    previewMood.hidden = true;
+                                }
+                            }
+
+                            if (data.post_type === 'rebit' && data.rebit_url) {
+                                if (hRebitUrl) hRebitUrl.value = data.rebit_url;
+                                if (hRebitOgTitle) hRebitOgTitle.value = data.og_title || '';
+                                if (hRebitOgDesc) hRebitOgDesc.value = data.og_desc || '';
+                                if (hRebitOgImage) hRebitOgImage.value = data.og_image || '';
+                                if (hRebitAttachmentId) hRebitAttachmentId.value = data.rebit_attachment_id || '0';
+                                if (renderRebitLivePreview) renderRebitLivePreview(data.rebit_url);
+                            }
+
+                            if (data.quote_post_id > 0 && data.quote_preview_html) {
+                                if (hQuotePostId) hQuotePostId.value = String(data.quote_post_id);
+                                if (previewQuoteCard) previewQuoteCard.innerHTML = data.quote_preview_html;
+                                if (previewQuote) previewQuote.hidden = false;
+                            }
+
+                            if (data.attachments && data.attachments.length > 0) {
+                                if (hAttachmentIds) hAttachmentIds.value = data.attachment_ids || '';
+                                if (hAttachmentId) hAttachmentId.value = String(data.attachment_id || data.attachments[0].id);
+                                if (typeof window.updateAttachmentsList === 'function' && previewMediaThumb) {
+                                    window.updateAttachmentsList(previewMediaThumb, data.attachments);
+                                } else if (previewMedia) {
+                                    previewMedia.hidden = false;
+                                }
+                            }
+
+                            if (data.post_status === 'publish') {
+                                if (scheduleBtn) {
+                                    scheduleBtn.disabled = true;
+                                    scheduleBtn.classList.add('is-disabled');
+                                    scheduleBtn.title = 'Scheduling is disabled when editing a published bit';
+                                }
+                            } else {
+                                if (scheduleBtn) {
+                                    scheduleBtn.disabled = false;
+                                    scheduleBtn.classList.remove('is-disabled');
+                                    scheduleBtn.title = 'Schedule';
+                                }
+                            }
+
+                            setStatus('');
+                            syncPreviewArea();
+                        })
+                        .catch(err => {
+                            setStatus(err.message || 'Error loading post.', true);
+                        });
+                }
+
+                function loadQuoteData(quotePostId) {
+                    if (hQuotePostId) hQuotePostId.value = String(quotePostId);
+                    setStatus('Loading quote preview…');
+
+                    const fd = new FormData();
+                    fd.append('action', 'bitstream_get_quote_preview');
+                    fd.append('nonce', submitNonce);
+                    fd.append('post_id', quotePostId);
+                    fd.append('quote_post_id', quotePostId);
+
+                    fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
+                        .then(r => r.json())
+                        .then(res => {
+                            if (!res.success || !res.data) throw new Error(res.data || 'Could not load quote preview.');
+                            const responseData = res.data;
+
+                            if (previewQuoteCard) previewQuoteCard.innerHTML = responseData.quote_preview_html || '';
+                            if (previewQuote) previewQuote.hidden = false;
+                            setStatus('');
+                            syncPreviewArea();
+
+                            if (window.innerWidth >= 1024) {
+                                composerRoot.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                if (textarea) textarea.focus();
+                            } else {
+                                openModal('composer');
+                                if (textarea) textarea.focus();
+                            }
+                        })
+                        .catch(err => {
+                            setStatus(err.message || 'Error loading quote.', true);
+                        });
+                }
+
+                if (editCancelBtn) {
+                    editCancelBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        exitEditMode();
+                    });
+                }
+
                 function clearComposer() {
                     if (form) form.reset();
                     if (typeof window.closeAllBsEmojiPickers === 'function') {
@@ -342,6 +571,15 @@
                     if (hMoodEmoji) hMoodEmoji.value = '';
                     if (hMoodEmotion) hMoodEmotion.value = '';
                     if (previewMood) previewMood.hidden = true;
+                    if (hQuotePostId) hQuotePostId.value = '0';
+                    if (previewQuoteCard) previewQuoteCard.innerHTML = '';
+                    if (previewQuote) previewQuote.hidden = true;
+                    if (editBanner) editBanner.hidden = true;
+                    if (scheduleBtn) {
+                        scheduleBtn.disabled = false;
+                        scheduleBtn.classList.remove('is-disabled');
+                        scheduleBtn.title = 'Schedule';
+                    }
                     activeEditMoodForm = null;
                     if (hEditPostId) hEditPostId.value = '0';
                     form.dataset.composerType = 'bit';
@@ -450,7 +688,7 @@
                 // Wire all modal triggers (action buttons, bottom nav items, drawer rows, right rail items)
                 document.addEventListener('click', (e) => {
                     const trigger = e.target.closest('[data-composer-modal-trigger], [data-composer-modal]');
-                    if (!trigger || trigger.hasAttribute('data-composer-modal-close')) return;
+                    if (!trigger || trigger.hasAttribute('data-composer-modal-close') || trigger.disabled || trigger.classList.contains('is-disabled')) return;
 
                     const modalName = trigger.dataset.composerModalTrigger || trigger.dataset.composerModal;
                     if (modalName) {
@@ -530,6 +768,11 @@
                             if (hMoodEmotion) hMoodEmotion.value = '';
                             if (previewMood) previewMood.hidden = true;
                             activeEditMoodForm = null;
+                        }
+                        if (type === 'quote') {
+                            if (hQuotePostId) hQuotePostId.value = '0';
+                            if (previewQuote) previewQuote.hidden = true;
+                            if (previewQuoteCard) previewQuoteCard.innerHTML = '';
                         }
                         syncPreviewArea();
                     });
@@ -2210,8 +2453,13 @@
                 }
 
                 const quotePostIdFromUrl = parseInt(urlParams.get('quote_post_id') || '0', 10);
-                if (quotePostIdFromUrl > 0 && typeof window.openTimelineQuoteModal === 'function') {
-                    setTimeout(() => window.openTimelineQuoteModal(quotePostIdFromUrl), 150);
+                if (quotePostIdFromUrl > 0) {
+                    setTimeout(() => loadQuoteData(quotePostIdFromUrl), 150);
+                }
+
+                const editPostIdFromUrl = parseInt(urlParams.get('edit_post_id') || '0', 10);
+                if (editPostIdFromUrl > 0) {
+                    setTimeout(() => loadEditPostData(editPostIdFromUrl), 150);
                 }
 
                 // Handle PWA share target redirection payload
@@ -2460,6 +2708,15 @@
                 window.bitstreamCloseModal = closeModal;
                 window.bitstreamOpenModal = openModal;
                 window.bitstreamClearComposer = clearComposer;
+                window.BitStream.Composer.openEdit = function (postId, postType) {
+                    loadEditPostData(postId, postType);
+                };
+                window.BitStream.Composer.openQuote = function (postId) {
+                    loadQuoteData(postId);
+                };
+                window.BitStream.Composer.cancelEdit = function () {
+                    exitEditMode();
+                };
 
                 // Settings panels tab switcher and Force Update inside composer
                 const settingsRoot = composerRoot.querySelector('.bitstream-settings');

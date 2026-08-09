@@ -641,6 +641,17 @@ class BitStream_Shortcodes
                         style="color: var(--wp--preset--color--accent-1, #2c6e49); margin-bottom: 0.65rem;">Post a Bit</h3>
                     <form class="bitstream-sidebar-composer-form bitstream-composer-form"
                         data-composer-type="<?php echo esc_attr($composer_type_prefill); ?>">
+                        <!-- Edit Mode Banner -->
+                        <div class="bitstream-composer-edit-banner" id="bitstream-composer-edit-banner" hidden>
+                            <div class="bitstream-composer-edit-banner-info">
+                                <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+                                <span id="bitstream-composer-edit-title">Editing Bit</span>
+                            </div>
+                            <button type="button" class="bitstream-composer-edit-cancel-btn" id="bitstream-composer-edit-cancel-btn" title="Cancel editing" aria-label="Cancel editing">
+                                <i class="fa-solid fa-xmark" aria-hidden="true"></i> Cancel
+                            </button>
+                        </div>
+
                         <div class="bs-textarea-container" style="position: relative; width: 100%;">
                             <div id="bitstream-quick-bit-content" class="bitstream-composer-field bitstream-composer-textarea"
                                 contenteditable="plaintext-only" role="textbox" aria-multiline="true"
@@ -694,15 +705,12 @@ class BitStream_Shortcodes
                                     </div>
                                     <div class="bitstream-composer-preview-rebit-card"></div>
                                 </div>
-                                <!-- Media preview -->
+                                 <!-- Media preview -->
                                 <div class="bitstream-composer-preview-media" hidden>
                                     <div class="bitstream-composer-preview-header">
                                         <span class="bitstream-composer-preview-label"><i class="fa-solid fa-photo-film"
                                                 aria-hidden="true"></i> Media</span>
                                         <div class="bitstream-composer-preview-actions">
-                                            <button type="button" class="bitstream-composer-preview-edit"
-                                                data-composer-edit="media" title="Edit media" aria-label="Edit media"><i
-                                                    class="fa-solid fa-pencil" aria-hidden="true"></i></button>
                                             <button type="button" class="bitstream-composer-preview-remove"
                                                 data-composer-remove="media" title="Remove media" aria-label="Remove media"><i
                                                     class="fa-solid fa-xmark" aria-hidden="true"></i></button>
@@ -746,6 +754,13 @@ class BitStream_Shortcodes
                                 </div>
                                 <span class="bitstream-composer-preview-mood-text"
                                     style="font-weight: 500; font-size: 1.1rem; padding: 0.25rem 0; display: block;"></span>
+                            </div>
+                            <!-- Quoted Bit preview -->
+                            <div class="bitstream-composer-preview-quote" hidden>
+                                <button type="button" class="bitstream-composer-preview-remove bitstream-composer-quote-remove"
+                                    data-composer-remove="quote" title="Remove quote" aria-label="Remove quote"><i
+                                        class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+                                <div class="bitstream-composer-preview-quote-card"></div>
                             </div>
                         </div>
 
@@ -1200,7 +1215,6 @@ class BitStream_Shortcodes
     {
         $this->register_shortcodes();
         add_action('wp_enqueue_scripts', [$this, 'enqueue_shortcode_assets']);
-        add_action('wp_footer', [$this, 'render_timeline_edit_modal']);
         add_filter('show_admin_bar', [__CLASS__, 'hide_mobile_admin_bar']);
         add_action('clean_post_cache', [__CLASS__, 'clear_feed_page_url_cache']);
         add_action('transition_post_status', [__CLASS__, 'flush_user_post_counts_on_transition'], 10, 3);
@@ -2657,247 +2671,11 @@ class BitStream_Shortcodes
     }
 
     /**
-     * Render the timeline post edit modal in the footer.
+     * Render the timeline post edit modal in the footer (Deprecated: edits & quotes now use the main composer).
      */
     public function render_timeline_edit_modal()
     {
-        if (!is_user_logged_in() || !current_user_can('edit_posts')) {
-            return;
-        }
-
-        wp_enqueue_media();
-
-        $submit_nonce = wp_create_nonce('bitstream_composer_submit_nonce');
-        ?>
-        <div class="bitstream-composer-modal bs-edit-modal bitstream-composer-modal-timeline-edit" id="bs-edit-modal" hidden
-            role="dialog" aria-modal="true" aria-labelledby="bs-edit-modal-title"
-            data-submit-nonce="<?php echo esc_attr($submit_nonce); ?>">
-            <div class="bitstream-composer-modal-backdrop" data-bs-edit-modal-close="true"></div>
-            <div class="bitstream-composer-modal-dialog bitstream-composer-modal-dialog-wide bs-edit-modal-dialog">
-                <header class="bitstream-composer-modal-header bs-edit-modal-header">
-                    <h3 id="bs-edit-modal-title" class="bs-edit-modal-title">Edit Bit</h3>
-                    <button type="button" class="bitstream-composer-modal-close bs-edit-modal-close"
-                        data-bs-edit-modal-close="true" aria-label="Close">
-                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-                    </button>
-                </header>
-
-                <div class="bitstream-composer-modal-body bs-edit-modal-body">
-                    <div class="bs-edit-modal-loading" hidden>
-                        <i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i>
-                        <p>Loading post…</p>
-                    </div>
-
-                    <div class="bs-edit-modal-error" hidden>
-                        <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
-                        <p class="bs-edit-modal-error-msg"></p>
-                    </div>
-
-                    <form class="bs-edit-form bs-edit-form-unified bitstream-composer-form" data-composer-type="bit" hidden
-                        novalidate>
-                        <input type="hidden" name="edit_post_id" value="">
-                        <input type="hidden" name="composer_type" class="bs-edit-composer-type" value="bit">
-                        <input type="hidden" name="nonce" value="<?php echo esc_attr($submit_nonce); ?>">
-                        <input type="hidden" name="quote_post_id" class="bs-edit-quote-post-id" value="0">
-                        <input type="hidden" name="bit_mood_emoji" class="bs-edit-mood-emoji" value="">
-                        <input type="hidden" name="bit_mood_emotion" class="bs-edit-mood-emotion" value="">
-                        <input type="hidden" name="rebit_og_title" class="bs-edit-rebit-og-title" value="">
-                        <input type="hidden" name="rebit_og_desc" class="bs-edit-rebit-og-desc" value="">
-                        <input type="hidden" name="rebit_og_image" class="bs-edit-rebit-og-image" value="">
-                        <input type="hidden" name="rebit_og_image_removed" class="bs-edit-rebit-og-image-removed" value="0">
-                        <input type="hidden" name="rebit_attachment_id" class="bs-edit-rebit-attachment-id" value="">
-
-                        <!-- Link URL field (Only shown for Rebit) -->
-                        <div class="bs-edit-field bs-edit-url-field" hidden>
-                            <label class="bs-edit-label" for="bs-edit-rebit-url">Link URL</label>
-                            <div class="bs-edit-url-row">
-                                <input type="url" id="bs-edit-rebit-url" name="rebit_url" class="bs-edit-url-input bs-edit-rebit-url-hidden"
-                                    placeholder="https://example.com/post">
-                                <button type="button" class="bs-edit-refetch-btn bs-edit-link-meta-open">Edit metadata</button>
-                            </div>
-                        </div>
-
-                        <!-- Content / Commentary -->
-                        <div class="bs-edit-field">
-                            <label class="bs-edit-label" for="bs-edit-bit-content" id="bs-edit-content-label">Content</label>
-                            <div class="bs-textarea-container" style="position: relative; width: 100%;">
-                                <div id="bs-edit-bit-content" class="bs-edit-textarea"
-                                    contenteditable="plaintext-only" role="textbox" aria-multiline="true"
-                                    data-placeholder="What's happening?" style="padding-right: 38px;"></div>
-                                <input type="hidden" id="bs-edit-bit-content-value" name="bit_content" value="">
-                                <button type="button" class="bs-insert-emoji-btn" data-target-input="#bs-edit-bit-content" title="Insert Emoji" aria-label="Insert Emoji" style="position: absolute; right: 8px; bottom: 8px; background: none; border: none; font-size: 1.1rem; color: #94a3b8; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; transition: color 0.15s;">
-                                    <i class="fa-regular fa-face-smile" aria-hidden="true"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Preview area matching composer carousel design -->
-                        <div class="bitstream-composer-preview-area bs-edit-preview-area" hidden>
-                            <div class="bitstream-composer-preview-carousel bs-edit-preview-carousel">
-                                <!-- Rebit Preview -->
-                                <div class="bitstream-composer-preview-rebit bs-edit-rebit-preview-container" hidden>
-                                    <div class="bitstream-composer-preview-header">
-                                        <span class="bitstream-composer-preview-label">
-                                            <i class="fa-solid fa-link" aria-hidden="true"></i> Attached Link
-                                        </span>
-                                        <div class="bitstream-composer-preview-actions">
-                                            <button type="button" class="bitstream-composer-preview-edit bs-edit-bit-link-meta-open"
-                                                title="Edit link metadata" aria-label="Edit link metadata">
-                                                <i class="fa-solid fa-pencil" aria-hidden="true"></i>
-                                            </button>
-                                            <button type="button" class="bitstream-composer-preview-remove bs-edit-rebit-remove-btn"
-                                                title="Remove link" aria-label="Remove link">
-                                                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="bs-edit-rebit-preview-card" style="margin-top: 0.5rem;"></div>
-                                </div>
-
-                                <!-- Quote Preview -->
-                                <div class="bs-edit-quote-preview" hidden>
-                                    <div class="bitstream-composer-preview-header">
-                                        <span class="bitstream-composer-preview-label">
-                                            <i class="fa-solid fa-quote-left" aria-hidden="true"></i> Quoted Bit
-                                        </span>
-                                        <div class="bitstream-composer-preview-actions">
-                                            <button type="button" class="bitstream-composer-preview-remove bs-edit-quote-remove-btn" title="Remove quote" aria-label="Remove quote">
-                                                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="bs-edit-quote-preview-card"></div>
-                                </div>
-
-                                <!-- Media Preview -->
-                                <div class="bitstream-composer-preview-media bs-edit-media-preview-container" hidden>
-                                    <div class="bitstream-composer-preview-header">
-                                        <span class="bitstream-composer-preview-label">
-                                            <i class="fa-solid fa-photo-film" aria-hidden="true"></i> Media
-                                        </span>
-                                        <div class="bitstream-composer-preview-actions">
-                                            <button type="button" class="bitstream-composer-preview-remove bs-edit-media-remove-btn"
-                                                title="Remove media" aria-label="Remove media">
-                                                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="bitstream-composer-preview-media-thumb bs-edit-media-preview-thumb"></div>
-                                </div>
-                            </div>
-                            <!-- Dot indicators -->
-                            <div class="bitstream-composer-preview-dots bs-edit-preview-dots" hidden aria-hidden="true"></div>
-                        </div>
-
-                        <!-- Media preview & upload -->
-                        <div class="bs-edit-media" hidden>
-                            <?php echo self::render_media_field('bs-edit-bit-attachment-id', 'bs-edit-bit-media-preview'); ?>
-                        </div>
-
-                        <!-- Action buttons row in edit form -->
-                        <div class="bs-edit-actions-row"
-                            style="margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                            <button type="button" class="bs-edit-mood-btn"
-                                style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1.5px solid #e2e8f0; border-radius: 20px; background: #f8fafc; font-size: 0.9rem; font-weight: 500; cursor: pointer; color: #475569; transition: all 0.2s ease;">
-                                <i class="fa-solid fa-face-smile"></i>
-                                <span class="bs-edit-mood-label">Add Mood</span>
-                            </button>
-                            <button type="button" class="bs-edit-mood-remove"
-                                style="background: none; border: none; color: #94a3b8; cursor: pointer; padding: 4px; display: none;"
-                                title="Remove mood">
-                                <i class="fa-solid fa-xmark"></i>
-                            </button>
-                            <button type="button" class="bs-edit-media-toggle-btn"
-                                style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1.5px solid #e2e8f0; border-radius: 20px; background: #f8fafc; font-size: 0.9rem; font-weight: 500; cursor: pointer; color: #475569; transition: all 0.2s ease;">
-                                <i class="fa-solid fa-photo-film"></i>
-                                <span class="bs-edit-media-toggle-label">Add Media</span>
-                            </button>
-                            <button type="button" class="bs-edit-rebit-toggle-btn"
-                                style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1.5px solid #e2e8f0; border-radius: 20px; background: #f8fafc; font-size: 0.9rem; font-weight: 500; cursor: pointer; color: #475569; transition: all 0.2s ease;">
-                                <i class="fa-solid fa-link"></i>
-                                <span class="bs-edit-rebit-toggle-label">Add Link</span>
-                            </button>
-                        </div>
-
-                        <footer class="bs-edit-modal-footer bitstream-composer-modal-footer">
-                            <button type="submit" class="bitstream-composer-submit bs-edit-submit">Update Bit</button>
-                        </footer>
-                    </form>
-
-                    <div class="bitstream-composer-modal bs-edit-link-meta-modal" hidden>
-                        <div class="bitstream-composer-modal-backdrop" data-bs-edit-link-meta-close="true"></div>
-                        <div class="bitstream-composer-modal-dialog" role="dialog" aria-modal="true"
-                            aria-labelledby="bs-edit-link-meta-title">
-                            <header class="bitstream-composer-modal-header">
-                                <h3 id="bs-edit-link-meta-title">Edit Metadata</h3>
-                                <button type="button" class="bitstream-composer-modal-close" data-bs-edit-link-meta-close="true"
-                                    aria-label="Close">
-                                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-                                </button>
-                            </header>
-
-                            <div class="bitstream-composer-modal-body">
-                                <div class="bs-edit-field">
-                                    <label class="bs-edit-label" for="bs-edit-link-meta-url-input">Current URL</label>
-                                    <div class="bs-edit-url-row">
-                                        <input type="url" id="bs-edit-link-meta-url-input" class="bs-edit-url-input" readonly>
-                                        <button type="button"
-                                            class="bs-edit-refetch-btn bs-edit-link-meta-refetch">Re-fetch</button>
-                                    </div>
-                                </div>
-
-                                <div class="bs-edit-field">
-                                    <label class="bs-edit-label" for="bs-edit-link-meta-title-input">Link title</label>
-                                    <input type="text" id="bs-edit-link-meta-title-input"
-                                        class="bs-edit-url-input bs-edit-og-title" placeholder="Preview title">
-                                </div>
-
-                                <div class="bs-edit-field">
-                                    <label class="bs-edit-label" for="bs-edit-link-meta-desc-input">Link description</label>
-                                    <textarea id="bs-edit-link-meta-desc-input" class="bs-edit-textarea bs-edit-og-desc"
-                                        rows="4" placeholder="Preview description"></textarea>
-                                </div>
-
-                                <div class="bs-edit-field">
-                                    <label class="bs-edit-label">Link image</label>
-                                    <div class="bs-edit-og-preview">
-                                        <div class="bs-edit-og-preview-image-wrap">
-                                            <img class="bs-edit-og-preview-img" src="" alt="" hidden>
-                                        </div>
-                                        <div class="bs-edit-og-preview-meta">
-                                            <strong class="bs-edit-og-preview-title"></strong>
-                                            <span class="bs-edit-og-preview-url"></span>
-                                        </div>
-                                    </div>
-                                    <div class="bs-edit-og-image-actions">
-                                        <button type="button" class="bs-edit-og-image-icon-btn bs-edit-og-image-select"
-                                            title="Choose image" aria-label="Choose image">
-                                            <i class="fa-solid fa-image" aria-hidden="true"></i>
-                                        </button>
-                                        <button type="button" class="bs-edit-og-image-icon-btn bs-edit-og-image-crop"
-                                            title="Crop image" aria-label="Crop image">
-                                            <i class="fa-solid fa-crop-simple" aria-hidden="true"></i>
-                                        </button>
-                                        <button type="button" class="bs-edit-og-image-icon-btn bs-edit-og-image-clear"
-                                            title="Remove image" aria-label="Remove image">
-                                            <i class="fa-solid fa-trash" aria-hidden="true"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <footer class="bitstream-composer-modal-footer">
-                                <button type="button" class="bitstream-composer-modal-cancel"
-                                    data-bs-edit-link-meta-close="true">Cancel</button>
-                                <button type="button" class="bitstream-composer-modal-confirm bs-edit-link-meta-save"
-                                    data-bs-edit-link-meta-close="true">Done</button>
-                            </footer>
-                    </div>
-                </div>
-            </div>
-    </div>
-        <?php
-        echo self::render_media_modals();
+        return;
     }
 
     /**
