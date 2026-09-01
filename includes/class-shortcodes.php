@@ -662,6 +662,22 @@ class BitStream_Shortcodes
                             </button>
                         </div>
 
+                        <!-- Inline Rebit URL Input Bar -->
+                        <div class="bitstream-composer-inline-rebit-bar" id="bitstream-composer-inline-rebit-bar" hidden>
+                            <div class="bitstream-composer-inline-rebit-input-wrap">
+                                <i class="fa-solid fa-link bitstream-composer-inline-rebit-icon" aria-hidden="true"></i>
+                                <input type="url" id="bitstream-composer-inline-rebit-input" placeholder="Paste link (https://...)" aria-label="Link URL">
+                                <button type="button" class="bitstream-composer-inline-rebit-fetch-btn" id="bitstream-composer-inline-rebit-fetch-btn">Fetch</button>
+                                <button type="button" class="bitstream-composer-inline-rebit-close-btn" id="bitstream-composer-inline-rebit-close-btn" title="Cancel link" aria-label="Cancel link">
+                                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                            <div class="bitstream-composer-inline-rebit-status" id="bitstream-composer-inline-rebit-status" hidden></div>
+                        </div>
+
+                        <!-- Hidden Native File Input for Direct Uploads -->
+                        <input type="file" id="bitstream-composer-file-input" class="bitstream-composer-file-input" accept="image/*,video/*" multiple style="display:none;" aria-hidden="true">
+
                         <!-- Hidden inputs for rebit / schedule / edit -->
                         <input type="hidden" id="bitstream-composer-attachment-id" name="bit_attachment_id"
                             value="<?php echo $bit_attachment_id_prefill > 0 ? esc_attr($bit_attachment_id_prefill) : ''; ?>">
@@ -696,7 +712,7 @@ class BitStream_Shortcodes
                                                 aria-hidden="true"></i> Rebit</span>
                                         <div class="bitstream-composer-preview-actions">
                                             <button type="button" class="bitstream-composer-preview-edit"
-                                                data-composer-edit="rebit" title="Edit rebit" aria-label="Edit rebit"><i
+                                                data-composer-edit="rebit" title="Edit rebit metadata" aria-label="Edit rebit metadata"><i
                                                     class="fa-solid fa-pencil" aria-hidden="true"></i></button>
                                             <button type="button" class="bitstream-composer-preview-remove"
                                                 data-composer-remove="rebit" title="Remove rebit" aria-label="Remove rebit"><i
@@ -704,6 +720,62 @@ class BitStream_Shortcodes
                                         </div>
                                     </div>
                                     <div class="bitstream-composer-preview-rebit-card"></div>
+                                    
+                                    <!-- Inline Rebit Metadata Editor -->
+                                    <div class="bitstream-composer-rebit-inline-meta" id="bitstream-composer-rebit-inline-meta" hidden>
+                                        <div class="bitstream-rebit-inline-meta-header">
+                                            <span class="bitstream-rebit-inline-meta-title">
+                                                <i class="fa-solid fa-sliders" aria-hidden="true"></i> Edit Link Preview
+                                            </span>
+                                            <div class="bitstream-rebit-inline-meta-actions">
+                                                <button type="button" class="bitstream-rebit-inline-meta-btn-action bitstream-rebit-inline-meta-save" id="bitstream-composer-rebit-meta-save" title="Save changes" aria-label="Save changes">
+                                                    <i class="fa-solid fa-check" aria-hidden="true"></i>
+                                                </button>
+                                                <button type="button" class="bitstream-rebit-inline-meta-btn-action bitstream-rebit-inline-meta-close" id="bitstream-composer-rebit-meta-close" title="Cancel" aria-label="Cancel">
+                                                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="bitstream-rebit-inline-meta-body">
+                                            <div class="bitstream-rebit-inline-meta-field">
+                                                <label for="bitstream-composer-rebit-inline-title">
+                                                    <i class="fa-solid fa-heading" aria-hidden="true"></i> Title
+                                                </label>
+                                                <input type="text" id="bitstream-composer-rebit-inline-title" placeholder="Preview title">
+                                            </div>
+                                            <div class="bitstream-rebit-inline-meta-field">
+                                                <label for="bitstream-composer-rebit-inline-desc">
+                                                    <i class="fa-solid fa-align-left" aria-hidden="true"></i> Description
+                                                </label>
+                                                <textarea id="bitstream-composer-rebit-inline-desc" rows="2" placeholder="Preview description"></textarea>
+                                            </div>
+                                            <div class="bitstream-rebit-inline-meta-field bitstream-rebit-inline-meta-img-field">
+                                                <label>
+                                                    <i class="fa-solid fa-image" aria-hidden="true"></i> Preview Image
+                                                </label>
+                                                <div class="bitstream-rebit-inline-img-card">
+                                                    <div class="bitstream-rebit-inline-img-thumb" id="bitstream-composer-rebit-img-preview">
+                                                        <img src="" alt="" id="bitstream-composer-rebit-img-el" hidden>
+                                                        <div class="bitstream-rebit-inline-img-empty" id="bitstream-composer-rebit-img-empty">
+                                                            <i class="fa-regular fa-image" aria-hidden="true"></i>
+                                                            <span>No image</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="bitstream-rebit-inline-img-actions">
+                                                        <button type="button" class="bitstream-rebit-inline-img-btn" id="bitstream-composer-rebit-img-change" title="Change Image">
+                                                            <i class="fa-solid fa-arrow-up-from-bracket" aria-hidden="true"></i> Change
+                                                        </button>
+                                                        <button type="button" class="bitstream-rebit-inline-img-btn" id="bitstream-composer-rebit-img-crop" title="Crop Image">
+                                                            <i class="fa-solid fa-crop-simple" aria-hidden="true"></i> Crop
+                                                        </button>
+                                                        <button type="button" class="bitstream-rebit-inline-img-btn is-danger" id="bitstream-composer-rebit-img-remove" title="Remove Image">
+                                                            <i class="fa-solid fa-trash-can" aria-hidden="true"></i> Remove
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                                  <!-- Media preview -->
                                 <div class="bitstream-composer-preview-media" hidden>
@@ -764,28 +836,147 @@ class BitStream_Shortcodes
                             </div>
                         </div>
 
-                        <!-- Action buttons row -->
+                        <!-- Action buttons row with anchored popovers -->
                         <div class="bitstream-composer-actions-row">
-                            <button type="button" class="bitstream-composer-action-btn" data-composer-modal="rebit"
-                                title="Rebit" aria-label="Rebit">
+                            <button type="button" class="bitstream-composer-action-btn" data-composer-action="rebit"
+                                title="Add Link / Rebit" aria-label="Add Link / Rebit">
                                 <i class="fa-solid fa-link" aria-hidden="true"></i>
                             </button>
-                            <button type="button" class="bitstream-composer-action-btn" data-composer-modal="media"
-                                title="Media" aria-label="Media">
-                                <i class="fa-solid fa-photo-film" aria-hidden="true"></i>
-                            </button>
+                            
+                            <!-- Media Popover Anchor -->
+                            <div class="bitstream-composer-popover-anchor">
+                                <button type="button" class="bitstream-composer-action-btn" data-composer-popover-trigger="media"
+                                    title="Add Media" aria-label="Add Media">
+                                    <i class="fa-solid fa-photo-film" aria-hidden="true"></i>
+                                </button>
+                                <div class="bitstream-composer-popover bitstream-composer-popover-media" id="bitstream-composer-popover-media" hidden>
+                                    <button type="button" class="bitstream-composer-popover-option" id="bitstream-popover-media-upload">
+                                        <i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i>
+                                        <span>Upload from Device</span>
+                                    </button>
+                                    <button type="button" class="bitstream-composer-popover-option" id="bitstream-popover-media-library">
+                                        <i class="fa-solid fa-images" aria-hidden="true"></i>
+                                        <span>WordPress Media Library</span>
+                                    </button>
+                                </div>
+                            </div>
+
                             <button type="button" class="bitstream-composer-action-btn bitstream-composer-save-draft-action"
                                 title="Save to Drafts" aria-label="Save to Drafts">
                                 <i class="fa-solid fa-file-lines" aria-hidden="true"></i>
                             </button>
-                            <button type="button" class="bitstream-composer-action-btn" data-composer-modal="schedule"
-                                title="Schedule" aria-label="Schedule">
-                                <i class="fa-solid fa-clock" aria-hidden="true"></i>
-                            </button>
-                            <button type="button" class="bitstream-composer-action-btn" data-composer-modal="mood" title="Mood"
-                                aria-label="Mood">
-                                <i class="fa-solid fa-face-smile" aria-hidden="true"></i>
-                            </button>
+
+                            <!-- Schedule Popover Anchor -->
+                            <div class="bitstream-composer-popover-anchor">
+                                <button type="button" class="bitstream-composer-action-btn" data-composer-popover-trigger="schedule"
+                                    title="Schedule" aria-label="Schedule">
+                                    <i class="fa-solid fa-clock" aria-hidden="true"></i>
+                                </button>
+                                <div class="bitstream-composer-popover bitstream-composer-popover-schedule" id="bitstream-composer-popover-schedule" hidden>
+                                    <div class="bitstream-composer-popover-header">
+                                        <h4>Schedule Bit</h4>
+                                        <button type="button" class="bitstream-composer-popover-close" data-popover-close="schedule" aria-label="Close">&times;</button>
+                                    </div>
+                                    <div class="bitstream-composer-popover-body">
+                                        <div class="bitstream-schedule-presets">
+                                            <button type="button" class="bitstream-schedule-preset-btn" data-preset="tomorrow-morning">Tomorrow 9:00 AM</button>
+                                            <button type="button" class="bitstream-schedule-preset-btn" data-preset="tomorrow-evening">Tomorrow 6:00 PM</button>
+                                            <button type="button" class="bitstream-schedule-preset-btn" data-preset="in-2-days">In 2 Days</button>
+                                        </div>
+                                        <div class="bitstream-schedule-custom-row">
+                                            <label for="bitstream-popover-schedule-datetime">Custom Date &amp; Time:</label>
+                                            <input type="datetime-local" id="bitstream-popover-schedule-datetime" class="bitstream-composer-schedule-datetime-input">
+                                        </div>
+                                    </div>
+                                    <div class="bitstream-composer-popover-footer">
+                                        <button type="button" class="bitstream-composer-popover-btn-clear" id="bitstream-popover-schedule-clear">Clear</button>
+                                        <button type="button" class="bitstream-composer-popover-btn-confirm" id="bitstream-popover-schedule-set">Set Schedule</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Mood Popover Anchor -->
+                            <div class="bitstream-composer-popover-anchor">
+                                <button type="button" class="bitstream-composer-action-btn" data-composer-popover-trigger="mood"
+                                    title="Mood" aria-label="Mood">
+                                    <i class="fa-solid fa-face-smile" aria-hidden="true"></i>
+                                </button>
+                                <div class="bitstream-composer-popover bitstream-composer-popover-mood" id="bitstream-composer-popover-mood" hidden>
+                                    <div class="bitstream-composer-popover-header">
+                                        <h4>How are you feeling?</h4>
+                                        <button type="button" class="bitstream-composer-popover-close" data-popover-close="mood" aria-label="Close">&times;</button>
+                                    </div>
+                                    <div class="bitstream-composer-popover-body">
+                                        <div class="bitstream-mood-grid">
+                                            <button type="button" class="bitstream-mood-btn" data-emoji="😊" data-emotion="Happy">
+                                                <span class="bitstream-mood-btn-emoji">😊</span>
+                                                <span class="bitstream-mood-btn-label">Happy</span>
+                                            </button>
+                                            <button type="button" class="bitstream-mood-btn" data-emoji="😢" data-emotion="Sad">
+                                                <span class="bitstream-mood-btn-emoji">😢</span>
+                                                <span class="bitstream-mood-btn-label">Sad</span>
+                                            </button>
+                                            <button type="button" class="bitstream-mood-btn" data-emoji="😴" data-emotion="Tired">
+                                                <span class="bitstream-mood-btn-emoji">😴</span>
+                                                <span class="bitstream-mood-btn-label">Tired</span>
+                                            </button>
+                                            <button type="button" class="bitstream-mood-btn" data-emoji="🤩" data-emotion="Excited">
+                                                <span class="bitstream-mood-btn-emoji">🤩</span>
+                                                <span class="bitstream-mood-btn-label">Excited</span>
+                                            </button>
+                                            <button type="button" class="bitstream-mood-btn" data-emoji="🤪" data-emotion="Silly">
+                                                <span class="bitstream-mood-btn-emoji">🤪</span>
+                                                <span class="bitstream-mood-btn-label">Silly</span>
+                                            </button>
+                                            <button type="button" class="bitstream-mood-btn" data-emoji="🤔" data-emotion="Pensive">
+                                                <span class="bitstream-mood-btn-emoji">🤔</span>
+                                                <span class="bitstream-mood-btn-label">Pensive</span>
+                                            </button>
+                                            <button type="button" class="bitstream-mood-btn" data-emoji="😠" data-emotion="Angry">
+                                                <span class="bitstream-mood-btn-emoji">😠</span>
+                                                <span class="bitstream-mood-btn-label">Angry</span>
+                                            </button>
+                                            <button type="button" class="bitstream-mood-btn" data-emoji="😌" data-emotion="Relieved">
+                                                <span class="bitstream-mood-btn-emoji">😌</span>
+                                                <span class="bitstream-mood-btn-label">Relieved</span>
+                                            </button>
+                                            <button type="button" class="bitstream-mood-btn" data-emoji="🤯" data-emotion="Mind-blown">
+                                                <span class="bitstream-mood-btn-emoji">🤯</span>
+                                                <span class="bitstream-mood-btn-label">Mind-blown</span>
+                                            </button>
+                                        </div>
+                                        <div class="bitstream-saved-moods-section" style="margin-top: 10px; margin-bottom: 10px;">
+                                            <div class="bitstream-saved-moods-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                                <h5 style="margin: 0; font-size: 0.85rem; font-weight: 600; color: #475569;">Saved Moods</h5>
+                                                <button type="button" class="bitstream-manage-moods-btn" style="background: none; border: none; color: var(--wp--preset--color--accent-1, #2c6e49); font-size: 0.8rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                                                    <i class="fa-solid fa-gear"></i> Manage
+                                                </button>
+                                            </div>
+                                            <div class="bitstream-saved-moods-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;"></div>
+                                        </div>
+                                        <div class="bitstream-custom-mood-divider" style="margin: 10px 0; text-align: center; border-bottom: 1px solid #eef0f2; line-height: 0.1em;">
+                                            <span style="background:#fff; padding:0 8px; color:#94a3b8; font-size:0.78rem; font-weight:500;">OR CUSTOM</span>
+                                        </div>
+                                        <div class="bitstream-custom-mood-form" style="display: flex; gap: 8px; align-items: flex-end;">
+                                            <div style="flex: 0 0 54px;">
+                                                <label for="bitstream-mood-custom-emoji" style="font-size:0.78rem; font-weight:600; color:#475569; display:block; margin-bottom:4px;">Emoji</label>
+                                                <button type="button" id="bitstream-mood-emoji-trigger" class="bs-emoji-trigger" style="width: 100%; height: 38px; border: 1.5px solid #e2e8f0; border-radius: 8px; background: #f8fafc; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; font-size: 1.2rem; color: #94a3b8;" aria-label="Choose emoji">
+                                                    <i class="fa-solid fa-plus" style="font-size: 0.85rem;" aria-hidden="true"></i>
+                                                </button>
+                                                <input type="hidden" id="bitstream-mood-custom-emoji" value="">
+                                            </div>
+                                            <div style="flex: 1;">
+                                                <label for="bitstream-mood-custom-emotion" style="font-size:0.78rem; font-weight:600; color:#475569; display:block; margin-bottom:4px;">Feeling name</label>
+                                                <input type="text" id="bitstream-mood-custom-emotion" placeholder="e.g. productive" style="width: 100%; height: 38px; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 0 10px; background: #f8fafc; font-size: 0.88rem;">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="bitstream-composer-popover-footer">
+                                        <button type="button" class="bitstream-composer-popover-btn-clear" id="bitstream-popover-mood-clear">Clear</button>
+                                        <button type="button" class="bitstream-composer-popover-btn-confirm bitstream-composer-mood-done" id="bitstream-popover-mood-set">Set Mood</button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Status row (inside the form so it's part of the flex layout) -->
@@ -801,101 +992,7 @@ class BitStream_Shortcodes
                 </div>
             </div>
 
-            <!-- ═══ REBIT MODAL ═══ -->
-            <div class="bitstream-composer-modal bitstream-composer-modal-rebit" hidden>
-                <div class="bitstream-composer-modal-backdrop" data-composer-modal-close="rebit"></div>
-                <div class="bitstream-composer-modal-dialog" role="dialog" aria-modal="true" aria-label="Add a Rebit">
-                    <header class="bitstream-composer-modal-header">
-                        <h3>Add a Rebit</h3>
-                        <button type="button" class="bitstream-composer-modal-close" data-composer-modal-close="rebit"
-                            aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-                    </header>
-                    <div class="bitstream-composer-modal-body">
-                        <label for="bitstream-composer-modal-rebit-url"><strong>Link URL</strong></label>
-                        <div class="bitstream-rebit-url-row">
-                            <input type="url" id="bitstream-composer-modal-rebit-url" placeholder="https://example.com/post"
-                                value="">
-                            <button type="button" class="bitstream-composer-rebit-fetch">Fetch metadata</button>
-                        </div>
-
-
-                        <div class="bitstream-composer-rebit-live-preview" hidden>
-                            <p class="bitstream-rebit-live-preview-label"><strong>Preview</strong></p>
-                            <p class="bitstream-composer-rebit-live-preview-loading" hidden>Loading preview...</p>
-                            <div class="bitstream-composer-rebit-live-preview-card"></div>
-                        </div>
-                    </div>
-                    <footer class="bitstream-composer-modal-footer">
-                        <button type="button" class="bitstream-composer-modal-cancel"
-                            data-composer-modal-close="rebit">Cancel</button>
-                        <button type="button"
-                            class="bitstream-composer-modal-confirm bitstream-composer-rebit-done">Done</button>
-                    </footer>
-                </div>
-            </div>
-
-            <!-- ═══ REBIT METADATA EDIT MODAL ═══ -->
-            <div class="bitstream-composer-modal bitstream-composer-modal-rebit-meta" hidden>
-                <div class="bitstream-composer-modal-backdrop" data-composer-modal-close="rebit-meta"></div>
-                <div class="bitstream-composer-modal-dialog" role="dialog" aria-modal="true" aria-label="Edit Metadata">
-                    <header class="bitstream-composer-modal-header">
-                        <h3>Edit Metadata</h3>
-                        <button type="button" class="bitstream-composer-modal-close" data-composer-modal-close="rebit-meta"
-                            aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-                    </header>
-                    <div class="bitstream-composer-modal-body">
-                        <label for="bitstream-composer-modal-rebit-og-title"><strong>Preview title</strong></label>
-                        <input type="text" id="bitstream-composer-modal-rebit-og-title" placeholder="Auto-filled from metadata">
-                        <label for="bitstream-composer-modal-rebit-og-desc" style="margin-top: 0.5rem;"><strong>Preview
-                                description</strong></label>
-                        <textarea id="bitstream-composer-modal-rebit-og-desc" rows="5"
-                            placeholder="Auto-filled from metadata"></textarea>
-
-                        <label style="margin-top: 0.75rem;"><strong>Preview image</strong></label>
-                        <div class="bitstream-composer-rebit-image-controls">
-                            <button type="button" class="bitstream-media-control-icon bitstream-composer-rebit-image-change"
-                                title="Change Image" aria-label="Change Image"><i class="fa-solid fa-image"
-                                    aria-hidden="true"></i></button>
-                            <button type="button"
-                                class="bitstream-media-control-icon bitstream-media-remove bitstream-composer-rebit-image-remove"
-                                hidden title="Remove Image" aria-label="Remove Image"><i class="fa-solid fa-trash"
-                                    aria-hidden="true"></i></button>
-                        </div>
-                        <div class="bitstream-composer-rebit-image-preview-wrapper" style="margin-top: 0.5rem;" hidden>
-                            <img class="bitstream-composer-rebit-image-preview-el" src="" alt="Preview">
-                        </div>
-                    </div>
-                    <footer class="bitstream-composer-modal-footer">
-                        <button type="button" class="bitstream-composer-modal-cancel"
-                            data-composer-modal-close="rebit-meta">Cancel</button>
-                        <button type="button"
-                            class="bitstream-composer-modal-confirm bitstream-composer-rebit-meta-done">Done</button>
-                    </footer>
-                </div>
-            </div>
-
-            <!-- ═══ MEDIA MODAL ═══ -->
-            <div class="bitstream-composer-modal bitstream-composer-modal-media" hidden>
-                <div class="bitstream-composer-modal-backdrop" data-composer-modal-close="media"></div>
-                <div class="bitstream-composer-modal-dialog" role="dialog" aria-modal="true" aria-label="Upload Media">
-                    <header class="bitstream-composer-modal-header">
-                        <h3>Upload Media</h3>
-                        <button type="button" class="bitstream-composer-modal-close" data-composer-modal-close="media"
-                            aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-                    </header>
-                    <div class="bitstream-composer-modal-body">
-                        <?php echo self::render_media_field('bitstream-composer-modal-media-attachment-id', 'bitstream-composer-modal-media-preview'); ?>
-                    </div>
-                    <footer class="bitstream-composer-modal-footer">
-                        <button type="button" class="bitstream-composer-modal-cancel"
-                            data-composer-modal-close="media">Cancel</button>
-                        <button type="button" class="bitstream-composer-modal-confirm bitstream-composer-media-done">Use
-                            Media</button>
-                    </footer>
-                </div>
-            </div>
-
-            <!-- ═══ DRAFTS MODAL ═══ -->
+            <!-- ═══ DRAFTS LIST MODAL ═══ -->
             <div class="bitstream-composer-modal bitstream-composer-modal-drafts" hidden>
                 <div class="bitstream-composer-modal-backdrop" data-composer-modal-close="drafts"></div>
                 <div class="bitstream-composer-modal-dialog bitstream-composer-modal-dialog-wide" role="dialog"
@@ -929,11 +1026,12 @@ class BitStream_Shortcodes
                                         class="bitstream-scheduled-item bitstream-composer-draft-item <?php echo $is_highlighted ? 'is-highlighted' : ''; ?>"
                                         data-type="<?php echo esc_attr($row_type); ?>"
                                         data-post-id="<?php echo esc_attr($draft_id); ?>">
-                                        <div class="bitstream-composer-draft-info">
+                                        <div class="bitstream-composer-scheduled-info">
                                             <?php self::render_composer_item_preview($draft_id, 'draft'); ?>
                                         </div>
-                                        <div class="bitstream-composer-draft-actions">
-                                            <button type="button" class="bitstream-composer-draft-load bitstream-composer-action-btn"
+                                        <div class="bitstream-composer-scheduled-actions">
+                                            <button type="button"
+                                                class="bitstream-composer-draft-load bitstream-composer-action-btn"
                                                 data-post-id="<?php echo esc_attr($draft_id); ?>" title="Edit draft"
                                                 aria-label="Edit draft">
                                                 <i class="fa-solid fa-pencil" aria-hidden="true"></i>
@@ -949,145 +1047,45 @@ class BitStream_Shortcodes
                                 <?php endwhile; ?>
                                 <?php wp_reset_postdata(); ?>
                             <?php else: ?>
-                                <p class="bitstream-composer-drafts-empty">No drafts yet.</p>
+                                <p class="bitstream-composer-scheduled-empty">No drafts yet.</p>
                             <?php endif; ?>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- ═══ SCHEDULE MODAL ═══ -->
-            <div class="bitstream-composer-modal bitstream-composer-modal-schedule" hidden>
-                <div class="bitstream-composer-modal-backdrop" data-composer-modal-close="schedule"></div>
-                <div class="bitstream-composer-modal-dialog" role="dialog" aria-modal="true" aria-label="Schedule Bit">
-                    <header class="bitstream-composer-modal-header">
-                        <h3>Schedule</h3>
-                        <button type="button" class="bitstream-composer-modal-close" data-composer-modal-close="schedule"
+            <!-- ═══ CROPPER MODAL ═══ -->
+            <div class="bitstream-cropper-modal" hidden>
+                <div class="bitstream-cropper-backdrop" data-cropper-close="true"></div>
+                <div class="bitstream-cropper-dialog" role="dialog" aria-modal="true" aria-label="Crop Image">
+                    <header class="bitstream-cropper-header">
+                        <h3>Crop Image</h3>
+                        <button type="button" class="bitstream-cropper-close" data-cropper-close="true"
                             aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
                     </header>
-                    <div class="bitstream-composer-modal-body">
-                        <div class="bitstream-schedule-options">
-                            <label class="bitstream-schedule-radio">
-                                <input type="radio" name="bitstream_qp_schedule_mode" value="now" checked> Post now
-                            </label>
-                            <label class="bitstream-schedule-radio">
-                                <input type="radio" name="bitstream_qp_schedule_mode" value="later"> Schedule for later
-                            </label>
-                        </div>
-                        <input type="datetime-local"
-                            class="bitstream-composer-schedule-datetime-input bitstream-schedule-datetime" disabled>
-                    </div>
-                    <footer class="bitstream-composer-modal-footer">
-                        <button type="button" class="bitstream-composer-modal-cancel"
-                            data-composer-modal-close="schedule">Cancel</button>
-                        <button type="button"
-                            class="bitstream-composer-modal-confirm bitstream-composer-schedule-done">Confirm</button>
-                    </footer>
-                </div>
-            </div>
-
-            <!-- ═══ MOOD MODAL ═══ -->
-            <div class="bitstream-composer-modal bitstream-composer-modal-mood" hidden>
-                <div class="bitstream-composer-modal-backdrop" data-composer-modal-close="mood"></div>
-                <div class="bitstream-composer-modal-dialog" role="dialog" aria-modal="true" aria-label="Choose Mood">
-                    <header class="bitstream-composer-modal-header">
-                        <h3>How are you feeling?</h3>
-                        <button type="button" class="bitstream-composer-modal-close" data-composer-modal-close="mood"
-                            aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-                    </header>
-                    <div class="bitstream-composer-modal-body">
-                        <!-- Grid of predefined emotions -->
-                        <div class="bitstream-mood-grid">
-                            <button type="button" class="bitstream-mood-btn" data-emoji="😊" data-emotion="Happy">
-                                <span class="bitstream-mood-btn-emoji">😊</span>
-                                <span class="bitstream-mood-btn-label">Happy</span>
-                            </button>
-                            <button type="button" class="bitstream-mood-btn" data-emoji="😢" data-emotion="Sad">
-                                <span class="bitstream-mood-btn-emoji">😢</span>
-                                <span class="bitstream-mood-btn-label">Sad</span>
-                            </button>
-                            <button type="button" class="bitstream-mood-btn" data-emoji="😴" data-emotion="Tired">
-                                <span class="bitstream-mood-btn-emoji">😴</span>
-                                <span class="bitstream-mood-btn-label">Tired</span>
-                            </button>
-                            <button type="button" class="bitstream-mood-btn" data-emoji="🤩" data-emotion="Excited">
-                                <span class="bitstream-mood-btn-emoji">🤩</span>
-                                <span class="bitstream-mood-btn-label">Excited</span>
-                            </button>
-                            <button type="button" class="bitstream-mood-btn" data-emoji="🤪" data-emotion="Silly">
-                                <span class="bitstream-mood-btn-emoji">🤪</span>
-                                <span class="bitstream-mood-btn-label">Silly</span>
-                            </button>
-                            <button type="button" class="bitstream-mood-btn" data-emoji="🤔" data-emotion="Pensive">
-                                <span class="bitstream-mood-btn-emoji">🤔</span>
-                                <span class="bitstream-mood-btn-label">Pensive</span>
-                            </button>
-                            <button type="button" class="bitstream-mood-btn" data-emoji="😠" data-emotion="Angry">
-                                <span class="bitstream-mood-btn-emoji">😠</span>
-                                <span class="bitstream-mood-btn-label">Angry</span>
-                            </button>
-                            <button type="button" class="bitstream-mood-btn" data-emoji="😌" data-emotion="Relieved">
-                                <span class="bitstream-mood-btn-emoji">😌</span>
-                                <span class="bitstream-mood-btn-label">Relieved</span>
-                            </button>
-                            <button type="button" class="bitstream-mood-btn" data-emoji="🤯" data-emotion="Mind-blown">
-                                <span class="bitstream-mood-btn-emoji">🤯</span>
-                                <span class="bitstream-mood-btn-label">Mind-blown</span>
-                            </button>
-                        </div>
-
-                        <!-- Saved/Custom Moods Section -->
-                        <div class="bitstream-saved-moods-section" style="margin-bottom: 20px;">
-                            <div class="bitstream-saved-moods-header"
-                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                                <h4 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: #475569;">Saved Moods</h4>
-                                <button type="button" class="bitstream-manage-moods-btn"
-                                    style="background: none; border: none; color: var(--wp--preset--color--accent-1, #2c6e49); font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px;">
-                                    <i class="fa-solid fa-gear"></i> Manage
-                                </button>
-                            </div>
-
-                            <!-- View mode: grid of saved items -->
-                            <div class="bitstream-saved-moods-grid"
-                                style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
-                                <!-- Dynamically populated by JS -->
+                    <div class="bitstream-cropper-body">
+                        <div class="bitstream-cropper-stage">
+                            <img class="bitstream-cropper-image" src="" alt="">
+                            <div class="bitstream-cropper-selection" aria-hidden="true">
+                                <span class="bitstream-cropper-handle handle-nw" data-handle="nw"></span>
+                                <span class="bitstream-cropper-handle handle-ne" data-handle="ne"></span>
+                                <span class="bitstream-cropper-handle handle-n" data-handle="n"></span>
+                                <span class="bitstream-cropper-handle handle-e" data-handle="e"></span>
+                                <span class="bitstream-cropper-handle handle-s" data-handle="s"></span>
+                                <span class="bitstream-cropper-handle handle-w" data-handle="w"></span>
+                                <span class="bitstream-cropper-handle handle-sw" data-handle="sw"></span>
+                                <span class="bitstream-cropper-handle handle-se" data-handle="se"></span>
                             </div>
                         </div>
-
-                        <div class="bitstream-custom-mood-divider"
-                            style="margin: 15px 0; text-align: center; border-bottom: 1px solid #eef0f2; line-height: 0.1em;">
-                            <span style="background:#fff; padding:0 10px; color:#94a3b8; font-size:0.85rem; font-weight:500;">OR
-                                CREATE CUSTOM</span></div>
-
-                        <!-- Custom Mood Input Form -->
-                        <div class="bitstream-custom-mood-form"
-                            style="display: flex; gap: 10px; margin-top: 15px; align-items: flex-end;">
-                            <div style="flex: 0 0 70px;">
-                                <label for="bitstream-mood-custom-emoji"
-                                    style="font-size:0.85rem; font-weight:600; color:#475569; display:block; margin-bottom:5px;">Emoji</label>
-                                <button type="button" id="bitstream-mood-emoji-trigger"
-                                    class="bs-emoji-trigger"
-                                    style="width: 100%; height: 46px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; font-size: 1.5rem; color: #94a3b8; transition: border-color 0.15s, background 0.15s;"
-                                    aria-label="Choose emoji">
-                                    <i class="fa-solid fa-plus" style="font-size: 1rem;" aria-hidden="true"></i>
-                                </button>
-                                <input type="hidden" id="bitstream-mood-custom-emoji" value="">
-                            </div>
-                            <div style="flex: 1;">
-                                <label for="bitstream-mood-custom-emotion"
-                                    style="font-size:0.85rem; font-weight:600; color:#475569; display:block; margin-bottom:5px;">Feeling
-                                    name</label>
-                                <input type="text" id="bitstream-mood-custom-emotion"
-                                    placeholder="e.g. productive, nostalgic..."
-                                    style="width: 100%; height: 46px; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 0 12px; background: #f8fafc; box-sizing: border-box; font-size: 0.95rem;">
-                            </div>
+                        <div class="bitstream-cropper-meta">
+                            <p class="bitstream-cropper-help"><i class="fa-solid fa-circle-info"></i> Drag to select or resize the
+                                crop area.</p>
+                            <span class="bitstream-cropper-size">Size: --</span>
                         </div>
                     </div>
-                    <footer class="bitstream-composer-modal-footer">
-                        <button type="button" class="bitstream-composer-modal-cancel"
-                            data-composer-modal-close="mood">Cancel</button>
-                        <button type="button"
-                            class="bitstream-composer-modal-confirm bitstream-composer-mood-done">Done</button>
+                    <footer class="bitstream-cropper-footer">
+                        <button type="button" class="bitstream-cropper-cancel" data-cropper-close="true">Cancel</button>
+                        <button type="button" class="bitstream-cropper-apply">Crop &amp; Use Image</button>
                     </footer>
                 </div>
             </div>

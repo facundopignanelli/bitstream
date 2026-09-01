@@ -1862,6 +1862,50 @@
             }
         });
 
+        // Replace Twitter/X embeds in clone with clean static tweet cards for PNG capture
+        const twitterEmbeds = clone.querySelectorAll('.bit-rebit-embed-twitter, .twitter-tweet-rendered, iframe[id^="twitter-widget-"]');
+        twitterEmbeds.forEach(el => {
+            const container = el.closest('.bit-rebit-embed-twitter') || el.parentNode;
+            if (!container || !container.parentNode) return;
+
+            const origBlockquote = card.querySelector('.bit-rebit-embed-twitter blockquote');
+            let tweetText = '';
+            let tweetAuthor = '';
+            if (origBlockquote) {
+                const p = origBlockquote.querySelector('p');
+                tweetText = p ? p.textContent.trim() : origBlockquote.textContent.trim();
+                const text = origBlockquote.textContent || '';
+                const match = text.match(/—\s*(.+?)\s*(?:\(@|\d{4}|$)/);
+                if (match) {
+                    tweetAuthor = match[1].trim();
+                }
+            }
+            if (!tweetText) {
+                tweetText = card.querySelector('.bit-content')?.textContent?.trim() || 'Post on X';
+            }
+
+            const staticTweetCard = document.createElement('div');
+            staticTweetCard.style.cssText = 'background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:14px;padding:1rem 1.2rem;margin:0.5rem 0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;';
+            staticTweetCard.innerHTML = `
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.6rem;">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <div style="width:32px;height:32px;border-radius:50%;background:#000;display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.85rem;">
+                            <i class="fa-brands fa-x-twitter" style="color:#fff;"></i>
+                        </div>
+                        <div>
+                            <div style="font-weight:700;font-size:0.88rem;color:#0f172a;">${tweetAuthor || 'X / Twitter'}</div>
+                        </div>
+                    </div>
+                    <i class="fa-brands fa-x-twitter" style="font-size:1.1rem;color:#0f172a;"></i>
+                </div>
+                <div style="font-size:0.9rem;line-height:1.45;color:#1e293b;word-break:break-word;">
+                    ${tweetText}
+                </div>
+            `;
+
+            container.parentNode.replaceChild(staticTweetCard, container);
+        });
+
         // Replace iframe elements in clone with static placeholders
         const clonedIframes = clone.querySelectorAll('iframe');
         clonedIframes.forEach(iframe => {
@@ -3542,8 +3586,47 @@
         }
     }
 
+    function loadTwitterWidgets(target = document) {
+        if (window.twttr && window.twttr.widgets && typeof window.twttr.widgets.load === 'function') {
+            window.twttr.widgets.load(target);
+        }
+    }
+
+    function initTwitterObserver() {
+        loadTwitterWidgets(document);
+
+        if (window.twttr && window.twttr.ready) {
+            window.twttr.ready(() => {
+                loadTwitterWidgets(document);
+            });
+        }
+
+        const timeline = document.querySelector('.bitstream-feed') || document.querySelector('.bitstream-timeline') || document.body;
+        if (timeline && window.MutationObserver) {
+            const observer = new MutationObserver((mutations) => {
+                let hasTwitterNode = false;
+                for (const mutation of mutations) {
+                    for (const node of mutation.addedNodes) {
+                        if (node.nodeType === Node.ELEMENT_NODE) {
+                            if ((node.classList && (node.classList.contains('twitter-tweet') || node.classList.contains('bit-rebit-embed-twitter'))) || (node.querySelector && (node.querySelector('.twitter-tweet') || node.querySelector('.bit-rebit-embed-twitter')))) {
+                                hasTwitterNode = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (hasTwitterNode) break;
+                }
+                if (hasTwitterNode) {
+                    loadTwitterWidgets(timeline);
+                }
+            });
+            observer.observe(timeline, { childList: true, subtree: true });
+        }
+    }
+
     // Export namespace
     window.BitStream = window.BitStream || {};
+    window.BitStream.loadTwitterWidgets = loadTwitterWidgets;
     window.BitStream.Timeline = {
         init: function () {
             initTimelineEditModal();
@@ -3560,6 +3643,7 @@
             initPushNotifications();
             initBottomNavAndSheets();
             initImageDownloadProtection();
+            initTwitterObserver();
             cleanupUrlParams();
             parseTimelineCards();
         },
@@ -3568,6 +3652,7 @@
                 window.syncEditPreviewArea();
             }
         },
+        loadTwitterWidgets: loadTwitterWidgets,
         showDeleteConfirmation: showDeleteConfirmation,
         showDiscardConfirmation: showDiscardConfirmation,
         initTimelineEditModal: initTimelineEditModal,

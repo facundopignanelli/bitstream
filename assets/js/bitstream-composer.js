@@ -79,8 +79,8 @@
                 const previewQuote = form.querySelector('.bitstream-composer-preview-quote');
                 const previewQuoteCard = form.querySelector('.bitstream-composer-preview-quote-card');
 
-                // Mood modal elements
-                const moodModal = composerRoot.querySelector('.bitstream-composer-modal-mood');
+                // Mood popover/modal elements
+                const moodModal = composerRoot.querySelector('.bitstream-composer-popover-mood, .bitstream-composer-modal-mood');
                 let customMoods = (window.bitstream_ajax && bitstream_ajax.custom_moods) || [];
                 let activeEditMoodForm = null;
                 const previewDraft = null;
@@ -92,7 +92,7 @@
                 // Save Draft Button
                 const composerSaveDraftBtn = null;
                 const composerSaveDraftActionBtn = form.querySelector('.bitstream-composer-save-draft-action');
-                const scheduleBtn = form.querySelector('[data-composer-modal="schedule"]');
+                const scheduleBtn = form.querySelector('[data-composer-popover-trigger="schedule"], [data-composer-modal="schedule"]');
 
                 function setStatus(msg, isError = false) {
                     if (!statusEl) return;
@@ -580,6 +580,19 @@
                         scheduleBtn.classList.remove('is-disabled');
                         scheduleBtn.title = 'Schedule';
                     }
+                    const inlineRebitBar = form.querySelector('#bitstream-composer-inline-rebit-bar');
+                    if (inlineRebitBar) {
+                        inlineRebitBar.hidden = true;
+                        const rInput = inlineRebitBar.querySelector('#bitstream-composer-inline-rebit-input');
+                        if (rInput) rInput.value = '';
+                        const rStatus = inlineRebitBar.querySelector('#bitstream-composer-inline-rebit-status');
+                        if (rStatus) { rStatus.hidden = true; rStatus.textContent = ''; }
+                    }
+                    const inlineRebitMeta = form.querySelector('#bitstream-composer-rebit-inline-meta');
+                    if (inlineRebitMeta) inlineRebitMeta.hidden = true;
+                    const fileInput = form.querySelector('#bitstream-composer-file-input');
+                    if (fileInput) fileInput.value = '';
+                    if (typeof closeAllPopovers === 'function') closeAllPopovers();
                     activeEditMoodForm = null;
                     if (hEditPostId) hEditPostId.value = '0';
                     form.dataset.composerType = 'bit';
@@ -710,7 +723,23 @@
 
                 // Wire preview edit buttons
                 composerRoot.querySelectorAll('.bitstream-composer-preview-edit[data-composer-edit]').forEach(btn => {
-                    btn.addEventListener('click', () => openModal(btn.dataset.composerEdit));
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const editType = btn.dataset.composerEdit;
+                        if (editType === 'rebit') {
+                            if (typeof openRebitMetaEditor === 'function') {
+                                openRebitMetaEditor();
+                            }
+                        } else if (editType === 'schedule') {
+                            const schedBtn = composerRoot.querySelector('[data-composer-popover-trigger="schedule"]');
+                            if (typeof togglePopover === 'function') togglePopover('schedule', schedBtn);
+                        } else if (editType === 'mood') {
+                            const moodBtn = composerRoot.querySelector('[data-composer-popover-trigger="mood"]');
+                            if (typeof togglePopover === 'function') togglePopover('mood', moodBtn);
+                        } else {
+                            openModal(editType);
+                        }
+                    });
                 });
 
                 // Wire preview remove buttons
@@ -726,8 +755,11 @@
                             if (hRebitAttachmentId) hRebitAttachmentId.value = '';
                             if (previewRebit) previewRebit.hidden = true;
                             if (previewRebitCard) previewRebitCard.innerHTML = '';
+                            const inlineRebitMeta = form.querySelector('#bitstream-composer-rebit-inline-meta');
+                            if (inlineRebitMeta) inlineRebitMeta.hidden = true;
                             form.dataset.composerType = 'bit';
                             if (textarea) textarea.required = true;
+                            if (typeof setStatus === 'function') setStatus('');
                         }
                         if (type === 'media') {
                             if (previewMediaThumb) {
@@ -1676,7 +1708,25 @@
                         setCustomEmojiDisplay('');
                         if (customEmotionInput) customEmotionInput.value = '';
 
+                        if (typeof closeAllPopovers === 'function') closeAllPopovers();
                         closeModal('mood');
+                    });
+                }
+
+                const popoverMoodClearBtn = moodModal ? moodModal.querySelector('#bitstream-popover-mood-clear') : null;
+                if (popoverMoodClearBtn) {
+                    popoverMoodClearBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        if (hMoodEmoji) hMoodEmoji.value = '';
+                        if (hMoodEmotion) hMoodEmotion.value = '';
+                        if (previewMoodText) previewMoodText.textContent = '';
+                        if (previewMood) previewMood.hidden = true;
+                        setCustomEmojiDisplay('');
+                        if (customEmotionInput) customEmotionInput.value = '';
+                        clearHighlights();
+                        syncPreviewArea();
+                        if (typeof closeAllPopovers === 'function') closeAllPopovers();
+                        setStatus('Mood cleared.');
                     });
                 }
 
@@ -1688,7 +1738,12 @@
                         editBtn.addEventListener('click', (e) => {
                             e.preventDefault();
                             activeEditMoodForm = null;
-                            openModal('mood');
+                            const moodTriggerBtn = composerRoot.querySelector('[data-composer-popover-trigger="mood"]');
+                            if (typeof togglePopover === 'function') {
+                                togglePopover('mood', moodTriggerBtn);
+                            } else {
+                                openModal('mood');
+                            }
                         });
                     }
 
@@ -1888,224 +1943,583 @@
                 }
                 composerRoot.bitstreamLoadPostIntoComposer = loadPostIntoComposer;
 
-                // ── REBIT MODAL ──
-                const rebitModal = composerRoot.querySelector('.bitstream-composer-modal-rebit');
-                const rebitMetaModal = composerRoot.querySelector('.bitstream-composer-modal-rebit-meta');
-                if (rebitModal && rebitMetaModal) {
-                    const mRebitUrl = rebitModal.querySelector('#bitstream-composer-modal-rebit-url');
-                    const mRebitFetch = rebitModal.querySelector('.bitstream-composer-rebit-fetch');
-                    const mRebitPreviewRoot = rebitModal.querySelector('.bitstream-composer-rebit-live-preview');
-                    const mRebitPreviewLoading = rebitModal.querySelector('.bitstream-composer-rebit-live-preview-loading');
-                    const mRebitPreviewCard = rebitModal.querySelector('.bitstream-composer-rebit-live-preview-card');
-                    const mRebitDone = rebitModal.querySelector('.bitstream-composer-rebit-done');
+                // ── POPOVER MANAGER ──
+                function closeAllPopovers() {
+                    composerRoot.querySelectorAll('.bitstream-composer-popover').forEach(p => p.hidden = true);
+                    composerRoot.querySelectorAll('[data-composer-popover-trigger]').forEach(btn => btn.classList.remove('is-active'));
+                }
 
-                    const mRebitTitle = rebitMetaModal.querySelector('#bitstream-composer-modal-rebit-og-title');
-                    const mRebitDesc = rebitMetaModal.querySelector('#bitstream-composer-modal-rebit-og-desc');
-                    const mRebitImageChange = rebitMetaModal.querySelector('.bitstream-composer-rebit-image-change');
-                    const mRebitImageRemove = rebitMetaModal.querySelector('.bitstream-composer-rebit-image-remove');
-                    const mRebitMetaDone = rebitMetaModal.querySelector('.bitstream-composer-rebit-meta-done');
-
-                    const mRebitImagePreviewWrapper = rebitMetaModal.querySelector('.bitstream-composer-rebit-image-preview-wrapper');
-                    const mRebitImagePreviewEl = rebitMetaModal.querySelector('.bitstream-composer-rebit-image-preview-el');
-
-                    updateModalImagePreview = function () {
-                        const imageUrl = hRebitOgImage ? hRebitOgImage.value : '';
-                        const isRemoved = hRebitOgImageRemoved ? hRebitOgImageRemoved.value === '1' : false;
-                        if (imageUrl && !isRemoved) {
-                            if (mRebitImagePreviewEl) mRebitImagePreviewEl.src = imageUrl;
-                            if (mRebitImagePreviewWrapper) mRebitImagePreviewWrapper.hidden = false;
-                            if (mRebitImageRemove) mRebitImageRemove.hidden = false;
-                        } else {
-                            if (mRebitImagePreviewEl) mRebitImagePreviewEl.src = '';
-                            if (mRebitImagePreviewWrapper) mRebitImagePreviewWrapper.hidden = true;
-                            if (mRebitImageRemove) mRebitImageRemove.hidden = true;
+                function togglePopover(popoverName, triggerBtn) {
+                    const popover = composerRoot.querySelector('.bitstream-composer-popover-' + popoverName);
+                    if (!popover) return;
+                    const isHidden = popover.hidden;
+                    closeAllPopovers();
+                    if (isHidden) {
+                        popover.hidden = false;
+                        if (triggerBtn) triggerBtn.classList.add('is-active');
+                        if (popoverName === 'mood' && typeof window.parseEmojis === 'function') {
+                            window.parseEmojis(popover);
                         }
+                    }
+                }
+
+                composerRoot.querySelectorAll('[data-composer-popover-trigger]').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        togglePopover(btn.dataset.composerPopoverTrigger, btn);
+                    });
+                });
+
+                composerRoot.querySelectorAll('[data-popover-close]').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        closeAllPopovers();
+                    });
+                });
+
+                document.addEventListener('click', (e) => {
+                    if (!e.target.closest('.bitstream-composer-popover-anchor') && !e.target.closest('.bitstream-composer-popover')) {
+                        closeAllPopovers();
+                    }
+                });
+
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        closeAllPopovers();
+                        const inlineRebitBar = form.querySelector('#bitstream-composer-inline-rebit-bar');
+                        if (inlineRebitBar && !inlineRebitBar.hidden && (!hRebitUrl || !hRebitUrl.value)) {
+                            inlineRebitBar.hidden = true;
+                        }
+                    }
+                });
+
+                // ── INLINE REBIT BAR & METADATA EDITING ──
+                const rebitActionBtn = composerRoot.querySelector('[data-composer-action="rebit"]');
+                const inlineRebitBar = form.querySelector('#bitstream-composer-inline-rebit-bar');
+                const inlineRebitInput = form.querySelector('#bitstream-composer-inline-rebit-input');
+                const inlineRebitFetchBtn = form.querySelector('#bitstream-composer-inline-rebit-fetch-btn');
+                const inlineRebitCloseBtn = form.querySelector('#bitstream-composer-inline-rebit-close-btn');
+                const inlineRebitStatus = form.querySelector('#bitstream-composer-inline-rebit-status');
+
+                const inlineRebitMeta = form.querySelector('#bitstream-composer-rebit-inline-meta');
+                const inlineRebitTitle = form.querySelector('#bitstream-composer-rebit-inline-title');
+                const inlineRebitDesc = form.querySelector('#bitstream-composer-rebit-inline-desc');
+                const inlineRebitImgChange = form.querySelector('#bitstream-composer-rebit-img-change');
+                const inlineRebitImgCrop = form.querySelector('#bitstream-composer-rebit-img-crop');
+                const inlineRebitImgRemove = form.querySelector('#bitstream-composer-rebit-img-remove');
+                const inlineRebitImgPreview = form.querySelector('#bitstream-composer-rebit-img-preview');
+                const inlineRebitImgEl = form.querySelector('#bitstream-composer-rebit-img-el');
+                const inlineRebitImgEmpty = form.querySelector('#bitstream-composer-rebit-img-empty');
+                const inlineRebitMetaSave = form.querySelector('#bitstream-composer-rebit-meta-save');
+                const inlineRebitMetaClose = form.querySelector('#bitstream-composer-rebit-meta-close');
+
+                let rebitEditBackup = null;
+
+                function isEmbeddableRebitUrl(url) {
+                    if (!url) return false;
+                    try {
+                        const parsed = new URL(url);
+                        const host = parsed.hostname.toLowerCase();
+                        if (host.includes('youtube.com') || host.includes('youtu.be') || host.includes('youtube-nocookie.com')) {
+                            return true;
+                        }
+                        if (host.includes('twitter.com') || host.includes('x.com')) {
+                            if (parsed.pathname.includes('/status/') || parsed.pathname.includes('/statuses/')) {
+                                return true;
+                            }
+                        }
+                        if (host.includes('instagram.com')) {
+                            if (parsed.pathname.includes('/p/') || parsed.pathname.includes('/reel/') || parsed.pathname.includes('/reels/') || parsed.pathname.includes('/stories/')) {
+                                return true;
+                            }
+                        }
+                    } catch (e) {
+                        const low = String(url).toLowerCase();
+                        if (low.includes('youtube.com') || low.includes('youtu.be') || low.includes('youtube-nocookie.com') || low.includes('twitter.com/status') || low.includes('x.com/status') || low.includes('instagram.com/p/') || low.includes('instagram.com/reel') || low.includes('instagram.com/stories/')) {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+
+                updateRebitEditVisibility = function (url, isEmbeddable = null) {
+                    const rebitEditBtn = form.querySelector('.bitstream-composer-preview-rebit .bitstream-composer-preview-edit[data-composer-edit="rebit"]');
+                    const embeddable = isEmbeddable !== null ? !!isEmbeddable : isEmbeddableRebitUrl(url);
+                    if (rebitEditBtn) {
+                        rebitEditBtn.style.display = embeddable ? 'none' : 'inline-flex';
+                    }
+                    if (embeddable && inlineRebitMeta && !inlineRebitMeta.hidden) {
+                        closeRebitMetaEditor(false);
+                    }
+                };
+
+                function setInlineRebitStatus(msg, isError = false) {
+                    if (!inlineRebitStatus) return;
+                    if (!msg) {
+                        inlineRebitStatus.hidden = true;
+                        inlineRebitStatus.textContent = '';
+                        return;
+                    }
+                    inlineRebitStatus.hidden = false;
+                    inlineRebitStatus.textContent = msg;
+                    inlineRebitStatus.style.color = isError ? '#ef4444' : '#2c6e49';
+                }
+
+                updateModalImagePreview = function () {
+                    const imageUrl = hRebitOgImage ? (hRebitOgImage.value || '').trim() : '';
+                    const isRemoved = hRebitOgImageRemoved ? hRebitOgImageRemoved.value === '1' : false;
+                    const hasImage = !!(imageUrl && !isRemoved);
+
+                    if (inlineRebitImgEl) {
+                        if (hasImage) {
+                            inlineRebitImgEl.src = imageUrl;
+                            inlineRebitImgEl.hidden = false;
+                            inlineRebitImgEl.style.display = 'block';
+                        } else {
+                            inlineRebitImgEl.removeAttribute('src');
+                            inlineRebitImgEl.hidden = true;
+                            inlineRebitImgEl.style.display = 'none';
+                        }
+                    }
+                    if (inlineRebitImgEmpty) {
+                        inlineRebitImgEmpty.hidden = hasImage;
+                        inlineRebitImgEmpty.style.display = hasImage ? 'none' : 'flex';
+                    }
+                    if (inlineRebitImgCrop) {
+                        inlineRebitImgCrop.style.display = hasImage ? 'inline-flex' : 'none';
+                    }
+                    if (inlineRebitImgRemove) {
+                        inlineRebitImgRemove.style.display = hasImage ? 'inline-flex' : 'none';
+                    }
+                    if (inlineRebitImgChange) {
+                        inlineRebitImgChange.innerHTML = hasImage
+                            ? '<i class="fa-solid fa-arrow-up-from-bracket" aria-hidden="true"></i> Change'
+                            : '<i class="fa-solid fa-plus" aria-hidden="true"></i> Add Image';
+                    }
+                };
+
+                openRebitMetaEditor = function () {
+                    if (!inlineRebitMeta) return;
+                    const currentUrl = hRebitUrl ? hRebitUrl.value : '';
+                    if (isEmbeddableRebitUrl(currentUrl)) {
+                        return;
+                    }
+                    rebitEditBackup = {
+                        title: hRebitOgTitle ? hRebitOgTitle.value : '',
+                        desc: hRebitOgDesc ? hRebitOgDesc.value : '',
+                        image: hRebitOgImage ? hRebitOgImage.value : '',
+                        imageRemoved: hRebitOgImageRemoved ? hRebitOgImageRemoved.value : '0',
+                        attachmentId: hRebitAttachmentId ? hRebitAttachmentId.value : ''
                     };
+                    if (inlineRebitTitle) inlineRebitTitle.value = rebitEditBackup.title;
+                    if (inlineRebitDesc) inlineRebitDesc.value = rebitEditBackup.desc;
+                    updateModalImagePreview();
 
-                    renderRebitLivePreview = function (url) {
-                        if (!mRebitPreviewRoot || !window.bitstream_ajax) return;
-                        mRebitPreviewRoot.hidden = false;
-                        if (mRebitPreviewLoading) mRebitPreviewLoading.hidden = false;
+                    const rebitHeader = form.querySelector('.bitstream-composer-preview-rebit .bitstream-composer-preview-header');
+                    if (rebitHeader) rebitHeader.hidden = true;
+                    if (previewRebitCard) previewRebitCard.hidden = true;
+                    inlineRebitMeta.hidden = false;
+                };
 
-                        const fd = new FormData();
-                        fd.append('action', 'bitstream_render_rebit_preview');
-                        fd.append('nonce', bitstream_ajax.og_fetch_nonce);
-                        fd.append('rebit_url', url);
-                        fd.append('rebit_commentary', textarea ? (window.BitStream && window.BitStream.Editor ? window.BitStream.Editor.getEditorValue(textarea) : (textarea.value || '')) : '');
-                        fd.append('rebit_og_title', mRebitTitle ? mRebitTitle.value : '');
-                        fd.append('rebit_og_desc', mRebitDesc ? mRebitDesc.value : '');
-                        fd.append('rebit_og_image', hRebitOgImage ? hRebitOgImage.value : '');
-                        fd.append('rebit_og_image_removed', hRebitOgImageRemoved ? hRebitOgImageRemoved.value : '0');
-                        fd.append('rebit_attachment_id', hRebitAttachmentId ? hRebitAttachmentId.value : '');
+                closeRebitMetaEditor = function (save = false) {
+                    if (!inlineRebitMeta) return;
+                    if (save) {
+                        if (hRebitOgTitle && inlineRebitTitle) hRebitOgTitle.value = inlineRebitTitle.value.trim();
+                        if (hRebitOgDesc && inlineRebitDesc) hRebitOgDesc.value = inlineRebitDesc.value.trim();
+                        if (hRebitUrl && hRebitUrl.value) {
+                            renderRebitLivePreview(hRebitUrl.value);
+                        }
+                        setStatus('Link preview updated.');
+                    } else if (rebitEditBackup) {
+                        if (hRebitOgTitle) hRebitOgTitle.value = rebitEditBackup.title;
+                        if (hRebitOgDesc) hRebitOgDesc.value = rebitEditBackup.desc;
+                        if (hRebitOgImage) hRebitOgImage.value = rebitEditBackup.image;
+                        if (hRebitOgImageRemoved) hRebitOgImageRemoved.value = rebitEditBackup.imageRemoved;
+                        if (hRebitAttachmentId) hRebitAttachmentId.value = rebitEditBackup.attachmentId;
+                        if (inlineRebitTitle) inlineRebitTitle.value = rebitEditBackup.title;
+                        if (inlineRebitDesc) inlineRebitDesc.value = rebitEditBackup.desc;
+                        updateModalImagePreview();
+                        if (hRebitUrl && hRebitUrl.value) {
+                            renderRebitLivePreview(hRebitUrl.value);
+                        }
+                    }
+                    rebitEditBackup = null;
 
-                        fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
-                            .then(r => r.json())
-                            .then(data => {
-                                if (!data.success) throw new Error(data.data || 'Preview failed.');
-                                const resp = data.data || {};
-                                if (mRebitPreviewCard) mRebitPreviewCard.innerHTML = resp.rendered_html || '';
-                                if (previewRebitCard) previewRebitCard.innerHTML = resp.rendered_html || '';
-                                if (mRebitPreviewLoading) mRebitPreviewLoading.hidden = true;
-                                if (resp.og && hRebitOgImage) {
-                                    hRebitOgImage.value = resp.og.image || '';
+                    inlineRebitMeta.hidden = true;
+                    const rebitHeader = form.querySelector('.bitstream-composer-preview-rebit .bitstream-composer-preview-header');
+                    if (rebitHeader) rebitHeader.hidden = false;
+                    if (previewRebitCard) previewRebitCard.hidden = false;
+                };
+
+                if (inlineRebitMetaSave) {
+                    inlineRebitMetaSave.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        closeRebitMetaEditor(true);
+                    });
+                }
+
+                if (inlineRebitMetaClose) {
+                    inlineRebitMetaClose.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        closeRebitMetaEditor(false);
+                    });
+                }
+
+                function triggerTwitterWidgetsLoad(container) {
+                    if (window.twttr && window.twttr.widgets && typeof window.twttr.widgets.load === 'function') {
+                        window.twttr.widgets.load(container);
+                    } else if (window.twttr && typeof window.twttr.ready === 'function') {
+                        window.twttr.ready((twttr) => {
+                            if (twttr && twttr.widgets && typeof twttr.widgets.load === 'function') {
+                                twttr.widgets.load(container);
+                            }
+                        });
+                    }
+                }
+
+                renderRebitLivePreview = function (url) {
+                    if (!url || !window.bitstream_ajax || !bitstream_ajax.og_fetch_nonce) return;
+                    updateRebitEditVisibility(url);
+                    const fd = new FormData();
+                    fd.append('action', 'bitstream_render_rebit_preview');
+                    fd.append('nonce', bitstream_ajax.og_fetch_nonce);
+                    fd.append('rebit_url', url);
+                    fd.append('rebit_commentary', textarea ? (window.BitStream && window.BitStream.Editor ? window.BitStream.Editor.getEditorValue(textarea) : (textarea.value || '')) : '');
+                    fd.append('rebit_og_title', (inlineRebitTitle && inlineRebitTitle.value) || (hRebitOgTitle ? hRebitOgTitle.value : ''));
+                    fd.append('rebit_og_desc', (inlineRebitDesc && inlineRebitDesc.value) || (hRebitOgDesc ? hRebitOgDesc.value : ''));
+                    fd.append('rebit_og_image', hRebitOgImage ? hRebitOgImage.value : '');
+                    fd.append('rebit_og_image_removed', hRebitOgImageRemoved ? hRebitOgImageRemoved.value : '0');
+                    fd.append('rebit_attachment_id', hRebitAttachmentId ? hRebitAttachmentId.value : '');
+
+                    fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.success && data.data && previewRebitCard) {
+                                previewRebitCard.innerHTML = data.data.rendered_html || '';
+                                updateRebitEditVisibility(url, data.data.is_embeddable);
+                                triggerTwitterWidgetsLoad(previewRebitCard);
+                                if (previewRebit) previewRebit.hidden = false;
+                                syncPreviewArea();
+                                if (data.data.og && hRebitOgImage && !hRebitOgImage.value) {
+                                    hRebitOgImage.value = data.data.og.image || '';
                                 }
                                 updateModalImagePreview();
-                            })
-                            .catch(() => { if (mRebitPreviewLoading) mRebitPreviewLoading.hidden = true; });
-                    };
-
-                    let livePreviewDebounce;
-                    const triggerLivePreview = () => {
-                        const url = mRebitUrl ? mRebitUrl.value.trim() : '';
-                        if (url) {
-                            clearTimeout(livePreviewDebounce);
-                            livePreviewDebounce = setTimeout(() => renderRebitLivePreview(url), 500);
-                        }
-                    };
-
-                    if (mRebitTitle) mRebitTitle.addEventListener('input', triggerLivePreview);
-                    if (mRebitDesc) mRebitDesc.addEventListener('input', triggerLivePreview);
-
-                    let rebitMediaFrame;
-                    if (mRebitImageChange) {
-                        mRebitImageChange.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            if (rebitMediaFrame) { rebitMediaFrame.open(); return; }
-                            rebitMediaFrame = wp.media({ title: 'Select Preview Image', button: { text: 'Use this image' }, multiple: false });
-                            rebitMediaFrame.on('select', () => {
-                                const attachment = rebitMediaFrame.state().get('selection').first().toJSON();
-                                if (hRebitAttachmentId) hRebitAttachmentId.value = attachment.id;
-                                if (hRebitOgImage) hRebitOgImage.value = attachment.url;
-                                if (hRebitOgImageRemoved) hRebitOgImageRemoved.value = '0';
-                                updateModalImagePreview();
-                                triggerLivePreview();
-                            });
-                            rebitMediaFrame.open();
-                        });
-                    }
-
-                    if (mRebitImageRemove) {
-                        mRebitImageRemove.addEventListener('click', () => {
-                            if (hRebitAttachmentId) hRebitAttachmentId.value = '';
-                            if (hRebitOgImage) hRebitOgImage.value = '';
-                            if (hRebitOgImageRemoved) hRebitOgImageRemoved.value = '1';
-                            updateModalImagePreview();
-                            triggerLivePreview();
-                        });
-                    }
-
-                    if (mRebitFetch) {
-                        mRebitFetch.addEventListener('click', () => {
-                            if (mRebitFetch.classList.contains('is-edit-mode')) {
-                                openModal('rebit-meta');
-                                return;
                             }
-                            const url = mRebitUrl ? mRebitUrl.value.trim() : '';
-                            if (!url) { setStatus('Enter a URL first.', true); return; }
-                            if (!window.bitstream_ajax || !bitstream_ajax.og_fetch_nonce) { setStatus('Metadata fetcher unavailable.', true); return; }
+                        })
+                        .catch(() => {});
+                };
 
-                            mRebitFetch.disabled = true;
-                            mRebitFetch.textContent = 'Fetching...';
-
-                            const fd = new FormData();
-                            fd.append('action', 'bitstream_fetch_og_data');
-                            fd.append('nonce', bitstream_ajax.og_fetch_nonce);
-                            fd.append('url', url);
-                            fd.append('post_id', '0');
-
-                            fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
-                                .then(r => r.json())
-                                .then(data => {
-                                    if (!data.success) throw new Error(data.data || 'Fetch failed.');
-                                    const meta = data.data || {};
-                                    if (mRebitTitle) mRebitTitle.value = meta.title || '';
-                                    if (mRebitDesc) mRebitDesc.value = meta.description || '';
-                                    renderRebitLivePreview(url);
-                                    setStatus('Metadata loaded.');
-                                    mRebitFetch.classList.add('is-edit-mode');
-                                    mRebitFetch.textContent = 'Edit metadata';
-                                })
-                                .catch(err => setStatus(err.message || 'Fetch failed.', true))
-                                .finally(() => {
-                                    mRebitFetch.disabled = false;
-                                    if (!mRebitFetch.classList.contains('is-edit-mode')) {
-                                        mRebitFetch.textContent = 'Fetch metadata';
-                                    }
-                                });
-                        });
+                function fetchAndAttachRebit(url) {
+                    if (!url) {
+                        setInlineRebitStatus('Enter a URL first.', true);
+                        return;
                     }
-
-                    if (mRebitUrl) {
-                        mRebitUrl.addEventListener('input', () => {
-                            mRebitFetch.classList.remove('is-edit-mode');
-                            mRebitFetch.textContent = 'Fetch metadata';
-                            if (mRebitPreviewRoot) mRebitPreviewRoot.hidden = true;
-                            if (mRebitPreviewCard) mRebitPreviewCard.innerHTML = '';
-                            if (mRebitTitle) mRebitTitle.value = '';
-                            if (mRebitDesc) mRebitDesc.value = '';
-                        });
+                    if (!window.bitstream_ajax || !bitstream_ajax.og_fetch_nonce) {
+                        setInlineRebitStatus('Metadata fetcher unavailable.', true);
+                        return;
                     }
-
-                    if (mRebitMetaDone) {
-                        mRebitMetaDone.addEventListener('click', () => {
-                            const url = mRebitUrl ? mRebitUrl.value.trim() : '';
-                            renderRebitLivePreview(url);
-                            closeModal('rebit-meta');
-                        });
+                    if (inlineRebitFetchBtn) {
+                        inlineRebitFetchBtn.disabled = true;
+                        inlineRebitFetchBtn.textContent = 'Fetching...';
                     }
+                    setInlineRebitStatus('Fetching link preview...');
 
-                    if (mRebitDone) {
-                        mRebitDone.addEventListener('click', () => {
-                            const url = mRebitUrl ? mRebitUrl.value.trim() : '';
-                            if (!url) { setStatus('Enter and fetch a URL first.', true); return; }
+                    const fd = new FormData();
+                    fd.append('action', 'bitstream_fetch_og_data');
+                    fd.append('nonce', bitstream_ajax.og_fetch_nonce);
+                    fd.append('url', url);
+                    fd.append('post_id', '0');
 
+                    fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
+                        .then(r => r.json())
+                        .then(data => {
+                            if (!data.success) throw new Error(data.data || 'Fetch failed.');
+                            const meta = data.data || {};
                             if (hRebitUrl) hRebitUrl.value = url;
-                            if (hRebitOgTitle) hRebitOgTitle.value = mRebitTitle ? mRebitTitle.value : '';
-                            if (hRebitOgDesc) hRebitOgDesc.value = mRebitDesc ? mRebitDesc.value : '';
+                            if (hRebitOgTitle) hRebitOgTitle.value = meta.title || '';
+                            if (hRebitOgDesc) hRebitOgDesc.value = meta.description || '';
+                            if (hRebitOgImage) hRebitOgImage.value = meta.image || '';
+                            if (hRebitOgImageRemoved) hRebitOgImageRemoved.value = '0';
+                            if (inlineRebitTitle) inlineRebitTitle.value = meta.title || '';
+                            if (inlineRebitDesc) inlineRebitDesc.value = meta.description || '';
+
                             form.dataset.composerType = 'rebit';
                             if (textarea) textarea.required = false;
 
-                            if (previewRebitCard && mRebitPreviewCard) {
-                                previewRebitCard.innerHTML = mRebitPreviewCard.innerHTML || ('<p style="font-size:0.85rem;color:#555;">Rebit: ' + url + '</p>');
-                            }
+                            renderRebitLivePreview(url);
+                            updateRebitEditVisibility(url, meta.is_embeddable);
                             if (previewRebit) previewRebit.hidden = false;
                             syncPreviewArea();
-                            delete composerRoot.dataset.quickActionSource;
-                            closeModal('rebit', true);
+
+                            if (inlineRebitBar) inlineRebitBar.hidden = true;
+                            if (inlineRebitInput) inlineRebitInput.value = '';
+                            setInlineRebitStatus('');
                             setStatus('Rebit attached.');
+                        })
+                        .catch(err => {
+                            if (isEmbeddableRebitUrl(url)) {
+                                if (hRebitUrl) hRebitUrl.value = url;
+                                form.dataset.composerType = 'rebit';
+                                if (textarea) textarea.required = false;
+                                renderRebitLivePreview(url);
+                                updateRebitEditVisibility(url, true);
+                                if (previewRebit) previewRebit.hidden = false;
+                                syncPreviewArea();
+                                if (inlineRebitBar) inlineRebitBar.hidden = true;
+                                if (inlineRebitInput) inlineRebitInput.value = '';
+                                setInlineRebitStatus('');
+                                setStatus('Rebit attached.');
+                            } else {
+                                setInlineRebitStatus(err.message || 'Fetch failed.', true);
+                            }
+                        })
+                        .finally(() => {
+                            if (inlineRebitFetchBtn) {
+                                inlineRebitFetchBtn.disabled = false;
+                                inlineRebitFetchBtn.textContent = 'Fetch';
+                            }
                         });
-                    }
                 }
 
-                // ── MEDIA MODAL ──
-                const mediaModal = composerRoot.querySelector('.bitstream-composer-modal-media');
-                if (mediaModal) {
-                    const mMediaDone = mediaModal.querySelector('.bitstream-composer-media-done');
-                    const mMediaPreview = mediaModal.querySelector('#bitstream-composer-modal-media-preview');
+                if (rebitActionBtn) {
+                    rebitActionBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        if (inlineRebitBar) {
+                            inlineRebitBar.hidden = !inlineRebitBar.hidden;
+                            if (!inlineRebitBar.hidden && inlineRebitInput) {
+                                inlineRebitInput.focus();
+                            }
+                        }
+                    });
+                }
 
-                    if (mMediaDone) {
-                        mMediaDone.addEventListener('click', () => {
-                            const attachments = typeof window.getExistingAttachments === 'function' ? window.getExistingAttachments(mMediaPreview) : [];
-                            if (attachments.length === 0) { setStatus('Upload or select media first.', true); return; }
+                if (inlineRebitCloseBtn) {
+                    inlineRebitCloseBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        if (inlineRebitBar) inlineRebitBar.hidden = true;
+                        if (inlineRebitInput) inlineRebitInput.value = '';
+                        setInlineRebitStatus('');
+                    });
+                }
 
-                            if (previewMediaThumb) {
-                                if (typeof window.updateAttachmentsList === 'function') {
-                                    window.updateAttachmentsList(previewMediaThumb, attachments);
-                                }
-                            } else {
-                                const attachId = attachments[0].id;
-                                const attachIds = attachments.map(item => item.id).join(',');
-                                if (hAttachmentId) hAttachmentId.value = String(attachId);
-                                if (hAttachmentIds) hAttachmentIds.value = attachIds;
-                                if (previewMedia) previewMedia.hidden = false;
+                if (inlineRebitFetchBtn) {
+                    inlineRebitFetchBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const url = inlineRebitInput ? inlineRebitInput.value.trim() : '';
+                        fetchAndAttachRebit(url);
+                    });
+                }
+
+                if (inlineRebitInput) {
+                    inlineRebitInput.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            fetchAndAttachRebit(inlineRebitInput.value.trim());
+                        }
+                    });
+                }
+
+                let inlineRebitMediaFrame;
+                if (inlineRebitImgChange) {
+                    inlineRebitImgChange.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        if (inlineRebitMediaFrame) { inlineRebitMediaFrame.open(); return; }
+                        inlineRebitMediaFrame = wp.media({ title: 'Select Preview Image', button: { text: 'Use this image' }, multiple: false });
+                        inlineRebitMediaFrame.on('select', () => {
+                            const attachment = inlineRebitMediaFrame.state().get('selection').first().toJSON();
+                            if (hRebitAttachmentId) hRebitAttachmentId.value = attachment.id;
+                            if (hRebitOgImage) hRebitOgImage.value = attachment.url;
+                            if (hRebitOgImageRemoved) hRebitOgImageRemoved.value = '0';
+                            updateModalImagePreview();
+                        });
+                        inlineRebitMediaFrame.open();
+                    });
+                }
+
+                if (inlineRebitImgCrop) {
+                    inlineRebitImgCrop.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const attachmentId = hRebitAttachmentId ? parseInt(hRebitAttachmentId.value || '0', 10) : 0;
+                        const imageUrl = hRebitOgImage ? (hRebitOgImage.value || '').trim() : '';
+
+                        if (!imageUrl) {
+                            setStatus('No image to crop.', true);
+                            return;
+                        }
+
+                        const openCropperForRebit = (targetAttachmentId, targetUrl) => {
+                            const cropperOpener = (window.BitStream && window.BitStream.Cropper && typeof window.BitStream.Cropper.open === 'function')
+                                ? window.BitStream.Cropper.open
+                                : (typeof window.bitstreamOpenCropper === 'function' ? window.bitstreamOpenCropper : null);
+
+                            if (!cropperOpener) {
+                                setStatus('Image cropper is unavailable.', true);
+                                return;
                             }
 
-                            syncPreviewArea();
-                            closeModal('media');
-                            setStatus('Media attached.');
-                        });
-                    }
+                            cropperOpener('', '', {
+                                attachmentId: targetAttachmentId,
+                                url: targetUrl,
+                                onComplete: (croppedMedia, croppedUrl) => {
+                                    if (croppedMedia && croppedMedia.id) {
+                                        if (hRebitAttachmentId) hRebitAttachmentId.value = croppedMedia.id;
+                                    }
+                                    if (hRebitOgImage) {
+                                        hRebitOgImage.value = croppedUrl || (croppedMedia && croppedMedia.url) || '';
+                                    }
+                                    if (hRebitOgImageRemoved) {
+                                        hRebitOgImageRemoved.value = '0';
+                                    }
+                                    updateModalImagePreview();
+                                    setStatus('Image cropped.');
+                                }
+                            });
+                        };
+
+                        if (attachmentId > 0) {
+                            openCropperForRebit(attachmentId, imageUrl);
+                        } else {
+                            if (!window.bitstream_ajax || !bitstream_ajax.ajax_url || !bitstream_ajax.media_upload_nonce) {
+                                setStatus('Image cropper is unavailable.', true);
+                                return;
+                            }
+
+                            inlineRebitImgCrop.disabled = true;
+                            setStatus('Preparing image for crop...');
+
+                            const payload = new FormData();
+                            payload.append('action', 'bitstream_prepare_rebit_image_for_crop');
+                            payload.append('nonce', bitstream_ajax.media_upload_nonce);
+                            payload.append('image_url', imageUrl);
+
+                            fetch(bitstream_ajax.ajax_url, {
+                                method: 'POST',
+                                credentials: 'same-origin',
+                                body: payload
+                            })
+                                .then(r => r.json())
+                                .then(data => {
+                                    if (!data.success) {
+                                        throw new Error(data.data || 'Could not prepare image for crop.');
+                                    }
+                                    const prepared = data.data || {};
+                                    if (hRebitAttachmentId) hRebitAttachmentId.value = prepared.id || '';
+                                    if (hRebitOgImage) hRebitOgImage.value = prepared.url || imageUrl;
+                                    if (hRebitOgImageRemoved) hRebitOgImageRemoved.value = '0';
+                                    updateModalImagePreview();
+                                    openCropperForRebit(prepared.id || 0, prepared.url || imageUrl);
+                                })
+                                .catch(err => {
+                                    setStatus(err.message || 'Could not prepare image for crop.', true);
+                                })
+                                .finally(() => {
+                                    inlineRebitImgCrop.disabled = false;
+                                });
+                        }
+                    });
                 }
+
+                if (inlineRebitImgRemove) {
+                    inlineRebitImgRemove.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        if (hRebitAttachmentId) hRebitAttachmentId.value = '';
+                        if (hRebitOgImage) hRebitOgImage.value = '';
+                        if (hRebitOgImageRemoved) hRebitOgImageRemoved.value = '1';
+                        updateModalImagePreview();
+                    });
+                }
+
+                // ── MEDIA POPOVER & UPLOAD ──
+                const mediaFileInput = form.querySelector('#bitstream-composer-file-input');
+                const popoverMediaUploadBtn = form.querySelector('#bitstream-popover-media-upload');
+                const popoverMediaLibraryBtn = form.querySelector('#bitstream-popover-media-library');
+
+                if (popoverMediaUploadBtn && mediaFileInput) {
+                    popoverMediaUploadBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        closeAllPopovers();
+                        mediaFileInput.click();
+                    });
+                }
+
+                if (mediaFileInput) {
+                    mediaFileInput.addEventListener('change', () => {
+                        if (mediaFileInput.files && mediaFileInput.files.length > 0) {
+                            handlePastedMedia(mediaFileInput.files);
+                        }
+                        mediaFileInput.value = '';
+                    });
+                }
+
+                let composerMediaFrame;
+                if (popoverMediaLibraryBtn) {
+                    popoverMediaLibraryBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        closeAllPopovers();
+                        if (composerMediaFrame) {
+                            composerMediaFrame.open();
+                            return;
+                        }
+                        composerMediaFrame = wp.media({
+                            title: 'Select Media',
+                            button: { text: 'Use selected media' },
+                            multiple: true,
+                            library: { type: ['image', 'video'] }
+                        });
+                        composerMediaFrame.on('select', () => {
+                            const selection = composerMediaFrame.state().get('selection');
+                            const attachments = selection.map(att => {
+                                const json = att.toJSON();
+                                return {
+                                    id: json.id,
+                                    url: json.url,
+                                    type: json.type,
+                                    mime: json.mime,
+                                    filename: json.filename
+                                };
+                            });
+                            if (attachments.length > 0) {
+                                if (previewMediaThumb && typeof window.updateAttachmentsList === 'function') {
+                                    window.updateAttachmentsList(previewMediaThumb, attachments);
+                                } else {
+                                    const attachId = attachments[0].id;
+                                    const attachIds = attachments.map(item => item.id).join(',');
+                                    if (hAttachmentId) hAttachmentId.value = String(attachId);
+                                    if (hAttachmentIds) hAttachmentIds.value = attachIds;
+                                }
+                                if (previewMedia) previewMedia.hidden = false;
+                                syncPreviewArea();
+                                setStatus('Media attached.');
+                            }
+                        });
+                        composerMediaFrame.open();
+                    });
+                }
+
+                // ── DRAG & DROP ON COMPOSER ──
+                ['dragenter', 'dragover'].forEach(eventName => {
+                    form.addEventListener(eventName, (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        form.classList.add('bitstream-composer-dragover');
+                    });
+                });
+
+                ['dragleave', 'drop'].forEach(eventName => {
+                    form.addEventListener(eventName, (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        form.classList.remove('bitstream-composer-dragover');
+                    });
+                });
+
+                form.addEventListener('drop', (e) => {
+                    const dt = e.dataTransfer;
+                    if (dt && dt.files && dt.files.length > 0) {
+                        handlePastedMedia(dt.files);
+                    }
+                });
 
                 // ── PASTE MEDIA HANDLER ──
                 function handlePastedMedia(files) {
@@ -2117,33 +2531,25 @@
                         return;
                     }
 
-                    const modalAttachmentId = 'bitstream-composer-modal-media-attachment-id';
-                    const modalPreviewId = 'bitstream-composer-modal-media-preview';
+                    setStatus('Processing media...');
 
-                    setStatus('Processing pasted image...');
-
-                    uploadFn(files, modalAttachmentId, modalPreviewId, {
+                    uploadFn(files, 'bitstream-composer-attachment-id', 'bitstream-composer-preview-media-thumb', {
                         setStatus: (msg, isError) => setStatus(msg, isError)
                     }).then(() => {
-                        const mMediaPreview = mediaModal ? mediaModal.querySelector('#bitstream-composer-modal-media-preview') : null;
-                        const attachments = mMediaPreview ? (typeof window.getExistingAttachments === 'function' ? window.getExistingAttachments(mMediaPreview) : []) : [];
+                        const attachments = previewMediaThumb ? (typeof window.getExistingAttachments === 'function' ? window.getExistingAttachments(previewMediaThumb) : []) : [];
 
                         if (attachments.length > 0) {
-                            if (previewMediaThumb && typeof window.updateAttachmentsList === 'function') {
-                                window.updateAttachmentsList(previewMediaThumb, attachments);
-                            } else {
-                                const attachId = attachments[0].id;
-                                const attachIds = attachments.map(item => item.id).join(',');
-                                if (hAttachmentId) hAttachmentId.value = String(attachId);
-                                if (hAttachmentIds) hAttachmentIds.value = attachIds;
-                                if (previewMedia) previewMedia.hidden = false;
-                            }
+                            const attachId = attachments[0].id;
+                            const attachIds = attachments.map(item => item.id).join(',');
+                            if (hAttachmentId) hAttachmentId.value = String(attachId);
+                            if (hAttachmentIds) hAttachmentIds.value = attachIds;
+                            if (previewMedia) previewMedia.hidden = false;
                             syncPreviewArea();
-                            setStatus('Pasted image attached.');
+                            setStatus('Media attached.');
                         }
                     }).catch(err => {
-                        console.error('BitStream: Pasted image upload failed:', err);
-                        setStatus(err.message || 'Image upload failed.', true);
+                        console.error('BitStream: Media upload failed:', err);
+                        setStatus(err.message || 'Media upload failed.', true);
                     });
                 }
 
@@ -2303,44 +2709,94 @@
                     });
                 }
 
-                // ── SCHEDULE MODAL ──
-                const scheduleModal = composerRoot.querySelector('.bitstream-composer-modal-schedule');
-                if (scheduleModal) {
-                    const schedRadios = scheduleModal.querySelectorAll('input[name="bitstream_qp_schedule_mode"]');
-                    const schedDatetime = scheduleModal.querySelector('.bitstream-composer-schedule-datetime-input');
-                    const schedDone = scheduleModal.querySelector('.bitstream-composer-schedule-done');
+                // ── SCHEDULE POPOVER ──
+                const schedulePopover = composerRoot.querySelector('.bitstream-composer-popover-schedule');
+                if (schedulePopover) {
+                    const schedDatetime = schedulePopover.querySelector('.bitstream-composer-schedule-datetime-input');
+                    const schedSetBtn = schedulePopover.querySelector('#bitstream-popover-schedule-set');
+                    const schedClearBtn = schedulePopover.querySelector('#bitstream-popover-schedule-clear');
+                    const presetBtns = schedulePopover.querySelectorAll('.bitstream-schedule-preset-btn');
 
-                    schedRadios.forEach(radio => {
-                        radio.addEventListener('change', () => {
-                            if (schedDatetime) schedDatetime.disabled = (radio.value !== 'later');
+                    function formatLocalDatetime(date) {
+                        const year = date.getFullYear();
+                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                        const day = String(date.getDate()).padStart(2, '0');
+                        const hours = String(date.getHours()).padStart(2, '0');
+                        const minutes = String(date.getMinutes()).padStart(2, '0');
+                        return `${year}-${month}-${day}T${hours}:${minutes}`;
+                    }
+
+                    presetBtns.forEach(btn => {
+                        btn.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            const preset = btn.dataset.preset;
+                            const now = new Date();
+                            let targetDate = new Date();
+
+                            if (preset === 'tomorrow-morning') {
+                                targetDate.setDate(now.getDate() + 1);
+                                targetDate.setHours(9, 0, 0, 0);
+                            } else if (preset === 'tomorrow-evening') {
+                                targetDate.setDate(now.getDate() + 1);
+                                targetDate.setHours(18, 0, 0, 0);
+                            } else if (preset === 'in-2-days') {
+                                targetDate.setDate(now.getDate() + 2);
+                                targetDate.setHours(9, 0, 0, 0);
+                            }
+
+                            const val = formatLocalDatetime(targetDate);
+                            if (schedDatetime) schedDatetime.value = val;
+
+                            if (hScheduleEnabled) hScheduleEnabled.value = '1';
+                            if (hScheduleDatetime) hScheduleDatetime.value = val;
+                            if (previewScheduleDate) previewScheduleDate.textContent = targetDate.toLocaleString();
+                            if (previewSchedule) previewSchedule.hidden = false;
+                            if (submitBtn) {
+                                const isEdit = hEditPostId && hEditPostId.value !== '0';
+                                submitBtn.textContent = isEdit ? 'Update Scheduled Post' : 'Schedule Bit';
+                            }
+                            syncPreviewArea();
+                            closeAllPopovers();
+                            setStatus('Schedule set for ' + targetDate.toLocaleString());
                         });
                     });
 
-                    if (schedDone) {
-                        schedDone.addEventListener('click', () => {
-                            const mode = scheduleModal.querySelector('input[name="bitstream_qp_schedule_mode"]:checked');
-                            if (mode && mode.value === 'later') {
-                                const dt = schedDatetime ? schedDatetime.value : '';
-                                if (!dt) { setStatus('Pick a date and time.', true); return; }
-                                if (hScheduleEnabled) hScheduleEnabled.value = '1';
-                                if (hScheduleDatetime) hScheduleDatetime.value = dt;
-                                if (previewScheduleDate) previewScheduleDate.textContent = new Date(dt).toLocaleString();
-                                if (previewSchedule) previewSchedule.hidden = false;
-                                if (submitBtn) {
-                                    const isEdit = hEditPostId && hEditPostId.value !== '0';
-                                    submitBtn.textContent = isEdit ? 'Update Scheduled Post' : 'Schedule Bit';
-                                }
-                            } else {
-                                if (hScheduleEnabled) hScheduleEnabled.value = '0';
-                                if (hScheduleDatetime) hScheduleDatetime.value = '';
-                                if (previewSchedule) previewSchedule.hidden = true;
-                                if (submitBtn) {
-                                    const isEdit = hEditPostId && hEditPostId.value !== '0';
-                                    submitBtn.textContent = isEdit ? 'Publish Draft' : 'Post Bit';
-                                }
+                    if (schedSetBtn) {
+                        schedSetBtn.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            const dt = schedDatetime ? schedDatetime.value : '';
+                            if (!dt) {
+                                setStatus('Pick a date and time.', true);
+                                return;
+                            }
+                            if (hScheduleEnabled) hScheduleEnabled.value = '1';
+                            if (hScheduleDatetime) hScheduleDatetime.value = dt;
+                            if (previewScheduleDate) previewScheduleDate.textContent = new Date(dt).toLocaleString();
+                            if (previewSchedule) previewSchedule.hidden = false;
+                            if (submitBtn) {
+                                const isEdit = hEditPostId && hEditPostId.value !== '0';
+                                submitBtn.textContent = isEdit ? 'Update Scheduled Post' : 'Schedule Bit';
                             }
                             syncPreviewArea();
-                            closeModal('schedule');
+                            closeAllPopovers();
+                            setStatus('Schedule set.');
+                        });
+                    }
+
+                    if (schedClearBtn) {
+                        schedClearBtn.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            if (hScheduleEnabled) hScheduleEnabled.value = '0';
+                            if (hScheduleDatetime) hScheduleDatetime.value = '';
+                            if (schedDatetime) schedDatetime.value = '';
+                            if (previewSchedule) previewSchedule.hidden = true;
+                            if (submitBtn) {
+                                const isEdit = hEditPostId && hEditPostId.value !== '0';
+                                submitBtn.textContent = isEdit ? 'Publish Draft' : 'Post Bit';
+                            }
+                            syncPreviewArea();
+                            closeAllPopovers();
+                            setStatus('Schedule cleared.');
                         });
                     }
                 }
@@ -2423,7 +2879,7 @@
                     openModal('settings');
                 }
                 if (urlParams.has('show_rebit') || urlParams.get('composer_tab') === 'rebit') {
-                    const rebitBtn = composerRoot.querySelector('[data-composer-modal="rebit"]');
+                    const rebitBtn = composerRoot.querySelector('[data-composer-action="rebit"], [data-composer-modal="rebit"]');
                     if (rebitBtn) {
                         setTimeout(() => {
                             const isMobile = window.innerWidth < 1024;
@@ -2519,19 +2975,19 @@
                                 form.dataset.composerType = 'rebit';
                                 if (textarea) textarea.required = false;
 
-                                const rebitBtn = composerRoot.querySelector('[data-composer-modal="rebit"]');
+                                const rebitBtn = composerRoot.querySelector('[data-composer-action="rebit"], [data-composer-modal="rebit"]');
                                 if (rebitBtn) {
                                     rebitBtn.click();
                                 }
 
-                                const mRebitUrl = composerRoot.querySelector('#bitstream-composer-modal-rebit-url');
+                                const mRebitUrl = composerRoot.querySelector('#bitstream-composer-inline-rebit-input, #bitstream-composer-modal-rebit-url');
                                 if (mRebitUrl) {
                                     mRebitUrl.value = finalUrl;
                                 }
-                                const mRebitFetch = composerRoot.querySelector('.bitstream-composer-rebit-fetch');
+                                const mRebitFetch = composerRoot.querySelector('#bitstream-composer-inline-rebit-fetch-btn, .bitstream-composer-rebit-fetch');
                                 if (mRebitFetch) {
                                     mRebitFetch.classList.remove('is-edit-mode');
-                                    mRebitFetch.textContent = 'Fetch metadata';
+                                    mRebitFetch.textContent = 'Fetch';
                                     setTimeout(() => {
                                         mRebitFetch.click();
                                     }, 100);

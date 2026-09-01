@@ -51,6 +51,7 @@ class BitStream_Plugin
     public function register_global_assets()
     {
         wp_register_script('twemoji', 'https://cdn.jsdelivr.net/npm/@twemoji/api@latest/dist/twemoji.min.js', [], null, true);
+        wp_register_script('bitstream-twitter-widgets', 'https://platform.twitter.com/widgets.js', [], null, true);
 
         // Register separate modular scripts
         wp_register_script('bitstream-lightbox', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream-lightbox.js', [], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/js/bitstream-lightbox.js'), true);
@@ -64,7 +65,7 @@ class BitStream_Plugin
         wp_register_script(
             'bitstream-js',
             BITSTREAM_PLUGIN_URL . 'assets/js/bitstream.js',
-            ['jquery', 'twemoji', 'bitstream-lightbox', 'bitstream-cropper', 'bitstream-uploader', 'bitstream-editor', 'bitstream-composer', 'bitstream-timeline'],
+            ['jquery', 'twemoji', 'bitstream-twitter-widgets', 'bitstream-lightbox', 'bitstream-cropper', 'bitstream-uploader', 'bitstream-editor', 'bitstream-composer', 'bitstream-timeline'],
             BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/js/bitstream.js'),
             true
         );

@@ -543,6 +543,30 @@ class BitStream_Ajax_Handlers
             ];
         }
 
+        $parsed = parse_url($url);
+        $host = strtolower($parsed['host'] ?? '');
+        if (strpos($host, 'twitter.com') !== false || strpos($host, 'x.com') !== false) {
+            $path = $parsed['path'] ?? '';
+            if (preg_match('#/(?:status|statuses)/\d+#i', $path)) {
+                return [
+                    'is_embeddable' => true,
+                    'embed_type' => 'twitter',
+                    'embed_url' => $url,
+                ];
+            }
+        }
+
+        if (strpos($host, 'instagram.com') !== false) {
+            $path = $parsed['path'] ?? '';
+            if (preg_match('#/(?:p|reel|reels|stories|tv)/([^/?#]+)#i', $path)) {
+                return [
+                    'is_embeddable' => true,
+                    'embed_type' => 'instagram',
+                    'embed_url' => $url,
+                ];
+            }
+        }
+
         return [
             'is_embeddable' => false,
             'embed_type' => '',
@@ -1269,11 +1293,12 @@ class BitStream_Ajax_Handlers
             $manual_desc = sanitize_textarea_field(wp_unslash($_POST['rebit_og_desc'] ?? ''));
             $manual_image = esc_url_raw(wp_unslash($_POST['rebit_og_image'] ?? ''));
             $manual_image_removed = !empty($_POST['rebit_og_image_removed']) && strval($_POST['rebit_og_image_removed']) === '1';
+            $rebit_attachment_id = $this->get_valid_attachment_id($_POST['rebit_attachment_id'] ?? 0);
             
-            $attachment_ids_raw = sanitize_text_field(wp_unslash($_POST['rebit_attachment_ids'] ?? $_POST['bit_attachment_ids'] ?? ''));
+            $attachment_ids_raw = sanitize_text_field(wp_unslash($_POST['bit_attachment_ids'] ?? ''));
             $attachment_ids = array_filter(array_map('intval', explode(',', $attachment_ids_raw)));
             if (empty($attachment_ids)) {
-                $single_id = $this->get_valid_attachment_id($_POST['rebit_attachment_id'] ?? $_POST['bit_attachment_id'] ?? 0);
+                $single_id = $this->get_valid_attachment_id($_POST['bit_attachment_id'] ?? 0);
                 if ($single_id > 0) {
                     $attachment_ids[] = $single_id;
                 }
@@ -1311,13 +1336,16 @@ class BitStream_Ajax_Handlers
 
             $og_title = !empty($manual_title) ? $manual_title : ($og_data['title'] ?? '');
             $og_desc = !empty($manual_desc) ? $manual_desc : ($og_data['description'] ?? '');
-            $og_image = $manual_image_removed ? '' : (!empty($manual_image) ? $manual_image : ($og_data['image'] ?? ''));
-
-            if (!empty($attachment_ids) && empty($manual_image)) {
-                $attachment_image = wp_get_attachment_image_url($attachment_ids[0], 'large');
-                if ($attachment_image) {
-                    $og_image = $attachment_image;
-                }
+            
+            if ($manual_image_removed) {
+                $og_image = '';
+            } elseif ($rebit_attachment_id > 0) {
+                $att_url = wp_get_attachment_url($rebit_attachment_id);
+                $og_image = $att_url ? $att_url : (!empty($manual_image) ? $manual_image : ($og_data['image'] ?? ''));
+            } elseif (!empty($manual_image)) {
+                $og_image = $manual_image;
+            } else {
+                $og_image = $og_data['image'] ?? '';
             }
 
             $post_content = $this->assemble_post_content($commentary, $attachment_ids);
@@ -1348,7 +1376,28 @@ class BitStream_Ajax_Handlers
             update_post_meta($post_id, '_bitstream_og_title', sanitize_text_field($og_title));
             update_post_meta($post_id, '_bitstream_og_desc', sanitize_textarea_field($og_desc));
             update_post_meta($post_id, '_bitstream_og_image', esc_url_raw($og_image));
+            if (!empty($og_data['avatar'])) {
+                update_post_meta($post_id, '_bitstream_og_avatar', esc_url_raw($og_data['avatar']));
+            }
             update_post_meta($post_id, '_bitstream_og_fetched', time());
+
+            $embed_data = $this->get_rebit_embed_preview_data($url);
+            if (!empty($og_data['embed_html'])) {
+                update_post_meta($post_id, '_bitstream_rebit_embed_html', $og_data['embed_html']);
+            } elseif ($embed_data['is_embeddable'] && $embed_data['embed_type'] === 'twitter') {
+                update_post_meta($post_id, '_bitstream_rebit_embed_html', '<blockquote class="twitter-tweet" data-dnt="true"><a href="' . esc_url($url) . '"></a></blockquote>');
+            } else {
+                delete_post_meta($post_id, '_bitstream_rebit_embed_html');
+            }
+
+            if ($manual_image_removed) {
+                delete_post_meta($post_id, '_bitstream_rebit_attachment_id');
+                delete_post_meta($post_id, '_bitstream_og_image');
+            } elseif ($rebit_attachment_id > 0) {
+                update_post_meta($post_id, '_bitstream_rebit_attachment_id', $rebit_attachment_id);
+            } else {
+                delete_post_meta($post_id, '_bitstream_rebit_attachment_id');
+            }
 
             if ($is_bit_to_rebit_conversion) {
                 delete_post_meta($post_id, '_bitstream_quoted_bit');
@@ -1846,12 +1895,25 @@ class BitStream_Ajax_Handlers
             update_post_meta($preview_post_id, '_bitstream_og_title', sanitize_text_field($og_title));
             update_post_meta($preview_post_id, '_bitstream_og_desc', sanitize_text_field($og_desc));
             update_post_meta($preview_post_id, '_bitstream_og_image', esc_url_raw($og_image));
+            if (!empty($og_data['avatar'])) {
+                update_post_meta($preview_post_id, '_bitstream_og_avatar', esc_url_raw($og_data['avatar']));
+            }
+
+            $embed_data = $this->get_rebit_embed_preview_data($url);
+            if (!empty($og_data['embed_html'])) {
+                update_post_meta($preview_post_id, '_bitstream_rebit_embed_html', $og_data['embed_html']);
+            } elseif ($embed_data['is_embeddable'] && $embed_data['embed_type'] === 'twitter') {
+                update_post_meta($preview_post_id, '_bitstream_rebit_embed_html', '<blockquote class="twitter-tweet" data-dnt="true"><a href="' . esc_url($url) . '"></a></blockquote>');
+            }
 
             $rendered_html = $this->sanitize_live_preview_markup(BitStream_Content_Display::render_rebit_section($preview_post_id));
             wp_delete_post($preview_post_id, true);
 
             wp_send_json_success([
                 'rendered_html' => $rendered_html,
+                'is_embeddable' => !empty($embed_data['is_embeddable']),
+                'embed_type' => $embed_data['embed_type'] ?? '',
+                'embed_url' => $embed_data['embed_url'] ?? '',
                 'og' => [
                     'title' => $og_title,
                     'description' => $og_desc,

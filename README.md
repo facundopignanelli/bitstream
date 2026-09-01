@@ -86,10 +86,11 @@ Manage all configuration options directly on the frontend timeline page via the 
 
 ![Composer Interface](assets/images/composer.png)
 
-- **Unified Feed Composition**: Compose Bits and ReBits directly from the feed page.
+- **Inline Expansions & Anchored Popovers**: Fast, modal-free composing experience replacing separate dialogs with inline URL inputs, native file upload options, and compact anchored popovers for Media, Scheduling, and Moods.
+- **Inline Link / Rebit URL Bar**: Click the link icon to expand a URL input bar with real-time OpenGraph preview generation and inline metadata editing fields (title, description, image change/removal).
 - **Drafts & Auto-Save**: Save posts as drafts, auto-save drafts on page or tab close via `navigator.sendBeacon`, and manage draft items directly on the frontend.
-- **Robust Scheduling**: Plan ahead with a native datetime picker for future publishing (Bits and ReBits).
-- **Rich Media Grids & Direct Clipboard Paste**: Drag-and-drop uploads, direct clipboard image pasting (`Ctrl+V` / `Cmd+V`) into the composer without opening upload dialogs, attaching up to 10 images or videos per post, custom image cropper, and video support.
+- **Smart Scheduling Popover**: One-click schedule presets (*Tomorrow 9:00 AM*, *Tomorrow 6:00 PM*, *In 2 Days*) and custom datetime picker anchored to the clock button.
+- **Rich Media & Direct Uploads**: Drag-and-drop file uploads directly onto the composer, clipboard image paste (`Ctrl+V` / `Cmd+V`), native device file picker, WordPress media library integration, and custom image cropping.
 - **Fullscreen Lightbox**: Pop up gallery view allowing users to zoom in and expand single or multi-media images and videos directly from the timeline.
 - **Live Hashtag & URL Highlighting**: Real-time inline styling for `#hashtags` (theme accent color) and `http://`/`https://` URLs (underlined blue) inside the composer as you type.
 - **Caret-Anchored Hashtag Autocomplete**: Type `#` inside the composer to display a floating suggestion menu anchored directly under the active cursor with keyboard (`ArrowUp`/`ArrowDown`/`Enter`/`Tab`) and touch support.

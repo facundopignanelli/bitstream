@@ -25,19 +25,31 @@ class BitStream_OG_Fetcher
             return false;
         }
 
-        // 1. Transient Caching
-        $cache_key = 'bitstream_og_' . md5($url);
-        $cached = get_transient($cache_key);
-        if ($cached) {
-            return $cached;
-        }
-
         $host = strtolower(wp_parse_url($url, PHP_URL_HOST) ?? '');
         $host = preg_replace('/^www\./', '', $host);
 
-        // 2. Custom Fallbacks (e.g., Twitter/X blocks scraping and WP core dropped their oEmbed)
+        // 1. Transient Caching
+        $cache_key = 'bitstream_og_' . md5($url);
+        $cached = get_transient($cache_key);
+        if ($cached && is_array($cached)) {
+            if (in_array($host, ['twitter.com', 'x.com'], true) && empty($cached['embed_html'])) {
+                // Stale cache: refresh
+            } elseif (($host === 'instagram.com' || strpos($host, 'instagram.com') !== false) && (empty($cached['avatar']) || strpos($cached['avatar'], 'unavatar.io') !== false)) {
+                // Stale Instagram cache with broken unavatar.io avatar: refresh
+            } else {
+                return $cached;
+            }
+        }
+
+        // 2. Custom Fallbacks (e.g., Twitter/X and Instagram)
         if (in_array($host, ['twitter.com', 'x.com'], true)) {
             $result = $this->fetch_twitter_oembed($url);
+            if ($result !== false) {
+                set_transient($cache_key, $result, HOUR_IN_SECONDS * 24);
+                return $result;
+            }
+        } elseif ($host === 'instagram.com' || strpos($host, 'instagram.com') !== false) {
+            $result = $this->fetch_instagram_data($url);
             if ($result !== false) {
                 set_transient($cache_key, $result, HOUR_IN_SECONDS * 24);
                 return $result;
@@ -201,30 +213,49 @@ class BitStream_OG_Fetcher
      */
     private function fetch_twitter_oembed($url)
     {
+        $clean_url = preg_replace('/\?.*$/', '', $url);
+        $fallback_html = '<blockquote class="twitter-tweet" data-dnt="true"><a href="' . esc_url($clean_url) . '">' . esc_html($clean_url) . '</a></blockquote>';
+
         $oembed_endpoint = 'https://publish.twitter.com/oembed?' . http_build_query([
-            'url' => $url,
+            'url' => $clean_url,
             'omit_script' => 'true',
             'dnt' => 'true',
         ]);
 
         $resp = wp_remote_get($oembed_endpoint, [
-            'timeout' => 10,
+            'timeout' => 4,
             'user-agent' => 'Mozilla/5.0',
         ]);
 
         if (is_wp_error($resp) || wp_remote_retrieve_response_code($resp) !== 200) {
-            return false;
+            return [
+                'title' => 'Post on ' . (strpos($url, 'x.com') !== false ? 'X' : 'Twitter'),
+                'description' => '',
+                'image' => '',
+                'url' => $url,
+                'embed_html' => $fallback_html,
+                'is_embeddable' => true,
+                'embed_type' => 'twitter',
+            ];
         }
 
         $data = json_decode(wp_remote_retrieve_body($resp), true);
-        if (!is_array($data)) {
-            return false;
+        if (!is_array($data) || empty($data['html'])) {
+            return [
+                'title' => 'Post on ' . (strpos($url, 'x.com') !== false ? 'X' : 'Twitter'),
+                'description' => '',
+                'image' => '',
+                'url' => $url,
+                'embed_html' => $fallback_html,
+                'is_embeddable' => true,
+                'embed_type' => 'twitter',
+            ];
         }
 
         // oEmbed fields: author_name, author_url, html (tweet HTML), provider_name
         $author = sanitize_text_field($data['author_name'] ?? '');
         $author_url = esc_url_raw($data['author_url'] ?? '');
-        $tweet_html = $data['html'] ?? '';
+        $tweet_html = $data['html'] ?? $fallback_html;
 
         // Extract plain tweet text from the oEmbed HTML (strip tags, keep content)
         $tweet_text = '';
@@ -239,23 +270,168 @@ class BitStream_OG_Fetcher
         }
 
         // Use author's Twitter avatar as the preview image
-        // The oEmbed API doesn't return an image directly, but we can derive
-        // the profile picture URL from the author handle in author_url.
         $og_image = '';
         if (!empty($author_url)) {
-            // Extract @handle from the author URL e.g. https://twitter.com/handle
             $handle = trim(wp_parse_url($author_url, PHP_URL_PATH), '/');
             if (!empty($handle)) {
-                // Use unavatar.io as a reliable, no-auth proxy for Twitter profile pictures
                 $og_image = 'https://unavatar.io/twitter/' . rawurlencode($handle);
             }
         }
 
         return [
-            'title' => !empty($author) ? $author . ' on ' . (strpos($url, 'x.com') !== false ? 'X' : 'Twitter') : '',
+            'title' => !empty($author) ? $author . ' on ' . (strpos($url, 'x.com') !== false ? 'X' : 'Twitter') : 'Post on ' . (strpos($url, 'x.com') !== false ? 'X' : 'Twitter'),
             'description' => $tweet_text,
             'image' => $og_image,
             'url' => $url,
+            'embed_html' => $tweet_html,
+            'is_embeddable' => true,
+            'embed_type' => 'twitter',
+        ];
+    }
+
+    /**
+     * Parse and fetch Instagram post, reel, or story data.
+     */
+    private function fetch_instagram_data($url)
+    {
+        $clean_url = preg_replace('/\?.*$/', '', $url);
+        $parsed = parse_url($clean_url);
+        $path = trim($parsed['path'] ?? '', '/');
+        $segments = explode('/', $path);
+
+        $type = 'Post';
+        $shortcode = '';
+        $username = '';
+
+        if (!empty($segments[0])) {
+            if ($segments[0] === 'p' && !empty($segments[1])) {
+                $type = 'Post';
+                $shortcode = $segments[1];
+            } elseif (in_array($segments[0], ['reel', 'reels'], true) && !empty($segments[1])) {
+                $type = 'Reel';
+                $shortcode = $segments[1];
+            } elseif ($segments[0] === 'stories' && !empty($segments[1])) {
+                $type = 'Story';
+                $username = $segments[1];
+                $shortcode = $segments[2] ?? '';
+            } else {
+                $username = $segments[0];
+            }
+        }
+
+        $args = [
+            'timeout' => 8,
+            'redirection' => 3,
+            'user-agent' => 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+            'headers' => [
+                'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language' => 'en-US,en;q=0.5',
+            ]
+        ];
+
+        $title = '';
+        $description = '';
+        $image = '';
+        $avatar = '';
+        $author_name = '';
+
+        // For non-story URLs, fetch target page OG tags
+        if ($type !== 'Story') {
+            $resp = wp_safe_remote_get($clean_url, $args);
+            if (!is_wp_error($resp) && wp_remote_retrieve_response_code($resp) === 200) {
+                $html = wp_remote_retrieve_body($resp);
+                if (!empty($html)) {
+                    if (preg_match('/<meta[^>]+property=["\']og:title["\'][^>]+content=["\']([^"\']+)["\']/i', $html, $m)) {
+                        $title = html_entity_decode(trim($m[1]), ENT_QUOTES, 'UTF-8');
+                    }
+                    if (preg_match('/<meta[^>]+property=["\']og:description["\'][^>]+content=["\']([^"\']+)["\']/i', $html, $m)) {
+                        $description = html_entity_decode(trim($m[1]), ENT_QUOTES, 'UTF-8');
+                    }
+                    if (preg_match('/<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']/i', $html, $m)) {
+                        $image = esc_url_raw(html_entity_decode(trim($m[1]), ENT_QUOTES, 'UTF-8'));
+                    }
+                    if (empty($username) && preg_match('/<meta[^>]+property=["\']og:url["\'][^>]+content=["\']https?:\/\/(?:www\.)?instagram\.com\/([a-zA-Z0-9._]+)\//i', $html, $um)) {
+                        if (!in_array($um[1], ['p', 'reel', 'reels', 'stories', 'tv'], true)) {
+                            $username = $um[1];
+                        }
+                    }
+                }
+            }
+        }
+
+        // Extract clean author display name
+        if (!empty($title)) {
+            if (preg_match('/^Watch this story by\s+(.+?)(?:\s+on Instagram.*)?$/i', $title, $sm)) {
+                $author_name = trim($sm[1]);
+            } elseif (preg_match('/^(.*?)\s+on Instagram/i', $title, $anm)) {
+                $author_name = trim($anm[1]);
+            } else {
+                $author_name = trim(preg_replace('/\s*•.*$/', '', $title));
+            }
+        }
+
+        // Extract posted date and clean caption from description
+        $posted_date = '';
+        if (!empty($description)) {
+            // Extract date e.g. "bbcnews on August 10, 2026: ..." or "on September 1, 2026"
+            if (preg_match('/\bon\s+([A-Za-z]+\s+\d{1,2}(?:,\s+\d{4})?)/i', $description, $dm)) {
+                $posted_date = trim($dm[1]);
+            }
+            // Extract clean caption after colon & quotes, stripping likes/comments/author prefix
+            if (preg_match('/:\s*["\']?(.*?)["\']?\s*$/s', $description, $cm)) {
+                $description = trim($cm[1]);
+                $description = preg_replace('/^["\']|["\']$/', '', $description);
+            }
+        }
+
+        // Fetch author profile page to resolve actual profile avatar & display name
+        if (!empty($username)) {
+            $prof_url = 'https://www.instagram.com/' . rawurlencode($username) . '/';
+            $prof_resp = wp_safe_remote_get($prof_url, $args);
+            $p_code = wp_remote_retrieve_response_code($prof_resp);
+            if (!is_wp_error($prof_resp) && $p_code >= 200 && $p_code < 400) {
+                $prof_html = wp_remote_retrieve_body($prof_resp);
+                if (!empty($prof_html)) {
+                    if (preg_match('/<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']/i', $prof_html, $pm)) {
+                        $avatar = esc_url_raw(html_entity_decode(trim($pm[1]), ENT_QUOTES, 'UTF-8'));
+                    }
+                    if (empty($author_name) || $author_name === $username) {
+                        if (preg_match('/<meta[^>]+property=["\']og:title["\'][^>]+content=["\']([^"\']+)["\']/i', $prof_html, $ptm)) {
+                            $pt = html_entity_decode(trim($ptm[1]), ENT_QUOTES, 'UTF-8');
+                            $clean_pt = trim(preg_replace('/\s*•.*$/', '', $pt));
+                            $clean_pt = trim(preg_replace('/\s*\(@[a-zA-Z0-9._]+\)/', '', $clean_pt));
+                            if (!empty($clean_pt)) {
+                                $author_name = $clean_pt;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (empty($author_name)) {
+            $author_name = $username ? '@' . $username : 'Instagram ' . $type;
+        }
+
+        if ($type === 'Story' && empty($description)) {
+            $description = $username ? 'View @' . $username . '\'s story on Instagram.' : 'View story on Instagram.';
+        }
+
+        if (empty($title)) {
+            $title = $author_name;
+        }
+
+        return [
+            'title' => $title,
+            'description' => $description,
+            'posted_date' => $posted_date,
+            'image' => $image,
+            'avatar' => $avatar,
+            'username' => $username,
+            'instagram_type' => $type,
+            'url' => $clean_url,
+            'is_embeddable' => true,
+            'embed_type' => 'instagram',
         ];
     }
 

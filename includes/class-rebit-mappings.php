@@ -102,8 +102,23 @@ class BitStream_ReBit_Mappings {
     /**
      * Get mapping for a specific domain
      */
-    public static function get_mapping_for_domain($domain) {
+    public static function get_mapping_for_domain($domain, $url = '') {
         $mappings = self::get_all_mappings();
+
+        // Dynamic path-based mapping for Instagram URLs (posts, reels, stories)
+        if (!empty($url) && stripos($domain, 'instagram.com') !== false) {
+            $parsed_path = trim(parse_url($url, PHP_URL_PATH) ?? '', '/');
+            $segments = explode('/', $parsed_path);
+            if (!empty($segments[0])) {
+                if (in_array($segments[0], ['reel', 'reels'], true)) {
+                    return ['domain' => 'instagram.com', 'label' => 'shared a reel', 'icon' => 'fab fa-instagram'];
+                } elseif ($segments[0] === 'stories') {
+                    return ['domain' => 'instagram.com', 'label' => 'shared a story', 'icon' => 'fab fa-instagram'];
+                } elseif ($segments[0] === 'p') {
+                    return ['domain' => 'instagram.com', 'label' => 'shared a photo', 'icon' => 'fab fa-instagram'];
+                }
+            }
+        }
         
         foreach ($mappings as $mapping) {
             if (stripos($domain, $mapping['domain']) !== false) {

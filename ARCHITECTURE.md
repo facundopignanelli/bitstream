@@ -113,6 +113,7 @@ This index serves as the primary map for understanding the backend and frontend 
   * `BitStream_OG_Fetcher`: Metadata fetch utility.
     * `fetch_og_data($url)`: Evaluates targets, queries transients, performs oEmbed queries, or makes SSRF-protected HTTP gets to extract title/image/descriptions.
     * `fetch_twitter_oembed($url)`: Connects to custom fallback pipelines for Twitter/X URLs.
+    * `fetch_instagram_data($url)`: Parses Instagram posts, reels, and stories for authors, media, and captions.
 
 ### [includes/class-error-logger.php](includes/class-error-logger.php)
 * **Description**: Logs system bugs and serves the Debug Log admin page.
@@ -290,7 +291,7 @@ This index serves as the primary map for understanding the backend and frontend 
 * **Description**: Contenteditable micro-editor script. Powers live `#hashtag` coloring, `http://` URL highlighting, caret-anchored autocomplete popup, inline Twemoji rendering, DOM selection range preservation, plain-text paste sanitization, and clipboard image paste detection (`bitstream:paste-media`). Exposed under `window.BitStream.Editor`.
 
 ### [assets/js/bitstream-composer.js](assets/js/bitstream-composer.js)
-* **Description**: Composer and settings controller script. Powers character counters, settings forms, PWA share payloads, drafts lists, scheduled list drawers, direct clipboard image paste handling, predefined/custom moods, twemoji lazy-parsing, and unified Composer Edit & Quote Modes (`openEdit`, `openQuote`, `cancelEdit`, and auto-stashed draft protection). Exposed under `window.BitStream.Composer`.
+* **Description**: Composer and settings controller script. Powers the modal-free inline composing architecture: inline Rebit URL expansion bar with live metadata editing, anchored popovers for Media (native device upload & WP Media Library), Scheduling (presets & custom datetime), and Moods (feelings grid & custom emotions), direct composer drag-and-drop file uploading, character counters, settings forms, PWA share payloads, drafts lists, scheduled list drawers, direct clipboard image paste handling, twemoji lazy-parsing, and unified Composer Edit & Quote Modes (`openEdit`, `openQuote`, `cancelEdit`, and auto-stashed draft protection). Exposed under `window.BitStream.Composer`.
 
 ### [assets/js/bitstream-timeline.js](assets/js/bitstream-timeline.js)
 * **Description**: Timeline viewer and utilities script. Manages page scroll pagination, comments toggling/styling, media session metadata tracking, exposing hashtag data (`getHashtags()`), push notifications registration, and image download protections. Exposed under `window.BitStream.Timeline`.

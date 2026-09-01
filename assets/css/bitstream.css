@@ -417,6 +417,518 @@
     color: #94a3b8 !important;
 }
 
+/* Drag & Drop Visual Cue on Composer */
+.bitstream-sidebar-composer-form.bitstream-composer-dragover,
+.bitstream-composer-modal-dialog.bitstream-composer-dragover {
+    border-color: var(--wp--preset--color--accent-1, #2c6e49) !important;
+    background: rgba(44, 110, 73, 0.03) !important;
+    outline: 2px dashed var(--wp--preset--color--accent-1, #2c6e49) !important;
+    outline-offset: -4px;
+}
+
+/* Inline Rebit URL Input Bar */
+.bitstream-composer-inline-rebit-bar {
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0.4rem 0.6rem;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.bitstream-composer-inline-rebit-bar:focus-within {
+    border-color: var(--wp--preset--color--accent-1, #2c6e49);
+    box-shadow: 0 0 0 3px rgba(44, 110, 73, 0.12);
+    background: #fff;
+}
+
+.bitstream-composer-inline-rebit-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.bitstream-composer-inline-rebit-icon {
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+.bitstream-composer-inline-rebit-input-wrap input {
+    flex: 1;
+    border: none !important;
+    background: transparent !important;
+    padding: 0.25rem 0 !important;
+    font-size: 0.88rem !important;
+    color: #1e293b !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.bitstream-composer-inline-rebit-fetch-btn {
+    background: var(--wp--preset--color--accent-1, #2c6e49);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 0.3rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.15s;
+    flex-shrink: 0;
+}
+
+.bitstream-composer-inline-rebit-fetch-btn:hover {
+    opacity: 0.92;
+    transform: translateY(-1px);
+}
+
+.bitstream-composer-inline-rebit-close-btn {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0.2rem 0.35rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    flex-shrink: 0;
+    transition: color 0.15s;
+}
+
+.bitstream-composer-inline-rebit-close-btn:hover {
+    color: #ef4444;
+}
+
+.bitstream-composer-inline-rebit-status {
+    font-size: 0.78rem;
+    color: #64748b;
+    padding: 0.25rem 0 0 1.5rem;
+}
+
+/* Inline Rebit Metadata Editor */
+.bitstream-composer-rebit-inline-meta {
+    margin-top: 0.75rem;
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 0.85rem 1rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    animation: bitstreamFadeIn 0.2s ease-out;
+}
+
+.bitstream-rebit-inline-meta-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #edf2f7;
+}
+
+.bitstream-rebit-inline-meta-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.bitstream-rebit-inline-meta-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.bitstream-rebit-inline-meta-btn-action {
+    background: transparent;
+    border: none;
+    font-size: 0.88rem;
+    cursor: pointer;
+    padding: 3px 6px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, background-color 0.15s;
+}
+
+.bitstream-rebit-inline-meta-save {
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    background: rgba(44, 110, 73, 0.1);
+}
+
+.bitstream-rebit-inline-meta-save:hover {
+    background: var(--wp--preset--color--accent-1, #2c6e49);
+    color: #ffffff;
+}
+
+.bitstream-rebit-inline-meta-close {
+    color: #94a3b8;
+}
+
+.bitstream-rebit-inline-meta-close:hover {
+    color: #ef4444;
+    background-color: #fee2e2;
+}
+
+.bitstream-rebit-inline-meta-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.bitstream-rebit-inline-meta-field label {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    margin-bottom: 0.25rem;
+}
+
+.bitstream-rebit-inline-meta-field label i {
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+
+.bitstream-rebit-inline-meta-field input,
+.bitstream-rebit-inline-meta-field textarea {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0.45rem 0.65rem;
+    font-size: 0.82rem;
+    color: #334155;
+    background: #ffffff;
+    font-family: inherit;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.bitstream-rebit-inline-meta-field input:focus,
+.bitstream-rebit-inline-meta-field textarea:focus {
+    border-color: var(--wp--preset--color--accent-1, #2c6e49);
+    box-shadow: 0 0 0 3px rgba(44, 110, 73, 0.12);
+    background: #ffffff;
+    outline: none;
+}
+
+.bitstream-rebit-inline-img-card {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    background: #ffffff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 0.55rem 0.75rem;
+}
+
+.bitstream-rebit-inline-img-thumb {
+    width: 72px;
+    height: 54px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.bitstream-rebit-inline-img-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.bitstream-rebit-inline-img-thumb img[hidden] {
+    display: none !important;
+}
+
+.bitstream-rebit-inline-img-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    color: #94a3b8;
+    background: #f8fafc;
+    border: 1.5px dashed #cbd5e1;
+    border-radius: 7px;
+    font-size: 0.62rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    text-align: center;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.bitstream-rebit-inline-img-empty[hidden] {
+    display: none !important;
+}
+
+.bitstream-rebit-inline-img-empty i {
+    font-size: 1.1rem;
+    color: #94a3b8;
+}
+
+.bitstream-rebit-inline-img-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+}
+
+.bitstream-rebit-inline-img-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.32rem 0.65rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.12s;
+}
+
+.bitstream-rebit-inline-img-btn:hover {
+    border-color: var(--wp--preset--color--accent-1, #2c6e49);
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    background: rgba(44, 110, 73, 0.08);
+}
+
+.bitstream-rebit-inline-img-btn.is-danger {
+    color: #dc2626;
+}
+
+.bitstream-rebit-inline-img-btn.is-danger:hover {
+    border-color: #fca5a5;
+    background: #fef2f2;
+    color: #ef4444;
+}
+
+/* Anchored Popovers */
+.bitstream-composer-popover[hidden],
+.bitstream-composer-inline-rebit-bar[hidden],
+.bitstream-composer-rebit-inline-meta[hidden] {
+    display: none !important;
+}
+
+.bitstream-composer-popover-anchor {
+    position: relative;
+    display: inline-flex;
+}
+
+.bitstream-composer-popover {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    z-index: 100010;
+    background: #ffffff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14), 0 2px 6px rgba(0, 0, 0, 0.04);
+    padding: 0.75rem;
+    box-sizing: border-box;
+    animation: bitstreamModalIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bitstream-composer-popover-media {
+    width: 220px;
+    padding: 0.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.bitstream-composer-popover-option {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    width: 100%;
+    padding: 0.55rem 0.75rem;
+    border: none;
+    background: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #334155;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.12s, color 0.12s;
+}
+
+.bitstream-composer-popover-option i {
+    font-size: 1rem;
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    width: 18px;
+    text-align: center;
+}
+
+.bitstream-composer-popover-option:hover {
+    background: rgba(44, 110, 73, 0.08);
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+}
+
+.bitstream-composer-popover-schedule {
+    width: 270px;
+}
+
+.bitstream-composer-popover-mood {
+    width: 290px;
+    max-height: 380px;
+    overflow-y: auto;
+}
+
+.bitstream-composer-popover-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.6rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.bitstream-composer-popover-header h4 {
+    margin: 0;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+}
+
+.bitstream-composer-popover-close {
+    background: none;
+    border: none;
+    font-size: 1.1rem;
+    line-height: 1;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 0 4px;
+}
+
+.bitstream-composer-popover-close:hover {
+    color: #ef4444;
+}
+
+.bitstream-schedule-presets {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 0.65rem;
+}
+
+.bitstream-schedule-preset-btn {
+    width: 100%;
+    text-align: left;
+    padding: 0.4rem 0.6rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #475569;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+}
+
+.bitstream-schedule-preset-btn:hover {
+    background: rgba(44, 110, 73, 0.08);
+    border-color: rgba(44, 110, 73, 0.3);
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+}
+
+.bitstream-schedule-custom-row label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #64748b;
+    margin-bottom: 0.25rem;
+}
+
+.bitstream-schedule-custom-row input {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.82rem;
+    background: #f8fafc;
+}
+
+.bitstream-composer-popover-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.65rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #f1f5f9;
+}
+
+.bitstream-composer-popover-btn-clear {
+    padding: 0.3rem 0.65rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    color: #64748b;
+    cursor: pointer;
+}
+
+.bitstream-composer-popover-btn-clear:hover {
+    color: #ef4444;
+    border-color: #fca5a5;
+}
+
+.bitstream-composer-popover-btn-confirm {
+    padding: 0.3rem 0.75rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    background: var(--wp--preset--color--accent-1, #2c6e49);
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(44, 110, 73, 0.2);
+}
+
+.bitstream-composer-popover-btn-confirm:hover {
+    opacity: 0.92;
+}
+
+@media (max-width: 1023px) {
+    .bitstream-composer-popover {
+        max-width: calc(100vw - 32px);
+    }
+    .bitstream-composer-popover-media {
+        width: 200px;
+    }
+    .bitstream-composer-popover-schedule {
+        width: min(280px, calc(100vw - 32px));
+    }
+    .bitstream-composer-popover-mood {
+        width: min(300px, calc(100vw - 32px));
+    }
+}
+
 /* Preview area */
 .bitstream-composer-preview-area {
     display: flex;
@@ -4634,6 +5146,514 @@ body.bitstream-cropper-open {
         flex: 1 1 100%;
         text-align: center;
     }
+}
+
+/* Twitter / X Embed Container & Native Tweet Card */
+.bit-rebit-embed-twitter {
+    position: relative;
+    padding-bottom: 0 !important;
+    height: auto !important;
+    overflow: hidden !important;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin: 0.5rem 0 0.5rem 0;
+}
+
+.bit-tweet-card {
+    background: #ffffff;
+    border: 1px solid #cfd9de;
+    border-radius: 16px;
+    padding: 1rem 1.15rem 0.85rem;
+    box-shadow: none;
+    transition: background 0.15s ease, border-color 0.15s ease;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+    text-align: left;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.bit-tweet-card:hover {
+    border-color: #bcc6cc;
+    background: #fafbfb;
+}
+
+.bit-tweet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.bit-tweet-user-link {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    text-decoration: none;
+    min-width: 0;
+    max-width: calc(100% - 40px);
+    flex: 1;
+    overflow: hidden;
+}
+
+.bit-tweet-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #eff3f4;
+    flex-shrink: 0;
+}
+
+.bit-tweet-avatar-placeholder {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #0f1419;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.bit-tweet-meta {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+}
+
+.bit-tweet-author {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #0f1419;
+    line-height: 1.25;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    display: block;
+}
+
+.bit-tweet-user-link:hover .bit-tweet-author {
+    text-decoration: underline;
+}
+
+.bit-tweet-handle {
+    font-size: 0.85rem;
+    color: #536471;
+    line-height: 1.25;
+    margin-top: 1px;
+}
+
+.bit-tweet-x-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #0f1419;
+    text-decoration: none;
+    flex-shrink: 0;
+    margin-left: 0.5rem;
+    padding: 4px;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.bit-tweet-x-logo:hover {
+    transform: scale(1.1);
+    opacity: 0.8;
+}
+
+.bit-tweet-x-icon {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+}
+
+.bit-tweet-body {
+    margin: 0.25rem 0 0.65rem 0;
+}
+
+.bit-tweet-text {
+    font-size: 0.95rem;
+    line-height: 1.45;
+    color: #0f1419;
+    margin: 0;
+    word-break: break-word;
+}
+
+.bit-tweet-timestamp {
+    margin-top: 0.5rem;
+    padding-bottom: 0.65rem;
+    border-bottom: 1px solid #eff3f4;
+    font-size: 0.85rem;
+    color: #536471;
+}
+
+.bit-tweet-timestamp a {
+    color: #536471;
+    text-decoration: none;
+}
+
+.bit-tweet-timestamp a:hover {
+    text-decoration: underline;
+}
+
+.bit-tweet-footer {
+    padding-top: 0.65rem;
+}
+
+.bit-tweet-pill-btn {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 1rem;
+    border: 1px solid #cfd9de;
+    border-radius: 9999px;
+    color: #0f1419;
+    font-size: 0.88rem;
+    font-weight: 700;
+    text-align: center;
+    text-decoration: none;
+    background: #ffffff;
+    transition: background 0.15s ease, border-color 0.15s ease;
+    box-sizing: border-box;
+}
+
+.bit-tweet-pill-btn:hover {
+    background: #eff3f4;
+    border-color: #bcc6cc;
+}
+
+/* Native Instagram Card */
+.bit-rebit-embed-instagram {
+    position: relative;
+    padding-bottom: 0 !important;
+    height: auto !important;
+    overflow: hidden !important;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin: 0.5rem 0 0.5rem 0;
+}
+
+.bit-instagram-card {
+    background: #ffffff;
+    border: 1px solid #dbdbdb;
+    border-radius: 16px;
+    padding: 1rem 1.15rem 0.85rem;
+    box-shadow: none;
+    transition: background 0.15s ease, border-color 0.15s ease;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+    text-align: left;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.bit-instagram-card:hover {
+    border-color: #c7c7c7;
+    background: #fafafa;
+}
+
+.bit-instagram-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.bit-instagram-user-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-decoration: none;
+    min-width: 0;
+    max-width: calc(100% - 40px);
+    flex: 1;
+    overflow: hidden;
+}
+
+.bit-instagram-avatar-ring {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+    padding: 2px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.bit-instagram-avatar {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #ffffff;
+    border: 1.5px solid #ffffff;
+    box-sizing: border-box;
+}
+
+.bit-instagram-avatar-placeholder {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: #f0f2f5;
+    color: #262626;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    font-weight: 700;
+    border: 1.5px solid #ffffff;
+    box-sizing: border-box;
+}
+
+.bit-instagram-meta {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+}
+
+.bit-instagram-author {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #262626;
+    line-height: 1.25;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    display: block;
+}
+
+.bit-instagram-user-link:hover .bit-instagram-author {
+    text-decoration: underline;
+}
+
+.bit-instagram-badge {
+    font-size: 0.8rem;
+    color: #8e8e8e;
+    line-height: 1.25;
+    margin-top: 1px;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.bit-instagram-ig-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    color: #e1306c;
+    text-decoration: none;
+    flex-shrink: 0;
+    margin-left: 0.5rem;
+    padding: 4px;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.bit-instagram-ig-logo:hover {
+    transform: scale(1.1);
+    opacity: 0.85;
+}
+
+.bit-instagram-media {
+    position: relative;
+    width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 0.5rem 0 0.65rem 0;
+    background: #000000;
+}
+
+.bit-instagram-media-story {
+    background: linear-gradient(135deg, #2b1055 0%, #7597de 100%);
+    border-radius: 14px;
+}
+
+.bit-instagram-story-cover {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2.25rem 1rem;
+    text-decoration: none;
+    background: linear-gradient(145deg, rgba(240, 148, 51, 0.15) 0%, rgba(220, 39, 67, 0.18) 50%, rgba(188, 24, 136, 0.22) 100%);
+    transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.bit-instagram-story-cover:hover {
+    background: linear-gradient(145deg, rgba(240, 148, 51, 0.22) 0%, rgba(220, 39, 67, 0.26) 50%, rgba(188, 24, 136, 0.3) 100%);
+}
+
+.bit-instagram-story-ring-large {
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+    padding: 3px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+    margin-bottom: 0.75rem;
+}
+
+.bit-instagram-story-avatar {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #ffffff;
+    border: 2px solid #ffffff;
+    box-sizing: border-box;
+}
+
+.bit-instagram-story-initial {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: #ffffff;
+    color: #262626;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.bit-instagram-story-label {
+    color: #ffffff;
+    font-size: 0.92rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.bit-instagram-media-link {
+    display: block;
+    position: relative;
+    width: 100%;
+    text-decoration: none;
+}
+
+.bit-instagram-thumb {
+    width: 100%;
+    max-height: 420px;
+    object-fit: cover;
+    display: block;
+    transition: opacity 0.2s ease;
+}
+
+.bit-instagram-media-link:hover .bit-instagram-thumb {
+    opacity: 0.95;
+}
+
+.bit-instagram-play-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    padding-left: 3px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.bit-instagram-body {
+    margin: 0.35rem 0 0.65rem 0;
+}
+
+.bit-instagram-text {
+    font-size: 0.93rem;
+    line-height: 1.45;
+    color: #262626;
+    margin: 0;
+    word-break: break-word;
+}
+
+.bit-instagram-timestamp {
+    margin-top: 0.5rem;
+    margin-bottom: 0.65rem;
+    font-size: 0.85rem;
+    color: #737373;
+    line-height: 1.3;
+}
+
+.bit-instagram-timestamp a {
+    color: #737373;
+    text-decoration: none;
+}
+
+.bit-instagram-timestamp a:hover {
+    text-decoration: underline;
+}
+
+.bit-instagram-footer {
+    padding-top: 0.65rem;
+    border-top: 1px solid #efefef;
+    margin-top: 0.5rem;
+}
+
+.bit-instagram-pill-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    width: 100%;
+    padding: 0.5rem 1rem;
+    border: 1px solid #dbdbdb;
+    border-radius: 9999px;
+    color: #262626;
+    font-size: 0.88rem;
+    font-weight: 700;
+    text-align: center;
+    text-decoration: none;
+    background: #ffffff;
+    transition: background 0.15s ease, border-color 0.15s ease;
+    box-sizing: border-box;
+}
+
+.bit-instagram-pill-btn i {
+    color: #e1306c;
+    font-size: 1rem;
+}
+
+.bit-instagram-pill-btn:hover {
+    background: #efefef;
+    border-color: #c7c7c7;
 }
 
 /* Specific YouTube embed fixes */
