@@ -641,6 +641,15 @@ class BitStream_Shortcodes
                         style="color: var(--wp--preset--color--accent-1, #2c6e49); margin-bottom: 0.65rem;">Post a Bit</h3>
                     <form class="bitstream-sidebar-composer-form bitstream-composer-form"
                         data-composer-type="<?php echo esc_attr($composer_type_prefill); ?>">
+                        <!-- Drag & Drop Overlay -->
+                        <div class="bitstream-composer-drop-overlay" aria-hidden="true">
+                            <div class="bitstream-composer-drop-overlay-content">
+                                <i class="fa-solid fa-cloud-arrow-up bitstream-composer-drop-icon" aria-hidden="true"></i>
+                                <span class="bitstream-composer-drop-title">Drop media here to attach</span>
+                                <span class="bitstream-composer-drop-subtitle">Images or videos</span>
+                            </div>
+                        </div>
+
                         <!-- Edit Mode Banner -->
                         <div class="bitstream-composer-edit-banner" id="bitstream-composer-edit-banner" hidden>
                             <div class="bitstream-composer-edit-banner-info">
@@ -660,6 +669,14 @@ class BitStream_Shortcodes
                             <button type="button" class="bs-insert-emoji-btn" data-target-input="#bitstream-quick-bit-content" title="Insert Emoji" aria-label="Insert Emoji" style="position: absolute; right: 8px; bottom: 8px; background: none; border: none; font-size: 1.1rem; color: #94a3b8; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; transition: color 0.15s;">
                                 <i class="fa-regular fa-face-smile" aria-hidden="true"></i>
                             </button>
+                        </div>
+
+                        <!-- Upload Progress Bar -->
+                        <div class="bitstream-media-progress is-hidden" data-progress-bar="bitstream-composer-attachment-id">
+                            <div class="bitstream-media-progress-track">
+                                <div class="bitstream-media-progress-bar"></div>
+                            </div>
+                            <span class="bitstream-media-progress-text">Uploading...</span>
                         </div>
 
                         <!-- Inline Rebit URL Input Bar -->
@@ -783,12 +800,15 @@ class BitStream_Shortcodes
                                         <span class="bitstream-composer-preview-label"><i class="fa-solid fa-photo-film"
                                                 aria-hidden="true"></i> Media</span>
                                         <div class="bitstream-composer-preview-actions">
+                                            <button type="button" class="bitstream-composer-preview-edit"
+                                                data-composer-edit="media" title="Crop image" aria-label="Crop image" hidden><i
+                                                    class="fa-solid fa-crop-simple" aria-hidden="true"></i></button>
                                             <button type="button" class="bitstream-composer-preview-remove"
                                                 data-composer-remove="media" title="Remove media" aria-label="Remove media"><i
                                                     class="fa-solid fa-xmark" aria-hidden="true"></i></button>
                                         </div>
                                     </div>
-                                    <div class="bitstream-composer-preview-media-thumb"></div>
+                                    <div class="bitstream-composer-preview-media-thumb" id="bitstream-composer-preview-media-thumb"></div>
                                 </div>
                             </div>
                             <!-- Dot indicators (shown by JS only when both cards are visible on mobile/tablet) -->

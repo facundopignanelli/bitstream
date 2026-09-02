@@ -72,9 +72,19 @@
         cropperSelection.style.display = 'block';
 
         if (cropperSizeLabel) {
-            const scaleX = cropperImage.naturalWidth / rect.width;
-            const scaleY = cropperImage.naturalHeight / rect.height;
-            cropperSizeLabel.textContent = 'Size: ' + Math.round(w * scaleX) + ' × ' + Math.round(h * scaleY);
+            const imgW = rect.width || cropperImage.offsetWidth || 1;
+            const imgH = rect.height || cropperImage.offsetHeight || 1;
+            const natW = cropperImage.naturalWidth || imgW;
+            const natH = cropperImage.naturalHeight || imgH;
+            const scaleX = natW / imgW;
+            const scaleY = natH / imgH;
+            const finalW = Math.round(w * scaleX);
+            const finalH = Math.round(h * scaleY);
+            if (!isNaN(finalW) && !isNaN(finalH) && finalW > 0 && finalH > 0) {
+                cropperSizeLabel.textContent = 'Size: ' + finalW + ' × ' + finalH;
+            } else {
+                cropperSizeLabel.textContent = 'Size: --';
+            }
         }
     }
 
@@ -128,21 +138,26 @@
 
         cropperImage.onload = () => {
             setStatus('');
-            const rect = cropperImage.getBoundingClientRect();
-
-            // Set initial square selection in the center
-            const side = Math.min(rect.width, rect.height) * 0.8;
-            cropperState.selection = {
-                x: (rect.width - side) / 2,
-                y: (rect.height - side) / 2,
-                width: side,
-                height: side
-            };
-
-            updateSelectionBox(cropperState.selection);
             cropperModal.classList.toggle('is-square-mode', !!cropperState.enforceSquare);
             cropperModal.hidden = false;
             document.body.classList.add('bitstream-cropper-open');
+
+            requestAnimationFrame(() => {
+                const rect = cropperImage.getBoundingClientRect();
+                const imgW = rect.width || cropperImage.offsetWidth || 300;
+                const imgH = rect.height || cropperImage.offsetHeight || 300;
+
+                // Set initial square selection in the center
+                const side = Math.min(imgW, imgH) * 0.8;
+                cropperState.selection = {
+                    x: (imgW - side) / 2,
+                    y: (imgH - side) / 2,
+                    width: side,
+                    height: side
+                };
+
+                updateSelectionBox(cropperState.selection);
+            });
         };
 
         cropperImage.onerror = () => {

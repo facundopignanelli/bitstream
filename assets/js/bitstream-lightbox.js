@@ -300,7 +300,7 @@
 
                 // 2. Composer/Modal Preview item clicks
                 const previewItem = e.target.closest('.bitstream-media-preview-item');
-                if (previewItem && !e.target.closest('.bitstream-media-preview-remove-item')) {
+                if (previewItem && !e.target.closest('.bitstream-media-preview-remove-item') && !e.target.closest('.bitstream-media-preview-crop-item')) {
                     const grid = previewItem.closest('.bitstream-media-preview-grid');
                     if (grid) {
                         e.preventDefault();

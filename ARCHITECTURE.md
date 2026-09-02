@@ -197,7 +197,7 @@ This index serves as the primary map for understanding the backend and frontend 
 * **Classes & Functions**:
   * `BitStream_ReBit_Mappings`:
     * `get_rebit_presets()`: Supplies predefined domain structures (e.g. YouTube, Twitter, GitHub) with designated icons and labels.
-    * `get_mapping_for_domain($domain)`: Finds saved overrides matching current hosts.
+    * `get_mapping_for_domain($domain, $url = '')`: Finds saved overrides matching current hosts with dynamic path-aware mapping for Instagram content (photo, reel, story).
     * `import_default_mappings()`: Activator handler writing configuration presets.
 
 ### [includes/class-rss-feeds.php](includes/class-rss-feeds.php)

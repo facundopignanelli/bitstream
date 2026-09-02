@@ -736,6 +736,33 @@
                         } else if (editType === 'mood') {
                             const moodBtn = composerRoot.querySelector('[data-composer-popover-trigger="mood"]');
                             if (typeof togglePopover === 'function') togglePopover('mood', moodBtn);
+                        } else if (editType === 'media') {
+                            const openCropperFn = window.bitstreamOpenCropper || (window.BitStream && window.BitStream.UI && window.BitStream.UI.openCropper);
+                            if (openCropperFn) {
+                                const attachments = previewMediaThumb && typeof window.getExistingAttachments === 'function' ? window.getExistingAttachments(previewMediaThumb) : [];
+                                const targetAttachment = attachments.length > 0 ? attachments[0] : null;
+                                const targetId = targetAttachment ? targetAttachment.id : (hAttachmentId ? parseInt(hAttachmentId.value || '0', 10) : 0);
+                                const targetUrl = targetAttachment ? (targetAttachment.url || '') : '';
+
+                                openCropperFn('bitstream-composer-attachment-id', 'bitstream-composer-preview-media-thumb', {
+                                    attachmentId: targetId,
+                                    url: targetUrl,
+                                    onComplete: (croppedMedia) => {
+                                        if (croppedMedia && croppedMedia.id) {
+                                            const updated = attachments.length > 0 ? [croppedMedia, ...attachments.slice(1)] : [croppedMedia];
+                                            if (typeof window.updateAttachmentsList === 'function' && previewMediaThumb) {
+                                                window.updateAttachmentsList(previewMediaThumb, updated);
+                                            }
+                                            if (hAttachmentId) hAttachmentId.value = String(croppedMedia.id);
+                                            if (hAttachmentIds) hAttachmentIds.value = updated.map(a => a.id).join(',');
+                                            syncPreviewArea();
+                                            if (typeof setStatus === 'function') setStatus('Image cropped.');
+                                        }
+                                    }
+                                });
+                            } else if (typeof setStatus === 'function') {
+                                setStatus('Image cropper is unavailable.', true);
+                            }
                         } else {
                             openModal(editType);
                         }
@@ -2498,26 +2525,95 @@
                 }
 
                 // ── DRAG & DROP ON COMPOSER ──
-                ['dragenter', 'dragover'].forEach(eventName => {
-                    form.addEventListener(eventName, (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
+                let dragCounter = 0;
+                form.classList.remove('bitstream-composer-dragover');
+
+                function isFileDrag(e) {
+                    if (!e.dataTransfer || !e.dataTransfer.types) return false;
+                    const types = Array.from(e.dataTransfer.types);
+                    return types.includes('Files') || types.includes('public.file-url');
+                }
+
+                form.addEventListener('dragenter', (e) => {
+                    if (!isFileDrag(e)) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dragCounter++;
+                    form.classList.add('bitstream-composer-dragover');
+                });
+
+                form.addEventListener('dragover', (e) => {
+                    if (!isFileDrag(e)) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.dataTransfer.dropEffect = 'copy';
+                    if (!form.classList.contains('bitstream-composer-dragover')) {
                         form.classList.add('bitstream-composer-dragover');
-                    });
+                    }
                 });
 
-                ['dragleave', 'drop'].forEach(eventName => {
-                    form.addEventListener(eventName, (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
+                form.addEventListener('dragleave', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (e.relatedTarget && form.contains(e.relatedTarget)) {
+                        return;
+                    }
+                    dragCounter--;
+                    if (dragCounter <= 0 || !e.relatedTarget || !form.contains(e.relatedTarget)) {
+                        dragCounter = 0;
                         form.classList.remove('bitstream-composer-dragover');
-                    });
+                    }
                 });
 
-                form.addEventListener('drop', (e) => {
+                function onFilesDropped(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dragCounter = 0;
+                    form.classList.remove('bitstream-composer-dragover');
+
                     const dt = e.dataTransfer;
-                    if (dt && dt.files && dt.files.length > 0) {
-                        handlePastedMedia(dt.files);
+                    if (!dt) return;
+
+                    let files = dt.files ? Array.from(dt.files) : [];
+                    if (files.length === 0 && dt.items && dt.items.length > 0) {
+                        for (let i = 0; i < dt.items.length; i++) {
+                            if (dt.items[i].kind === 'file') {
+                                const f = dt.items[i].getAsFile();
+                                if (f) files.push(f);
+                            }
+                        }
+                    }
+
+                    if (files.length > 0) {
+                        handlePastedMedia(files);
+                    }
+                }
+
+                form.addEventListener('drop', onFilesDropped);
+
+                window.addEventListener('dragend', () => {
+                    dragCounter = 0;
+                    form.classList.remove('bitstream-composer-dragover');
+                });
+
+                document.addEventListener('dragleave', (e) => {
+                    if (!e.relatedTarget && (e.clientX <= 0 || e.clientY <= 0 || e.clientX >= window.innerWidth || e.clientY >= window.innerHeight)) {
+                        dragCounter = 0;
+                        form.classList.remove('bitstream-composer-dragover');
+                    }
+                });
+
+                window.addEventListener('dragover', (e) => {
+                    if (e.dataTransfer && e.dataTransfer.types && Array.from(e.dataTransfer.types).includes('Files')) {
+                        e.preventDefault();
+                    }
+                });
+
+                window.addEventListener('drop', (e) => {
+                    if (e.dataTransfer && e.dataTransfer.types && Array.from(e.dataTransfer.types).includes('Files')) {
+                        if (!e.target.closest('.bitstream-sidebar-composer-form, .bitstream-composer-drop-overlay')) {
+                            e.preventDefault();
+                        }
                     }
                 });
 
@@ -2531,9 +2627,9 @@
                         return;
                     }
 
-                    setStatus('Processing media...');
+                    setStatus('Uploading media...');
 
-                    uploadFn(files, 'bitstream-composer-attachment-id', 'bitstream-composer-preview-media-thumb', {
+                    uploadFn(files, 'bitstream-composer-attachment-id', previewMediaThumb || 'bitstream-composer-preview-media-thumb', {
                         setStatus: (msg, isError) => setStatus(msg, isError)
                     }).then(() => {
                         const attachments = previewMediaThumb ? (typeof window.getExistingAttachments === 'function' ? window.getExistingAttachments(previewMediaThumb) : []) : [];

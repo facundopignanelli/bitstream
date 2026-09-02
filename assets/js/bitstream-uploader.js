@@ -70,7 +70,7 @@
 
     function getPreviewElement(targetPreviewId) {
         if (typeof targetPreviewId === 'string') {
-            return document.getElementById(targetPreviewId) || document.querySelector(targetPreviewId);
+            return document.getElementById(targetPreviewId) || document.querySelector(targetPreviewId) || document.querySelector('.' + targetPreviewId);
         }
         return targetPreviewId;
     }
@@ -127,7 +127,8 @@
         }
         if (cropButton) {
             const isSingleImage = attachments.length === 1 && attachments[0].mime && attachments[0].mime.startsWith('image/');
-            cropButton.classList.toggle('is-hidden', !isSingleImage);
+            cropButton.hidden = !isSingleImage;
+            cropButton.style.display = isSingleImage ? '' : 'none';
         }
 
         const previewMedia = form.querySelector('.bitstream-composer-preview-media');
@@ -157,7 +158,7 @@
             previewEl.dataset.clickBound = '1';
             previewEl.addEventListener('click', (e) => {
                 const previewItem = e.target.closest('.bitstream-media-preview-item');
-                if (previewItem && !e.target.closest('.bitstream-media-preview-remove-item')) {
+                if (previewItem && !e.target.closest('.bitstream-media-preview-remove-item') && !e.target.closest('.bitstream-media-preview-crop-item')) {
                     e.stopPropagation();
                     e.preventDefault();
 
@@ -210,6 +211,34 @@
                 img.src = url;
                 img.alt = '';
                 wrap.appendChild(img);
+
+                const cropBtn = document.createElement('button');
+                cropBtn.type = 'button';
+                cropBtn.className = 'bitstream-media-preview-crop-item';
+                cropBtn.title = 'Crop image';
+                cropBtn.setAttribute('aria-label', 'Crop image');
+                cropBtn.innerHTML = '<i class="fa-solid fa-crop-simple"></i>';
+                cropBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    const openCropperFn = window.bitstreamOpenCropper || (window.BitStream && window.BitStream.UI && window.BitStream.UI.openCropper);
+                    if (openCropperFn) {
+                        const targetInput = previewEl.closest('form') ? (previewEl.closest('form').querySelector('.bs-edit-attachment-id, #bitstream-composer-attachment-id')) : null;
+                        const targetInputId = targetInput ? targetInput.id : 'bitstream-composer-attachment-id';
+                        openCropperFn(targetInputId, previewEl.id || previewEl, {
+                            attachmentId: item.id,
+                            url: item.url,
+                            onComplete: (croppedMedia) => {
+                                if (croppedMedia && croppedMedia.id) {
+                                    const currentAttachments = getExistingAttachments(previewEl);
+                                    const updated = currentAttachments.map(att => parseInt(att.id, 10) === parseInt(item.id, 10) ? croppedMedia : att);
+                                    updateAttachmentsList(previewEl, updated);
+                                }
+                            }
+                        });
+                    }
+                });
+                wrap.appendChild(cropBtn);
             } else if (mime.startsWith('video/')) {
                 const video = document.createElement('video');
                 video.src = url;
@@ -413,7 +442,7 @@
             const mimeType = getUploadMimeType(file);
             const indexLabel = validFiles.length > 1 ? ` (${i + 1}/${validFiles.length})` : '';
 
-            setStatusFn(`Processing image...${indexLabel}`);
+            setStatusFn(`Uploading image...${indexLabel}`);
 
             if (mimeType.startsWith('image/') && file.size > BITSTREAM_IMAGE_UPLOAD_MAX_BYTES) {
                 file = await scaleAndCompressImage(file, mimeType);
@@ -795,14 +824,22 @@
 
         try {
             const loadedAttachments = [];
-            for (let i = 0; i < validFiles.length; i++) {
+            const totalFiles = validFiles.length;
+
+            for (let i = 0; i < totalFiles; i++) {
                 const file = validFiles[i];
-                updateProgress(5 + (i / validFiles.length) * 90, `Uploading file ${i + 1}/${validFiles.length}...`);
+                const fileNum = i + 1;
+                const basePercent = Math.round((i / totalFiles) * 100);
+                const fileLabel = totalFiles > 1 ? `Uploading file ${fileNum} of ${totalFiles}...` : 'Uploading media...';
+                updateProgress(Math.max(4, basePercent), fileLabel);
 
                 const uploadFile = await prepareMediaFileForUpload(file);
                 const media = await uploadMediaRequest(uploadFile, (percent, text) => {
-                    const subPercent = 5 + ((i + percent / 100) / validFiles.length) * 90;
-                    updateProgress(subPercent, `Uploading file ${i + 1}/${validFiles.length} (${percent}%)...`);
+                    const overallPercent = Math.min(99, Math.round(((i + (percent / 100)) / totalFiles) * 100));
+                    const statusMsg = totalFiles > 1 
+                        ? `Uploading file ${fileNum} of ${totalFiles} (${overallPercent}%)...` 
+                        : `Uploading... ${overallPercent}%`;
+                    updateProgress(overallPercent, statusMsg);
                 });
 
                 loadedAttachments.push({
@@ -813,6 +850,8 @@
                     filename: file.name
                 });
             }
+
+            updateProgress(100, 'Upload complete!');
 
             const previewEl = getPreviewElement(targetPreviewId);
             const existingAttachments = getExistingAttachments(previewEl);

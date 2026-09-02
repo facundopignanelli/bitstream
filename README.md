@@ -113,8 +113,11 @@ Manage all configuration options directly on the frontend timeline page via the 
 ![Enhanced ReBit System](assets/images/rebit_preview.png)
 
 - **Secure OpenGraph Fetcher**: Built-in strict SSRF protection (`wp_safe_remote_get`), timeout retries, URL resolution, and JSON-LD parsing.
-- **Fast Previews**: 24-hour transient caching minimizes external requests for ReBit data.
-- **Manual Overrides**: Edit the fetched title, description, and image directly in the composer before publishing.
+- **Native X / Twitter Embed Cards**: Renders clean, full-width native embed cards featuring the author's display name, `@handle`, profile avatar, post text, snowflake-derived timestamp (`g:i A · M j, Y`), official X glyph, and a `"Read on X"` button without third-party iframe overhead.
+- **Native Instagram Embed Cards (Posts, Reels & Stories)**: High-fidelity native embed cards with direct profile picture scraping inside the signature Instagram gradient story ring, type badge (`📷 Post`, `🎬 Reel`, `⭕ Story`), clean caption text (automatically stripping like/comment preambles), frosted-glass play overlay for Reels, posted date timestamps, and direct action buttons (`View on Instagram`, `Watch Reel on Instagram`, `View Story on Instagram`).
+- **Dynamic Action ReMapping**: Path-aware ReBit headers dynamically adapt to shared content (e.g., `shared a photo`, `shared a reel`, `shared a story`, `shared a Tweet`, `shared a post`, `shared a video`).
+- **Fast Previews**: 24-hour transient caching minimizes external requests for ReBit data with automatic stale cache invalidation.
+- **Manual Overrides**: Edit the fetched title, description, and image directly in the composer before publishing (disabled on dedicated native embed types where raw platform metadata is preserved).
 - **Auto-ReBit Detection**: Paste a URL into the composer feed box and it automatically detects the link and configures ReBit options.
 
 ### 📤 Premium Sharing Options
