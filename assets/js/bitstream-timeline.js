@@ -2019,75 +2019,107 @@
     }
     window.showShareImageModal = showShareImageModal;
 
-    // --- Share options modal (link vs image choice) ---
+    // --- Share options popover (replaces modal for the initial two-option picker) ---
+    let activeSharePopover = null;
+
+    function closeSharePopover() {
+        if (activeSharePopover) {
+            activeSharePopover.remove();
+            activeSharePopover = null;
+        }
+        document.removeEventListener('pointerdown', sharePopoverOutsideHandler, true);
+        window.removeEventListener('scroll', closeSharePopover, true);
+        window.removeEventListener('resize', closeSharePopover);
+    }
+
+    function sharePopoverOutsideHandler(e) {
+        if (activeSharePopover && !activeSharePopover.contains(e.target) && !e.target.closest('.bit-share')) {
+            closeSharePopover();
+        }
+    }
+
     function openShareOptionsModal(card, title, url, shareButton) {
-        const existing = document.getElementById('bitstream-share-options-modal');
-        if (existing) existing.remove();
+        // Toggle close if clicking the same share button again
+        if (activeSharePopover && activeSharePopover._triggerBtn === shareButton) {
+            closeSharePopover();
+            return;
+        }
 
-        const modal = document.createElement('div');
-        modal.id = 'bitstream-share-options-modal';
-        modal.className = 'bitstream-composer-modal bitstream-composer-modal-share-options';
-        modal.innerHTML = `
-            <div class="bitstream-composer-modal-backdrop" data-composer-modal-close="share-options"></div>
-            <div class="bitstream-composer-modal-dialog" role="dialog" aria-modal="true" aria-label="Share">
-                <header class="bitstream-composer-modal-header">
-                    <h3>Share</h3>
-                    <button type="button" class="bitstream-composer-modal-close" data-composer-modal-close="share-options" aria-label="Close">
-                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-                    </button>
-                </header>
-                <div class="bitstream-composer-modal-body">
-                    <div class="bitstream-share-options-list">
-                        <button type="button" class="bitstream-share-option-btn" id="bitstream-share-link-btn">
-                            <i class="fa-solid fa-link"></i>
-                            <div class="bitstream-share-option-details">
-                                <span class="bitstream-share-option-title">Share Link</span>
-                                <span class="bitstream-share-option-desc">Share or copy the post URL</span>
-                            </div>
-                        </button>
-                        <button type="button" class="bitstream-share-option-btn" id="bitstream-share-image-btn">
-                            <i class="fa-solid fa-image"></i>
-                            <div class="bitstream-share-option-details">
-                                <span class="bitstream-share-option-title">Share as Image</span>
-                                <span class="bitstream-share-option-desc">Generate a card image for stories &amp; statuses</span>
-                            </div>
-                        </button>
-                    </div>
+        // Close any already-open popover
+        closeSharePopover();
+
+        const popover = document.createElement('div');
+        popover.className = 'bitstream-share-popover';
+        popover.setAttribute('role', 'menu');
+        popover.setAttribute('aria-label', 'Share options');
+        popover._triggerBtn = shareButton;
+        popover.innerHTML = `
+            <button type="button" class="bitstream-share-popover-item" id="bs-share-link-btn" role="menuitem">
+                <i class="fa-solid fa-link" aria-hidden="true"></i>
+                <div class="bitstream-share-popover-detail">
+                    <span class="bitstream-share-popover-label">Share Link</span>
+                    <span class="bitstream-share-popover-desc">Copy or share the post URL</span>
                 </div>
-            </div>`;
+            </button>
+            <button type="button" class="bitstream-share-popover-item" id="bs-share-image-btn" role="menuitem">
+                <i class="fa-solid fa-image" aria-hidden="true"></i>
+                <div class="bitstream-share-popover-detail">
+                    <span class="bitstream-share-popover-label">Share as Image</span>
+                    <span class="bitstream-share-popover-desc">Generate a card for stories &amp; statuses</span>
+                </div>
+            </button>`;
 
-        document.body.appendChild(modal);
-        requestAnimationFrame(() => modal.removeAttribute('hidden'));
+        document.body.appendChild(popover);
+        activeSharePopover = popover;
 
-        const closeModal = () => {
-            modal.setAttribute('hidden', '');
-            setTimeout(() => modal.remove(), 300);
-        };
+        // Position anchored to the share button in viewport coordinates (fixed positioning)
+        const btnRect = shareButton.getBoundingClientRect();
+        const popW = 220;
+        const popH = popover.offsetHeight || 110;
 
-        modal.querySelectorAll('[data-composer-modal-close="share-options"]').forEach(el => {
-            el.addEventListener('click', closeModal);
-        });
+        // Prefer above; flip below if not enough room
+        const fitsAbove = (btnRect.top - popH - 8 >= 8);
+        const top = fitsAbove ? (btnRect.top - popH - 8) : (btnRect.bottom + 8);
+
+        // Align right edge with button right, clamp to viewport
+        let left = btnRect.right - popW;
+        left = Math.max(8, Math.min(left, window.innerWidth - popW - 8));
+
+        popover.style.top = `${top}px`;
+        popover.style.left = `${left}px`;
+        popover.style.width = `${popW}px`;
+        popover.style.transformOrigin = fitsAbove ? 'bottom right' : 'top right';
+
+        // Animate in
+        requestAnimationFrame(() => popover.classList.add('is-visible'));
+
+        // Close on click outside, scroll, or resize
+        setTimeout(() => {
+            document.addEventListener('pointerdown', sharePopoverOutsideHandler, true);
+            window.addEventListener('scroll', closeSharePopover, true);
+            window.addEventListener('resize', closeSharePopover);
+        }, 0);
 
         // Share Link
-        modal.querySelector('#bitstream-share-link-btn').addEventListener('click', async () => {
-            closeModal();
+        popover.querySelector('#bs-share-link-btn').addEventListener('click', async () => {
+            closeSharePopover();
             if (navigator.share) {
                 try { await navigator.share({ title, url }); } catch (_) { /* cancelled */ }
             } else {
-                await navigator.clipboard.writeText(url);
-                const shareBtn = card.querySelector('.bit-share i');
-                if (shareBtn) {
-                    const orig = shareBtn.className;
-                    shareBtn.className = 'fa-solid fa-check';
-                    setTimeout(() => { shareBtn.className = orig; }, 1500);
+                try { await navigator.clipboard.writeText(url); } catch (_) { }
+                const shareIcon = shareButton.querySelector('i');
+                if (shareIcon) {
+                    const orig = shareIcon.className;
+                    shareIcon.className = 'fa-solid fa-check';
+                    setTimeout(() => { shareIcon.className = orig; }, 1500);
                 }
             }
         });
 
         // Share as Image
-        modal.querySelector('#bitstream-share-image-btn').addEventListener('click', async () => {
-            const imgBtn = modal.querySelector('#bitstream-share-image-btn i');
-            if (imgBtn) imgBtn.className = 'fa-solid fa-spinner fa-spin';
+        popover.querySelector('#bs-share-image-btn').addEventListener('click', async () => {
+            const imgIcon = popover.querySelector('#bs-share-image-btn i');
+            if (imgIcon) imgIcon.className = 'fa-solid fa-spinner fa-spin';
 
             const cachedUrl = shareButton.dataset.shareImage;
             let blob;
@@ -2095,9 +2127,7 @@
             if (cachedUrl) {
                 try {
                     const resp = await fetch(cachedUrl);
-                    if (resp.ok) {
-                        blob = await resp.blob();
-                    }
+                    if (resp.ok) blob = await resp.blob();
                 } catch (_) { /* fall through */ }
             }
 
@@ -2105,7 +2135,7 @@
                 try {
                     blob = await captureBitCard(card);
                 } catch (err) {
-                    closeModal();
+                    closeSharePopover();
                     console.error('BitStream: card capture failed', err);
                     return;
                 }
@@ -2131,7 +2161,7 @@
                 }
             }
 
-            closeModal();
+            closeSharePopover();
 
             try { await navigator.clipboard.writeText(url); } catch (_) { }
 

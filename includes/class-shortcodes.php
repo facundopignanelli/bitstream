@@ -922,78 +922,45 @@ class BitStream_Shortcodes
                                     <i class="fa-solid fa-face-smile" aria-hidden="true"></i>
                                 </button>
                                 <div class="bitstream-composer-popover bitstream-composer-popover-mood" id="bitstream-composer-popover-mood" hidden>
-                                    <div class="bitstream-composer-popover-header">
-                                        <h4>How are you feeling?</h4>
-                                        <button type="button" class="bitstream-composer-popover-close" data-popover-close="mood" aria-label="Close">&times;</button>
-                                    </div>
-                                    <div class="bitstream-composer-popover-body">
-                                        <div class="bitstream-mood-grid">
-                                            <button type="button" class="bitstream-mood-btn" data-emoji="😊" data-emotion="Happy">
-                                                <span class="bitstream-mood-btn-emoji">😊</span>
-                                                <span class="bitstream-mood-btn-label">Happy</span>
-                                            </button>
-                                            <button type="button" class="bitstream-mood-btn" data-emoji="😢" data-emotion="Sad">
-                                                <span class="bitstream-mood-btn-emoji">😢</span>
-                                                <span class="bitstream-mood-btn-label">Sad</span>
-                                            </button>
-                                            <button type="button" class="bitstream-mood-btn" data-emoji="😴" data-emotion="Tired">
-                                                <span class="bitstream-mood-btn-emoji">😴</span>
-                                                <span class="bitstream-mood-btn-label">Tired</span>
-                                            </button>
-                                            <button type="button" class="bitstream-mood-btn" data-emoji="🤩" data-emotion="Excited">
-                                                <span class="bitstream-mood-btn-emoji">🤩</span>
-                                                <span class="bitstream-mood-btn-label">Excited</span>
-                                            </button>
-                                            <button type="button" class="bitstream-mood-btn" data-emoji="🤪" data-emotion="Silly">
-                                                <span class="bitstream-mood-btn-emoji">🤪</span>
-                                                <span class="bitstream-mood-btn-label">Silly</span>
-                                            </button>
-                                            <button type="button" class="bitstream-mood-btn" data-emoji="🤔" data-emotion="Pensive">
-                                                <span class="bitstream-mood-btn-emoji">🤔</span>
-                                                <span class="bitstream-mood-btn-label">Pensive</span>
-                                            </button>
-                                            <button type="button" class="bitstream-mood-btn" data-emoji="😠" data-emotion="Angry">
-                                                <span class="bitstream-mood-btn-emoji">😠</span>
-                                                <span class="bitstream-mood-btn-label">Angry</span>
-                                            </button>
-                                            <button type="button" class="bitstream-mood-btn" data-emoji="😌" data-emotion="Relieved">
-                                                <span class="bitstream-mood-btn-emoji">😌</span>
-                                                <span class="bitstream-mood-btn-label">Relieved</span>
-                                            </button>
-                                            <button type="button" class="bitstream-mood-btn" data-emoji="🤯" data-emotion="Mind-blown">
-                                                <span class="bitstream-mood-btn-emoji">🤯</span>
-                                                <span class="bitstream-mood-btn-label">Mind-blown</span>
-                                            </button>
-                                        </div>
-                                        <div class="bitstream-saved-moods-section" style="margin-top: 10px; margin-bottom: 10px;">
-                                            <div class="bitstream-saved-moods-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                                <h5 style="margin: 0; font-size: 0.85rem; font-weight: 600; color: #475569;">Saved Moods</h5>
-                                                <button type="button" class="bitstream-manage-moods-btn" style="background: none; border: none; color: var(--wp--preset--color--accent-1, #2c6e49); font-size: 0.8rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px;">
-                                                    <i class="fa-solid fa-gear"></i> Manage
+                                    <!-- Reaction bar (normal + edit mode) -->
+                                    <div class="bitstream-mood-reactions-bar" id="bitstream-mood-reactions-bar">
+                                        <div class="bitstream-mood-reactions-list" id="bitstream-mood-reactions-list"></div>
+                                        <div class="bitstream-mood-actions-row">
+                                            <div class="bitstream-mood-actions-left">
+                                                <button type="button" class="bitstream-mood-add-btn" id="bitstream-mood-add-trigger"
+                                                    title="Add mood" aria-label="Add mood">
+                                                    <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                                                </button>
+                                                <button type="button" class="bitstream-mood-edit-btn" id="bitstream-mood-edit-trigger"
+                                                    title="Edit moods" aria-label="Edit moods">
+                                                    <i class="fa-solid fa-pencil" aria-hidden="true"></i>
                                                 </button>
                                             </div>
-                                            <div class="bitstream-saved-moods-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;"></div>
-                                        </div>
-                                        <div class="bitstream-custom-mood-divider" style="margin: 10px 0; text-align: center; border-bottom: 1px solid #eef0f2; line-height: 0.1em;">
-                                            <span style="background:#fff; padding:0 8px; color:#94a3b8; font-size:0.78rem; font-weight:500;">OR CUSTOM</span>
-                                        </div>
-                                        <div class="bitstream-custom-mood-form" style="display: flex; gap: 8px; align-items: flex-end;">
-                                            <div style="flex: 0 0 54px;">
-                                                <label for="bitstream-mood-custom-emoji" style="font-size:0.78rem; font-weight:600; color:#475569; display:block; margin-bottom:4px;">Emoji</label>
-                                                <button type="button" id="bitstream-mood-emoji-trigger" class="bs-emoji-trigger" style="width: 100%; height: 38px; border: 1.5px solid #e2e8f0; border-radius: 8px; background: #f8fafc; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; font-size: 1.2rem; color: #94a3b8;" aria-label="Choose emoji">
-                                                    <i class="fa-solid fa-plus" style="font-size: 0.85rem;" aria-hidden="true"></i>
-                                                </button>
-                                                <input type="hidden" id="bitstream-mood-custom-emoji" value="">
-                                            </div>
-                                            <div style="flex: 1;">
-                                                <label for="bitstream-mood-custom-emotion" style="font-size:0.78rem; font-weight:600; color:#475569; display:block; margin-bottom:4px;">Feeling name</label>
-                                                <input type="text" id="bitstream-mood-custom-emotion" placeholder="e.g. productive" style="width: 100%; height: 38px; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 0 10px; background: #f8fafc; font-size: 0.88rem;">
-                                            </div>
+                                            <span class="bitstream-mood-edit-hint" id="bitstream-mood-edit-hint"></span>
                                         </div>
                                     </div>
-                                    <div class="bitstream-composer-popover-footer">
-                                        <button type="button" class="bitstream-composer-popover-btn-clear" id="bitstream-popover-mood-clear">Clear</button>
-                                        <button type="button" class="bitstream-composer-popover-btn-confirm bitstream-composer-mood-done" id="bitstream-popover-mood-set">Set Mood</button>
+                                    <!-- Inline creator / editor form -->
+                                    <div class="bitstream-mood-creator" id="bitstream-mood-creator" hidden>
+                                        <button type="button" class="bitstream-mood-creator-emoji-btn" id="bitstream-mood-creator-emoji-trigger"
+                                            title="Choose emoji" aria-label="Choose emoji">
+                                            <span class="bs-creator-emoji-val">😊</span>
+                                        </button>
+                                        <input type="hidden" id="bitstream-mood-custom-emoji" value="😊">
+                                        <input type="text" id="bitstream-mood-custom-emotion" class="bitstream-mood-creator-input"
+                                            placeholder="Feeling..." maxlength="25" autocomplete="off">
+                                        <button type="button" class="bitstream-mood-creator-confirm" id="bitstream-mood-creator-confirm"
+                                            title="Save mood" aria-label="Save mood">
+                                            <i class="fa-solid fa-check" aria-hidden="true"></i>
+                                        </button>
+                                        <button type="button" class="bitstream-mood-creator-back" id="bitstream-mood-creator-back"
+                                            title="Cancel" aria-label="Cancel">
+                                            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                                        </button>
+                                    </div>
+                                    <!-- Undo toast -->
+                                    <div class="bitstream-mood-undo-toast" id="bitstream-mood-undo-toast" hidden>
+                                        <span class="bitstream-mood-undo-msg">Mood removed</span>
+                                        <button type="button" class="bitstream-mood-undo-btn" id="bitstream-mood-undo-btn">Undo</button>
                                     </div>
                                 </div>
                             </div>
@@ -2109,11 +2076,10 @@ class BitStream_Shortcodes
         }
 
         $requested_tab = isset($_GET['settings_tab']) ? sanitize_key(wp_unslash($_GET['settings_tab'])) : 'personalisation';
-        $valid_tabs = ['personalisation', 'moods', 'mappings', 'rss', 'push', 'advanced'];
+        $valid_tabs = ['personalisation', 'mappings', 'rss', 'push', 'advanced'];
         $initial_tab = in_array($requested_tab, $valid_tabs, true) ? $requested_tab : 'personalisation';
 
         $is_personalisation = ($initial_tab === 'personalisation');
-        $is_moods = ($initial_tab === 'moods');
         $is_mappings = ($initial_tab === 'mappings');
         $is_rss = ($initial_tab === 'rss');
         $is_push = ($initial_tab === 'push');
@@ -2127,11 +2093,6 @@ class BitStream_Shortcodes
                     data-settings-tab="personalisation" role="tab"
                     aria-selected="<?php echo $is_personalisation ? 'true' : 'false'; ?>">
                     <i class="fa-solid fa-palette" aria-hidden="true"></i> Personalisation
-                </button>
-                <button type="button" class="bitstream-settings-tab <?php echo $is_moods ? 'is-active' : ''; ?>"
-                    data-settings-tab="moods" role="tab"
-                    aria-selected="<?php echo $is_moods ? 'true' : 'false'; ?>">
-                    <i class="fa-solid fa-face-smile" aria-hidden="true"></i> Custom Moods
                 </button>
                 <button type="button" class="bitstream-settings-tab <?php echo $is_mappings ? 'is-active' : ''; ?>"
                     data-settings-tab="mappings" role="tab" aria-selected="<?php echo $is_mappings ? 'true' : 'false'; ?>">
@@ -2158,12 +2119,6 @@ class BitStream_Shortcodes
             <div class="bitstream-settings-panel <?php echo $is_personalisation ? 'is-active' : ''; ?>"
                 id="bitstream-settings-panel-personalisation" role="tabpanel" <?php echo $is_personalisation ? '' : 'hidden'; ?>>
                 <?php $this->render_settings_personalisation(); ?>
-            </div>
-
-            <!-- Custom Moods Panel -->
-            <div class="bitstream-settings-panel <?php echo $is_moods ? 'is-active' : ''; ?>"
-                id="bitstream-settings-panel-moods" role="tabpanel" <?php echo $is_moods ? '' : 'hidden'; ?>>
-                <?php $this->render_settings_moods(); ?>
             </div>
 
             <!-- ReBit Mappings Panel -->

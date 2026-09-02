@@ -93,8 +93,8 @@ This index serves as the primary map for understanding the backend and frontend 
     * `register_shortcodes()`: Registers `[bitstream]` and `[bitstream_settings]`.
     * `enqueue_shortcode_assets()`: Loads `comment-reply` and native WP media frames.
     * `render_feed($atts)`: Outputs the complete microblogging timeline layout (filters, search, composer modals, scheduled drawers, profiles, and hashtag widgets).
-    * `render_settings($atts)`: Emits settings interface panels (personalization, custom moods, domain mappings, RSS, notifications, advanced options).
-    * `render_settings_moods()`: Renders the layout and controls for custom mood sorting, deletion, and additions inside settings.
+    * `render_settings($atts)`: Emits settings interface panels (personalization, domain mappings, RSS, notifications, advanced options).
+    * `render_settings_moods()`: Deprecated helper (custom moods are now managed directly within the mood popover's inline Edit Mode).
     * `render_timeline_edit_modal()`: Deprecated helper (editing and quoting now execute within the unified main composer).
     * `get_primary_attachment_id($post_id)`: Resolves thumbnail images or associated attachment paths.
     * `get_editable_text_content($content)`: Cleans posts from shortcode/html tags for editing inside textareas.
@@ -291,10 +291,10 @@ This index serves as the primary map for understanding the backend and frontend 
 * **Description**: Contenteditable micro-editor script. Powers live `#hashtag` coloring, `http://` URL highlighting, caret-anchored autocomplete popup, inline Twemoji rendering, DOM selection range preservation, plain-text paste sanitization, and clipboard image paste detection (`bitstream:paste-media`). Exposed under `window.BitStream.Editor`.
 
 ### [assets/js/bitstream-composer.js](assets/js/bitstream-composer.js)
-* **Description**: Composer and settings controller script. Powers the modal-free inline composing architecture: inline Rebit URL expansion bar with live metadata editing, anchored popovers for Media (native device upload & WP Media Library), Scheduling (presets & custom datetime), and Moods (feelings grid & custom emotions), direct composer drag-and-drop file uploading, character counters, settings forms, PWA share payloads, drafts lists, scheduled list drawers, direct clipboard image paste handling, twemoji lazy-parsing, and unified Composer Edit & Quote Modes (`openEdit`, `openQuote`, `cancelEdit`, and auto-stashed draft protection). Exposed under `window.BitStream.Composer`.
+* **Description**: Composer and settings controller script. Powers the modal-free inline composing architecture: inline Rebit URL expansion bar with live metadata editing, anchored popovers for Media (native device upload & WP Media Library), Scheduling (presets & custom datetime), and Moods (floating multi-line reaction popover with unified standard/custom emojis, inline mood creator, and full inline Edit Mode with drag-and-drop reordering, delete with 5-second Undo toast, and in-place editing), direct composer drag-and-drop file uploading, character counters, settings forms, PWA share payloads, drafts lists, scheduled list drawers, direct clipboard image paste handling, twemoji lazy-parsing, and unified Composer Edit & Quote Modes (`openEdit`, `openQuote`, `cancelEdit`, and auto-stashed draft protection). Exposed under `window.BitStream.Composer`.
 
 ### [assets/js/bitstream-timeline.js](assets/js/bitstream-timeline.js)
-* **Description**: Timeline viewer and utilities script. Manages page scroll pagination, comments toggling/styling, media session metadata tracking, exposing hashtag data (`getHashtags()`), push notifications registration, and image download protections. Exposed under `window.BitStream.Timeline`.
+* **Description**: Timeline viewer and utilities script. Manages page scroll pagination, comments toggling/styling, media session metadata tracking, exposing hashtag data (`getHashtags()`), push notifications registration, image download protections, and anchored share options popovers (`openShareOptionsModal`) with auto-dismiss on scroll/resize and card capture modal triggers. Exposed under `window.BitStream.Timeline`.
 
 
 ### [assets/js/bitstream-block.js](assets/js/bitstream-block.js)

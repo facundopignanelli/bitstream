@@ -103,7 +103,7 @@ Manage all configuration options directly on the frontend timeline page via the 
 
 - **Custom Mood Badges**: Select or create a status update in the format `[User Name] is feeling [emoji] [emotion]` next to your name in timeline posts.
 - **Pure Mood Posts**: Distinctive large card status blocks in the timeline for mood-only updates (posts with no body text or attachments).
-- **Personal Moods Library**: Build a custom saved moods library saved in user profile options. Reorder (Up/Down), delete, or edit custom moods inside the Mood Modal with real-time UI propagation.
+- **Personal Moods Library**: Build a custom saved moods library. Toggle Edit Mode directly inside the floating mood popover to reorder via drag-and-drop on desktop or touch long-press on mobile, edit emojis/labels in-place, or delete with an instant 5-second Undo toast.
 - **Emoji Standardization**: Integrates `jdecked/twemoji` to dynamically convert text emojis into uniform SVG vector assets from CDN, ensuring identical emoji displays across Windows, macOS, Android, and iOS.
 - **Custom Emoji Picker**: Includes a responsive, styled emoji picker featuring Unicode category tabs, instant country/flag/name search, skin tone preferences, and recently used emojis. The picker automatically scales to the width of its parent modal on desktop and mobile, caches rendering grids in memory for instant tab switching, and has a local fallback cache to ensure it loads even when the CDN is offline.
 - **Validation**: Enforces valid Unicode emojis with full support for complex compound ZWJ sequences (skin tones, gender signs, flags).
@@ -124,7 +124,7 @@ Manage all configuration options directly on the frontend timeline page via the 
 
 ![Premium Sharing Options](assets/images/sharedcard.png)
 
-- **Unified Share Modal**: Click the share icon on any feed card to choose between:
+- **Anchored Share Options Popover**: Click the share icon on any feed card to open a compact anchored popover:
   - **Share Link**: Triggers native OS share sheet (mobile PWA) or copies the URL to the clipboard.
   - **Share as Image**: Generates a pixel-perfect, branded PNG card of the post with a custom watermark and full timestamp, optimized at 1000px wide for social media (e.g., Instagram Stories).
 - **Share Image Cache**: Dedicated administrative option to flush the cached PNG share files from disk and refresh card renders.

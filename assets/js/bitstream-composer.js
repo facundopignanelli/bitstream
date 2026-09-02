@@ -82,6 +82,9 @@
                 // Mood popover/modal elements
                 const moodModal = composerRoot.querySelector('.bitstream-composer-popover-mood, .bitstream-composer-modal-mood');
                 let customMoods = (window.bitstream_ajax && bitstream_ajax.custom_moods) || [];
+                if (typeof customMoods === 'object' && !Array.isArray(customMoods)) {
+                    customMoods = Object.values(customMoods);
+                }
                 let activeEditMoodForm = null;
                 const previewDraft = null;
                 const previewDraftLabel = null;
@@ -285,36 +288,7 @@
                         }
 
                         if (name === 'mood') {
-                            const currentEmoji = activeEditMoodForm 
-                                ? (activeEditMoodForm.querySelector('.bs-edit-mood-emoji').value || '') 
-                                : (hMoodEmoji.value || '');
-                            const currentEmotion = activeEditMoodForm 
-                                ? (activeEditMoodForm.querySelector('.bs-edit-mood-emotion').value || '') 
-                                : (hMoodEmotion.value || '');
-
-                            modal.querySelectorAll('.bitstream-mood-btn').forEach(btn => btn.classList.remove('is-active'));
-                            
-                            const customEmojiInput = modal.querySelector('#bitstream-mood-custom-emoji');
-                            const customEmotionInput = modal.querySelector('#bitstream-mood-custom-emotion');
-                            setCustomEmojiDisplay('');
-                            if (customEmotionInput) customEmotionInput.value = '';
-
-                            let foundPredefined = false;
-                            if (currentEmotion) {
-                                modal.querySelectorAll('.bitstream-mood-btn').forEach(btn => {
-                                    if (btn.dataset.emotion.toLowerCase() === currentEmotion.toLowerCase() && btn.dataset.emoji === currentEmoji) {
-                                        btn.classList.add('is-active');
-                                        foundPredefined = true;
-                                    }
-                                });
-
-                                if (!foundPredefined) {
-                                    setCustomEmojiDisplay(currentEmoji);
-                                    if (customEmotionInput) customEmotionInput.value = currentEmotion;
-                                }
-                            }
-
-                            renderSavedMoods();
+                            renderMoodReactions();
                         }
                     }
                     if (typeof window.bitstreamSyncBottomNav === 'function') {
@@ -1321,18 +1295,528 @@
                     window.createBsEmojiPicker = createBsEmojiPicker;
                 })();
 
-                // Mood Modal Implementation
-                const moodPredefinedButtons = moodModal ? moodModal.querySelectorAll('.bitstream-mood-btn') : [];
-                const customEmojiInput = moodModal ? moodModal.querySelector('#bitstream-mood-custom-emoji') : null;
-                const customEmotionInput = moodModal ? moodModal.querySelector('#bitstream-mood-custom-emotion') : null;
-                const moodDoneBtn = moodModal ? moodModal.querySelector('.bitstream-composer-mood-done') : null;
-                const emojiTriggerBtn = moodModal ? moodModal.querySelector('#bitstream-mood-emoji-trigger') : null;
-
-                const savedMoodsGrid = moodModal ? moodModal.querySelector('.bitstream-saved-moods-grid') : null;
-                const manageMoodsBtn = moodModal ? moodModal.querySelector('.bitstream-manage-moods-btn') : null;
-
+                // Mood Reactions & Emoji Picker Implementation
                 const moodEmojiPicker = createBsEmojiPicker();
                 const textEmojiPicker = createBsEmojiPicker();
+
+                const PRELOADED_MOODS = [
+                    { emoji: '😊', emotion: 'Happy' },
+                    { emoji: '😢', emotion: 'Sad' },
+                    { emoji: '😴', emotion: 'Tired' },
+                    { emoji: '🤩', emotion: 'Excited' },
+                    { emoji: '🤪', emotion: 'Silly' },
+                    { emoji: '🤔', emotion: 'Pensive' },
+                    { emoji: '😠', emotion: 'Angry' },
+                    { emoji: '😌', emotion: 'Relieved' },
+                    { emoji: '🤯', emotion: 'Mind-blown' }
+                ];
+
+                function getAllMoods() {
+                    const userCustomMoods = Array.isArray(customMoods) ? customMoods : (typeof customMoods === 'object' && customMoods ? Object.values(customMoods) : []);
+
+                    // If customMoods already contains preloaded items (happens after any reorder/delete/full edit),
+                    // use it exclusively so the user's ordering is preserved.
+                    const hasPreloaded = userCustomMoods.some(cm =>
+                        PRELOADED_MOODS.some(pm => pm.emoji === cm.emoji && pm.emotion.toLowerCase() === cm.emotion.toLowerCase())
+                    );
+                    if (hasPreloaded) {
+                        return userCustomMoods.filter(m => m && m.emotion && m.emoji);
+                    }
+
+                    // Otherwise merge: preloaded first, then user-only custom moods
+                    const list = [...PRELOADED_MOODS];
+                    userCustomMoods.forEach(cm => {
+                        if (cm && cm.emotion && cm.emoji) {
+                            const exists = list.some(m => m.emotion.toLowerCase() === cm.emotion.toLowerCase() && m.emoji === cm.emoji);
+                            if (!exists) list.push(cm);
+                        }
+                    });
+                    return list;
+                }
+
+                function applyMoodSelection(emoji, emotion) {
+                    if (activeEditMoodForm) {
+                        const editEmojiInput = activeEditMoodForm.querySelector('.bs-edit-mood-emoji');
+                        const editEmotionInput = activeEditMoodForm.querySelector('.bs-edit-mood-emotion');
+                        const editMoodLabel = activeEditMoodForm.querySelector('.bs-edit-mood-label');
+                        const editMoodRemove = activeEditMoodForm.querySelector('.bs-edit-mood-remove');
+
+                        if (editEmojiInput) editEmojiInput.value = emoji;
+                        if (editEmotionInput) editEmotionInput.value = emotion;
+
+                        if (editMoodLabel && editMoodRemove) {
+                            if (emotion) {
+                                editMoodLabel.textContent = `${emoji} Feeling ${emotion}`;
+                                if (typeof window.parseEmojis === 'function') window.parseEmojis(editMoodLabel);
+                                editMoodRemove.style.display = 'inline-block';
+                            } else {
+                                editMoodLabel.textContent = 'Add Mood';
+                                editMoodRemove.style.display = 'none';
+                            }
+                        }
+                        activeEditMoodForm = null;
+                    } else {
+                        if (hMoodEmoji) hMoodEmoji.value = emoji;
+                        if (hMoodEmotion) hMoodEmotion.value = emotion;
+
+                        if (previewMood && previewMoodText) {
+                            if (emotion) {
+                                previewMoodText.textContent = `${emoji} Feeling ${emotion}`;
+                                if (typeof window.parseEmojis === 'function') window.parseEmojis(previewMoodText);
+                                previewMood.hidden = false;
+                            } else {
+                                previewMoodText.textContent = '';
+                                previewMood.hidden = true;
+                            }
+                        }
+                        syncPreviewArea();
+                    }
+                }
+
+                // ── Mood edit mode state ──────────────────────────────────────────────
+                let moodEditMode = false;
+                let moodEditingIndex = null; // index in getAllMoods() being edited via creator
+
+                // Undo state
+                let undoTimer = null;
+                let undoMoodData = null; // { moods: [...snapshot], index: int }
+
+                // Drag state
+                let dragSrcIndex = null;
+
+                function getAllMoodsLive() {
+                    return getAllMoods(); // already defined above
+                }
+
+                function saveMoodsToServer(moodsArray) {
+                    if (!window.bitstream_ajax || !bitstream_ajax.ajax_url || !submitNonce) return;
+                    const fd = new FormData();
+                    fd.append('action', 'bitstream_save_custom_moods');
+                    fd.append('nonce', submitNonce);
+                    fd.append('moods', JSON.stringify(moodsArray));
+                    fetch(bitstream_ajax.ajax_url, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        body: fd
+                    }).catch(err => console.error('BitStream: Error saving moods:', err));
+                }
+
+                function showUndoToast(label) {
+                    const toast = moodModal ? moodModal.querySelector('#bitstream-mood-undo-toast') : null;
+                    const msg = toast ? toast.querySelector('.bitstream-mood-undo-msg') : null;
+                    if (!toast) return;
+                    if (msg) msg.textContent = `"${label}" removed`;
+                    toast.hidden = false;
+                    if (undoTimer) clearTimeout(undoTimer);
+                    undoTimer = setTimeout(() => {
+                        toast.hidden = true;
+                        undoMoodData = null;
+                    }, 5000);
+                }
+
+                function hideUndoToast() {
+                    const toast = moodModal ? moodModal.querySelector('#bitstream-mood-undo-toast') : null;
+                    if (toast) toast.hidden = true;
+                    if (undoTimer) { clearTimeout(undoTimer); undoTimer = null; }
+                    undoMoodData = null;
+                }
+
+                function renderMoodReactions() {
+                    if (!moodModal) return;
+                    const reactionsBar = moodModal.querySelector('.bitstream-mood-reactions-bar');
+                    const reactionsList = moodModal.querySelector('#bitstream-mood-reactions-list');
+                    const creator = moodModal.querySelector('#bitstream-mood-creator');
+                    const editBtn = moodModal.querySelector('#bitstream-mood-edit-trigger');
+                    const editHint = moodModal.querySelector('#bitstream-mood-edit-hint');
+
+                    if (reactionsBar) {
+                        reactionsBar.hidden = false;
+                        reactionsBar.style.display = 'flex';
+                    }
+                    if (creator) {
+                        creator.hidden = true;
+                        creator.style.display = 'none';
+                    }
+                    moodEditingIndex = null;
+
+                    if (!reactionsList) return;
+                    reactionsList.innerHTML = '';
+
+                    if (moodEditMode) {
+                        reactionsList.classList.add('is-edit-mode');
+                        if (editBtn) editBtn.classList.add('is-active');
+                        if (editHint) editHint.textContent = 'Tap to edit · Drag to reorder';
+                    } else {
+                        reactionsList.classList.remove('is-edit-mode');
+                        if (editBtn) editBtn.classList.remove('is-active');
+                        if (editHint) editHint.textContent = '';
+                    }
+
+                    const currentEmoji   = hMoodEmoji?.value || '';
+                    const currentEmotion = hMoodEmotion?.value || '';
+                    const allMoods = getAllMoodsLive();
+
+                    allMoods.forEach((mood, idx) => {
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'bitstream-mood-reaction-btn';
+                        btn.dataset.emoji = mood.emoji;
+                        btn.dataset.emotion = mood.emotion;
+                        btn.dataset.idx = idx;
+                        btn.title = mood.emotion;
+                        btn.setAttribute('aria-label', mood.emotion);
+
+                        const isSelected = (currentEmotion && currentEmotion.toLowerCase() === mood.emotion.toLowerCase() && currentEmoji === mood.emoji);
+                        if (isSelected && !moodEditMode) btn.classList.add('is-active');
+
+                        btn.innerHTML = `<span class="bitstream-mood-reaction-emoji">${mood.emoji}</span>`;
+
+                        // Delete badge
+                        const badge = document.createElement('span');
+                        badge.className = 'mood-delete-badge';
+                        badge.innerHTML = '<i class="fa-solid fa-xmark" aria-hidden="true"></i>';
+                        badge.setAttribute('aria-label', `Remove ${mood.emotion}`);
+                        badge.addEventListener('pointerdown', e => e.stopPropagation());
+                        badge.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            deleteMood(idx, mood);
+                        });
+                        btn.appendChild(badge);
+
+                        // Drag support (desktop: HTML5, mobile: touch long-press)
+                        if (moodEditMode) {
+                            btn.draggable = true;
+                            btn.style.cursor = 'grab';
+
+                            btn.addEventListener('dragstart', (e) => {
+                                dragSrcIndex = idx;
+                                btn.classList.add('is-dragging');
+                                e.dataTransfer.effectAllowed = 'move';
+                            });
+                            btn.addEventListener('dragend', () => {
+                                btn.classList.remove('is-dragging');
+                                reactionsList.querySelectorAll('.bitstream-mood-reaction-btn').forEach(b => b.classList.remove('is-drag-over'));
+                            });
+                            btn.addEventListener('dragover', (e) => {
+                                e.preventDefault();
+                                e.dataTransfer.dropEffect = 'move';
+                                reactionsList.querySelectorAll('.bitstream-mood-reaction-btn').forEach(b => b.classList.remove('is-drag-over'));
+                                if (idx !== dragSrcIndex) btn.classList.add('is-drag-over');
+                            });
+                            btn.addEventListener('drop', (e) => {
+                                e.preventDefault();
+                                btn.classList.remove('is-drag-over');
+                                if (dragSrcIndex === null || dragSrcIndex === idx) return;
+                                reorderMoods(dragSrcIndex, idx);
+                                dragSrcIndex = null;
+                            });
+
+                            // Touch long-press drag
+                            let touchDragTimer = null;
+                            let touchDragging = false;
+                            btn.addEventListener('touchstart', (e) => {
+                                touchDragging = false;
+                                touchDragTimer = setTimeout(() => {
+                                    touchDragging = true;
+                                    dragSrcIndex = idx;
+                                    btn.classList.add('is-dragging');
+                                    // haptic if available
+                                    if (navigator.vibrate) navigator.vibrate(30);
+                                }, 300);
+                            }, { passive: true });
+                            btn.addEventListener('touchmove', (e) => {
+                                if (!touchDragging) {
+                                    clearTimeout(touchDragTimer);
+                                    return;
+                                }
+                                e.preventDefault();
+                                const touch = e.touches[0];
+                                const el = document.elementFromPoint(touch.clientX, touch.clientY);
+                                const target = el ? el.closest('.bitstream-mood-reaction-btn') : null;
+                                reactionsList.querySelectorAll('.bitstream-mood-reaction-btn').forEach(b => b.classList.remove('is-drag-over'));
+                                if (target && target !== btn) target.classList.add('is-drag-over');
+                            }, { passive: false });
+                            btn.addEventListener('touchend', (e) => {
+                                clearTimeout(touchDragTimer);
+                                btn.classList.remove('is-dragging');
+                                if (!touchDragging) return;
+                                touchDragging = false;
+                                const touch = e.changedTouches[0];
+                                const el = document.elementFromPoint(touch.clientX, touch.clientY);
+                                const target = el ? el.closest('.bitstream-mood-reaction-btn') : null;
+                                reactionsList.querySelectorAll('.bitstream-mood-reaction-btn').forEach(b => b.classList.remove('is-drag-over'));
+                                if (target && target !== btn) {
+                                    const targetIdx = parseInt(target.dataset.idx, 10);
+                                    if (!isNaN(targetIdx) && targetIdx !== idx) reorderMoods(idx, targetIdx);
+                                }
+                                dragSrcIndex = null;
+                            });
+                        }
+
+                        // Click handler: select (normal) or open edit form (edit mode)
+                        btn.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (moodEditMode) {
+                                openMoodEditorFor(idx, mood);
+                            } else {
+                                if (btn.classList.contains('is-active')) {
+                                    applyMoodSelection('', '');
+                                } else {
+                                    applyMoodSelection(mood.emoji, mood.emotion);
+                                }
+                                if (typeof closeAllPopovers === 'function') closeAllPopovers();
+                            }
+                        });
+
+                        reactionsList.appendChild(btn);
+                    });
+
+                    if (typeof window.parseEmojis === 'function') {
+                        window.parseEmojis(reactionsList);
+                    }
+                }
+
+                function reorderMoods(fromIdx, toIdx) {
+                    const all = getAllMoodsLive();
+                    if (fromIdx < 0 || toIdx < 0 || fromIdx >= all.length || toIdx >= all.length) return;
+                    const moved = all.splice(fromIdx, 1)[0];
+                    all.splice(toIdx, 0, moved);
+
+                    // Split back: customMoods now carries everything
+                    // Preloaded defaults need to be identified so they can stay in customMoods
+                    // The simplest model: treat all moods as customMoods after first reorder
+                    customMoods = all;
+                    saveMoodsToServer(customMoods);
+                    renderMoodReactions();
+                }
+
+                function deleteMood(idx, mood) {
+                    const all = getAllMoodsLive();
+                    // Save snapshot for undo
+                    undoMoodData = { moods: all.slice(), label: mood.emotion };
+                    // Remove
+                    all.splice(idx, 1);
+                    customMoods = all;
+
+                    // Clear selection if deleted mood was selected
+                    if (hMoodEmoji && hMoodEmotion && hMoodEmoji.value === mood.emoji && hMoodEmotion.value === mood.emotion) {
+                        applyMoodSelection('', '');
+                    }
+
+                    renderMoodReactions();
+                    showUndoToast(mood.emotion);
+
+                    // Fire AJAX after 5s (undo cancels it)
+                    if (undoTimer) clearTimeout(undoTimer);
+                    undoTimer = setTimeout(() => {
+                        saveMoodsToServer(customMoods);
+                        undoMoodData = null;
+                        const toast = moodModal ? moodModal.querySelector('#bitstream-mood-undo-toast') : null;
+                        if (toast) toast.hidden = true;
+                    }, 5000);
+                }
+
+                // Inline Mood Creator Controls
+                const addMoodTrigger = moodModal ? moodModal.querySelector('#bitstream-mood-add-trigger') : null;
+                const editMoodTrigger = moodModal ? moodModal.querySelector('#bitstream-mood-edit-trigger') : null;
+                const moodCreator = moodModal ? moodModal.querySelector('#bitstream-mood-creator') : null;
+                const moodReactionsBar = moodModal ? moodModal.querySelector('.bitstream-mood-reactions-bar') : null;
+                const creatorEmojiTrigger = moodModal ? moodModal.querySelector('#bitstream-mood-creator-emoji-trigger') : null;
+                const creatorEmojiInput = moodModal ? moodModal.querySelector('#bitstream-mood-custom-emoji') : null;
+                const creatorEmotionInput = moodModal ? moodModal.querySelector('#bitstream-mood-custom-emotion') : null;
+                const creatorConfirmBtn = moodModal ? moodModal.querySelector('#bitstream-mood-creator-confirm') : null;
+                const creatorBackBtn = moodModal ? moodModal.querySelector('#bitstream-mood-creator-back') : null;
+
+                // Undo button
+                const undoBtn = moodModal ? moodModal.querySelector('#bitstream-mood-undo-btn') : null;
+                if (undoBtn) {
+                    undoBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (undoMoodData) {
+                            customMoods = undoMoodData.moods;
+                            hideUndoToast();
+                            renderMoodReactions();
+                        }
+                    });
+                }
+
+                // Edit mode toggle
+                if (editMoodTrigger) {
+                    editMoodTrigger.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        moodEditMode = !moodEditMode;
+                        // If exiting edit mode while creator is open, go back to list
+                        if (!moodEditMode && moodCreator && !moodCreator.hidden) {
+                            moodCreator.hidden = true;
+                            moodCreator.style.display = 'none';
+                            if (moodReactionsBar) {
+                                moodReactionsBar.hidden = false;
+                                moodReactionsBar.style.display = 'flex';
+                            }
+                        }
+                        renderMoodReactions();
+                    });
+                }
+
+                // Open creator pre-filled for editing an existing mood
+                function openMoodEditorFor(idx, mood) {
+                    moodEditingIndex = idx;
+                    if (moodReactionsBar) {
+                        moodReactionsBar.hidden = true;
+                        moodReactionsBar.style.display = 'none';
+                    }
+                    if (moodCreator) {
+                        moodCreator.hidden = false;
+                        moodCreator.style.display = 'flex';
+                    }
+                    if (creatorEmojiInput) creatorEmojiInput.value = mood.emoji;
+                    if (creatorEmojiTrigger) {
+                        creatorEmojiTrigger.innerHTML = `<span class="bs-creator-emoji-val">${mood.emoji}</span>`;
+                        if (typeof window.parseEmojis === 'function') window.parseEmojis(creatorEmojiTrigger);
+                    }
+                    if (creatorEmotionInput) {
+                        creatorEmotionInput.value = mood.emotion;
+                        updateCreatorInputWidth();
+                        creatorEmotionInput.focus();
+                    }
+                }
+
+                function updateCreatorInputWidth() {
+                    if (!creatorEmotionInput) return;
+                    const len = creatorEmotionInput.value.length;
+                    const targetCh = Math.max(14, Math.min(26, len + 3));
+                    creatorEmotionInput.style.width = `${targetCh}ch`;
+                }
+
+                if (creatorEmotionInput) {
+                    creatorEmotionInput.addEventListener('input', updateCreatorInputWidth);
+                }
+
+                if (addMoodTrigger) {
+                    addMoodTrigger.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        moodEditingIndex = null;
+                        if (moodReactionsBar) {
+                            moodReactionsBar.hidden = true;
+                            moodReactionsBar.style.display = 'none';
+                        }
+                        if (moodCreator) {
+                            moodCreator.hidden = false;
+                            moodCreator.style.display = 'flex';
+                            if (creatorEmotionInput) {
+                                creatorEmotionInput.value = '';
+                                creatorEmotionInput.style.width = '14ch';
+                                creatorEmotionInput.focus();
+                            }
+                            if (creatorEmojiInput && creatorEmojiTrigger) {
+                                creatorEmojiInput.value = '😊';
+                                creatorEmojiTrigger.innerHTML = '<span class="bs-creator-emoji-val">😊</span>';
+                                if (typeof window.parseEmojis === 'function') window.parseEmojis(creatorEmojiTrigger);
+                            }
+                        }
+                    });
+                }
+
+                if (creatorBackBtn) {
+                    creatorBackBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        moodEditingIndex = null;
+                        if (moodCreator) {
+                            moodCreator.hidden = true;
+                            moodCreator.style.display = 'none';
+                        }
+                        if (moodReactionsBar) {
+                            moodReactionsBar.hidden = false;
+                            moodReactionsBar.style.display = 'flex';
+                        }
+                    });
+                }
+
+                if (creatorEmojiTrigger && moodEmojiPicker) {
+                    creatorEmojiTrigger.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        moodEmojiPicker.open(creatorEmojiTrigger, (emoji) => {
+                            if (creatorEmojiInput) creatorEmojiInput.value = emoji;
+                            creatorEmojiTrigger.innerHTML = `<span class="bs-creator-emoji-val">${emoji}</span>`;
+                            if (typeof window.parseEmojis === 'function') window.parseEmojis(creatorEmojiTrigger);
+                        });
+                    });
+                }
+
+                function handleSaveNewMood() {
+                    if (!creatorEmotionInput) return;
+                    const emotion = creatorEmotionInput.value.trim();
+                    if (!emotion) {
+                        creatorEmotionInput.focus();
+                        return;
+                    }
+                    const emoji = (creatorEmojiInput && creatorEmojiInput.value.trim()) || '😊';
+
+                    if (!Array.isArray(customMoods)) customMoods = [];
+
+                    if (moodEditingIndex !== null) {
+                        // Editing an existing mood in-place
+                        const all = getAllMoodsLive();
+                        if (moodEditingIndex >= 0 && moodEditingIndex < all.length) {
+                            const oldMood = all[moodEditingIndex];
+                            // Update customMoods (which now holds all moods after any prior reorder/delete)
+                            customMoods = all;
+                            customMoods[moodEditingIndex] = { emoji, emotion };
+
+                            // Update selection if this mood was selected
+                            if (hMoodEmoji && hMoodEmotion && hMoodEmoji.value === oldMood.emoji && hMoodEmotion.value === oldMood.emotion) {
+                                applyMoodSelection(emoji, emotion);
+                            }
+                        }
+                        moodEditingIndex = null;
+                        saveMoodsToServer(customMoods);
+                        // Return to reaction bar, stay in edit mode
+                        if (moodCreator) {
+                            moodCreator.hidden = true;
+                            moodCreator.style.display = 'none';
+                        }
+                        if (moodReactionsBar) {
+                            moodReactionsBar.hidden = false;
+                            moodReactionsBar.style.display = 'flex';
+                        }
+                        renderMoodReactions();
+                    } else {
+                        // Adding a new mood
+                        const exists = customMoods.some(m => m.emotion.toLowerCase() === emotion.toLowerCase() && m.emoji === emoji);
+                        if (!exists) {
+                            customMoods.push({ emoji, emotion });
+                            saveMoodsToServer(customMoods);
+                        }
+                        applyMoodSelection(emoji, emotion);
+                        renderMoodReactions();
+                        if (typeof closeAllPopovers === 'function') closeAllPopovers();
+                    }
+                }
+
+                if (creatorConfirmBtn) {
+                    creatorConfirmBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleSaveNewMood();
+                    });
+                }
+
+                if (creatorEmotionInput) {
+                    creatorEmotionInput.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleSaveNewMood();
+                        }
+                    });
+                }
 
                 function insertEmojiAtCursor(inputEl, emoji) {
                     if (!inputEl) return;
@@ -1371,391 +1855,6 @@
                 };
                 document.body.removeEventListener('click', emojiDelegator);
                 document.body.addEventListener('click', emojiDelegator);
-
-                function setCustomEmojiDisplay(emoji) {
-                    if (customEmojiInput) customEmojiInput.value = emoji || '';
-                    if (!emojiTriggerBtn) return;
-                    if (emoji) {
-                        emojiTriggerBtn.textContent = emoji;
-                        if (typeof window.parseEmojis === 'function') window.parseEmojis(emojiTriggerBtn);
-                        emojiTriggerBtn.style.color = 'inherit';
-                        emojiTriggerBtn.style.borderColor = 'var(--wp--preset--color--accent-1, #2c6e49)';
-                    } else {
-                        emojiTriggerBtn.innerHTML = '<i class="fa-solid fa-plus" style="font-size: 1rem;" aria-hidden="true"></i>';
-                        emojiTriggerBtn.style.color = '#94a3b8';
-                        emojiTriggerBtn.style.borderColor = '';
-                    }
-                }
-
-                let moodModalParsed = false;
-                if (moodModal && !moodModalParsed) {
-                    if (typeof window.parseEmojis === 'function') window.parseEmojis(moodModal);
-                    moodModalParsed = true;
-                }
-
-                function renderSavedMoods() {
-                    if (!savedMoodsGrid) return;
-
-                    if (manageMoodsBtn) {
-                        if (customMoods.length === 0) {
-                            manageMoodsBtn.style.display = 'none';
-                        } else {
-                            manageMoodsBtn.style.display = 'flex';
-                            manageMoodsBtn.innerHTML = '<i class="fa-solid fa-gear"></i> Manage';
-                        }
-                    }
-
-                    savedMoodsGrid.style.display = 'grid';
-                    savedMoodsGrid.innerHTML = '';
-
-                    const currentEmoji = activeEditMoodForm 
-                        ? (activeEditMoodForm.querySelector('.bs-edit-mood-emoji').value || '') 
-                        : (hMoodEmoji.value || '');
-                    const currentEmotion = activeEditMoodForm 
-                        ? (activeEditMoodForm.querySelector('.bs-edit-mood-emotion').value || '') 
-                        : (hMoodEmotion.value || '');
-
-                    customMoods.forEach(mood => {
-                        const btn = document.createElement('button');
-                        btn.type = 'button';
-                        btn.className = 'bitstream-mood-btn';
-                        if (currentEmoji === mood.emoji && currentEmotion.toLowerCase() === mood.emotion.toLowerCase()) {
-                            btn.classList.add('is-active', 'is-selected');
-                        }
-                        btn.dataset.emoji = mood.emoji;
-                        btn.dataset.emotion = mood.emotion;
-                        btn.innerHTML = `
-                            <span class="bitstream-mood-btn-emoji">${mood.emoji}</span>
-                            <span class="bitstream-mood-btn-label">${mood.emotion}</span>
-                        `;
-
-                        btn.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            moodModal.querySelectorAll('.bitstream-mood-btn').forEach(b => b.classList.remove('is-active', 'is-selected'));
-                            btn.classList.add('is-active', 'is-selected');
-                        });
-
-                        savedMoodsGrid.appendChild(btn);
-                    });
-                    if (typeof window.parseEmojis === 'function') window.parseEmojis(savedMoodsGrid);
-                }
-
-                if (manageMoodsBtn) {
-                    manageMoodsBtn.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        closeModal('mood');
-                        openModal('settings');
-                        const moodsTabBtn = composerRoot.querySelector('.bitstream-settings-tab[data-settings-tab="moods"]');
-                        if (moodsTabBtn) {
-                            moodsTabBtn.click();
-                        }
-                    });
-                }
-
-                function initSettingsCustomMoods() {
-                    const settingsList = composerRoot.querySelector('#bitstream-settings-saved-moods-list');
-                    const settingsAddBtn = composerRoot.querySelector('#bitstream-settings-add-mood-btn');
-                    const settingsSaveBtn = composerRoot.querySelector('#bitstream-settings-save-moods-btn');
-                    const settingsEmojiTrigger = composerRoot.querySelector('#bitstream-settings-mood-emoji-trigger');
-                    const settingsCustomEmoji = composerRoot.querySelector('#bitstream-settings-mood-custom-emoji');
-                    const settingsCustomEmotion = composerRoot.querySelector('#bitstream-settings-mood-custom-emotion');
-                    const settingsStatus = composerRoot.querySelector('#bitstream-settings-moods-status');
-
-                    if (!settingsList) return;
-
-                    let settingsCustomMoods = JSON.parse(JSON.stringify(customMoods));
-                    let settingsMoodEditsMap = {};
-
-                    function renderSettingsMoods() {
-                        settingsList.innerHTML = '';
-                        if (settingsCustomMoods.length === 0) {
-                            settingsList.innerHTML = '<div style="color: #666; font-size: 0.9rem; text-align: center; padding: 10px 0;">No custom moods saved yet. Add one below!</div>';
-                            return;
-                        }
-
-                        settingsCustomMoods.forEach((mood, index) => {
-                            const row = document.createElement('div');
-                            row.className = 'bitstream-mood-manage-item';
-                            row.style.cssText = 'display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px;';
-                            row.innerHTML = `
-                                <div class="bitstream-mood-manage-info" style="display: flex; gap: 8px; align-items: center; flex: 1;">
-                                    <span class="bs-settings-mood-emoji-display" data-index="${index}" title="Click to change emoji" style="display: flex; align-items: center; justify-content: center; width: 36px; height: 32px; flex-shrink: 0; border: 1.5px solid #e2e8f0; border-radius: 8px; background: #fff; cursor: pointer; box-sizing: border-box; font-size: 1.1rem;">${mood.emoji}</span>
-                                    <input type="text" class="bs-settings-mood-edit-emotion" data-index="${index}" value="${mood.emotion}" style="flex: 1; height: 32px; border: 1.5px solid #e2e8f0; border-radius: 8px; background: #fff; padding: 0 8px; box-sizing: border-box; font-size: 0.85rem;">
-                                </div>
-                                <div class="bitstream-mood-manage-actions" style="display: flex; gap: 4px;">
-                                    <button type="button" class="bitstream-mood-sort-btn bs-settings-mood-up" data-index="${index}" ${index === 0 ? 'disabled' : ''} style="padding: 4px 8px; border: 1px solid #ccc; border-radius: 6px; background: #fff; cursor: pointer;" title="Move Up"><i class="fa-solid fa-arrow-up"></i></button>
-                                    <button type="button" class="bitstream-mood-sort-btn bs-settings-mood-down" data-index="${index}" ${index === settingsCustomMoods.length - 1 ? 'disabled' : ''} style="padding: 4px 8px; border: 1px solid #ccc; border-radius: 6px; background: #fff; cursor: pointer;" title="Move Down"><i class="fa-solid fa-arrow-down"></i></button>
-                                    <button type="button" class="bitstream-mood-delete-btn bs-settings-mood-delete" data-index="${index}" style="padding: 4px 8px; border: 1px solid #ffccd5; color: #d63638; border-radius: 6px; background: #fff; cursor: pointer;" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
-                                </div>
-                            `;
-                            settingsList.appendChild(row);
-
-                            const emojiSpan = row.querySelector('.bs-settings-mood-emoji-display');
-                            if (typeof window.parseEmojis === 'function') window.parseEmojis(emojiSpan);
-
-                            emojiSpan.addEventListener('click', () => {
-                                if (!moodEmojiPicker) return;
-                                const idx = parseInt(emojiSpan.dataset.index, 10);
-                                const oldEmoji = settingsCustomMoods[idx].emoji;
-                                const oldEmotion = settingsCustomMoods[idx].emotion;
-                                moodEmojiPicker.open(emojiSpan, (emoji) => {
-                                    settingsCustomMoods[idx].emoji = emoji;
-                                    const oldKey = `${oldEmoji}|${oldEmotion}`;
-                                    if (oldEmotion && (oldEmoji !== emoji)) {
-                                        settingsMoodEditsMap[oldKey] = { emoji, emotion: oldEmotion };
-                                    }
-                                    emojiSpan.textContent = emoji;
-                                    if (typeof window.parseEmojis === 'function') window.parseEmojis(emojiSpan);
-                                });
-                            });
-                        });
-
-                        let focusOldEmoji = '';
-                        let focusOldEmotion = '';
-
-                        settingsList.querySelectorAll('.bs-settings-mood-edit-emotion').forEach(input => {
-                            input.addEventListener('focus', () => {
-                                const idx = parseInt(input.dataset.index, 10);
-                                focusOldEmoji = settingsCustomMoods[idx].emoji;
-                                focusOldEmotion = settingsCustomMoods[idx].emotion;
-                            });
-
-                            input.addEventListener('change', () => {
-                                const idx = parseInt(input.dataset.index, 10);
-                                const oldKey = `${focusOldEmoji}|${focusOldEmotion}`;
-                                settingsCustomMoods[idx].emotion = input.value.trim();
-                                const newEmoji = settingsCustomMoods[idx].emoji;
-                                const newEmotion = settingsCustomMoods[idx].emotion;
-                                if (newEmotion && (focusOldEmoji !== newEmoji || focusOldEmotion !== newEmotion)) {
-                                    settingsMoodEditsMap[oldKey] = { emoji: newEmoji, emotion: newEmotion };
-                                }
-                            });
-                        });
-
-                        settingsList.querySelectorAll('.bs-settings-mood-up').forEach(btn => {
-                            btn.addEventListener('click', (e) => {
-                                e.preventDefault();
-                                const idx = parseInt(btn.dataset.index, 10);
-                                if (idx > 0) {
-                                    const temp = settingsCustomMoods[idx];
-                                    settingsCustomMoods[idx] = settingsCustomMoods[idx - 1];
-                                    settingsCustomMoods[idx - 1] = temp;
-                                    renderSettingsMoods();
-                                }
-                            });
-                        });
-
-                        settingsList.querySelectorAll('.bs-settings-mood-down').forEach(btn => {
-                            btn.addEventListener('click', (e) => {
-                                e.preventDefault();
-                                const idx = parseInt(btn.dataset.index, 10);
-                                if (idx < settingsCustomMoods.length - 1) {
-                                    const temp = settingsCustomMoods[idx];
-                                    settingsCustomMoods[idx] = settingsCustomMoods[idx + 1];
-                                    settingsCustomMoods[idx + 1] = temp;
-                                    renderSettingsMoods();
-                                }
-                            });
-                        });
-
-                        settingsList.querySelectorAll('.bs-settings-mood-delete').forEach(btn => {
-                            btn.addEventListener('click', (e) => {
-                                e.preventDefault();
-                                const idx = parseInt(btn.dataset.index, 10);
-                                settingsCustomMoods.splice(idx, 1);
-                                renderSettingsMoods();
-                            });
-                        });
-                    }
-
-                    if (settingsEmojiTrigger && moodEmojiPicker) {
-                        settingsEmojiTrigger.addEventListener('click', () => {
-                            moodEmojiPicker.open(settingsEmojiTrigger, (emoji) => {
-                                settingsCustomEmoji.value = emoji;
-                                settingsEmojiTrigger.innerHTML = emoji;
-                                if (typeof window.parseEmojis === 'function') window.parseEmojis(settingsEmojiTrigger);
-                            });
-                        });
-                    }
-
-                    if (settingsAddBtn) {
-                        settingsAddBtn.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            let emoji = settingsCustomEmoji.value.trim();
-                            let emotion = settingsCustomEmotion.value.trim();
-
-                            if (!emotion) return;
-                            if (!emoji) emoji = '😊';
-
-                            settingsCustomMoods.push({ emoji, emotion });
-                            
-                            settingsCustomEmoji.value = '';
-                            settingsEmojiTrigger.innerHTML = '<i class="fa-solid fa-plus" style="font-size: 1rem;"></i>';
-                            settingsCustomEmotion.value = '';
-
-                            renderSettingsMoods();
-                        });
-                    }
-
-                    if (settingsSaveBtn) {
-                        settingsSaveBtn.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            if (!window.bitstream_ajax || !bitstream_ajax.ajax_url || !submitNonce) return;
-
-                            settingsStatus.textContent = 'Saving...';
-                            settingsStatus.style.color = '#666';
-
-                            const syncPayload = new FormData();
-                            syncPayload.append('action', 'bitstream_save_custom_moods');
-                            syncPayload.append('nonce', submitNonce);
-                            syncPayload.append('moods', JSON.stringify(settingsCustomMoods));
-                            syncPayload.append('edits', JSON.stringify(settingsMoodEditsMap));
-
-                            fetch(bitstream_ajax.ajax_url, {
-                                method: 'POST',
-                                credentials: 'same-origin',
-                                body: syncPayload
-                            })
-                            .then(res => res.json())
-                            .then(data => {
-                                if (data.success && data.data && data.data.custom_moods) {
-                                    customMoods = data.data.custom_moods;
-                                    settingsCustomMoods = JSON.parse(JSON.stringify(customMoods));
-                                    settingsMoodEditsMap = {};
-                                    
-                                    renderSettingsMoods();
-                                    renderSavedMoods();
-
-                                    settingsStatus.textContent = 'Saved successfully! Reloading...';
-                                    settingsStatus.style.color = 'var(--wp--preset--color--accent-1, #2c6e49)';
-                                    setTimeout(() => {
-                                        window.location.reload();
-                                    }, 1000);
-                                } else {
-                                    settingsStatus.textContent = 'Error: ' + (data.data || 'Failed to save.');
-                                    settingsStatus.style.color = '#d63638';
-                                }
-                            })
-                            .catch(err => {
-                                console.error('BitStream: Error saving settings moods:', err);
-                                settingsStatus.textContent = 'Connection error.';
-                                settingsStatus.style.color = '#d63638';
-                            });
-                        });
-                    }
-
-                    renderSettingsMoods();
-                }
-
-                initSettingsCustomMoods();
-
-                moodPredefinedButtons.forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        moodModal.querySelectorAll('.bitstream-mood-btn').forEach(b => b.classList.remove('is-active'));
-                        btn.classList.add('is-active');
-                        setCustomEmojiDisplay('');
-                        if (customEmotionInput) customEmotionInput.value = '';
-                    });
-                });
-
-                const clearHighlights = () => {
-                    moodModal.querySelectorAll('.bitstream-mood-btn').forEach(b => b.classList.remove('is-active'));
-                };
-
-                if (emojiTriggerBtn && moodEmojiPicker) {
-                    emojiTriggerBtn.addEventListener('click', () => {
-                        clearHighlights();
-                        moodEmojiPicker.open(emojiTriggerBtn, (emoji) => {
-                            setCustomEmojiDisplay(emoji);
-                        });
-                    });
-                }
-
-                if (customEmotionInput) {
-                    customEmotionInput.addEventListener('input', clearHighlights);
-                }
-
-                if (moodDoneBtn) {
-                    moodDoneBtn.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        let emoji = '';
-                        let emotion = '';
-
-                        const activeBtn = moodModal.querySelector('.bitstream-mood-btn.is-active');
-                        if (activeBtn) {
-                            emoji = activeBtn.dataset.emoji || '';
-                            emotion = activeBtn.dataset.emotion || '';
-                        } else {
-                            emoji = customEmojiInput ? customEmojiInput.value.trim() : '';
-                            emotion = customEmotionInput ? customEmotionInput.value.trim() : '';
-                        }
-
-                        if (emotion && !emoji) {
-                            emoji = '😊';
-                        }
-
-                        if (activeEditMoodForm) {
-                            const editEmojiInput = activeEditMoodForm.querySelector('.bs-edit-mood-emoji');
-                            const editEmotionInput = activeEditMoodForm.querySelector('.bs-edit-mood-emotion');
-                            const editMoodLabel = activeEditMoodForm.querySelector('.bs-edit-mood-label');
-                            const editMoodRemove = activeEditMoodForm.querySelector('.bs-edit-mood-remove');
-
-                            if (editEmojiInput) editEmojiInput.value = emoji;
-                            if (editEmotionInput) editEmotionInput.value = emotion;
-
-                            if (editMoodLabel && editMoodRemove) {
-                                if (emotion) {
-                                    editMoodLabel.textContent = `${emoji} Feeling ${emotion}`;
-                                    if (typeof window.parseEmojis === 'function') window.parseEmojis(editMoodLabel);
-                                    editMoodRemove.style.display = 'inline-block';
-                                } else {
-                                    editMoodLabel.textContent = 'Add Mood';
-                                    editMoodRemove.style.display = 'none';
-                                }
-                            }
-                            activeEditMoodForm = null;
-                        } else {
-                            if (hMoodEmoji) hMoodEmoji.value = emoji;
-                            if (hMoodEmotion) hMoodEmotion.value = emotion;
-
-                            if (previewMood && previewMoodText) {
-                                if (emotion) {
-                                    previewMoodText.textContent = `${emoji} Feeling ${emotion}`;
-                                    if (typeof window.parseEmojis === 'function') window.parseEmojis(previewMoodText);
-                                    previewMood.hidden = false;
-                                } else {
-                                    previewMoodText.textContent = '';
-                                    previewMood.hidden = true;
-                                }
-                            }
-                            syncPreviewArea();
-                        }
-
-                        setCustomEmojiDisplay('');
-                        if (customEmotionInput) customEmotionInput.value = '';
-
-                        if (typeof closeAllPopovers === 'function') closeAllPopovers();
-                        closeModal('mood');
-                    });
-                }
-
-                const popoverMoodClearBtn = moodModal ? moodModal.querySelector('#bitstream-popover-mood-clear') : null;
-                if (popoverMoodClearBtn) {
-                    popoverMoodClearBtn.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        if (hMoodEmoji) hMoodEmoji.value = '';
-                        if (hMoodEmotion) hMoodEmotion.value = '';
-                        if (previewMoodText) previewMoodText.textContent = '';
-                        if (previewMood) previewMood.hidden = true;
-                        setCustomEmojiDisplay('');
-                        if (customEmotionInput) customEmotionInput.value = '';
-                        clearHighlights();
-                        syncPreviewArea();
-                        if (typeof closeAllPopovers === 'function') closeAllPopovers();
-                        setStatus('Mood cleared.');
-                    });
-                }
 
                 if (previewMood) {
                     const editBtn = previewMood.querySelector('.bitstream-composer-preview-edit');
@@ -1984,8 +2083,15 @@
                     if (isHidden) {
                         popover.hidden = false;
                         if (triggerBtn) triggerBtn.classList.add('is-active');
-                        if (popoverName === 'mood' && typeof window.parseEmojis === 'function') {
-                            window.parseEmojis(popover);
+                        if (popoverName === 'mood') {
+                            renderMoodReactions();
+                            popover.style.left = '';
+                            popover.style.right = '';
+                            const rect = popover.getBoundingClientRect();
+                            if (rect.right > window.innerWidth - 12) {
+                                popover.style.left = 'auto';
+                                popover.style.right = '0';
+                            }
                         }
                     }
                 }
