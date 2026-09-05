@@ -3444,8 +3444,12 @@
                         closeMore();
                         composerEl.hidden = false;
                         if (typeof window.bitstreamSyncBottomNav === 'function') window.bitstreamSyncBottomNav();
+                        const modalBody = composerEl.querySelector('.bitstream-composer-modal-body');
+                        if (modalBody) modalBody.scrollTop = 0;
                         const textarea = composerEl.querySelector('#bitstream-quick-bit-content');
-                        if (textarea) textarea.focus();
+                        setTimeout(() => {
+                            if (textarea) textarea.focus({ preventScroll: true });
+                        }, 300);
                     }
                 } else {
                     const composerBaseUrl = (window.bitstream_ajax && bitstream_ajax.composer_url) ? bitstream_ajax.composer_url : window.location.href;
