@@ -2869,12 +2869,16 @@
                     }
                 });
 
-                // ── PASTE MEDIA HANDLER ──
-                function handlePastedMedia(files) {
+                // ── COMPOSER MEDIA ATTACH HANDLER ──
+                function uploadComposerMedia(files, retries = 5) {
                     if (!files || files.length === 0) return;
 
                     const uploadFn = window.uploadMultipleFiles || (window.BitStream && window.BitStream.Media && window.BitStream.Media.uploadMultipleFiles);
                     if (typeof uploadFn !== 'function') {
+                        if (retries > 0) {
+                            setTimeout(() => uploadComposerMedia(files, retries - 1), 150);
+                            return;
+                        }
                         setStatus('Media uploader is unavailable.', true);
                         return;
                     }
@@ -2900,6 +2904,7 @@
                         setStatus(err.message || 'Media upload failed.', true);
                     });
                 }
+                const handlePastedMedia = uploadComposerMedia;
 
                 composerRoot.addEventListener('bitstream:paste-media', (e) => {
                     const files = e.detail && e.detail.files;
@@ -3303,27 +3308,10 @@
                             }
 
                             if (payload.mediaFiles && payload.mediaFiles.length > 0) {
-                                if (typeof openModal === 'function') {
-                                    openModal('media');
+                                if (isMobile && typeof openModal === 'function') {
+                                    openModal('composer');
                                 }
-
-                                const mediaModal = composerRoot.querySelector('.bitstream-composer-modal-media');
-                                const mMediaDone = mediaModal ? mediaModal.querySelector('.bitstream-composer-media-done') : null;
-
-                                if (typeof window.uploadMultipleFiles === 'function') {
-                                    window.uploadMultipleFiles(payload.mediaFiles, 'bitstream-composer-modal-media-attachment-id', 'bitstream-composer-modal-media-preview', {
-                                        setStatus: (msg, isError) => setStatus(msg, isError)
-                                    }).then(() => {
-                                        const mediaModal = composerRoot.querySelector('.bitstream-composer-modal-media');
-                                        const mMediaPreview = mediaModal ? mediaModal.querySelector('#bitstream-composer-modal-media-preview') : null;
-                                        const attachments = mMediaPreview ? (typeof window.getExistingAttachments === 'function' ? window.getExistingAttachments(mMediaPreview) : []) : [];
-                                        if (attachments.length > 0 && mMediaDone) {
-                                            mMediaDone.click();
-                                        }
-                                    }).catch(err => {
-                                        console.error('BitStream: PWA shared media upload failed:', err);
-                                    });
-                                }
+                                uploadComposerMedia(payload.mediaFiles);
                             }
 
                             try {
@@ -3332,6 +3320,13 @@
                             } catch (e) {
                                 console.warn('BitStream: Failed to delete processed PWA share payload:', e);
                             }
+
+                            try {
+                                const cleanUrl = new URL(window.location.href);
+                                cleanUrl.searchParams.delete('share_target');
+                                cleanUrl.searchParams.delete('shared_id');
+                                window.history.replaceState({}, '', cleanUrl.toString());
+                            } catch (_) {}
                         };
                     };
                 }

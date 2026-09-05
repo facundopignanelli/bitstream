@@ -250,7 +250,14 @@ async function handleShareTargetPost(request) {
     const title = formData.get('title') || '';
     const text = formData.get('text') || '';
     const url = formData.get('url') || '';
-    const mediaFiles = formData.getAll('media[]').concat(formData.getAll('media')).filter(val => val instanceof File || val instanceof Blob);
+    
+    // Collect all files and blobs from any multipart field
+    const mediaFiles = [];
+    for (const [key, val] of formData.entries()) {
+      if (val instanceof File || val instanceof Blob) {
+        mediaFiles.push(val);
+      }
+    }
     
     const sharedId = 'share-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9);
     
