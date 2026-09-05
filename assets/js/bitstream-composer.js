@@ -1531,8 +1531,9 @@
                             let startX = 0;
                             let startY = 0;
                             let lastDragOverTarget = null;
+                            let isHandlingPointer = false;
 
-                            function triggerHaptic(duration = 50) {
+                            function triggerHaptic(duration = 55) {
                                 try {
                                     if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
                                         const res = navigator.vibrate(duration);
@@ -1552,6 +1553,19 @@
                                 triggerHaptic(60);
                             }
 
+                            function getTargetButton(x, y) {
+                                const allBtns = reactionsList.querySelectorAll('.bitstream-mood-reaction-btn');
+                                for (let i = 0; i < allBtns.length; i++) {
+                                    const b = allBtns[i];
+                                    if (b === btn) continue;
+                                    const r = b.getBoundingClientRect();
+                                    if (x >= r.left - 6 && x <= r.right + 6 && y >= r.top - 50 && y <= r.bottom + 50) {
+                                        return b;
+                                    }
+                                }
+                                return null;
+                            }
+
                             function onDragMove(clientX, clientY) {
                                 const dist = Math.hypot(clientX - startX, clientY - startY);
                                 if (!touchDragging) {
@@ -1563,16 +1577,16 @@
                                     }
                                 }
 
-                                const el = document.elementFromPoint(clientX, clientY);
-                                const target = el ? el.closest('.bitstream-mood-reaction-btn') : null;
-                                reactionsList.querySelectorAll('.bitstream-mood-reaction-btn').forEach(b => b.classList.remove('is-drag-over'));
-                                if (target && target !== btn) {
-                                    target.classList.add('is-drag-over');
+                                const target = getTargetButton(clientX, clientY);
+                                if (target) {
                                     if (target !== lastDragOverTarget) {
+                                        reactionsList.querySelectorAll('.bitstream-mood-reaction-btn').forEach(b => b.classList.remove('is-drag-over'));
+                                        target.classList.add('is-drag-over');
                                         lastDragOverTarget = target;
-                                        triggerHaptic(50);
+                                        setTimeout(() => triggerHaptic(55), 0);
                                     }
                                 } else {
+                                    reactionsList.querySelectorAll('.bitstream-mood-reaction-btn').forEach(b => b.classList.remove('is-drag-over'));
                                     lastDragOverTarget = null;
                                 }
                             }
@@ -1586,14 +1600,14 @@
                                 window.removeEventListener('touchend', onTouchEnd);
                                 window.removeEventListener('touchcancel', onTouchEnd);
 
+                                isHandlingPointer = false;
                                 const wasDragging = touchDragging;
                                 touchDragging = false;
                                 btn.classList.remove('is-dragging');
                                 reactionsList.querySelectorAll('.bitstream-mood-reaction-btn').forEach(b => b.classList.remove('is-drag-over'));
 
                                 if (wasDragging) {
-                                    const el = document.elementFromPoint(clientX, clientY);
-                                    const target = el ? el.closest('.bitstream-mood-reaction-btn') : null;
+                                    const target = lastDragOverTarget || getTargetButton(clientX, clientY);
                                     if (target && target !== btn) {
                                         const targetIdx = parseInt(target.dataset.idx, 10);
                                         if (!isNaN(targetIdx) && targetIdx !== idx) {
@@ -1630,6 +1644,7 @@
 
                             btn.addEventListener('pointerdown', (e) => {
                                 if (e.pointerType === 'mouse') return;
+                                isHandlingPointer = true;
                                 touchDragging = false;
                                 didDrag = false;
                                 lastDragOverTarget = null;
@@ -1647,6 +1662,7 @@
                             });
 
                             btn.addEventListener('touchstart', (e) => {
+                                if (isHandlingPointer) return;
                                 const touch = e.touches[0];
                                 if (!touch) return;
                                 touchDragging = false;
