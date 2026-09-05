@@ -397,6 +397,7 @@ class BitStream_Ajax_Handlers
      */
     public function clear_share_image_cache_for_quoters($quoted_post_id)
     {
+        /** @var \wpdb $wpdb */
         global $wpdb;
         $ids = $wpdb->get_col($wpdb->prepare(
             "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_bitstream_quoted_bit' AND meta_value = %d",
@@ -1379,6 +1380,9 @@ class BitStream_Ajax_Handlers
             if (!empty($og_data['avatar'])) {
                 update_post_meta($post_id, '_bitstream_og_avatar', esc_url_raw($og_data['avatar']));
             }
+            if (!empty($og_data['images'])) {
+                update_post_meta($post_id, '_bitstream_og_images', $og_data['images']);
+            }
             update_post_meta($post_id, '_bitstream_og_fetched', time());
 
             $embed_data = $this->get_rebit_embed_preview_data($url);
@@ -1493,6 +1497,7 @@ class BitStream_Ajax_Handlers
                 ? ($schedule['is_scheduled'] ? "{$item_label} updated and scheduled successfully." : "{$item_label} updated successfully.")
                 : ($schedule['is_scheduled'] ? "{$item_label} scheduled successfully." : "{$item_label} published successfully."));
 
+        /** @var \wpdb $wpdb */
         global $wpdb;
         $draft_count = (int) $wpdb->get_var($wpdb->prepare(
             "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'bit' AND post_status = 'draft' AND post_author = %d",
@@ -1717,6 +1722,7 @@ class BitStream_Ajax_Handlers
         if (!empty($selected_hashtag)) {
             $hashtag_term = $selected_hashtag;
             add_filter('posts_where', $bitstream_hashtag_where = static function ($where) use ($hashtag_term) {
+                /** @var \wpdb $wpdb */
                 global $wpdb;
                 $like = '%#' . $wpdb->esc_like($hashtag_term) . '%';
                 $where .= $wpdb->prepare(" AND {$wpdb->posts}.post_content LIKE %s", $like);
@@ -1799,7 +1805,8 @@ class BitStream_Ajax_Handlers
             }
 
             // Fetch utilizing the robust OG Fetcher class we just upgraded
-            $og_title = $og_desc = $og_img = '';
+            $og_title = $og_desc = $og_img = $og_avatar = '';
+            $og_images = [];
             if (class_exists('BitStream_OG_Fetcher')) {
                 $fetcher = new BitStream_OG_Fetcher();
                 $fetched = $fetcher->fetch_og_data($url);
@@ -1807,6 +1814,8 @@ class BitStream_Ajax_Handlers
                     $og_title = $fetched['title'] ?? '';
                     $og_desc = $fetched['description'] ?? '';
                     $og_img = $fetched['image'] ?? '';
+                    $og_avatar = $fetched['avatar'] ?? '';
+                    $og_images = $fetched['images'] ?? [];
                 }
             }
 
@@ -1815,6 +1824,12 @@ class BitStream_Ajax_Handlers
                 update_post_meta($post_id, '_bitstream_og_title', sanitize_text_field($og_title));
                 update_post_meta($post_id, '_bitstream_og_desc', sanitize_text_field($og_desc));
                 update_post_meta($post_id, '_bitstream_og_image', esc_url_raw($og_img));
+                if (!empty($og_avatar)) {
+                    update_post_meta($post_id, '_bitstream_og_avatar', esc_url_raw($og_avatar));
+                }
+                if (!empty($og_images)) {
+                    update_post_meta($post_id, '_bitstream_og_images', $og_images);
+                }
                 update_post_meta($post_id, '_bitstream_og_fetched', time());
             }
 
@@ -1822,6 +1837,8 @@ class BitStream_Ajax_Handlers
                 'title' => $og_title,
                 'description' => $og_desc,
                 'image' => $og_img,
+                'avatar' => $og_avatar,
+                'images' => $og_images,
                 'url' => $url,
                 'stored' => $post_id > 0,
                 'is_embeddable' => $embed_data['is_embeddable'],
@@ -1897,6 +1914,9 @@ class BitStream_Ajax_Handlers
             update_post_meta($preview_post_id, '_bitstream_og_image', esc_url_raw($og_image));
             if (!empty($og_data['avatar'])) {
                 update_post_meta($preview_post_id, '_bitstream_og_avatar', esc_url_raw($og_data['avatar']));
+            }
+            if (!empty($og_data['images'])) {
+                update_post_meta($preview_post_id, '_bitstream_og_images', $og_data['images']);
             }
 
             $embed_data = $this->get_rebit_embed_preview_data($url);
@@ -2425,6 +2445,7 @@ class BitStream_Ajax_Handlers
                         continue;
                     }
 
+                    /** @var \wpdb $wpdb */
                     global $wpdb;
                     $matched_post_ids = $wpdb->get_col($wpdb->prepare(
                         "SELECT DISTINCT p.ID

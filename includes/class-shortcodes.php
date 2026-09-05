@@ -623,6 +623,22 @@ class BitStream_Shortcodes
         $highlight_scheduled_id = isset($_GET['highlight_scheduled']) ? intval($_GET['highlight_scheduled']) : 0;
         $highlight_draft_id = isset($_GET['highlight_draft']) ? intval($_GET['highlight_draft']) : 0;
 
+        $draft_count = get_user_meta($author_id, '_bitstream_draft_count', true);
+        if ($draft_count === '') {
+            $draft_count = (int) $drafts_query->post_count;
+            update_user_meta($author_id, '_bitstream_draft_count', $draft_count);
+        } else {
+            $draft_count = (int) $draft_count;
+        }
+
+        $future_count = get_user_meta($author_id, '_bitstream_scheduled_count', true);
+        if ($future_count === '') {
+            $future_count = (int) $scheduled_query->post_count;
+            update_user_meta($author_id, '_bitstream_scheduled_count', $future_count);
+        } else {
+            $future_count = (int) $future_count;
+        }
+
         ob_start();
         ?>
         <section class="bitstream-composer bitstream-composer" data-submit-nonce="<?php echo esc_attr($submit_nonce); ?>"
@@ -637,8 +653,22 @@ class BitStream_Shortcodes
                     </button>
                 </header>
                 <div class="bitstream-composer-modal-body">
-                    <h3 class="bitstream-feed-sidebar-title hide-on-mobile"
-                        style="color: var(--wp--preset--color--accent-1, #2c6e49); margin-bottom: 0.65rem;">Post a Bit</h3>
+                    <div class="bitstream-composer-top-bar hide-on-mobile">
+                        <h3 class="bitstream-feed-sidebar-title"
+                            style="color: var(--wp--preset--color--accent-1, #2c6e49); margin-bottom: 0;">Post a Bit</h3>
+                        <div class="bitstream-composer-header-actions">
+                            <button type="button" class="bitstream-composer-pill-btn" data-composer-modal-trigger="drafts"<?php echo ($draft_count === 0 ? ' hidden' : ''); ?>>
+                                <i class="fa-regular fa-file-lines" aria-hidden="true"></i>
+                                <span>Drafts</span>
+                                <span class="bitstream-composer-pill-count"><?php echo $draft_count; ?></span>
+                            </button>
+                            <button type="button" class="bitstream-composer-pill-btn" data-composer-modal-trigger="scheduled-list"<?php echo ($future_count === 0 ? ' hidden' : ''); ?>>
+                                <i class="fa-regular fa-clock" aria-hidden="true"></i>
+                                <span>Scheduled</span>
+                                <span class="bitstream-composer-pill-count"><?php echo $future_count; ?></span>
+                            </button>
+                        </div>
+                    </div>
                     <form class="bitstream-sidebar-composer-form bitstream-composer-form"
                         data-composer-type="<?php echo esc_attr($composer_type_prefill); ?>">
                         <!-- Drag & Drop Overlay -->
@@ -671,6 +701,20 @@ class BitStream_Shortcodes
                             </button>
                         </div>
 
+                        <!-- Mobile Drafts & Scheduled Pills (below textarea for easy thumb reach) -->
+                        <div class="bitstream-composer-mobile-pills">
+                            <button type="button" class="bitstream-composer-pill-btn" data-composer-modal-trigger="drafts"<?php echo ($draft_count === 0 ? ' hidden' : ''); ?>>
+                                <i class="fa-regular fa-file-lines" aria-hidden="true"></i>
+                                <span>Drafts</span>
+                                <span class="bitstream-composer-pill-count"><?php echo $draft_count; ?></span>
+                            </button>
+                            <button type="button" class="bitstream-composer-pill-btn" data-composer-modal-trigger="scheduled-list"<?php echo ($future_count === 0 ? ' hidden' : ''); ?>>
+                                <i class="fa-regular fa-clock" aria-hidden="true"></i>
+                                <span>Scheduled</span>
+                                <span class="bitstream-composer-pill-count"><?php echo $future_count; ?></span>
+                            </button>
+                        </div>
+
                         <!-- Upload Progress Bar -->
                         <div class="bitstream-media-progress is-hidden" data-progress-bar="bitstream-composer-attachment-id">
                             <div class="bitstream-media-progress-track">
@@ -679,18 +723,7 @@ class BitStream_Shortcodes
                             <span class="bitstream-media-progress-text">Uploading...</span>
                         </div>
 
-                        <!-- Inline Rebit URL Input Bar -->
-                        <div class="bitstream-composer-inline-rebit-bar" id="bitstream-composer-inline-rebit-bar" hidden>
-                            <div class="bitstream-composer-inline-rebit-input-wrap">
-                                <i class="fa-solid fa-link bitstream-composer-inline-rebit-icon" aria-hidden="true"></i>
-                                <input type="url" id="bitstream-composer-inline-rebit-input" placeholder="Paste link (https://...)" aria-label="Link URL">
-                                <button type="button" class="bitstream-composer-inline-rebit-fetch-btn" id="bitstream-composer-inline-rebit-fetch-btn">Fetch</button>
-                                <button type="button" class="bitstream-composer-inline-rebit-close-btn" id="bitstream-composer-inline-rebit-close-btn" title="Cancel link" aria-label="Cancel link">
-                                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-                                </button>
-                            </div>
-                            <div class="bitstream-composer-inline-rebit-status" id="bitstream-composer-inline-rebit-status" hidden></div>
-                        </div>
+
 
                         <!-- Hidden Native File Input for Direct Uploads -->
                         <input type="file" id="bitstream-composer-file-input" class="bitstream-composer-file-input" accept="image/*,video/*" multiple style="display:none;" aria-hidden="true">
@@ -858,10 +891,33 @@ class BitStream_Shortcodes
 
                         <!-- Action buttons row with anchored popovers -->
                         <div class="bitstream-composer-actions-row">
-                            <button type="button" class="bitstream-composer-action-btn" data-composer-action="rebit"
-                                title="Add Link / Rebit" aria-label="Add Link / Rebit">
-                                <i class="fa-solid fa-link" aria-hidden="true"></i>
-                            </button>
+                            <!-- Rebit Popover Anchor -->
+                            <div class="bitstream-composer-popover-anchor">
+                                <button type="button" class="bitstream-composer-action-btn" data-composer-popover-trigger="rebit"
+                                    title="Add Link / Rebit" aria-label="Add Link / Rebit">
+                                    <i class="fa-solid fa-link" aria-hidden="true"></i>
+                                </button>
+                                <div class="bitstream-composer-popover bitstream-composer-popover-rebit" id="bitstream-composer-popover-rebit" hidden>
+                                    <div class="bitstream-composer-popover-header">
+                                        <h4>Add Link</h4>
+                                        <button type="button" class="bitstream-composer-popover-close" data-popover-close="rebit" aria-label="Close">&times;</button>
+                                    </div>
+                                    <div class="bitstream-composer-popover-body">
+                                        <div class="bitstream-rebit-popover-row">
+                                            <label for="bitstream-composer-rebit-popover-input">Link URL:</label>
+                                            <div class="bitstream-rebit-popover-input-wrap">
+                                                <i class="fa-solid fa-link bitstream-rebit-popover-icon" aria-hidden="true"></i>
+                                                <input type="url" id="bitstream-composer-rebit-popover-input" class="bitstream-rebit-popover-input" placeholder="https://..." aria-label="Link URL" value="<?php echo esc_url($shared_url); ?>">
+                                            </div>
+                                        </div>
+                                        <div class="bitstream-rebit-popover-status" id="bitstream-composer-rebit-popover-status" hidden></div>
+                                    </div>
+                                    <div class="bitstream-composer-popover-footer">
+                                        <button type="button" class="bitstream-composer-popover-btn-clear" id="bitstream-composer-rebit-popover-cancel" data-popover-close="rebit">Cancel</button>
+                                        <button type="button" class="bitstream-composer-popover-btn-confirm" id="bitstream-composer-rebit-popover-fetch">Attach Link</button>
+                                    </div>
+                                </div>
+                            </div>
                             
                             <!-- Media Popover Anchor -->
                             <div class="bitstream-composer-popover-anchor">
@@ -898,13 +954,8 @@ class BitStream_Shortcodes
                                         <button type="button" class="bitstream-composer-popover-close" data-popover-close="schedule" aria-label="Close">&times;</button>
                                     </div>
                                     <div class="bitstream-composer-popover-body">
-                                        <div class="bitstream-schedule-presets">
-                                            <button type="button" class="bitstream-schedule-preset-btn" data-preset="tomorrow-morning">Tomorrow 9:00 AM</button>
-                                            <button type="button" class="bitstream-schedule-preset-btn" data-preset="tomorrow-evening">Tomorrow 6:00 PM</button>
-                                            <button type="button" class="bitstream-schedule-preset-btn" data-preset="in-2-days">In 2 Days</button>
-                                        </div>
                                         <div class="bitstream-schedule-custom-row">
-                                            <label for="bitstream-popover-schedule-datetime">Custom Date &amp; Time:</label>
+                                            <label for="bitstream-popover-schedule-datetime">Date &amp; Time:</label>
                                             <input type="datetime-local" id="bitstream-popover-schedule-datetime" class="bitstream-composer-schedule-datetime-input">
                                         </div>
                                     </div>
@@ -1379,8 +1430,10 @@ class BitStream_Shortcodes
             $hashtag_term = $selected_hashtag;
             add_filter('posts_where', $bitstream_hashtag_where = static function ($where) use ($hashtag_term) {
                 global $wpdb;
-                $like = '%#' . $wpdb->esc_like($hashtag_term) . '%';
-                $where .= $wpdb->prepare(" AND {$wpdb->posts}.post_content LIKE %s", $like);
+                if ($wpdb instanceof \wpdb) {
+                    $like = '%#' . $wpdb->esc_like($hashtag_term) . '%';
+                    $where .= $wpdb->prepare(" AND {$wpdb->posts}.post_content LIKE %s", $like);
+                }
                 return $where;
             });
         }
@@ -1466,7 +1519,6 @@ class BitStream_Shortcodes
 
         echo '<div class="bitstream-feed-layout">';
 
-        $desktop_quick_actions = self::render_quick_action_links();
         $desktop_composer = self::render_composer_form();
         $desktop_rss_links = self::render_public_rss_links();
         $desktop_push_button = self::render_public_push_subscription_button();
@@ -1480,14 +1532,6 @@ class BitStream_Shortcodes
             echo '<div class="bitstream-intro-box">';
             echo '<h3 class="bitstream-feed-sidebar-title">' . esc_html($intro_title) . '</h3>';
             echo '<p class="bitstream-intro-text">' . nl2br(esc_html($intro_text)) . '</p>';
-            echo '</div>';
-            echo '</aside>';
-        }
-
-        if (!empty($desktop_quick_actions)) {
-            echo '<aside class="hide-on-mobile">';
-            echo '<div class="bitstream-feed-sidebar">';
-            echo $desktop_quick_actions;
             echo '</div>';
             echo '</aside>';
         }
@@ -1763,7 +1807,7 @@ class BitStream_Shortcodes
         echo '</div>';
         echo '</aside>';
 
-        if (!empty($desktop_rss_links) || !empty($desktop_push_button)) {
+        if (!empty($desktop_rss_links) || !empty($desktop_push_button) || current_user_can('manage_options')) {
             echo '<aside class="hide-on-mobile">';
             echo '<div class="bitstream-feed-sidebar">';
             if (!empty($desktop_push_button)) {
@@ -1771,6 +1815,12 @@ class BitStream_Shortcodes
             }
             if (!empty($desktop_rss_links)) {
                 echo $desktop_rss_links;
+            }
+            if (current_user_can('manage_options')) {
+                echo '<a class="bitstream-filter-link bitstream-quick-action-link bitstream-settings-link" href="#" data-composer-modal-trigger="settings">';
+                echo '<i class="fa-solid fa-gear" aria-hidden="true"></i>';
+                echo '<span>Settings</span>';
+                echo '</a>';
             }
             echo '</div>';
             echo '</aside>';
@@ -1784,28 +1834,8 @@ class BitStream_Shortcodes
 
         echo '</div>'; // End feed layout
 
-        $draft_count = 0;
-        if (current_user_can('edit_posts')) {
-            $author_id = get_current_user_id();
-            $draft_count = get_user_meta($author_id, '_bitstream_draft_count', true);
-            if ($draft_count === '') {
-                $draft_count = (int) (new WP_Query([
-                    'post_type' => 'bit',
-                    'post_status' => 'draft',
-                    'author' => $author_id,
-                    'posts_per_page' => 1,
-                    'fields' => 'ids'
-                ]))->found_posts;
-            } else {
-                $draft_count = (int) $draft_count;
-            }
-        }
-
         $filters_active = $has_active_filters ? '1' : '0';
         $nav_classes = 'bitstream-bottom-nav';
-        if (current_user_can('edit_posts')) {
-            $nav_classes .= ' has-compose-btn';
-        }
 
         $highlight_id = isset($_GET['highlight_bit']) ? intval($_GET['highlight_bit']) : 0;
         $home_icon = ($highlight_id > 0) ? 'fa-arrow-left' : 'fa-house';
@@ -1818,12 +1848,6 @@ class BitStream_Shortcodes
         echo '<i class="fa-solid ' . esc_attr($home_icon) . '" aria-hidden="true"></i><span>' . esc_html($home_text) . '</span></button>';
         echo '<button class="bitstream-bottom-nav-btn" id="bs-nav-search" aria-label="Search &amp; Filter">';
         echo '<i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span>Search</span></button>';
-        if (current_user_can('edit_posts')) {
-            echo '<button class="bitstream-bottom-nav-btn is-compose" id="bs-nav-compose" aria-label="Compose">';
-            echo '<i class="fa-solid fa-pen" aria-hidden="true"></i><span>Compose</span></button>';
-            echo '<button class="bitstream-bottom-nav-btn" id="bs-nav-drafts" data-composer-modal-trigger="drafts" data-drafts-count="' . esc_attr($draft_count) . '" aria-label="Drafts">';
-            echo '<i class="fa-solid fa-file-lines" aria-hidden="true"></i><span>Drafts</span></button>';
-        }
         echo '<button class="bitstream-bottom-nav-btn" id="bs-nav-more" aria-label="More options">';
         echo '<i class="fa-solid fa-ellipsis" aria-hidden="true"></i><span>More</span></button>';
         echo '</nav>';
@@ -1970,25 +1994,6 @@ class BitStream_Shortcodes
         echo '<div class="bs-more-section">';
         echo '<p class="bs-more-section-title">General</p>';
 
-        if (current_user_can('edit_posts')) {
-            $author_id = get_current_user_id();
-            $future_count = get_user_meta($author_id, '_bitstream_scheduled_count', true);
-            if ($future_count === '') {
-                $future_count = (int) (new WP_Query([
-                    'post_type' => 'bit',
-                    'post_status' => 'future',
-                    'author' => $author_id,
-                    'posts_per_page' => 1,
-                    'fields' => 'ids'
-                ]))->found_posts;
-            } else {
-                $future_count = (int) $future_count;
-            }
-
-            echo '<a class="bs-more-row" href="#" data-composer-modal-trigger="scheduled-list">';
-            echo '<i class="fa-solid fa-clock" aria-hidden="true"></i><span>Scheduled (' . $future_count . ')</span>';
-            echo '</a>';
-        }
 
         if (current_user_can('manage_options')) {
             echo '<a class="bs-more-row" href="#" data-composer-modal-trigger="settings">';
@@ -2019,6 +2024,12 @@ class BitStream_Shortcodes
         echo '<button type="button" class="bitstream-composer-modal-cancel" id="bs-about-modal-cancel-btn">Close</button>';
         echo '</footer>';
         echo '</div></div>';
+        
+        if (current_user_can('edit_posts')) {
+            echo '<button type="button" class="bitstream-compose-fab" id="bs-compose-fab" aria-label="Compose">';
+            echo '<i class="fa-solid fa-pen" aria-hidden="true"></i>';
+            echo '</button>';
+        }
 
         wp_reset_postdata();
         return ob_get_clean();
@@ -2719,7 +2730,9 @@ class BitStream_Shortcodes
             }
         }
 
-        $wpdb->query("DELETE FROM {$wpdb->postmeta} WHERE meta_key IN ('_bitstream_share_image_url', '_bitstream_share_image_path')");
+        if ($wpdb instanceof \wpdb) {
+            $wpdb->query("DELETE FROM {$wpdb->postmeta} WHERE meta_key IN ('_bitstream_share_image_url', '_bitstream_share_image_path')");
+        }
 
         return $count;
     }

@@ -120,6 +120,7 @@
     border-radius: 15px;
     overflow: hidden;
     -webkit-mask-image: -webkit-radial-gradient(white, black);
+    mask-image: radial-gradient(white, black);
     background: #fff;
     color-scheme: light;
 }
@@ -496,88 +497,6 @@
 }
 
 /* Inline Rebit URL Input Bar */
-.bitstream-composer-inline-rebit-bar {
-    margin-top: 0.5rem;
-    margin-bottom: 0.5rem;
-    background: #f8fafc;
-    border: 1.5px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 0.4rem 0.6rem;
-    transition: border-color 0.15s, box-shadow 0.15s;
-}
-
-.bitstream-composer-inline-rebit-bar:focus-within {
-    border-color: var(--wp--preset--color--accent-1, #2c6e49);
-    box-shadow: 0 0 0 3px rgba(44, 110, 73, 0.12);
-    background: #fff;
-}
-
-.bitstream-composer-inline-rebit-input-wrap {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.bitstream-composer-inline-rebit-icon {
-    color: var(--wp--preset--color--accent-1, #2c6e49);
-    font-size: 0.9rem;
-    flex-shrink: 0;
-}
-
-.bitstream-composer-inline-rebit-input-wrap input {
-    flex: 1;
-    border: none !important;
-    background: transparent !important;
-    padding: 0.25rem 0 !important;
-    font-size: 0.88rem !important;
-    color: #1e293b !important;
-    outline: none !important;
-    box-shadow: none !important;
-}
-
-.bitstream-composer-inline-rebit-fetch-btn {
-    background: var(--wp--preset--color--accent-1, #2c6e49);
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    padding: 0.3rem 0.75rem;
-    font-size: 0.8rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: transform 0.1s, opacity 0.15s;
-    flex-shrink: 0;
-}
-
-.bitstream-composer-inline-rebit-fetch-btn:hover {
-    opacity: 0.92;
-    transform: translateY(-1px);
-}
-
-.bitstream-composer-inline-rebit-close-btn {
-    background: none;
-    border: none;
-    color: #94a3b8;
-    cursor: pointer;
-    font-size: 0.9rem;
-    padding: 0.2rem 0.35rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-    flex-shrink: 0;
-    transition: color 0.15s;
-}
-
-.bitstream-composer-inline-rebit-close-btn:hover {
-    color: #ef4444;
-}
-
-.bitstream-composer-inline-rebit-status {
-    font-size: 0.78rem;
-    color: #64748b;
-    padding: 0.25rem 0 0 1.5rem;
-}
-
 /* Inline Rebit Metadata Editor */
 .bitstream-composer-rebit-inline-meta {
     margin-top: 0.75rem;
@@ -796,7 +715,6 @@
 
 /* Anchored Popovers */
 .bitstream-composer-popover[hidden],
-.bitstream-composer-inline-rebit-bar[hidden],
 .bitstream-composer-rebit-inline-meta[hidden] {
     display: none !important;
 }
@@ -857,6 +775,10 @@
     color: var(--wp--preset--color--accent-1, #2c6e49);
 }
 
+.bitstream-composer-popover-rebit {
+    width: 300px;
+}
+
 .bitstream-composer-popover-schedule {
     width: 270px;
 }
@@ -904,33 +826,6 @@
     color: #ef4444;
 }
 
-.bitstream-schedule-presets {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    margin-bottom: 0.65rem;
-}
-
-.bitstream-schedule-preset-btn {
-    width: 100%;
-    text-align: left;
-    padding: 0.4rem 0.6rem;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    font-size: 0.8rem;
-    font-weight: 500;
-    color: #475569;
-    cursor: pointer;
-    transition: background 0.12s, border-color 0.12s;
-}
-
-.bitstream-schedule-preset-btn:hover {
-    background: rgba(44, 110, 73, 0.08);
-    border-color: rgba(44, 110, 73, 0.3);
-    color: var(--wp--preset--color--accent-1, #2c6e49);
-}
-
 .bitstream-schedule-custom-row label {
     display: block;
     font-size: 0.78rem;
@@ -947,6 +842,58 @@
     padding: 0.35rem 0.5rem;
     font-size: 0.82rem;
     background: #f8fafc;
+}
+
+.bitstream-rebit-popover-row label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #64748b;
+    margin-bottom: 0.25rem;
+}
+
+.bitstream-rebit-popover-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0.4rem 0.6rem;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+
+.bitstream-rebit-popover-input-wrap:focus-within {
+    background: #fff;
+    border-color: var(--wp--preset--color--accent-1, #2c6e49);
+    box-shadow: 0 0 0 3px rgba(44, 110, 73, 0.12);
+}
+
+.bitstream-rebit-popover-icon {
+    color: #94a3b8;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.bitstream-rebit-popover-input-wrap input {
+    flex: 1;
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    font-size: 0.82rem !important;
+    color: #1e293b !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.bitstream-rebit-popover-status {
+    font-size: 0.75rem;
+    margin-top: 0.4rem;
+    color: #64748b;
+}
+
+.bitstream-rebit-popover-status.is-error {
+    color: #ef4444;
 }
 
 .bitstream-composer-popover-footer {
@@ -996,6 +943,9 @@
     }
     .bitstream-composer-popover-media {
         width: 200px;
+    }
+    .bitstream-composer-popover-rebit {
+        width: min(300px, calc(100vw - 32px));
     }
     .bitstream-composer-popover-schedule {
         width: min(280px, calc(100vw - 32px));
@@ -1239,6 +1189,7 @@
     margin: 0;
     overflow: hidden;
     -webkit-mask-image: -webkit-radial-gradient(white, black);
+    mask-image: radial-gradient(white, black);
 }
 
 /* Landscape/Square composer preview images */
@@ -1273,6 +1224,7 @@
     display: block !important;
     border-radius: 0 !important;
     -webkit-mask-image: none !important;
+    mask-image: none !important;
 }
 
 
@@ -1974,10 +1926,6 @@ a.bitstream-filter-chip:hover {
         box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.06);
     }
 
-    .bitstream-bottom-nav.has-compose-btn {
-        grid-template-columns: repeat(5, 1fr);
-    }
-
     .bitstream-bottom-nav-btn {
         display: flex;
         flex-direction: column;
@@ -2029,38 +1977,56 @@ a.bitstream-filter-chip:hover {
         border: 1.5px solid #fff;
     }
 
-    /* Red count badge on the Drafts button when drafts are present */
-    .bitstream-bottom-nav-btn[data-drafts-count]:not([data-drafts-count="0"])::after {
-        content: attr(data-drafts-count);
-        position: absolute;
-        top: 2px;
-        right: calc(50% - 16px);
-        background: #e11d48;
-        /* Red badge */
+    /* Compose Floating Action Button (FAB) */
+    .bitstream-compose-fab {
+        position: fixed;
+        bottom: calc(56px + env(safe-area-inset-bottom) + 16px);
+        right: 16px;
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        background: var(--wp--preset--color--accent-1, #2c6e49);
         color: #fff;
-        font-size: 0.55rem;
-        font-weight: 700;
-        min-width: 14px;
-        height: 14px;
-        border-radius: 7px;
+        border: none;
+        box-shadow: 0 4px 14px rgba(44, 110, 73, 0.35);
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 0 3px;
-        border: 1.5px solid #fff;
-        box-sizing: border-box;
+        cursor: pointer;
+        z-index: 100004;
+        transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .bitstream-compose-fab i {
+        font-size: 1.25rem;
         line-height: 1;
+        margin: 0;
+        padding: 0;
+        color: #fff;
     }
 
-    /* Compose button — matches standard buttons but colored accent-1 by default */
-    .bitstream-bottom-nav-btn.is-compose {
-        color: var(--wp--preset--color--accent-1, #2c6e49);
+    .bitstream-compose-fab:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(44, 110, 73, 0.45);
     }
 
-    .bitstream-bottom-nav-btn.is-compose i {
-        margin: 0 !important;
-        /* Force center alignment */
-        padding: 0 !important;
+    .bitstream-compose-fab:active {
+        transform: scale(0.92);
+        box-shadow: 0 2px 8px rgba(44, 110, 73, 0.3);
+    }
+
+    /* Hide FAB when composer screen, search screen, or more sheet are active */
+    body:has(.bitstream-composer:not([hidden])) .bitstream-compose-fab,
+    body:has(.bitstream-mobile-screen:not([hidden])) .bitstream-compose-fab,
+    body:has(.bitstream-bottom-sheet:not([hidden])) .bitstream-compose-fab,
+    body:has(.bitstream-bottom-sheet-backdrop:not([hidden])) .bitstream-compose-fab,
+    body:has(#bs-about-modal:not([hidden])) .bitstream-compose-fab,
+    .bitstream-composer:not([hidden]) ~ .bitstream-compose-fab,
+    .bitstream-mobile-screen:not([hidden]) ~ .bitstream-compose-fab,
+    .bitstream-bottom-sheet:not([hidden]) ~ .bitstream-compose-fab,
+    .bitstream-bottom-sheet-backdrop:not([hidden]) ~ .bitstream-compose-fab {
+        display: none !important;
     }
 
     /* Feed padding so content doesn't hide behind the nav bar */
@@ -4313,6 +4279,7 @@ video {
     border: 1px solid #ddd;
     overflow: hidden;
     -webkit-mask-image: -webkit-radial-gradient(white, black);
+    mask-image: radial-gradient(white, black);
 }
 
 
@@ -5228,6 +5195,129 @@ body.bitstream-cropper-open {
     }
 }
 
+/* ── Composer Header Top Bar & Action Pills (Drafts / Scheduled) ── */
+@media (min-width: 1024px) {
+    .bitstream-composer-top-bar {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+        margin-bottom: 0.65rem;
+    }
+}
+
+@media (max-width: 1023px) {
+    .bitstream-composer-top-bar {
+        display: none !important;
+    }
+}
+
+.bitstream-composer-top-bar .bitstream-feed-sidebar-title {
+    margin: 0 !important;
+    line-height: 1.2;
+}
+
+.bitstream-composer-mobile-pills {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+@media (min-width: 1024px) {
+    .bitstream-composer-mobile-pills {
+        display: none !important;
+    }
+}
+
+.bitstream-composer-header-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px;
+}
+
+.bitstream-composer-pill-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    background: rgba(44, 110, 73, 0.07);
+    border: 1px solid rgba(44, 110, 73, 0.18);
+    border-radius: 9999px;
+    cursor: pointer;
+    line-height: 1.3;
+    text-decoration: none;
+    transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    -webkit-tap-highlight-color: transparent;
+}
+
+.bitstream-composer-pill-btn i {
+    font-size: 0.78rem;
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    opacity: 0.9;
+}
+
+.bitstream-composer-pill-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--wp--preset--color--accent-1, #2c6e49);
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 700;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    border-radius: 9999px;
+    line-height: 1;
+}
+
+.bitstream-composer-pill-btn:hover {
+    background: rgba(44, 110, 73, 0.14);
+    border-color: var(--wp--preset--color--accent-1, #2c6e49);
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(44, 110, 73, 0.12);
+}
+
+.bitstream-composer-pill-btn:active {
+    transform: translateY(0);
+}
+
+.bitstream-composer-pill-btn[hidden] {
+    display: none !important;
+}
+
+body.dark-mode .bitstream-composer-pill-btn,
+.dark-theme .bitstream-composer-pill-btn {
+    background: rgba(74, 222, 128, 0.1);
+    border-color: rgba(74, 222, 128, 0.25);
+    color: #4ade80;
+}
+
+body.dark-mode .bitstream-composer-pill-btn i,
+.dark-theme .bitstream-composer-pill-btn i {
+    color: #4ade80;
+}
+
+body.dark-mode .bitstream-composer-pill-count,
+.dark-theme .bitstream-composer-pill-count {
+    background: #4ade80;
+    color: #1a1a1a;
+}
+
+body.dark-mode .bitstream-composer-pill-btn:hover,
+.dark-theme .bitstream-composer-pill-btn:hover {
+    background: rgba(74, 222, 128, 0.18);
+    border-color: #4ade80;
+    color: #4ade80;
+}
+
 /* Twitter / X Embed Container & Native Tweet Card */
 .bit-rebit-embed-twitter {
     position: relative;
@@ -5370,6 +5460,115 @@ body.bitstream-cropper-open {
     word-break: break-word;
 }
 
+.bit-tweet-text a,
+.bit-tweet-link,
+.bit-tweet-mention,
+.bit-tweet-hashtag {
+    color: #1d9bf0;
+    text-decoration: none;
+    word-break: break-word;
+}
+
+.bit-tweet-text a:hover,
+.bit-tweet-link:hover,
+.bit-tweet-mention:hover,
+.bit-tweet-hashtag:hover {
+    text-decoration: underline;
+}
+
+/* Twitter / X Tweet Media & Galleries */
+.bit-tweet-media {
+    position: relative;
+    width: 100%;
+    border-radius: 14px;
+    overflow: hidden;
+    margin: 0.65rem 0 0.5rem 0;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    background: #000000;
+}
+
+.bit-tweet-media-link {
+    display: block;
+    position: relative;
+    width: 100%;
+    text-decoration: none;
+    overflow: hidden;
+}
+
+.bit-tweet-thumb {
+    width: 100%;
+    max-height: 480px;
+    object-fit: cover;
+    display: block;
+    transition: opacity 0.2s ease;
+}
+
+.bit-tweet-media-link:hover .bit-tweet-thumb {
+    opacity: 0.95;
+}
+
+.bit-tweet-gallery {
+    display: grid;
+    gap: 4px;
+    border-radius: 14px;
+    overflow: hidden;
+    margin: 0.65rem 0 0.5rem 0;
+    width: 100%;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    background: #000000;
+}
+
+.bit-tweet-gallery-2 {
+    grid-template-columns: 1fr 1fr;
+    aspect-ratio: 16 / 9;
+}
+
+.bit-tweet-gallery-3 {
+    grid-template-columns: 2fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    aspect-ratio: 16 / 9;
+}
+
+.bit-tweet-gallery-3 .bit-tweet-gallery-item:first-child {
+    grid-row: span 2;
+}
+
+.bit-tweet-gallery-4 {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    aspect-ratio: 16 / 9;
+}
+
+.bit-tweet-gallery-item {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+    background-color: #000000;
+}
+
+.bit-tweet-gallery-item .bit-tweet-media-link {
+    height: 100%;
+}
+
+.bit-tweet-gallery-item img {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    object-fit: cover !important;
+    display: block !important;
+    border: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    transition: opacity 0.2s ease;
+}
+
+.bit-tweet-gallery-item:hover img {
+    opacity: 0.92;
+}
+
 .bit-tweet-timestamp {
     margin-top: 0.5rem;
     padding-bottom: 0.65rem;
@@ -5410,6 +5609,81 @@ body.bitstream-cropper-open {
 .bit-tweet-pill-btn:hover {
     background: #eff3f4;
     border-color: #bcc6cc;
+}
+
+/* Twitter Card Dark Mode Overrides */
+body.dark-mode .bit-tweet-card,
+.dark-theme .bit-tweet-card {
+    background: #000000;
+    border-color: #2f3336;
+}
+
+body.dark-mode .bit-tweet-card:hover,
+.dark-theme .bit-tweet-card:hover {
+    background: #080808;
+    border-color: #3e4144;
+}
+
+body.dark-mode .bit-tweet-author,
+.dark-theme .bit-tweet-author {
+    color: #e7e9ea;
+}
+
+body.dark-mode .bit-tweet-handle,
+.dark-theme .bit-tweet-handle {
+    color: #71767b;
+}
+
+body.dark-mode .bit-tweet-x-logo,
+.dark-theme .bit-tweet-x-logo {
+    color: #e7e9ea;
+}
+
+body.dark-mode .bit-tweet-text,
+.dark-theme .bit-tweet-text {
+    color: #e7e9ea;
+}
+
+body.dark-mode .bit-tweet-text a,
+.dark-theme .bit-tweet-text a,
+body.dark-mode .bit-tweet-link,
+.dark-theme .bit-tweet-link,
+body.dark-mode .bit-tweet-mention,
+.dark-theme .bit-tweet-mention,
+body.dark-mode .bit-tweet-hashtag,
+.dark-theme .bit-tweet-hashtag {
+    color: #1d9bf0;
+}
+
+body.dark-mode .bit-tweet-timestamp,
+.dark-theme .bit-tweet-timestamp {
+    border-bottom-color: #2f3336;
+    color: #71767b;
+}
+
+body.dark-mode .bit-tweet-timestamp a,
+.dark-theme .bit-tweet-timestamp a {
+    color: #71767b;
+}
+
+body.dark-mode .bit-tweet-media,
+.dark-theme .bit-tweet-media,
+body.dark-mode .bit-tweet-gallery,
+.dark-theme .bit-tweet-gallery {
+    border-color: #2f3336;
+}
+
+body.dark-mode .bit-tweet-pill-btn,
+.dark-theme .bit-tweet-pill-btn {
+    background: #000000;
+    border-color: #536471;
+    color: #eff3f4;
+}
+
+body.dark-mode .bit-tweet-pill-btn:hover,
+.dark-theme .bit-tweet-pill-btn:hover {
+    background: #181919;
+    border-color: #71767b;
 }
 
 /* Native Instagram Card */
@@ -5682,6 +5956,22 @@ body.bitstream-cropper-open {
     color: #262626;
     margin: 0;
     word-break: break-word;
+}
+
+.bit-instagram-text a,
+.bit-instagram-text .bit-tweet-link,
+.bit-instagram-text .bit-tweet-mention,
+.bit-instagram-text .bit-tweet-hashtag {
+    color: #0095f6;
+    text-decoration: none;
+    word-break: break-word;
+}
+
+.bit-instagram-text a:hover,
+.bit-instagram-text .bit-tweet-link:hover,
+.bit-instagram-text .bit-tweet-mention:hover,
+.bit-instagram-text .bit-tweet-hashtag:hover {
+    text-decoration: underline;
 }
 
 .bit-instagram-timestamp {
@@ -6684,8 +6974,6 @@ iframe[src*="youtube-nocookie.com"] {
     }
 
     .bitstream-composer[data-from-edit-modal="true"]>.bitstream-composer-modal-dialog,
-    .bitstream-composer:has(.bitstream-composer-modal-drafts:not([hidden]))>.bitstream-composer-modal-dialog,
-    .bitstream-composer:has(.bitstream-composer-modal-scheduled-list:not([hidden]))>.bitstream-composer-modal-dialog,
     .bitstream-composer:has(.bitstream-composer-modal-settings:not([hidden]))>.bitstream-composer-modal-dialog {
         display: none !important;
     }
@@ -6723,6 +7011,14 @@ iframe[src*="youtube-nocookie.com"] {
         border-radius: 0 !important;
         z-index: 1;
         flex-shrink: 0;
+    }
+
+    .bitstream-composer>.bitstream-composer-modal-dialog>.bitstream-composer-modal-header .bitstream-composer-header-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-left: auto;
+        margin-right: 0.75rem;
     }
 
     .bitstream-composer>.bitstream-composer-modal-dialog>.bitstream-composer-modal-body {
@@ -7144,13 +7440,14 @@ iframe[src*="youtube-nocookie.com"] {
 
    999 999   .bitstream-lightbox              (media viewer — always topmost)
    100 010   .bitstream-cropper-modal         (image cropper — above everything except lightbox)
+   100 005   .bitstream-bottom-nav            (mobile bottom nav bar)
+   100 004   .bitstream-compose-fab           (mobile compose floating action button)
    100 001   composer sub-modal (mobile)      (.bitstream-composer .bitstream-composer-modal, mobile only)
    100 000   .bitstream-composer (mobile)     (full-screen composer / host for Drafts & Scheduled screens)
     99 990   .bs-edit-modal                   (Edit Bit screen)
     99 997   .bitstream-bottom-sheet          (More sheet drawer)
     99 996   .bitstream-mobile-screen         (Search screen — full-height above nav)
              .bitstream-bottom-sheet-backdrop (More sheet backdrop)
-   100 005   .bitstream-bottom-nav            (mobile bottom nav bar)
     10 000   .bitstream-rebit-editor-modal    (Admin-only Rebit editor — WP dashboard use only)
      9 999   tooltips / dropdowns             (in-page overlays)
    ─────────────────────────────────────────────────────────────────────────── */
@@ -7328,6 +7625,7 @@ iframe[src*="youtube-nocookie.com"] {
     display: block !important;
     border-radius: 0 !important;
     -webkit-mask-image: none !important;
+    mask-image: none !important;
 }
 
 .bitstream-media-preview-remove-item {
@@ -7670,8 +7968,8 @@ body.dark-mode .bitstream-share-popover-label,
 .bitstream-mood-edit-btn {
     background: #f1f5f9;
     border: 1.5px solid #e2e8f0;
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
     display: inline-flex;
     align-items: center;
@@ -7679,9 +7977,10 @@ body.dark-mode .bitstream-share-popover-label,
     color: #64748b;
     cursor: pointer;
     flex-shrink: 0;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
     box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .bitstream-mood-add-btn {

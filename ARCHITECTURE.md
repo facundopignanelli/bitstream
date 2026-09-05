@@ -112,7 +112,7 @@ This index serves as the primary map for understanding the backend and frontend 
 * **Classes & Functions**:
   * `BitStream_OG_Fetcher`: Metadata fetch utility.
     * `fetch_og_data($url)`: Evaluates targets, queries transients, performs oEmbed queries, or makes SSRF-protected HTTP gets to extract title/image/descriptions.
-    * `fetch_twitter_oembed($url)`: Connects to custom fallback pipelines for Twitter/X URLs.
+    * `fetch_twitter_oembed($url)`: Connects to public bridge pipelines (vxtwitter/fxtwitter) and official oEmbed fallback for Twitter/X URLs to extract tweet text, author info, avatar, and media images.
     * `fetch_instagram_data($url)`: Parses Instagram posts, reels, and stories for authors, media, and captions.
 
 ### [includes/class-error-logger.php](includes/class-error-logger.php)
@@ -270,6 +270,7 @@ This index serves as the primary map for understanding the backend and frontend 
   * Lightbox: `999 999`
   * Media Cropper: `100 010`
   * Mobile Bottom Nav: `100 005`
+  * Mobile Compose FAB: `100 004`
   * Sub-modal: `100 001`
   * Composer Screen: `100 000`
   * Edit Modal: `99 990`
@@ -291,7 +292,7 @@ This index serves as the primary map for understanding the backend and frontend 
 * **Description**: Contenteditable micro-editor script. Powers live `#hashtag` coloring, `http://` URL highlighting, caret-anchored autocomplete popup, inline Twemoji rendering, DOM selection range preservation, plain-text paste sanitization, and clipboard image paste detection (`bitstream:paste-media`). Exposed under `window.BitStream.Editor`.
 
 ### [assets/js/bitstream-composer.js](assets/js/bitstream-composer.js)
-* **Description**: Composer and settings controller script. Powers the modal-free inline composing architecture: inline Rebit URL expansion bar with live metadata editing, anchored popovers for Media (native device upload & WP Media Library), Scheduling (presets & custom datetime), and Moods (floating multi-line reaction popover with unified standard/custom emojis, inline mood creator, and full inline Edit Mode with drag-and-drop reordering, delete with 5-second Undo toast, and in-place editing), direct composer drag-and-drop file uploading, character counters, settings forms, PWA share payloads, drafts lists, scheduled list drawers, direct clipboard image paste handling, twemoji lazy-parsing, and unified Composer Edit & Quote Modes (`openEdit`, `openQuote`, `cancelEdit`, and auto-stashed draft protection). Exposed under `window.BitStream.Composer`.
+* **Description**: Composer and settings controller script. Powers the modal-free inline composing architecture: anchored popovers for Link/Rebit (URL fetcher with live metadata editing on preview card), Media (native device upload & WP Media Library), Scheduling (datetime picker), and Moods (floating multi-line reaction popover with unified standard/custom emojis, inline mood creator, and full inline Edit Mode with drag-and-drop reordering, delete with 5-second Undo toast, and in-place editing), direct composer drag-and-drop file uploading, character counters, settings forms, PWA share payloads, drafts lists, scheduled list drawers, direct clipboard image paste handling, twemoji lazy-parsing, and unified Composer Edit & Quote Modes (`openEdit`, `openQuote`, `cancelEdit`, and auto-stashed draft protection). Exposed under `window.BitStream.Composer`.
 
 ### [assets/js/bitstream-timeline.js](assets/js/bitstream-timeline.js)
 * **Description**: Timeline viewer and utilities script. Manages page scroll pagination, comments toggling/styling, media session metadata tracking, exposing hashtag data (`getHashtags()`), push notifications registration, image download protections, and anchored share options popovers (`openShareOptionsModal`) with auto-dismiss on scroll/resize and card capture modal triggers. Exposed under `window.BitStream.Timeline`.

@@ -554,12 +554,11 @@
                         scheduleBtn.classList.remove('is-disabled');
                         scheduleBtn.title = 'Schedule';
                     }
-                    const inlineRebitBar = form.querySelector('#bitstream-composer-inline-rebit-bar');
-                    if (inlineRebitBar) {
-                        inlineRebitBar.hidden = true;
-                        const rInput = inlineRebitBar.querySelector('#bitstream-composer-inline-rebit-input');
+                    const rebitPopover = composerRoot.querySelector('.bitstream-composer-popover-rebit');
+                    if (rebitPopover) {
+                        const rInput = rebitPopover.querySelector('#bitstream-composer-rebit-popover-input, .bitstream-rebit-popover-input');
                         if (rInput) rInput.value = '';
-                        const rStatus = inlineRebitBar.querySelector('#bitstream-composer-inline-rebit-status');
+                        const rStatus = rebitPopover.querySelector('#bitstream-composer-rebit-popover-status');
                         if (rStatus) { rStatus.hidden = true; rStatus.textContent = ''; }
                     }
                     const inlineRebitMeta = form.querySelector('#bitstream-composer-rebit-inline-meta');
@@ -647,9 +646,7 @@
                             } else {
                                 const quickActionSource = composerRoot.dataset.quickActionSource || '';
                                 const shouldCloseComposer = isMobile && !keepPosterOpen && (
-                                    name === 'drafts'
-                                    || name === 'scheduled-list'
-                                    || name === 'settings'
+                                    name === 'settings'
                                     || name === 'about'
                                     || (name === 'rebit' && quickActionSource === 'new-rebit')
                                 );
@@ -699,6 +696,7 @@
                 composerRoot.querySelectorAll('.bitstream-composer-preview-edit[data-composer-edit]').forEach(btn => {
                     btn.addEventListener('click', (e) => {
                         e.preventDefault();
+                        e.stopPropagation();
                         const editType = btn.dataset.composerEdit;
                         if (editType === 'rebit') {
                             if (typeof openRebitMetaEditor === 'function') {
@@ -708,6 +706,7 @@
                             const schedBtn = composerRoot.querySelector('[data-composer-popover-trigger="schedule"]');
                             if (typeof togglePopover === 'function') togglePopover('schedule', schedBtn);
                         } else if (editType === 'mood') {
+                            activeEditMoodForm = null;
                             const moodBtn = composerRoot.querySelector('[data-composer-popover-trigger="mood"]');
                             if (typeof togglePopover === 'function') togglePopover('mood', moodBtn);
                         } else if (editType === 'media') {
@@ -758,6 +757,8 @@
                             if (previewRebitCard) previewRebitCard.innerHTML = '';
                             const inlineRebitMeta = form.querySelector('#bitstream-composer-rebit-inline-meta');
                             if (inlineRebitMeta) inlineRebitMeta.hidden = true;
+                            const rInput = composerRoot.querySelector('#bitstream-composer-rebit-popover-input, .bitstream-rebit-popover-input');
+                            if (rInput) rInput.value = '';
                             form.dataset.composerType = 'bit';
                             if (textarea) textarea.required = true;
                             if (typeof setStatus === 'function') setStatus('');
@@ -1857,21 +1858,7 @@
                 document.body.addEventListener('click', emojiDelegator);
 
                 if (previewMood) {
-                    const editBtn = previewMood.querySelector('.bitstream-composer-preview-edit');
                     const removeBtn = previewMood.querySelector('.bitstream-composer-preview-remove');
-
-                    if (editBtn) {
-                        editBtn.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            activeEditMoodForm = null;
-                            const moodTriggerBtn = composerRoot.querySelector('[data-composer-popover-trigger="mood"]');
-                            if (typeof togglePopover === 'function') {
-                                togglePopover('mood', moodTriggerBtn);
-                            } else {
-                                openModal('mood');
-                            }
-                        });
-                    }
 
                     if (removeBtn) {
                         removeBtn.addEventListener('click', (e) => {
@@ -2075,6 +2062,35 @@
                     composerRoot.querySelectorAll('[data-composer-popover-trigger]').forEach(btn => btn.classList.remove('is-active'));
                 }
 
+                function positionPopover(popover, triggerBtn) {
+                    if (!popover || !triggerBtn) return;
+                    popover.style.left = '0px';
+                    popover.style.right = 'auto';
+
+                    const calc = () => {
+                        const anchorRect = triggerBtn.getBoundingClientRect();
+                        const popoverRect = popover.getBoundingClientRect();
+                        const viewportWidth = window.innerWidth;
+                        const padding = 16;
+
+                        let shiftX = 0;
+                        const rightEdge = anchorRect.left + popoverRect.width;
+                        if (rightEdge > viewportWidth - padding) {
+                            shiftX = (viewportWidth - padding) - rightEdge;
+                        }
+
+                        if (anchorRect.left + shiftX < padding) {
+                            shiftX = padding - anchorRect.left;
+                        }
+
+                        popover.style.left = shiftX + 'px';
+                        popover.style.right = 'auto';
+                    };
+
+                    calc();
+                    requestAnimationFrame(calc);
+                }
+
                 function togglePopover(popoverName, triggerBtn) {
                     const popover = composerRoot.querySelector('.bitstream-composer-popover-' + popoverName);
                     if (!popover) return;
@@ -2083,18 +2099,31 @@
                     if (isHidden) {
                         popover.hidden = false;
                         if (triggerBtn) triggerBtn.classList.add('is-active');
-                        if (popoverName === 'mood') {
-                            renderMoodReactions();
-                            popover.style.left = '';
-                            popover.style.right = '';
-                            const rect = popover.getBoundingClientRect();
-                            if (rect.right > window.innerWidth - 12) {
-                                popover.style.left = 'auto';
-                                popover.style.right = '0';
+                        if (popoverName === 'rebit') {
+                            const rInput = popover.querySelector('#bitstream-composer-rebit-popover-input, .bitstream-rebit-popover-input');
+                            if (rInput) {
+                                if (!rInput.value && hRebitUrl && hRebitUrl.value) {
+                                    rInput.value = hRebitUrl.value;
+                                }
+                                setTimeout(() => {
+                                    rInput.focus();
+                                    rInput.select();
+                                }, 50);
                             }
+                        } else if (popoverName === 'mood') {
+                            renderMoodReactions();
                         }
+                        positionPopover(popover, triggerBtn);
                     }
                 }
+
+                window.addEventListener('resize', () => {
+                    const openPopover = composerRoot.querySelector('.bitstream-composer-popover:not([hidden])');
+                    if (openPopover) {
+                        const trigger = openPopover.parentElement.querySelector('[data-composer-popover-trigger]');
+                        if (trigger) positionPopover(openPopover, trigger);
+                    }
+                });
 
                 composerRoot.querySelectorAll('[data-composer-popover-trigger]').forEach(btn => {
                     btn.addEventListener('click', (e) => {
@@ -2120,20 +2149,14 @@
                 document.addEventListener('keydown', (e) => {
                     if (e.key === 'Escape') {
                         closeAllPopovers();
-                        const inlineRebitBar = form.querySelector('#bitstream-composer-inline-rebit-bar');
-                        if (inlineRebitBar && !inlineRebitBar.hidden && (!hRebitUrl || !hRebitUrl.value)) {
-                            inlineRebitBar.hidden = true;
-                        }
                     }
                 });
 
-                // ── INLINE REBIT BAR & METADATA EDITING ──
-                const rebitActionBtn = composerRoot.querySelector('[data-composer-action="rebit"]');
-                const inlineRebitBar = form.querySelector('#bitstream-composer-inline-rebit-bar');
-                const inlineRebitInput = form.querySelector('#bitstream-composer-inline-rebit-input');
-                const inlineRebitFetchBtn = form.querySelector('#bitstream-composer-inline-rebit-fetch-btn');
-                const inlineRebitCloseBtn = form.querySelector('#bitstream-composer-inline-rebit-close-btn');
-                const inlineRebitStatus = form.querySelector('#bitstream-composer-inline-rebit-status');
+                // ── REBIT POPOVER & METADATA EDITING ──
+                const rebitPopover = composerRoot.querySelector('.bitstream-composer-popover-rebit');
+                const rebitPopoverInput = composerRoot.querySelector('#bitstream-composer-rebit-popover-input, .bitstream-rebit-popover-input');
+                const rebitPopoverFetchBtn = composerRoot.querySelector('#bitstream-composer-rebit-popover-fetch');
+                const rebitPopoverStatus = composerRoot.querySelector('#bitstream-composer-rebit-popover-status');
 
                 const inlineRebitMeta = form.querySelector('#bitstream-composer-rebit-inline-meta');
                 const inlineRebitTitle = form.querySelector('#bitstream-composer-rebit-inline-title');
@@ -2187,17 +2210,20 @@
                     }
                 };
 
-                function setInlineRebitStatus(msg, isError = false) {
-                    if (!inlineRebitStatus) return;
+                function setRebitStatus(msg, isError = false) {
+                    if (!rebitPopoverStatus) return;
                     if (!msg) {
-                        inlineRebitStatus.hidden = true;
-                        inlineRebitStatus.textContent = '';
+                        rebitPopoverStatus.hidden = true;
+                        rebitPopoverStatus.textContent = '';
+                        rebitPopoverStatus.classList.remove('is-error');
                         return;
                     }
-                    inlineRebitStatus.hidden = false;
-                    inlineRebitStatus.textContent = msg;
-                    inlineRebitStatus.style.color = isError ? '#ef4444' : '#2c6e49';
+                    rebitPopoverStatus.hidden = false;
+                    rebitPopoverStatus.textContent = msg;
+                    rebitPopoverStatus.classList.toggle('is-error', !!isError);
+                    rebitPopoverStatus.style.color = isError ? '#ef4444' : '#2c6e49';
                 }
+                const setInlineRebitStatus = setRebitStatus;
 
                 updateModalImagePreview = function () {
                     const imageUrl = hRebitOgImage ? (hRebitOgImage.value || '').trim() : '';
@@ -2345,18 +2371,18 @@
 
                 function fetchAndAttachRebit(url) {
                     if (!url) {
-                        setInlineRebitStatus('Enter a URL first.', true);
+                        setRebitStatus('Enter a URL first.', true);
                         return;
                     }
                     if (!window.bitstream_ajax || !bitstream_ajax.og_fetch_nonce) {
-                        setInlineRebitStatus('Metadata fetcher unavailable.', true);
+                        setRebitStatus('Metadata fetcher unavailable.', true);
                         return;
                     }
-                    if (inlineRebitFetchBtn) {
-                        inlineRebitFetchBtn.disabled = true;
-                        inlineRebitFetchBtn.textContent = 'Fetching...';
+                    if (rebitPopoverFetchBtn) {
+                        rebitPopoverFetchBtn.disabled = true;
+                        rebitPopoverFetchBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Attaching...';
                     }
-                    setInlineRebitStatus('Fetching link preview...');
+                    setRebitStatus('Fetching link preview...');
 
                     const fd = new FormData();
                     fd.append('action', 'bitstream_fetch_og_data');
@@ -2385,9 +2411,9 @@
                             if (previewRebit) previewRebit.hidden = false;
                             syncPreviewArea();
 
-                            if (inlineRebitBar) inlineRebitBar.hidden = true;
-                            if (inlineRebitInput) inlineRebitInput.value = '';
-                            setInlineRebitStatus('');
+                            closeAllPopovers();
+                            if (rebitPopoverInput) rebitPopoverInput.value = '';
+                            setRebitStatus('');
                             setStatus('Rebit attached.');
                         })
                         .catch(err => {
@@ -2399,56 +2425,35 @@
                                 updateRebitEditVisibility(url, true);
                                 if (previewRebit) previewRebit.hidden = false;
                                 syncPreviewArea();
-                                if (inlineRebitBar) inlineRebitBar.hidden = true;
-                                if (inlineRebitInput) inlineRebitInput.value = '';
-                                setInlineRebitStatus('');
+                                closeAllPopovers();
+                                if (rebitPopoverInput) rebitPopoverInput.value = '';
+                                setRebitStatus('');
                                 setStatus('Rebit attached.');
                             } else {
-                                setInlineRebitStatus(err.message || 'Fetch failed.', true);
+                                setRebitStatus(err.message || 'Fetch failed.', true);
                             }
                         })
                         .finally(() => {
-                            if (inlineRebitFetchBtn) {
-                                inlineRebitFetchBtn.disabled = false;
-                                inlineRebitFetchBtn.textContent = 'Fetch';
+                            if (rebitPopoverFetchBtn) {
+                                rebitPopoverFetchBtn.disabled = false;
+                                rebitPopoverFetchBtn.textContent = 'Attach Link';
                             }
                         });
                 }
 
-                if (rebitActionBtn) {
-                    rebitActionBtn.addEventListener('click', (e) => {
+                if (rebitPopoverFetchBtn) {
+                    rebitPopoverFetchBtn.addEventListener('click', (e) => {
                         e.preventDefault();
-                        if (inlineRebitBar) {
-                            inlineRebitBar.hidden = !inlineRebitBar.hidden;
-                            if (!inlineRebitBar.hidden && inlineRebitInput) {
-                                inlineRebitInput.focus();
-                            }
-                        }
-                    });
-                }
-
-                if (inlineRebitCloseBtn) {
-                    inlineRebitCloseBtn.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        if (inlineRebitBar) inlineRebitBar.hidden = true;
-                        if (inlineRebitInput) inlineRebitInput.value = '';
-                        setInlineRebitStatus('');
-                    });
-                }
-
-                if (inlineRebitFetchBtn) {
-                    inlineRebitFetchBtn.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        const url = inlineRebitInput ? inlineRebitInput.value.trim() : '';
+                        const url = rebitPopoverInput ? rebitPopoverInput.value.trim() : '';
                         fetchAndAttachRebit(url);
                     });
                 }
 
-                if (inlineRebitInput) {
-                    inlineRebitInput.addEventListener('keydown', (e) => {
+                if (rebitPopoverInput) {
+                    rebitPopoverInput.addEventListener('keydown', (e) => {
                         if (e.key === 'Enter') {
                             e.preventDefault();
-                            fetchAndAttachRebit(inlineRebitInput.value.trim());
+                            fetchAndAttachRebit(rebitPopoverInput.value.trim());
                         }
                     });
                 }
@@ -2917,51 +2922,6 @@
                     const schedDatetime = schedulePopover.querySelector('.bitstream-composer-schedule-datetime-input');
                     const schedSetBtn = schedulePopover.querySelector('#bitstream-popover-schedule-set');
                     const schedClearBtn = schedulePopover.querySelector('#bitstream-popover-schedule-clear');
-                    const presetBtns = schedulePopover.querySelectorAll('.bitstream-schedule-preset-btn');
-
-                    function formatLocalDatetime(date) {
-                        const year = date.getFullYear();
-                        const month = String(date.getMonth() + 1).padStart(2, '0');
-                        const day = String(date.getDate()).padStart(2, '0');
-                        const hours = String(date.getHours()).padStart(2, '0');
-                        const minutes = String(date.getMinutes()).padStart(2, '0');
-                        return `${year}-${month}-${day}T${hours}:${minutes}`;
-                    }
-
-                    presetBtns.forEach(btn => {
-                        btn.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            const preset = btn.dataset.preset;
-                            const now = new Date();
-                            let targetDate = new Date();
-
-                            if (preset === 'tomorrow-morning') {
-                                targetDate.setDate(now.getDate() + 1);
-                                targetDate.setHours(9, 0, 0, 0);
-                            } else if (preset === 'tomorrow-evening') {
-                                targetDate.setDate(now.getDate() + 1);
-                                targetDate.setHours(18, 0, 0, 0);
-                            } else if (preset === 'in-2-days') {
-                                targetDate.setDate(now.getDate() + 2);
-                                targetDate.setHours(9, 0, 0, 0);
-                            }
-
-                            const val = formatLocalDatetime(targetDate);
-                            if (schedDatetime) schedDatetime.value = val;
-
-                            if (hScheduleEnabled) hScheduleEnabled.value = '1';
-                            if (hScheduleDatetime) hScheduleDatetime.value = val;
-                            if (previewScheduleDate) previewScheduleDate.textContent = targetDate.toLocaleString();
-                            if (previewSchedule) previewSchedule.hidden = false;
-                            if (submitBtn) {
-                                const isEdit = hEditPostId && hEditPostId.value !== '0';
-                                submitBtn.textContent = isEdit ? 'Update Scheduled Post' : 'Schedule Bit';
-                            }
-                            syncPreviewArea();
-                            closeAllPopovers();
-                            setStatus('Schedule set for ' + targetDate.toLocaleString());
-                        });
-                    });
 
                     if (schedSetBtn) {
                         schedSetBtn.addEventListener('click', (e) => {
@@ -3177,16 +3137,16 @@
                                 form.dataset.composerType = 'rebit';
                                 if (textarea) textarea.required = false;
 
-                                const rebitBtn = composerRoot.querySelector('[data-composer-action="rebit"], [data-composer-modal="rebit"]');
+                                const rebitBtn = composerRoot.querySelector('[data-composer-popover-trigger="rebit"], [data-composer-action="rebit"], [data-composer-modal="rebit"]');
                                 if (rebitBtn) {
                                     rebitBtn.click();
                                 }
 
-                                const mRebitUrl = composerRoot.querySelector('#bitstream-composer-inline-rebit-input, #bitstream-composer-modal-rebit-url');
+                                const mRebitUrl = composerRoot.querySelector('#bitstream-composer-rebit-popover-input, #bitstream-composer-inline-rebit-input, #bitstream-composer-modal-rebit-url');
                                 if (mRebitUrl) {
                                     mRebitUrl.value = finalUrl;
                                 }
-                                const mRebitFetch = composerRoot.querySelector('#bitstream-composer-inline-rebit-fetch-btn, .bitstream-composer-rebit-fetch');
+                                const mRebitFetch = composerRoot.querySelector('#bitstream-composer-rebit-popover-fetch, #bitstream-composer-inline-rebit-fetch-btn, .bitstream-composer-rebit-fetch');
                                 if (mRebitFetch) {
                                     mRebitFetch.classList.remove('is-edit-mode');
                                     mRebitFetch.textContent = 'Fetch';

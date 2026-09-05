@@ -1869,9 +1869,21 @@
             if (!container || !container.parentNode) return;
 
             const origBlockquote = card.querySelector('.bit-rebit-embed-twitter blockquote');
+            const origTweetCard = card.querySelector('.bit-tweet-card');
             let tweetText = '';
             let tweetAuthor = '';
-            if (origBlockquote) {
+            let tweetAvatar = '';
+            let tweetImgSrc = '';
+
+            if (origTweetCard) {
+                tweetAuthor = origTweetCard.querySelector('.bit-tweet-author')?.textContent?.trim() || '';
+                tweetText = origTweetCard.querySelector('.bit-tweet-text')?.innerHTML?.trim() || '';
+                tweetAvatar = origTweetCard.querySelector('.bit-tweet-avatar')?.src || '';
+                const thumbEl = origTweetCard.querySelector('.bit-tweet-thumb, .bit-tweet-gallery-item img');
+                tweetImgSrc = thumbEl ? thumbEl.src : '';
+            }
+
+            if (!tweetText && origBlockquote) {
                 const p = origBlockquote.querySelector('p');
                 tweetText = p ? p.textContent.trim() : origBlockquote.textContent.trim();
                 const text = origBlockquote.textContent || '';
@@ -1889,9 +1901,10 @@
             staticTweetCard.innerHTML = `
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.6rem;">
                     <div style="display:flex;align-items:center;gap:8px;">
-                        <div style="width:32px;height:32px;border-radius:50%;background:#000;display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.85rem;">
-                            <i class="fa-brands fa-x-twitter" style="color:#fff;"></i>
-                        </div>
+                        ${tweetAvatar
+                            ? `<img src="${tweetAvatar}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;background:#eff3f4;" crossorigin="anonymous">`
+                            : `<div style="width:32px;height:32px;border-radius:50%;background:#000;display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.85rem;"><i class="fa-brands fa-x-twitter" style="color:#fff;"></i></div>`
+                        }
                         <div>
                             <div style="font-weight:700;font-size:0.88rem;color:#0f172a;">${tweetAuthor || 'X / Twitter'}</div>
                         </div>
@@ -1901,6 +1914,7 @@
                 <div style="font-size:0.9rem;line-height:1.45;color:#1e293b;word-break:break-word;">
                     ${tweetText}
                 </div>
+                ${tweetImgSrc ? `<div style="margin-top:0.6rem;border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;"><img src="${tweetImgSrc}" style="width:100%;max-height:280px;object-fit:cover;display:block;" crossorigin="anonymous"></div>` : ''}
             `;
 
             container.parentNode.replaceChild(staticTweetCard, container);
@@ -3178,7 +3192,7 @@
     function initBottomNavAndSheets() {
         const navHome    = document.getElementById('bs-nav-home');
         const navSearch  = document.getElementById('bs-nav-search');
-        const navCompose = document.getElementById('bs-nav-compose');
+        const navCompose = document.getElementById('bs-compose-fab') || document.getElementById('bs-nav-compose');
         const navDrafts  = document.getElementById('bs-nav-drafts');
         const navMore    = document.getElementById('bs-nav-more');
 
@@ -3189,16 +3203,31 @@
         const moreBackdrop  = document.getElementById('bs-more-backdrop');
         const moreClose     = document.getElementById('bs-more-sheet-close');
 
+        function syncBottomNav() {
+            const composerEl = document.querySelector('.bitstream-composer');
+            const isComposerOpen = composerEl && !composerEl.hidden;
+            const isSearchOpen = searchScreen && !searchScreen.hidden;
+            const isMoreOpen = moreSheet && !moreSheet.hidden;
+            const fab = document.getElementById('bs-compose-fab');
+            if (fab) {
+                fab.style.display = (isComposerOpen || isSearchOpen || isMoreOpen) ? 'none' : '';
+            }
+            if (navHome) navHome.classList.toggle('is-active', !isComposerOpen && !isSearchOpen && !isMoreOpen);
+            if (navSearch) navSearch.classList.toggle('is-active', isSearchOpen);
+            if (navMore) navMore.classList.toggle('is-active', isMoreOpen);
+        }
+        window.bitstreamSyncBottomNav = syncBottomNav;
+
         function closeSearch() {
             if (searchScreen) searchScreen.hidden = true;
             syncLikeButtonState(document);
-            if (typeof window.bitstreamSyncBottomNav === 'function') window.bitstreamSyncBottomNav();
+            syncBottomNav();
         }
 
         function openSearch() {
             closeMore();
             if (searchScreen) searchScreen.hidden = false;
-            if (typeof window.bitstreamSyncBottomNav === 'function') window.bitstreamSyncBottomNav();
+            syncBottomNav();
         }
 
         if (searchScreen) {
@@ -3213,7 +3242,7 @@
         function closeMore() {
             if (moreSheet)    moreSheet.hidden    = true;
             if (moreBackdrop) moreBackdrop.hidden = true;
-            if (typeof window.bitstreamSyncBottomNav === 'function') window.bitstreamSyncBottomNav();
+            syncBottomNav();
         }
 
         window.bitstreamCloseMore = closeMore;
@@ -3223,8 +3252,10 @@
             closeSearch();
             if (moreSheet)    moreSheet.hidden    = false;
             if (moreBackdrop) moreBackdrop.hidden = false;
-            if (typeof window.bitstreamSyncBottomNav === 'function') window.bitstreamSyncBottomNav();
+            syncBottomNav();
         }
+
+        syncBottomNav();
 
         if (navHome) {
             const feedUrl = navHome.dataset.feedUrl;
@@ -3616,18 +3647,26 @@
         }
     }
 
-    function loadTwitterWidgets(target = document) {
+    function loadTwitterWidgets(target) {
         if (window.twttr && window.twttr.widgets && typeof window.twttr.widgets.load === 'function') {
-            window.twttr.widgets.load(target);
+            try {
+                const el = (target && target instanceof HTMLElement) ? target : undefined;
+                const res = el ? window.twttr.widgets.load(el) : window.twttr.widgets.load();
+                if (res && typeof res.catch === 'function') {
+                    res.catch(() => {});
+                }
+            } catch (e) {
+                // Ignore third-party widgets.js exceptions
+            }
         }
     }
 
     function initTwitterObserver() {
-        loadTwitterWidgets(document);
+        loadTwitterWidgets();
 
         if (window.twttr && window.twttr.ready) {
             window.twttr.ready(() => {
-                loadTwitterWidgets(document);
+                loadTwitterWidgets();
             });
         }
 

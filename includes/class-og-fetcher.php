@@ -32,7 +32,7 @@ class BitStream_OG_Fetcher
         $cache_key = 'bitstream_og_' . md5($url);
         $cached = get_transient($cache_key);
         if ($cached && is_array($cached)) {
-            if (in_array($host, ['twitter.com', 'x.com'], true) && empty($cached['embed_html'])) {
+            if (in_array($host, ['twitter.com', 'x.com'], true) && (empty($cached['embed_html']) || !isset($cached['avatar']))) {
                 // Stale cache: refresh
             } elseif (($host === 'instagram.com' || strpos($host, 'instagram.com') !== false) && (empty($cached['avatar']) || strpos($cached['avatar'], 'unavatar.io') !== false)) {
                 // Stale Instagram cache with broken unavatar.io avatar: refresh
@@ -199,90 +199,204 @@ class BitStream_OG_Fetcher
         $result = [
             'title' => trim($og_title),
             'description' => trim($og_desc),
-            'image' => $og_img,
+            'image' => esc_url_raw($og_img),
             'url' => $url
         ];
 
-        set_transient($cache_key, $result, HOUR_IN_SECONDS * 24);
-        return $result;
+        if (!empty($result['title']) || !empty($result['image'])) {
+            set_transient($cache_key, $result, HOUR_IN_SECONDS * 24);
+            return $result;
+        }
+
+        return false;
     }
 
     /**
-     * Fetch tweet data via Twitter's public oEmbed API.
-     * No API key required. Returns OG-shaped array or false on failure.
+     * Fetch tweet data via public bridge APIs (vxtwitter / fxtwitter) and official oEmbed fallback.
+     * Extracts author details, profile avatar, tweet text, and media images.
      */
     private function fetch_twitter_oembed($url)
     {
         $clean_url = preg_replace('/\?.*$/', '', $url);
-        $fallback_html = '<blockquote class="twitter-tweet" data-dnt="true"><a href="' . esc_url($clean_url) . '">' . esc_html($clean_url) . '</a></blockquote>';
-
-        $oembed_endpoint = 'https://publish.twitter.com/oembed?' . http_build_query([
-            'url' => $clean_url,
-            'omit_script' => 'true',
-            'dnt' => 'true',
-        ]);
-
-        $resp = wp_remote_get($oembed_endpoint, [
-            'timeout' => 4,
-            'user-agent' => 'Mozilla/5.0',
-        ]);
-
-        if (is_wp_error($resp) || wp_remote_retrieve_response_code($resp) !== 200) {
-            return [
-                'title' => 'Post on ' . (strpos($url, 'x.com') !== false ? 'X' : 'Twitter'),
-                'description' => '',
-                'image' => '',
-                'url' => $url,
-                'embed_html' => $fallback_html,
-                'is_embeddable' => true,
-                'embed_type' => 'twitter',
-            ];
+        $status_id = '';
+        if (preg_match('#/(?:status|statuses)/(\d+)#i', $clean_url, $sm)) {
+            $status_id = $sm[1];
         }
 
-        $data = json_decode(wp_remote_retrieve_body($resp), true);
-        if (!is_array($data) || empty($data['html'])) {
-            return [
-                'title' => 'Post on ' . (strpos($url, 'x.com') !== false ? 'X' : 'Twitter'),
-                'description' => '',
-                'image' => '',
-                'url' => $url,
-                'embed_html' => $fallback_html,
-                'is_embeddable' => true,
-                'embed_type' => 'twitter',
-            ];
-        }
-
-        // oEmbed fields: author_name, author_url, html (tweet HTML), provider_name
-        $author = sanitize_text_field($data['author_name'] ?? '');
-        $author_url = esc_url_raw($data['author_url'] ?? '');
-        $tweet_html = $data['html'] ?? $fallback_html;
-
-        // Extract plain tweet text from the oEmbed HTML (strip tags, keep content)
-        $tweet_text = '';
-        if (!empty($tweet_html)) {
-            // The oEmbed HTML is a <blockquote> — grab text nodes
-            $tweet_text = html_entity_decode(wp_strip_all_tags($tweet_html), ENT_QUOTES, 'UTF-8');
-            // Clean up whitespace and trailing attribution lines (e.g. "— Author (@handle) date")
-            $tweet_text = trim(preg_replace('/\s+/', ' ', $tweet_text));
-            // Remove trailing "— Name (@handle) Month Day, Year" attribution
-            $tweet_text = preg_replace('/\s*—\s*.+\(@\w+\).+$/', '', $tweet_text);
-            $tweet_text = trim($tweet_text);
-        }
-
-        // Use author's Twitter avatar as the preview image
-        $og_image = '';
-        if (!empty($author_url)) {
-            $handle = trim(wp_parse_url($author_url, PHP_URL_PATH), '/');
-            if (!empty($handle)) {
-                $og_image = 'https://unavatar.io/twitter/' . rawurlencode($handle);
+        $handle = '';
+        if (preg_match('#(?:twitter\.com|x\.com)/([a-zA-Z0-9_]+)#i', $clean_url, $um)) {
+            if (!in_array(strtolower($um[1]), ['i', 'status', 'statuses'], true)) {
+                $handle = $um[1];
             }
         }
+
+        $fallback_html = '<blockquote class="twitter-tweet" data-dnt="true"><a href="' . esc_url($clean_url) . '">' . esc_html($clean_url) . '</a></blockquote>';
+        $author = '';
+        $tweet_text = '';
+        $avatar = '';
+        $images = [];
+        $date_epoch = null;
+        $tweet_html = $fallback_html;
+
+        // 1. Primary bridge: api.vxtwitter.com
+        if (!empty($status_id)) {
+            $vx_url = $handle ? "https://api.vxtwitter.com/{$handle}/status/{$status_id}" : "https://api.vxtwitter.com/status/{$status_id}";
+            $vx_resp = wp_remote_get($vx_url, [
+                'timeout' => 4,
+                'user-agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) BitStream/1.0',
+                'headers' => ['Accept' => 'application/json'],
+                'redirection' => 2,
+            ]);
+
+            if (!is_wp_error($vx_resp) && wp_remote_retrieve_response_code($vx_resp) === 200) {
+                $vx_data = json_decode(wp_remote_retrieve_body($vx_resp), true);
+                if (is_array($vx_data) && (!empty($vx_data['tweetID']) || !empty($vx_data['text']) || !empty($vx_data['user_name']))) {
+                    $author = sanitize_text_field($vx_data['user_name'] ?? '');
+                    if (!empty($vx_data['user_screen_name'])) {
+                        $handle = sanitize_text_field($vx_data['user_screen_name']);
+                    }
+                    $tweet_text = sanitize_textarea_field($vx_data['text'] ?? '');
+                    $avatar = esc_url_raw($vx_data['user_profile_image_url'] ?? '');
+                    if (!empty($avatar)) {
+                        $avatar = str_replace('_normal.', '_200x200.', $avatar);
+                    }
+                    $date_epoch = $vx_data['date_epoch'] ?? null;
+                    if (!empty($vx_data['mediaURLs']) && is_array($vx_data['mediaURLs'])) {
+                        foreach ($vx_data['mediaURLs'] as $m_url) {
+                            if (is_string($m_url) && !empty($m_url)) {
+                                $images[] = esc_url_raw($m_url);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Secondary bridge: api.fxtwitter.com
+        if (!empty($status_id) && empty($author) && empty($tweet_text)) {
+            $fx_url = $handle ? "https://api.fxtwitter.com/{$handle}/status/{$status_id}" : "https://api.fxtwitter.com/status/{$status_id}";
+            $fx_resp = wp_remote_get($fx_url, [
+                'timeout' => 4,
+                'user-agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) BitStream/1.0',
+                'headers' => ['Accept' => 'application/json'],
+                'redirection' => 2,
+            ]);
+
+            if (!is_wp_error($fx_resp) && wp_remote_retrieve_response_code($fx_resp) === 200) {
+                $fx_data = json_decode(wp_remote_retrieve_body($fx_resp), true);
+                if (is_array($fx_data) && !empty($fx_data['tweet'])) {
+                    $tw = $fx_data['tweet'];
+                    $author = sanitize_text_field($tw['author']['name'] ?? '');
+                    if (!empty($tw['author']['screen_name'])) {
+                        $handle = sanitize_text_field($tw['author']['screen_name']);
+                    }
+                    $tweet_text = sanitize_textarea_field($tw['text'] ?? '');
+                    $avatar = esc_url_raw($tw['author']['avatar_url'] ?? '');
+                    $date_epoch = $tw['created_timestamp'] ?? null;
+                    if (!empty($tw['media']['photos']) && is_array($tw['media']['photos'])) {
+                        foreach ($tw['media']['photos'] as $p) {
+                            if (!empty($p['url'])) {
+                                $images[] = esc_url_raw($p['url']);
+                            }
+                        }
+                    } elseif (!empty($tw['media']['mosaic']['formats']['jpeg'])) {
+                        $images[] = esc_url_raw($tw['media']['mosaic']['formats']['jpeg']);
+                    }
+                }
+            }
+        }
+
+        // 3. Fallback to Twitter / X oEmbed API
+        if (empty($author) || empty($tweet_text)) {
+            $oembed_endpoint = 'https://publish.x.com/oembed?' . http_build_query([
+                'url' => $clean_url,
+                'omit_script' => 'true',
+                'dnt' => 'true',
+            ]);
+
+            $oembed_resp = wp_remote_get($oembed_endpoint, [
+                'timeout' => 4,
+                'user-agent' => 'Mozilla/5.0',
+                'redirection' => 3,
+            ]);
+
+            if (is_wp_error($oembed_resp) || wp_remote_retrieve_response_code($oembed_resp) !== 200) {
+                // Try legacy publish.twitter.com endpoint
+                $legacy_endpoint = 'https://publish.twitter.com/oembed?' . http_build_query([
+                    'url' => $clean_url,
+                    'omit_script' => 'true',
+                    'dnt' => 'true',
+                ]);
+                $oembed_resp = wp_remote_get($legacy_endpoint, [
+                    'timeout' => 4,
+                    'user-agent' => 'Mozilla/5.0',
+                    'redirection' => 3,
+                ]);
+            }
+
+            if (!is_wp_error($oembed_resp) && wp_remote_retrieve_response_code($oembed_resp) === 200) {
+                $oembed_data = json_decode(wp_remote_retrieve_body($oembed_resp), true);
+                if (is_array($oembed_data) && !empty($oembed_data['html'])) {
+                    if (empty($author)) {
+                        $author = sanitize_text_field($oembed_data['author_name'] ?? '');
+                    }
+                    $tweet_html = $oembed_data['html'];
+                    if (empty($tweet_text)) {
+                        $tweet_text = html_entity_decode(wp_strip_all_tags($tweet_html), ENT_QUOTES, 'UTF-8');
+                        $tweet_text = trim(preg_replace('/\s+/', ' ', $tweet_text));
+                        $tweet_text = preg_replace('/\s*—\s*.+\(@\w+\).+$/', '', $tweet_text);
+                        $tweet_text = trim($tweet_text);
+                    }
+                    if (empty($handle) && !empty($oembed_data['author_url'])) {
+                        $handle = trim(wp_parse_url($oembed_data['author_url'], PHP_URL_PATH), '/');
+                    }
+                }
+            }
+        }
+
+        // 4. Crawl metadata fallback for images if bridge did not provide them
+        if (empty($images) && !empty($status_id)) {
+            $x_resp = wp_remote_get($clean_url, [
+                'timeout' => 3,
+                'user-agent' => 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+                'redirection' => 2,
+            ]);
+            if (!is_wp_error($x_resp) && wp_remote_retrieve_response_code($x_resp) === 200) {
+                $x_html = wp_remote_retrieve_body($x_resp);
+                if (preg_match('#<link[^>]+rel=["\']preload["\'][^>]+as=["\']image["\'][^>]+href=["\'](https://pbs\.twimg\.com/media/[^"\'\s>]+)#i', $x_html, $pm)) {
+                    $images[] = esc_url_raw(html_entity_decode($pm[1], ENT_QUOTES, 'UTF-8'));
+                }
+            }
+        }
+
+        // 5. Fallback avatar if still empty
+        if (empty($avatar) && !empty($handle)) {
+            $avatar = 'https://unavatar.io/twitter/' . rawurlencode($handle);
+        }
+
+        // 6. Format timestamp
+        $tweet_time_date = '';
+        if (!empty($date_epoch)) {
+            $tweet_time_date = gmdate('g:i A · M j, Y', intval($date_epoch));
+        } elseif (!empty($status_id)) {
+            $ts = (floatval($status_id) / 4194304) + 1288834974657;
+            if ($ts > 1288834974657) {
+                $tweet_time_date = gmdate('g:i A · M j, Y', intval($ts / 1000));
+            }
+        }
+
+        $primary_image = !empty($images) ? $images[0] : '';
 
         return [
             'title' => !empty($author) ? $author . ' on ' . (strpos($url, 'x.com') !== false ? 'X' : 'Twitter') : 'Post on ' . (strpos($url, 'x.com') !== false ? 'X' : 'Twitter'),
             'description' => $tweet_text,
-            'image' => $og_image,
-            'url' => $url,
+            'image' => $primary_image,
+            'images' => $images,
+            'avatar' => $avatar,
+            'handle' => $handle,
+            'author' => $author,
+            'tweet_time_date' => $tweet_time_date,
+            'url' => $clean_url,
             'embed_html' => $tweet_html,
             'is_embeddable' => true,
             'embed_type' => 'twitter',

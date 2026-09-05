@@ -338,6 +338,78 @@ class BitStream_Content_Display
     }
 
     /**
+     * Format and linkify external embed text (URLs, @mentions, #hashtags).
+     *
+     * @param string $text Raw text from external post
+     * @param string $platform 'twitter' or 'instagram'
+     * @return string Safe HTML with clickable links
+     */
+    public static function format_embed_text($text, $platform = 'twitter')
+    {
+        if (empty($text)) {
+            return '';
+        }
+
+        // Step 1: Escape HTML entities to prevent XSS
+        $safe_text = esc_html($text);
+
+        // Step 2: Convert URLs to clickable links
+        $url_pattern = '~(?:https?://|www\.)[^\s<]+~i';
+        $safe_text = preg_replace_callback($url_pattern, static function ($matches) {
+            $raw_url = $matches[0];
+            $trailing_punct = '';
+
+            // Strip trailing punctuation from URL (. , : ; ! ? ) ] ' ")
+            while (preg_match('/[.,;:!?)\]\'">]+$/', $raw_url, $pm)) {
+                $trailing_punct = $pm[0] . $trailing_punct;
+                $raw_url = substr($raw_url, 0, -strlen($pm[0]));
+            }
+
+            $clean_href = html_entity_decode($raw_url, ENT_QUOTES, 'UTF-8');
+            if (stripos($clean_href, 'http') !== 0) {
+                $clean_href = 'https://' . $clean_href;
+            }
+
+            return sprintf(
+                '<a href="%s" target="_blank" rel="noopener noreferrer" class="bit-tweet-link">%s</a>%s',
+                esc_url($clean_href),
+                $raw_url,
+                $trailing_punct
+            );
+        }, $safe_text);
+
+        // Step 3: Parse @mentions (outside already-created <a> tags)
+        $mention_pattern = '~/a>(*SKIP)(*FAIL)|(?<=^|\s)@([a-zA-Z0-9_]{1,30})\b~';
+        $safe_text = preg_replace_callback($mention_pattern, static function ($matches) use ($platform) {
+            $handle = $matches[1];
+            $mention_url = ($platform === 'instagram')
+                ? 'https://www.instagram.com/' . rawurlencode($handle) . '/'
+                : 'https://x.com/' . rawurlencode($handle);
+            return sprintf(
+                '<a href="%s" target="_blank" rel="noopener noreferrer" class="bit-tweet-mention">@%s</a>',
+                esc_url($mention_url),
+                esc_html($handle)
+            );
+        }, $safe_text);
+
+        // Step 4: Parse #hashtags (outside already-created <a> tags)
+        $hashtag_pattern = '~/a>(*SKIP)(*FAIL)|(?<=^|\s)#([a-zA-Z0-9_\x{0080}-\x{FFFF}]+)\b~u';
+        $safe_text = preg_replace_callback($hashtag_pattern, static function ($matches) use ($platform) {
+            $tag = $matches[1];
+            $tag_url = ($platform === 'instagram')
+                ? 'https://www.instagram.com/explore/tags/' . rawurlencode($tag) . '/'
+                : 'https://x.com/hashtag/' . rawurlencode($tag);
+            return sprintf(
+                '<a href="%s" target="_blank" rel="noopener noreferrer" class="bit-tweet-hashtag">#%s</a>',
+                esc_url($tag_url),
+                esc_html($tag)
+            );
+        }, $safe_text);
+
+        return nl2br($safe_text);
+    }
+
+    /**
      * Parse and save hashtags for a bit post.
      */
     public function save_post_hashtags($post_id, $post = null)
@@ -554,9 +626,21 @@ class BitStream_Content_Display
             $og_title = get_post_meta($post_id, '_bitstream_og_title', true);
             $og_desc = get_post_meta($post_id, '_bitstream_og_desc', true);
             $og_img = get_post_meta($post_id, '_bitstream_og_image', true);
+            $og_avatar = get_post_meta($post_id, '_bitstream_og_avatar', true);
+            $og_images = get_post_meta($post_id, '_bitstream_og_images', true);
             $clean_url = preg_replace('/\?.*$/', '', $rebit_url);
 
-            if (empty($embed_html) || empty($og_desc)) {
+            // Backward compatibility: If avatar is not set, check if og_image was an avatar
+            if (empty($og_avatar) && !empty($og_img)) {
+                if (strpos($og_img, 'unavatar.io') !== false || strpos($og_img, '/profile_images/') !== false) {
+                    $og_avatar = $og_img;
+                    $og_img = '';
+                }
+            }
+
+            $images = !empty($og_images) && is_array($og_images) ? $og_images : (!empty($og_img) ? [$og_img] : []);
+
+            if (empty($embed_html) || empty($og_desc) || empty($og_avatar)) {
                 if (class_exists('BitStream_OG_Fetcher')) {
                     $fetcher = new BitStream_OG_Fetcher();
                     $fetched = $fetcher->fetch_og_data($clean_url);
@@ -573,10 +657,19 @@ class BitStream_Content_Display
                             $og_title = $fetched['title'];
                             update_post_meta($post_id, '_bitstream_og_title', $og_title);
                         }
+                        if (!empty($fetched['avatar']) && empty($og_avatar)) {
+                            $og_avatar = $fetched['avatar'];
+                            update_post_meta($post_id, '_bitstream_og_avatar', $og_avatar);
+                        }
                         if (!empty($fetched['image']) && empty($og_img)) {
                             $og_img = $fetched['image'];
                             update_post_meta($post_id, '_bitstream_og_image', $og_img);
                         }
+                        if (!empty($fetched['images']) && empty($og_images)) {
+                            $og_images = $fetched['images'];
+                            update_post_meta($post_id, '_bitstream_og_images', $og_images);
+                        }
+                        $images = !empty($og_images) && is_array($og_images) ? $og_images : (!empty($og_img) ? [$og_img] : []);
                     }
                 }
             }
@@ -608,7 +701,7 @@ class BitStream_Content_Display
                 . '<div class="bit-tweet-card">'
                 . '<div class="bit-tweet-header">'
                 . '<a href="' . esc_url($user_profile_url) . '" target="_blank" rel="noopener" class="bit-tweet-user-link">'
-                . ($og_img ? '<img src="' . esc_url($og_img) . '" class="bit-tweet-avatar" alt="' . esc_attr($author_name) . '" loading="lazy">' : '<div class="bit-tweet-avatar-placeholder"><i class="fa-brands fa-x-twitter"></i></div>')
+                . ($og_avatar ? '<img src="' . esc_url($og_avatar) . '" class="bit-tweet-avatar" alt="' . esc_attr($author_name) . '" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display=\'none\'; if(this.nextElementSibling) this.nextElementSibling.style.display=\'flex\';"><div class="bit-tweet-avatar-placeholder" style="display:none;"><i class="fa-brands fa-x-twitter"></i></div>' : '<div class="bit-tweet-avatar-placeholder"><i class="fa-brands fa-x-twitter"></i></div>')
                 . '<div class="bit-tweet-meta">'
                 . '<div class="bit-tweet-author">' . esc_html($author_name) . '</div>'
                 . ($handle ? '<div class="bit-tweet-handle">' . esc_html($handle) . '</div>' : '')
@@ -619,9 +712,33 @@ class BitStream_Content_Display
                 . '</a>'
                 . '</div>'
                 . '<div class="bit-tweet-body">'
-                . (!empty($og_desc) ? '<p class="bit-tweet-text">' . nl2br(esc_html($og_desc)) . '</p>' : '<a href="' . esc_url($clean_url) . '" target="_blank" rel="noopener" class="bit-rebit-link">' . esc_html($clean_url) . '</a>')
-                . '</div>'
-                . ($tweet_time_date ? '<div class="bit-tweet-timestamp"><a href="' . esc_url($clean_url) . '" target="_blank" rel="noopener">' . esc_html($tweet_time_date) . '</a></div>' : '')
+                . (!empty($og_desc) ? '<p class="bit-tweet-text">' . self::format_embed_text($og_desc, 'twitter') . '</p>' : '<a href="' . esc_url($clean_url) . '" target="_blank" rel="noopener" class="bit-rebit-link">' . esc_html($clean_url) . '</a>')
+                . '</div>';
+
+            // Render tweet media / images if present
+            if (!empty($images)) {
+                $img_count = count($images);
+                if ($img_count === 1) {
+                    echo '<div class="bit-tweet-media">'
+                        . '<a href="' . esc_url($clean_url) . '" target="_blank" rel="noopener" class="bit-tweet-media-link">'
+                        . '<img src="' . esc_url($images[0]) . '" class="bit-tweet-thumb" alt="' . esc_attr($author_name) . '" loading="lazy" referrerpolicy="no-referrer">'
+                        . '</a>'
+                        . '</div>';
+                } else {
+                    $grid_count = min(4, $img_count);
+                    echo '<div class="bit-tweet-gallery bit-tweet-gallery-' . $grid_count . '">';
+                    foreach (array_slice($images, 0, 4) as $idx => $img_url) {
+                        echo '<div class="bit-tweet-gallery-item">'
+                            . '<a href="' . esc_url($clean_url) . '" target="_blank" rel="noopener" class="bit-tweet-media-link">'
+                            . '<img src="' . esc_url($img_url) . '" alt="' . esc_attr($author_name) . '" loading="lazy" referrerpolicy="no-referrer">'
+                            . '</a>'
+                            . '</div>';
+                    }
+                    echo '</div>';
+                }
+            }
+
+            echo ($tweet_time_date ? '<div class="bit-tweet-timestamp"><a href="' . esc_url($clean_url) . '" target="_blank" rel="noopener">' . esc_html($tweet_time_date) . '</a></div>' : '')
                 . '<div class="bit-tweet-footer">'
                 . '<a href="' . esc_url($clean_url) . '" target="_blank" rel="noopener" class="bit-tweet-pill-btn">'
                 . '<span>Read on X</span>'
@@ -792,7 +909,7 @@ class BitStream_Content_Display
 
             if (!empty($display_desc)) {
                 echo '<div class="bit-instagram-body">'
-                    . '<p class="bit-instagram-text">' . nl2br(esc_html($display_desc)) . '</p>'
+                    . '<p class="bit-instagram-text">' . self::format_embed_text($display_desc, 'instagram') . '</p>'
                     . '</div>';
             }
 

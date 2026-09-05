@@ -115,6 +115,7 @@ Keep the comment block in `bitstream.css` (`/* Z-INDEX LADDER */`) up to date. C
 | 999 999 | `.bitstream-lightbox` |
 | 100 010 | `.bitstream-cropper-modal` |
 | 100 005 | `.bitstream-bottom-nav` (mobile bottom nav bar) |
+| 100 004 | `.bitstream-compose-fab` (mobile compose floating action button) |
 | 100 001 | Composer sub-modal popup (mobile) |
 | 100 000 | `.bitstream-composer` (mobile host) |
 | 99 990 | `.bs-edit-modal` |

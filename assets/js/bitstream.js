@@ -75,13 +75,25 @@ function bsMobileAutoResize(el) {
 
 function updateQuickActionCounter(triggerName) {
     document.querySelectorAll('[data-composer-modal-trigger="' + triggerName + '"]').forEach(trigger => {
-        const span = trigger.querySelector('span');
+        const countBadge = trigger.querySelector('.bitstream-composer-pill-count');
+        if (countBadge) {
+            const currentCount = parseInt(countBadge.textContent.trim(), 10) || 0;
+            const newCount = Math.max(0, currentCount - 1);
+            countBadge.textContent = String(newCount);
+            if (newCount === 0) {
+                trigger.hidden = true;
+            }
+        }
+        const span = trigger.querySelector('span:not(.bitstream-composer-pill-count)');
         if (span) {
             const match = span.textContent.match(/\((\d+)\)/);
             if (match) {
                 const currentCount = parseInt(match[1], 10);
                 const newCount = Math.max(0, currentCount - 1);
                 span.textContent = span.textContent.replace(/\(\d+\)/, '(' + newCount + ')');
+                if (newCount === 0 && trigger.classList.contains('bitstream-composer-pill-btn')) {
+                    trigger.hidden = true;
+                }
             }
         }
     });
