@@ -121,7 +121,7 @@
     function formatHTML(val) {
         if (!val) return '';
 
-        const hashtagRegex = /(^|[\s(>])(#([A-Za-z][A-Za-z0-9_\u00C0-\u024F]*))/g;
+        const hashtagRegex = /(^|[^\w&])(#([A-Za-z][A-Za-z0-9_\u00C0-\u024F]*))/gu;
         const urlRegex = /(https?:\/\/[^\s<]+)/gi;
 
         let result = '';
@@ -247,7 +247,7 @@
             const tagText = textBeforeCaret.substring(hashIndex + 1);
             const charBeforeHash = hashIndex === 0 ? ' ' : textBeforeCaret[hashIndex - 1];
 
-            const isWordBoundary = hashIndex === 0 || /\s/.test(charBeforeHash);
+            const isWordBoundary = hashIndex === 0 || !/[\w&]/.test(charBeforeHash);
             const hasSpaceInTag = /\s/.test(tagText);
             const isValidTag = /^[A-Za-z0-9_\u00C0-\u024F]*$/u.test(tagText);
 

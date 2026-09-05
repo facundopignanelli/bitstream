@@ -361,6 +361,10 @@
         payload.append('crop_y', cropY);
         payload.append('crop_w', cropW);
         payload.append('crop_h', cropH);
+        if (cropperImage && cropperImage.naturalWidth > 0 && cropperImage.naturalHeight > 0) {
+            payload.append('display_w', cropperImage.naturalWidth);
+            payload.append('display_h', cropperImage.naturalHeight);
+        }
 
         setStatus('Cropping image...');
 
@@ -379,11 +383,14 @@
                 const cacheKey = media.cache_buster ? (media.cache_buster + '') : '';
                 const url = media.url ? (media.url + (media.url.indexOf('?') === -1 ? '?' : '&') + 't=' + cacheKey) : '';
 
+                const previewUrl = media.preview_url ? (media.preview_url + (media.preview_url.indexOf('?') === -1 ? '?' : '&') + 't=' + cacheKey) : url;
+
                 const croppedMedia = {
                     id: media.id,
                     url: url,
+                    preview_url: previewUrl,
                     mime: media.mime,
-                    sizes: { medium: { url: url } }
+                    sizes: { medium: { url: previewUrl } }
                 };
 
                 if (!cropperState) {

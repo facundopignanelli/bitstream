@@ -736,7 +736,7 @@
                                 const attachments = previewMediaThumb && typeof window.getExistingAttachments === 'function' ? window.getExistingAttachments(previewMediaThumb) : [];
                                 const targetAttachment = attachments.length > 0 ? attachments[0] : null;
                                 const targetId = targetAttachment ? targetAttachment.id : (hAttachmentId ? parseInt(hAttachmentId.value || '0', 10) : 0);
-                                const targetUrl = targetAttachment ? (targetAttachment.url || '') : '';
+                                const targetUrl = targetAttachment ? (targetAttachment.preview_url || targetAttachment.url || '') : '';
 
                                 openCropperFn('bitstream-composer-attachment-id', 'bitstream-composer-preview-media-thumb', {
                                     attachmentId: targetId,

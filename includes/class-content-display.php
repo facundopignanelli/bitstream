@@ -323,7 +323,7 @@ class BitStream_Content_Display
 
             // Replace #hashtag patterns in text nodes
             $part = preg_replace_callback(
-                '/(?<=\s|^|>|\()#([A-Za-z][A-Za-z0-9_\x{00C0}-\x{024F}]*)/u',
+                '/(?<![a-zA-Z0-9_&])#([A-Za-z][A-Za-z0-9_\x{00C0}-\x{024F}]*)/u',
                 function ($matches) use ($feed_url) {
                 $tag = $matches[1];
                 $url = add_query_arg('bitstream_hashtag', rawurlencode($tag), $feed_url);
@@ -393,7 +393,7 @@ class BitStream_Content_Display
         }, $safe_text);
 
         // Step 4: Parse #hashtags (outside already-created <a> tags)
-        $hashtag_pattern = '~/a>(*SKIP)(*FAIL)|(?<=^|\s)#([a-zA-Z0-9_\x{0080}-\x{FFFF}]+)\b~u';
+        $hashtag_pattern = '~/a>(*SKIP)(*FAIL)|(?<![a-zA-Z0-9_&])#([a-zA-Z0-9_\x{0080}-\x{FFFF}]+)\b~u';
         $safe_text = preg_replace_callback($hashtag_pattern, static function ($matches) use ($platform) {
             $tag = $matches[1];
             $tag_url = ($platform === 'instagram')
@@ -429,7 +429,7 @@ class BitStream_Content_Display
         }
 
         $text = wp_strip_all_tags($content);
-        if (preg_match_all('/(?<=\s|^)#([A-Za-z][A-Za-z0-9_\x{00C0}-\x{024F}]*)/u', $text, $m)) {
+        if (preg_match_all('/(?<![a-zA-Z0-9_&])#([A-Za-z][A-Za-z0-9_\x{00C0}-\x{024F}]*)/u', $text, $m)) {
             $unique_tags = array_unique($m[1]);
             foreach ($unique_tags as $tag) {
                 add_post_meta($post_id, '_bitstream_hashtag', $tag);
@@ -448,7 +448,7 @@ class BitStream_Content_Display
             foreach ($posts as $post) {
                 delete_post_meta($post->ID, '_bitstream_hashtag');
                 $text = wp_strip_all_tags($post->post_content);
-                if (preg_match_all('/(?<=\s|^)#([A-Za-z][A-Za-z0-9_\x{00C0}-\x{024F}]*)/u', $text, $m)) {
+                if (preg_match_all('/(?<![a-zA-Z0-9_&])#([A-Za-z][A-Za-z0-9_\x{00C0}-\x{024F}]*)/u', $text, $m)) {
                     $unique_tags = array_unique($m[1]);
                     foreach ($unique_tags as $tag) {
                         add_post_meta($post->ID, '_bitstream_hashtag', $tag);

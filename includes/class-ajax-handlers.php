@@ -936,7 +936,7 @@ class BitStream_Ajax_Handlers
         $metadata = wp_get_attachment_metadata($attachment_id);
         $best_size = '';
         if (!empty($metadata['sizes'])) {
-            $sizes_to_check = ['large', 'medium_large', 'medium'];
+            $sizes_to_check = ['large', 'medium_large', 'medium', 'thumbnail'];
             foreach ($sizes_to_check as $size) {
                 if (isset($metadata['sizes'][$size])) {
                     $best_size = $size;
@@ -1058,12 +1058,31 @@ class BitStream_Ajax_Handlers
                 wp_send_json_error('Unable to load image editor.');
             }
 
+            // Adjust crop coordinates if the client cropper displayed a scaled/preview sub-size
+            $display_w = isset($_POST['display_w']) ? intval($_POST['display_w']) : 0;
+            $display_h = isset($_POST['display_h']) ? intval($_POST['display_h']) : 0;
+            if ($display_w > 0 && $display_h > 0) {
+                $orig_size = $editor->get_size();
+                if (!empty($orig_size['width']) && !empty($orig_size['height'])) {
+                    $scale_x = $orig_size['width'] / $display_w;
+                    $scale_y = $orig_size['height'] / $display_h;
+                    $crop_x = (int)round($crop_x * $scale_x);
+                    $crop_y = (int)round($crop_y * $scale_y);
+                    $crop_w = (int)round($crop_w * $scale_x);
+                    $crop_h = (int)round($crop_h * $scale_y);
+                }
+            }
+
             $editor->crop($crop_x, $crop_y, $crop_w, $crop_h);
             
             // Generate a new filename for the crop to avoid affecting other posts
             // Prefix with 'crop-' to avoid Windows path corruption when filenames start with digits
             $info = pathinfo($file_path);
-            $new_filename = 'crop-' . $info['filename'] . '-' . time() . '.' . $info['extension'];
+            $ext = strtolower($info['extension'] ?? 'jpg');
+            if (in_array($ext, ['heic', 'heif'], true)) {
+                $ext = 'jpg';
+            }
+            $new_filename = 'crop-' . $info['filename'] . '-' . time() . '.' . $ext;
             $new_file_path = trailingslashit($info['dirname']) . $new_filename;
 
             $saved = $editor->save($new_file_path);
@@ -1106,10 +1125,12 @@ class BitStream_Ajax_Handlers
                 wp_delete_attachment($attachment_id, true);
             }
 
+            $new_url = $wp_upload_dir['url'] . '/' . $new_filename;
             wp_send_json_success([
                 'id' => $new_attachment_id,
-                'url' => wp_get_attachment_url($new_attachment_id),
-                'mime' => get_post_mime_type($new_attachment_id),
+                'url' => $new_url,
+                'preview_url' => $this->get_best_preview_url($new_attachment_id, $new_url),
+                'mime' => $saved['mime-type'],
                 'cache_buster' => time(),
             ]);
         }
@@ -2057,7 +2078,7 @@ class BitStream_Ajax_Handlers
                     $attachments_data[] = [
                         'id' => $id,
                         'url' => $url,
-                        'preview_url' => wp_get_attachment_image_url($id, 'medium') ?: $url,
+                        'preview_url' => $this->get_best_preview_url($id, $url),
                         'mime' => $mime
                     ];
                 }
@@ -2277,7 +2298,7 @@ class BitStream_Ajax_Handlers
                     $attachments_data[] = [
                         'id' => $id,
                         'url' => $url,
-                        'preview_url' => wp_get_attachment_image_url($id, 'medium') ?: $url,
+                        'preview_url' => $this->get_best_preview_url($id, $url),
                         'mime' => $mime
                     ];
                 }

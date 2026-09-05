@@ -203,7 +203,7 @@
             wrap.dataset.id = item.id;
             wrap.dataset.index = index;
 
-            const url = item.sizes && item.sizes.medium ? item.sizes.medium.url : item.url;
+            const url = item.preview_url || (item.sizes && item.sizes.medium ? item.sizes.medium.url : item.url);
             const mime = item.mime || '';
 
             if (mime.startsWith('image/')) {
@@ -227,7 +227,7 @@
                         const targetInputId = targetInput ? targetInput.id : 'bitstream-composer-attachment-id';
                         openCropperFn(targetInputId, previewEl.id || previewEl, {
                             attachmentId: item.id,
-                            url: item.url,
+                            url: item.preview_url || item.url,
                             onComplete: (croppedMedia) => {
                                 if (croppedMedia && croppedMedia.id) {
                                     const currentAttachments = getExistingAttachments(previewEl);
