@@ -1524,16 +1524,15 @@
                                 dragSrcIndex = null;
                             });
 
-                            // Touch & Pointer drag reordering (with haptic feedback)
+                            // Touch drag reordering (with haptic feedback)
                             let touchDragTimer = null;
                             let touchDragging = false;
                             let didDrag = false;
                             let startX = 0;
                             let startY = 0;
                             let lastDragOverTarget = null;
-                            let isHandlingPointer = false;
 
-                            function triggerHaptic(duration = 55) {
+                            function triggerHaptic(duration = 60) {
                                 try {
                                     if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
                                         const res = navigator.vibrate(duration);
@@ -1553,17 +1552,23 @@
                                 triggerHaptic(60);
                             }
 
-                            function getTargetButton(x, y) {
+                            function getClosestTarget(x, y) {
                                 const allBtns = reactionsList.querySelectorAll('.bitstream-mood-reaction-btn');
+                                let closest = null;
+                                let minDist = 55; // 55px radius threshold around each emoji
                                 for (let i = 0; i < allBtns.length; i++) {
                                     const b = allBtns[i];
                                     if (b === btn) continue;
                                     const r = b.getBoundingClientRect();
-                                    if (x >= r.left - 6 && x <= r.right + 6 && y >= r.top - 50 && y <= r.bottom + 50) {
-                                        return b;
+                                    const cx = r.left + r.width / 2;
+                                    const cy = r.top + r.height / 2;
+                                    const dist = Math.hypot(x - cx, y - cy);
+                                    if (dist < minDist) {
+                                        minDist = dist;
+                                        closest = b;
                                     }
                                 }
-                                return null;
+                                return closest;
                             }
 
                             function onDragMove(clientX, clientY) {
@@ -1577,13 +1582,13 @@
                                     }
                                 }
 
-                                const target = getTargetButton(clientX, clientY);
+                                const target = getClosestTarget(clientX, clientY);
                                 if (target) {
                                     if (target !== lastDragOverTarget) {
                                         reactionsList.querySelectorAll('.bitstream-mood-reaction-btn').forEach(b => b.classList.remove('is-drag-over'));
                                         target.classList.add('is-drag-over');
                                         lastDragOverTarget = target;
-                                        setTimeout(() => triggerHaptic(55), 0);
+                                        triggerHaptic(60);
                                     }
                                 } else {
                                     reactionsList.querySelectorAll('.bitstream-mood-reaction-btn').forEach(b => b.classList.remove('is-drag-over'));
@@ -1593,21 +1598,13 @@
 
                             function onDragEnd(clientX, clientY) {
                                 clearTimeout(touchDragTimer);
-                                window.removeEventListener('pointermove', onPointerMove);
-                                window.removeEventListener('pointerup', onPointerEnd);
-                                window.removeEventListener('pointercancel', onPointerEnd);
-                                window.removeEventListener('touchmove', onTouchMove);
-                                window.removeEventListener('touchend', onTouchEnd);
-                                window.removeEventListener('touchcancel', onTouchEnd);
-
-                                isHandlingPointer = false;
                                 const wasDragging = touchDragging;
                                 touchDragging = false;
                                 btn.classList.remove('is-dragging');
                                 reactionsList.querySelectorAll('.bitstream-mood-reaction-btn').forEach(b => b.classList.remove('is-drag-over'));
 
                                 if (wasDragging) {
-                                    const target = lastDragOverTarget || getTargetButton(clientX, clientY);
+                                    const target = lastDragOverTarget || getClosestTarget(clientX, clientY);
                                     if (target && target !== btn) {
                                         const targetIdx = parseInt(target.dataset.idx, 10);
                                         if (!isNaN(targetIdx) && targetIdx !== idx) {
@@ -1620,66 +1617,52 @@
                                 }
                             }
 
-                            function onPointerMove(e) {
-                                if (e.pointerType === 'mouse') return;
-                                if (e.cancelable) e.preventDefault();
-                                onDragMove(e.clientX, e.clientY);
-                            }
-
-                            function onPointerEnd(e) {
-                                if (e.pointerType === 'mouse') return;
-                                onDragEnd(e.clientX, e.clientY);
-                            }
-
-                            function onTouchMove(e) {
-                                if (e.cancelable) e.preventDefault();
-                                const touch = e.touches[0];
-                                if (touch) onDragMove(touch.clientX, touch.clientY);
-                            }
-
-                            function onTouchEnd(e) {
-                                const touch = e.changedTouches ? e.changedTouches[0] : null;
-                                onDragEnd(touch ? touch.clientX : startX, touch ? touch.clientY : startY);
-                            }
-
+                            // Prime transient user activation on pointerdown
                             btn.addEventListener('pointerdown', (e) => {
                                 if (e.pointerType === 'mouse') return;
-                                isHandlingPointer = true;
-                                touchDragging = false;
-                                didDrag = false;
-                                lastDragOverTarget = null;
-                                startX = e.clientX;
-                                startY = e.clientY;
-
-                                window.addEventListener('pointermove', onPointerMove, { passive: false });
-                                window.addEventListener('pointerup', onPointerEnd);
-                                window.addEventListener('pointercancel', onPointerEnd);
-
-                                clearTimeout(touchDragTimer);
-                                touchDragTimer = setTimeout(() => {
-                                    startTouchDrag();
-                                }, 220);
+                                triggerHaptic(10);
                             });
 
+                            // Touch event cycle with automatic target locking
                             btn.addEventListener('touchstart', (e) => {
-                                if (isHandlingPointer) return;
                                 const touch = e.touches[0];
                                 if (!touch) return;
+                                startX = touch.clientX;
+                                startY = touch.clientY;
                                 touchDragging = false;
                                 didDrag = false;
                                 lastDragOverTarget = null;
-                                startX = touch.clientX;
-                                startY = touch.clientY;
-
-                                window.addEventListener('touchmove', onTouchMove, { passive: false });
-                                window.addEventListener('touchend', onTouchEnd);
-                                window.addEventListener('touchcancel', onTouchEnd);
 
                                 clearTimeout(touchDragTimer);
                                 touchDragTimer = setTimeout(() => {
                                     startTouchDrag();
                                 }, 220);
-                            }, { passive: true });
+                            }, { passive: false });
+
+                            btn.addEventListener('touchmove', (e) => {
+                                const touch = e.touches[0];
+                                if (!touch) return;
+                                const dist = Math.hypot(touch.clientX - startX, touch.clientY - startY);
+                                if (!touchDragging) {
+                                    if (dist > 8) {
+                                        clearTimeout(touchDragTimer);
+                                        startTouchDrag();
+                                    } else {
+                                        return;
+                                    }
+                                }
+                                if (e.cancelable) e.preventDefault();
+                                onDragMove(touch.clientX, touch.clientY);
+                            }, { passive: false });
+
+                            btn.addEventListener('touchend', (e) => {
+                                const touch = e.changedTouches ? e.changedTouches[0] : null;
+                                onDragEnd(touch ? touch.clientX : startX, touch ? touch.clientY : startY);
+                            });
+
+                            btn.addEventListener('touchcancel', (e) => {
+                                onDragEnd(startX, startY);
+                            });
                         }
 
                         // Click handler: select (normal) or open edit form (edit mode)
