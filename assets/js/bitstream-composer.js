@@ -1524,68 +1524,156 @@
                                 dragSrcIndex = null;
                             });
 
-                            // Touch long-press drag
+                            // Touch & Pointer drag reordering (with haptic feedback)
                             let touchDragTimer = null;
                             let touchDragging = false;
+                            let didDrag = false;
+                            let startX = 0;
+                            let startY = 0;
                             let lastDragOverTarget = null;
-                            btn.addEventListener('touchstart', (e) => {
-                                touchDragging = false;
-                                lastDragOverTarget = null;
-                                touchDragTimer = setTimeout(() => {
-                                    touchDragging = true;
-                                    dragSrcIndex = idx;
-                                    btn.classList.add('is-dragging');
-                                    // Haptic pulse on pick-up
-                                    if (navigator.vibrate) navigator.vibrate(40);
-                                }, 300);
-                            }, { passive: true });
-                            btn.addEventListener('touchmove', (e) => {
+
+                            function triggerHaptic(duration = 50) {
+                                try {
+                                    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+                                        const res = navigator.vibrate(duration);
+                                        if (!res) {
+                                            navigator.vibrate([duration]);
+                                        }
+                                    }
+                                } catch (_) {}
+                            }
+
+                            function startTouchDrag() {
+                                if (touchDragging) return;
+                                touchDragging = true;
+                                didDrag = true;
+                                dragSrcIndex = idx;
+                                btn.classList.add('is-dragging');
+                                triggerHaptic(60);
+                            }
+
+                            function onDragMove(clientX, clientY) {
+                                const dist = Math.hypot(clientX - startX, clientY - startY);
                                 if (!touchDragging) {
-                                    clearTimeout(touchDragTimer);
-                                    return;
+                                    if (dist > 8) {
+                                        clearTimeout(touchDragTimer);
+                                        startTouchDrag();
+                                    } else {
+                                        return;
+                                    }
                                 }
-                                e.preventDefault();
-                                const touch = e.touches[0];
-                                const el = document.elementFromPoint(touch.clientX, touch.clientY);
+
+                                const el = document.elementFromPoint(clientX, clientY);
                                 const target = el ? el.closest('.bitstream-mood-reaction-btn') : null;
                                 reactionsList.querySelectorAll('.bitstream-mood-reaction-btn').forEach(b => b.classList.remove('is-drag-over'));
                                 if (target && target !== btn) {
                                     target.classList.add('is-drag-over');
                                     if (target !== lastDragOverTarget) {
                                         lastDragOverTarget = target;
-                                        // Haptic tick when finger crosses into a new slot
-                                        if (navigator.vibrate) navigator.vibrate(20);
+                                        triggerHaptic(50);
                                     }
                                 } else {
                                     lastDragOverTarget = null;
                                 }
-                            }, { passive: false });
-                            btn.addEventListener('touchend', (e) => {
+                            }
+
+                            function onDragEnd(clientX, clientY) {
                                 clearTimeout(touchDragTimer);
-                                btn.classList.remove('is-dragging');
-                                if (!touchDragging) return;
+                                window.removeEventListener('pointermove', onPointerMove);
+                                window.removeEventListener('pointerup', onPointerEnd);
+                                window.removeEventListener('pointercancel', onPointerEnd);
+                                window.removeEventListener('touchmove', onTouchMove);
+                                window.removeEventListener('touchend', onTouchEnd);
+                                window.removeEventListener('touchcancel', onTouchEnd);
+
+                                const wasDragging = touchDragging;
                                 touchDragging = false;
-                                lastDragOverTarget = null;
-                                const touch = e.changedTouches[0];
-                                const el = document.elementFromPoint(touch.clientX, touch.clientY);
-                                const target = el ? el.closest('.bitstream-mood-reaction-btn') : null;
+                                btn.classList.remove('is-dragging');
                                 reactionsList.querySelectorAll('.bitstream-mood-reaction-btn').forEach(b => b.classList.remove('is-drag-over'));
-                                if (target && target !== btn) {
-                                    const targetIdx = parseInt(target.dataset.idx, 10);
-                                    if (!isNaN(targetIdx) && targetIdx !== idx) {
-                                        // Haptic pulse on successful drop
-                                        if (navigator.vibrate) navigator.vibrate(35);
-                                        reorderMoods(idx, targetIdx);
+
+                                if (wasDragging) {
+                                    const el = document.elementFromPoint(clientX, clientY);
+                                    const target = el ? el.closest('.bitstream-mood-reaction-btn') : null;
+                                    if (target && target !== btn) {
+                                        const targetIdx = parseInt(target.dataset.idx, 10);
+                                        if (!isNaN(targetIdx) && targetIdx !== idx) {
+                                            triggerHaptic(70);
+                                            reorderMoods(idx, targetIdx);
+                                        }
                                     }
+                                    lastDragOverTarget = null;
+                                    dragSrcIndex = null;
                                 }
-                                dragSrcIndex = null;
+                            }
+
+                            function onPointerMove(e) {
+                                if (e.pointerType === 'mouse') return;
+                                if (e.cancelable) e.preventDefault();
+                                onDragMove(e.clientX, e.clientY);
+                            }
+
+                            function onPointerEnd(e) {
+                                if (e.pointerType === 'mouse') return;
+                                onDragEnd(e.clientX, e.clientY);
+                            }
+
+                            function onTouchMove(e) {
+                                if (e.cancelable) e.preventDefault();
+                                const touch = e.touches[0];
+                                if (touch) onDragMove(touch.clientX, touch.clientY);
+                            }
+
+                            function onTouchEnd(e) {
+                                const touch = e.changedTouches ? e.changedTouches[0] : null;
+                                onDragEnd(touch ? touch.clientX : startX, touch ? touch.clientY : startY);
+                            }
+
+                            btn.addEventListener('pointerdown', (e) => {
+                                if (e.pointerType === 'mouse') return;
+                                touchDragging = false;
+                                didDrag = false;
+                                lastDragOverTarget = null;
+                                startX = e.clientX;
+                                startY = e.clientY;
+
+                                window.addEventListener('pointermove', onPointerMove, { passive: false });
+                                window.addEventListener('pointerup', onPointerEnd);
+                                window.addEventListener('pointercancel', onPointerEnd);
+
+                                clearTimeout(touchDragTimer);
+                                touchDragTimer = setTimeout(() => {
+                                    startTouchDrag();
+                                }, 220);
                             });
+
+                            btn.addEventListener('touchstart', (e) => {
+                                const touch = e.touches[0];
+                                if (!touch) return;
+                                touchDragging = false;
+                                didDrag = false;
+                                lastDragOverTarget = null;
+                                startX = touch.clientX;
+                                startY = touch.clientY;
+
+                                window.addEventListener('touchmove', onTouchMove, { passive: false });
+                                window.addEventListener('touchend', onTouchEnd);
+                                window.addEventListener('touchcancel', onTouchEnd);
+
+                                clearTimeout(touchDragTimer);
+                                touchDragTimer = setTimeout(() => {
+                                    startTouchDrag();
+                                }, 220);
+                            }, { passive: true });
                         }
 
                         // Click handler: select (normal) or open edit form (edit mode)
                         btn.addEventListener('click', (e) => {
                             e.preventDefault();
                             e.stopPropagation();
+                            if (didDrag) {
+                                didDrag = false;
+                                return;
+                            }
                             if (moodEditMode) {
                                 openMoodEditorFor(idx, mood);
                             } else {
