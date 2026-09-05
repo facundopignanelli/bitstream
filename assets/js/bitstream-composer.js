@@ -1389,6 +1389,28 @@
                 let moodEditMode = false;
                 let moodEditingIndex = null; // index in getAllMoods() being edited via creator
 
+                function exitMoodEditMode() {
+                    moodEditMode = false;
+                    moodEditingIndex = null;
+                    hideUndoToast();
+                    if (moodCreator) {
+                        moodCreator.hidden = true;
+                        moodCreator.style.display = 'none';
+                    }
+                    if (moodReactionsBar) {
+                        moodReactionsBar.hidden = false;
+                        moodReactionsBar.style.display = 'flex';
+                    }
+                    if (moodModal) {
+                        const reactionsList = moodModal.querySelector('#bitstream-mood-reactions-list');
+                        const editBtn = moodModal.querySelector('#bitstream-mood-edit-trigger');
+                        const editHint = moodModal.querySelector('#bitstream-mood-edit-hint');
+                        if (reactionsList) reactionsList.classList.remove('is-edit-mode');
+                        if (editBtn) editBtn.classList.remove('is-active');
+                        if (editHint) editHint.textContent = '';
+                    }
+                }
+
                 // Undo state
                 let undoTimer = null;
                 let undoMoodData = null; // { moods: [...snapshot], index: int }
@@ -1582,6 +1604,11 @@
                                     }
                                 }
 
+                                const dx = clientX - startX;
+                                const dy = clientY - startY;
+                                btn.style.transform = `translate3d(${dx}px, ${dy - 44}px, 0) scale(1.35)`;
+                                btn.style.zIndex = '99999';
+
                                 const target = getClosestTarget(clientX, clientY);
                                 if (target) {
                                     if (target !== lastDragOverTarget) {
@@ -1598,6 +1625,8 @@
 
                             function onDragEnd(clientX, clientY) {
                                 clearTimeout(touchDragTimer);
+                                btn.style.transform = '';
+                                btn.style.zIndex = '';
                                 const wasDragging = touchDragging;
                                 touchDragging = false;
                                 btn.classList.remove('is-dragging');
@@ -2168,6 +2197,7 @@
 
                 // ── POPOVER MANAGER ──
                 function closeAllPopovers() {
+                    if (typeof exitMoodEditMode === 'function') exitMoodEditMode();
                     composerRoot.querySelectorAll('.bitstream-composer-popover').forEach(p => p.hidden = true);
                     composerRoot.querySelectorAll('[data-composer-popover-trigger]').forEach(btn => btn.classList.remove('is-active'));
                 }
@@ -2221,6 +2251,7 @@
                                 }, 50);
                             }
                         } else if (popoverName === 'mood') {
+                            if (typeof exitMoodEditMode === 'function') exitMoodEditMode();
                             renderMoodReactions();
                         }
                         positionPopover(popover, triggerBtn);
