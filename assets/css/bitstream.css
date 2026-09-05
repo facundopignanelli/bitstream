@@ -7272,6 +7272,7 @@ iframe[src*="youtube-nocookie.com"] {
     /* Each card takes the full width of the carousel slot */
     .bitstream-composer-preview-carousel>.bitstream-composer-preview-rebit,
     .bitstream-composer-preview-carousel>.bitstream-composer-preview-media,
+    .bitstream-composer-preview-carousel>.bitstream-composer-preview-mood,
     .bitstream-composer-preview-carousel>.bs-edit-quote-preview {
         flex: 0 0 100% !important;
         min-width: 0 !important;
@@ -8481,12 +8482,57 @@ body.dark-mode .bitstream-mood-creator-input:focus,
 
 /* Dynamic preview badges inside composer */
 .bitstream-composer-preview-mood {
-    margin-top: 0.75rem;
     border: 1px solid #eef0f2;
     border-radius: 12px;
-    background: #fff;
-    padding: 0.8rem 1rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    background: #f8fafc;
+    padding: 0.55rem 0.85rem;
+    box-sizing: border-box;
+}
+
+.bitstream-composer-preview-mood-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 0.5rem;
+    gap: 4px;
+    text-align: center;
+}
+
+.bitstream-composer-preview-mood-emoji {
+    font-size: 2.8rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bitstream-composer-preview-mood-emoji img.emoji {
+    width: 2.8rem !important;
+    height: 2.8rem !important;
+    vertical-align: middle;
+}
+
+.bitstream-composer-preview-mood-text {
+    font-size: 1.05rem;
+    font-weight: 500;
+    color: #475569;
+}
+
+.bitstream-composer-preview-mood-text strong {
+    color: var(--wp--preset--color--accent-1, #2c6e49);
+    font-weight: 700;
+}
+
+body.dark-mode .bitstream-composer-preview-mood,
+.dark-theme .bitstream-composer-preview-mood {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+body.dark-mode .bitstream-composer-preview-mood-text,
+.dark-theme .bitstream-composer-preview-mood-text {
+    color: #cbd5e1;
 }
 
 /* Edit timeline modal mood row transitions */

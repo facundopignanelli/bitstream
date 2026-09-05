@@ -72,7 +72,25 @@
                 const previewSchedule = form.querySelector('.bitstream-composer-preview-schedule');
                 const previewScheduleDate = form.querySelector('.bitstream-composer-preview-schedule-date');
                 const previewMood = form.querySelector('.bitstream-composer-preview-mood');
+                const previewMoodEmoji = form.querySelector('.bitstream-composer-preview-mood-emoji');
                 const previewMoodText = form.querySelector('.bitstream-composer-preview-mood-text');
+
+                function setPreviewMoodDisplay(emoji, emotion) {
+                    if (!previewMood) return;
+                    if (emotion) {
+                        if (previewMoodEmoji) previewMoodEmoji.textContent = emoji || '';
+                        if (previewMoodText) previewMoodText.innerHTML = `feeling <strong>${emotion}</strong>`;
+                        if (typeof window.parseEmojis === 'function') {
+                            if (previewMoodEmoji) window.parseEmojis(previewMoodEmoji);
+                            if (previewMoodText) window.parseEmojis(previewMoodText);
+                        }
+                        previewMood.hidden = false;
+                    } else {
+                        if (previewMoodEmoji) previewMoodEmoji.textContent = '';
+                        if (previewMoodText) previewMoodText.textContent = '';
+                        previewMood.hidden = true;
+                    }
+                }
                 const editBanner = form.querySelector('#bitstream-composer-edit-banner');
                 const editBannerTitle = form.querySelector('#bitstream-composer-edit-title');
                 const editCancelBtn = form.querySelector('#bitstream-composer-edit-cancel-btn');
@@ -153,30 +171,30 @@
                     }
 
                     const isMobileCarousel = window.innerWidth < 1024;
-                    const bothPresent = hasRebit && hasMedia;
+                    const activeCards = [];
+                    if (hasRebit && previewRebit) activeCards.push({ card: previewRebit, label: 'Rebit' });
+                    if (hasMedia && previewMedia) activeCards.push({ card: previewMedia, label: 'Media' });
+                    if (hasMood && previewMood) activeCards.push({ card: previewMood, label: 'Mood' });
 
-                    if (!isMobileCarousel || !bothPresent) {
-                        // Desktop or only one card: hide dots, no snap needed
+                    if (!isMobileCarousel || activeCards.length <= 1) {
+                        // Desktop or <= 1 card: hide dots, no snap needed
                         previewDotsEl.hidden = true;
                         previewDotsEl.innerHTML = '';
                         return;
                     }
 
-                    // Both cards present on mobile/tablet: build dots
-                    const cards = [previewRebit, previewMedia];
-                    const labels = ['Rebit', 'Media'];
-
+                    // Multiple cards present on mobile/tablet: build dots
                     previewDotsEl.innerHTML = '';
                     previewDotsEl.hidden = false;
                     previewDotsEl.setAttribute('aria-hidden', 'true');
 
-                    cards.forEach(function (card, i) {
+                    activeCards.forEach(function (item, i) {
                         const dot = document.createElement('button');
                         dot.type = 'button';
                         dot.className = 'bitstream-composer-preview-dot' + (i === 0 ? ' is-active' : '');
-                        dot.setAttribute('aria-label', 'Go to ' + labels[i]);
+                        dot.setAttribute('aria-label', 'Go to ' + item.label);
                         dot.addEventListener('click', function () {
-                            previewCarousel.scrollTo({ left: card.offsetLeft, behavior: 'smooth' });
+                            previewCarousel.scrollTo({ left: item.card.offsetLeft, behavior: 'smooth' });
                         });
                         previewDotsEl.appendChild(dot);
                     });
@@ -387,10 +405,11 @@
                         if (previewMedia) previewMedia.hidden = !stashedDraft.hasMedia;
                         if (previewRebitCard) previewRebitCard.innerHTML = stashedDraft.previewRebitHtml;
                         if (previewRebit) previewRebit.hidden = !stashedDraft.hasRebit;
-                        if (previewMoodText && stashedDraft.moodEmotion) {
-                            previewMoodText.textContent = (stashedDraft.moodEmoji ? stashedDraft.moodEmoji + ' ' : '') + 'Feeling ' + stashedDraft.moodEmotion;
+                        if (stashedDraft.hasMood && stashedDraft.moodEmotion) {
+                            setPreviewMoodDisplay(stashedDraft.moodEmoji, stashedDraft.moodEmotion);
+                        } else {
+                            setPreviewMoodDisplay('', '');
                         }
-                        if (previewMood) previewMood.hidden = !stashedDraft.hasMood;
                         if (previewQuoteCard) previewQuoteCard.innerHTML = stashedDraft.previewQuoteHtml;
                         if (previewQuote) previewQuote.hidden = !stashedDraft.hasQuote;
 
@@ -425,14 +444,7 @@
                             }
                             if (hMoodEmoji) hMoodEmoji.value = data.mood_emoji || '';
                             if (hMoodEmotion) hMoodEmotion.value = data.mood_emotion || '';
-                            if (previewMood && previewMoodText) {
-                                if (data.mood_emotion) {
-                                    previewMoodText.textContent = (data.mood_emoji ? data.mood_emoji + ' ' : '') + 'Feeling ' + data.mood_emotion;
-                                    previewMood.hidden = false;
-                                } else {
-                                    previewMood.hidden = true;
-                                }
-                            }
+                            setPreviewMoodDisplay(data.mood_emoji || '', data.mood_emotion || '');
 
                             if (data.post_type === 'rebit' && data.rebit_url) {
                                 if (hRebitUrl) hRebitUrl.value = data.rebit_url;
@@ -1368,17 +1380,7 @@
                     } else {
                         if (hMoodEmoji) hMoodEmoji.value = emoji;
                         if (hMoodEmotion) hMoodEmotion.value = emotion;
-
-                        if (previewMood && previewMoodText) {
-                            if (emotion) {
-                                previewMoodText.textContent = `${emoji} Feeling ${emotion}`;
-                                if (typeof window.parseEmojis === 'function') window.parseEmojis(previewMoodText);
-                                previewMood.hidden = false;
-                            } else {
-                                previewMoodText.textContent = '';
-                                previewMood.hidden = true;
-                            }
-                        }
+                        setPreviewMoodDisplay(emoji, emotion);
                         syncPreviewArea();
                     }
                 }
@@ -1525,14 +1527,16 @@
                             // Touch long-press drag
                             let touchDragTimer = null;
                             let touchDragging = false;
+                            let lastDragOverTarget = null;
                             btn.addEventListener('touchstart', (e) => {
                                 touchDragging = false;
+                                lastDragOverTarget = null;
                                 touchDragTimer = setTimeout(() => {
                                     touchDragging = true;
                                     dragSrcIndex = idx;
                                     btn.classList.add('is-dragging');
-                                    // haptic if available
-                                    if (navigator.vibrate) navigator.vibrate(30);
+                                    // Haptic pulse on pick-up
+                                    if (navigator.vibrate) navigator.vibrate(40);
                                 }, 300);
                             }, { passive: true });
                             btn.addEventListener('touchmove', (e) => {
@@ -1545,20 +1549,34 @@
                                 const el = document.elementFromPoint(touch.clientX, touch.clientY);
                                 const target = el ? el.closest('.bitstream-mood-reaction-btn') : null;
                                 reactionsList.querySelectorAll('.bitstream-mood-reaction-btn').forEach(b => b.classList.remove('is-drag-over'));
-                                if (target && target !== btn) target.classList.add('is-drag-over');
+                                if (target && target !== btn) {
+                                    target.classList.add('is-drag-over');
+                                    if (target !== lastDragOverTarget) {
+                                        lastDragOverTarget = target;
+                                        // Haptic tick when finger crosses into a new slot
+                                        if (navigator.vibrate) navigator.vibrate(20);
+                                    }
+                                } else {
+                                    lastDragOverTarget = null;
+                                }
                             }, { passive: false });
                             btn.addEventListener('touchend', (e) => {
                                 clearTimeout(touchDragTimer);
                                 btn.classList.remove('is-dragging');
                                 if (!touchDragging) return;
                                 touchDragging = false;
+                                lastDragOverTarget = null;
                                 const touch = e.changedTouches[0];
                                 const el = document.elementFromPoint(touch.clientX, touch.clientY);
                                 const target = el ? el.closest('.bitstream-mood-reaction-btn') : null;
                                 reactionsList.querySelectorAll('.bitstream-mood-reaction-btn').forEach(b => b.classList.remove('is-drag-over'));
                                 if (target && target !== btn) {
                                     const targetIdx = parseInt(target.dataset.idx, 10);
-                                    if (!isNaN(targetIdx) && targetIdx !== idx) reorderMoods(idx, targetIdx);
+                                    if (!isNaN(targetIdx) && targetIdx !== idx) {
+                                        // Haptic pulse on successful drop
+                                        if (navigator.vibrate) navigator.vibrate(35);
+                                        reorderMoods(idx, targetIdx);
+                                    }
                                 }
                                 dragSrcIndex = null;
                             });
@@ -1874,7 +1892,7 @@
                             e.preventDefault();
                             if (hMoodEmoji) hMoodEmoji.value = '';
                             if (hMoodEmotion) hMoodEmotion.value = '';
-                            previewMood.hidden = true;
+                            setPreviewMoodDisplay('', '');
                             syncPreviewArea();
                         });
                     }
@@ -2019,15 +2037,11 @@
                             if (d.mood_emotion) {
                                 if (hMoodEmoji) hMoodEmoji.value = d.mood_emoji || '';
                                 if (hMoodEmotion) hMoodEmotion.value = d.mood_emotion || '';
-                                if (previewMoodText) {
-                                    previewMoodText.textContent = `${d.mood_emoji || ''} Feeling ${d.mood_emotion}`.trim();
-                                    if (typeof window.parseEmojis === 'function') window.parseEmojis(previewMoodText);
-                                }
-                                if (previewMood) previewMood.hidden = false;
+                                setPreviewMoodDisplay(d.mood_emoji || '', d.mood_emotion);
                             } else {
                                 if (hMoodEmoji) hMoodEmoji.value = '';
                                 if (hMoodEmotion) hMoodEmotion.value = '';
-                                if (previewMood) previewMood.hidden = true;
+                                setPreviewMoodDisplay('', '');
                             }
 
                             if (textarea) textarea.required = !(d.is_rebit || (d.attachment_id && parseInt(d.attachment_id, 10) > 0) || d.mood_emotion);

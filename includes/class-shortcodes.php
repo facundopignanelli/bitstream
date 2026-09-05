@@ -801,7 +801,7 @@ class BitStream_Shortcodes
                                         </div>
                                     </div>
                                 </div>
-                                 <!-- Media preview -->
+                                <!-- Media preview -->
                                 <div class="bitstream-composer-preview-media" hidden>
                                     <div class="bitstream-composer-preview-header">
                                         <span class="bitstream-composer-preview-label"><i class="fa-solid fa-photo-film"
@@ -817,8 +817,27 @@ class BitStream_Shortcodes
                                     </div>
                                     <div class="bitstream-composer-preview-media-thumb" id="bitstream-composer-preview-media-thumb"></div>
                                 </div>
+                                <!-- Mood preview card -->
+                                <div class="bitstream-composer-preview-mood" hidden>
+                                    <div class="bitstream-composer-preview-header">
+                                        <span class="bitstream-composer-preview-label"><i class="fa-solid fa-face-smile"
+                                                aria-hidden="true"></i> Mood</span>
+                                        <div class="bitstream-composer-preview-actions">
+                                            <button type="button" class="bitstream-composer-preview-edit" data-composer-edit="mood"
+                                                title="Edit mood" aria-label="Edit mood"><i class="fa-solid fa-pencil"
+                                                    aria-hidden="true"></i></button>
+                                            <button type="button" class="bitstream-composer-preview-remove"
+                                                data-composer-remove="mood" title="Remove mood" aria-label="Remove mood"><i
+                                                    class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+                                        </div>
+                                    </div>
+                                    <div class="bitstream-composer-preview-mood-body">
+                                        <span class="bitstream-composer-preview-mood-emoji"></span>
+                                        <span class="bitstream-composer-preview-mood-text"></span>
+                                    </div>
+                                </div>
                             </div>
-                            <!-- Dot indicators (shown by JS only when both cards are visible on mobile/tablet) -->
+                            <!-- Dot indicators (shown by JS only when multiple cards are visible on mobile/tablet) -->
                             <div class="bitstream-composer-preview-dots" hidden aria-hidden="true"></div>
                             <!-- Schedule badge — always below the carousel, never inside it -->
                             <div class="bitstream-composer-preview-schedule" hidden>
@@ -836,23 +855,6 @@ class BitStream_Shortcodes
                                     </div>
                                 </div>
                                 <span class="bitstream-composer-preview-schedule-date"></span>
-                            </div>
-                            <!-- Mood badge -->
-                            <div class="bitstream-composer-preview-mood" hidden>
-                                <div class="bitstream-composer-preview-header">
-                                    <span class="bitstream-composer-preview-label"><i class="fa-solid fa-face-smile"
-                                            aria-hidden="true"></i> Mood</span>
-                                    <div class="bitstream-composer-preview-actions">
-                                        <button type="button" class="bitstream-composer-preview-edit" data-composer-edit="mood"
-                                            title="Edit mood" aria-label="Edit mood"><i class="fa-solid fa-pencil"
-                                                aria-hidden="true"></i></button>
-                                        <button type="button" class="bitstream-composer-preview-remove"
-                                            data-composer-remove="mood" title="Remove mood" aria-label="Remove mood"><i
-                                                class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-                                    </div>
-                                </div>
-                                <span class="bitstream-composer-preview-mood-text"
-                                    style="font-weight: 500; font-size: 1.1rem; padding: 0.25rem 0; display: block;"></span>
                             </div>
                             <!-- Quoted Bit preview -->
                             <div class="bitstream-composer-preview-quote" hidden>
