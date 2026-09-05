@@ -88,16 +88,37 @@
     object-fit: unset !important;
 }
 
-/* Twitter Rebit card avatar image reset */
-.bit-rebit-twitter img {
-    width: 100% !important;
-    height: 100% !important;
+/* Twitter & Instagram Rebit card image resets (prevent general card img rules from inflating avatars or forcing min-height) */
+.bit-tweet-card img,
+.bit-instagram-card img {
+    max-width: 100% !important;
     min-height: unset !important;
-    max-height: none !important;
-    object-fit: cover !important;
-    margin: 0 !important;
     box-shadow: none !important;
-    border-radius: 0 !important;
+    margin: 0 !important;
+}
+
+.bit-tweet-avatar,
+.bit-instagram-avatar {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
+    min-height: 40px !important;
+    max-height: 40px !important;
+    border-radius: 50% !important;
+    object-fit: cover !important;
+    flex-shrink: 0 !important;
+    display: block !important;
+    box-shadow: none !important;
+}
+
+.bit-instagram-avatar {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+    min-height: 36px !important;
+    max-height: 36px !important;
 }
 
 /* Constrain video/mediaelement output inside cards */
@@ -362,7 +383,62 @@
 /* Action buttons row */
 .bitstream-composer-actions-row {
     display: flex;
+    align-items: center;
     gap: 0.5rem;
+}
+
+.bitstream-composer-actions-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.bitstream-composer-count-btn {
+    width: auto !important;
+    height: 2.2rem !important;
+    padding: 0 0.55rem !important;
+    gap: 0.35rem !important;
+    border-radius: 9999px !important;
+    background: #f1f5f9 !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #475569 !important;
+    text-decoration: none !important;
+    font-size: 0.85rem !important;
+}
+
+.bitstream-composer-count-btn:hover {
+    background: rgba(44, 110, 73, 0.08) !important;
+    border-color: var(--wp--preset--color--accent-1, #2c6e49) !important;
+    color: var(--wp--preset--color--accent-1, #2c6e49) !important;
+    transform: translateY(-1px);
+}
+
+.bitstream-composer-count-btn:active {
+    transform: translateY(0);
+}
+
+.bitstream-composer-count-btn i {
+    font-size: 0.95rem;
+    color: inherit;
+}
+
+.bitstream-composer-count-btn[hidden] {
+    display: none !important;
+}
+
+body.dark-mode .bitstream-composer-count-btn,
+.dark-theme .bitstream-composer-count-btn {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #94a3b8 !important;
+}
+
+body.dark-mode .bitstream-composer-count-btn:hover,
+.dark-theme .bitstream-composer-count-btn:hover {
+    background: rgba(74, 222, 128, 0.12) !important;
+    border-color: #4ade80 !important;
+    color: #4ade80 !important;
 }
 
 .bitstream-composer-action-btn {
@@ -5217,26 +5293,6 @@ body.bitstream-cropper-open {
     line-height: 1.2;
 }
 
-.bitstream-composer-mobile-pills {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 10px;
-    margin-bottom: 8px;
-    flex-wrap: wrap;
-}
-
-@media (min-width: 1024px) {
-    .bitstream-composer-mobile-pills {
-        display: none !important;
-    }
-}
-
-.bitstream-composer-header-actions {
-    display: flex !important;
-    align-items: center !important;
-    gap: 8px;
-}
 
 .bitstream-composer-pill-btn {
     display: inline-flex;
@@ -7013,18 +7069,12 @@ iframe[src*="youtube-nocookie.com"] {
         flex-shrink: 0;
     }
 
-    .bitstream-composer>.bitstream-composer-modal-dialog>.bitstream-composer-modal-header .bitstream-composer-header-actions {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        margin-left: auto;
-        margin-right: 0.75rem;
-    }
-
     .bitstream-composer>.bitstream-composer-modal-dialog>.bitstream-composer-modal-body {
-        padding: 1rem 1.4rem 1.2rem !important;
-        overflow: hidden !important;
+        padding: 1rem 1.4rem 1.5rem !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
         flex: 1 1 auto !important;
+        min-height: 0 !important;
         position: relative !important;
     }
 
@@ -7206,16 +7256,30 @@ iframe[src*="youtube-nocookie.com"] {
         box-sizing: border-box !important;
     }
 
-    /* Cap preview images slightly on mobile so they don't consume unnecessary vertical space */
-    .bitstream-composer>.bitstream-composer-modal-dialog>.bitstream-composer-modal-body .bitstream-composer-preview-rebit img {
+    /* Cap standard link/OG preview images slightly on mobile so they don't consume unnecessary vertical space */
+    .bitstream-composer>.bitstream-composer-modal-dialog>.bitstream-composer-modal-body .bitstream-composer-preview-rebit .bitstream-og-card img,
+    .bitstream-composer>.bitstream-composer-modal-dialog>.bitstream-composer-modal-body .bitstream-composer-preview-rebit .bit-rebit-preview>img {
         max-height: 120px !important;
         width: 100% !important;
         object-fit: cover !important;
     }
 
+    /* Tweet media thumbnail inside mobile composer: keep aspect ratio without cropping into slivers */
+    .bitstream-composer>.bitstream-composer-modal-dialog>.bitstream-composer-modal-body .bit-tweet-thumb {
+        max-height: 180px !important;
+        width: 100% !important;
+        object-fit: contain !important;
+        background: #000000;
+    }
+
     /* Anchor action buttons + Post Bit to the bottom regardless of textarea height */
     .bitstream-composer>.bitstream-composer-modal-dialog>.bitstream-composer-modal-body .bitstream-composer-actions-row {
         margin-top: auto !important;
+        flex-shrink: 0 !important;
+    }
+
+    .bitstream-composer>.bitstream-composer-modal-dialog>.bitstream-composer-modal-body .bitstream-composer-submit-row {
+        flex-shrink: 0 !important;
     }
 
     /* Status message is now inside the form — hide it when empty so it takes no space */

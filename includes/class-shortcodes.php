@@ -656,18 +656,6 @@ class BitStream_Shortcodes
                     <div class="bitstream-composer-top-bar hide-on-mobile">
                         <h3 class="bitstream-feed-sidebar-title"
                             style="color: var(--wp--preset--color--accent-1, #2c6e49); margin-bottom: 0;">Post a Bit</h3>
-                        <div class="bitstream-composer-header-actions">
-                            <button type="button" class="bitstream-composer-pill-btn" data-composer-modal-trigger="drafts"<?php echo ($draft_count === 0 ? ' hidden' : ''); ?>>
-                                <i class="fa-regular fa-file-lines" aria-hidden="true"></i>
-                                <span>Drafts</span>
-                                <span class="bitstream-composer-pill-count"><?php echo $draft_count; ?></span>
-                            </button>
-                            <button type="button" class="bitstream-composer-pill-btn" data-composer-modal-trigger="scheduled-list"<?php echo ($future_count === 0 ? ' hidden' : ''); ?>>
-                                <i class="fa-regular fa-clock" aria-hidden="true"></i>
-                                <span>Scheduled</span>
-                                <span class="bitstream-composer-pill-count"><?php echo $future_count; ?></span>
-                            </button>
-                        </div>
                     </div>
                     <form class="bitstream-sidebar-composer-form bitstream-composer-form"
                         data-composer-type="<?php echo esc_attr($composer_type_prefill); ?>">
@@ -698,20 +686,6 @@ class BitStream_Shortcodes
                             <input type="hidden" id="bitstream-quick-bit-content-value" name="bit_content" value="<?php echo esc_attr($bit_content_prefill); ?>">
                             <button type="button" class="bs-insert-emoji-btn" data-target-input="#bitstream-quick-bit-content" title="Insert Emoji" aria-label="Insert Emoji" style="position: absolute; right: 8px; bottom: 8px; background: none; border: none; font-size: 1.1rem; color: #94a3b8; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; transition: color 0.15s;">
                                 <i class="fa-regular fa-face-smile" aria-hidden="true"></i>
-                            </button>
-                        </div>
-
-                        <!-- Mobile Drafts & Scheduled Pills (below textarea for easy thumb reach) -->
-                        <div class="bitstream-composer-mobile-pills">
-                            <button type="button" class="bitstream-composer-pill-btn" data-composer-modal-trigger="drafts"<?php echo ($draft_count === 0 ? ' hidden' : ''); ?>>
-                                <i class="fa-regular fa-file-lines" aria-hidden="true"></i>
-                                <span>Drafts</span>
-                                <span class="bitstream-composer-pill-count"><?php echo $draft_count; ?></span>
-                            </button>
-                            <button type="button" class="bitstream-composer-pill-btn" data-composer-modal-trigger="scheduled-list"<?php echo ($future_count === 0 ? ' hidden' : ''); ?>>
-                                <i class="fa-regular fa-clock" aria-hidden="true"></i>
-                                <span>Scheduled</span>
-                                <span class="bitstream-composer-pill-count"><?php echo $future_count; ?></span>
                             </button>
                         </div>
 
@@ -1014,6 +988,18 @@ class BitStream_Shortcodes
                                         <button type="button" class="bitstream-mood-undo-btn" id="bitstream-mood-undo-btn">Undo</button>
                                     </div>
                                 </div>
+                            </div>
+
+                            <!-- Right-aligned Drafts & Scheduled List triggers (icon + counter) -->
+                            <div class="bitstream-composer-actions-right">
+                                <button type="button" class="bitstream-composer-action-btn bitstream-composer-count-btn" data-composer-modal-trigger="drafts" title="Drafts" aria-label="Drafts"<?php echo ($draft_count === 0 ? ' hidden' : ''); ?>>
+                                    <i class="fa-regular fa-file-lines" aria-hidden="true"></i>
+                                    <span class="bitstream-composer-pill-count"><?php echo $draft_count; ?></span>
+                                </button>
+                                <button type="button" class="bitstream-composer-action-btn bitstream-composer-count-btn" data-composer-modal-trigger="scheduled-list" title="Scheduled Bits" aria-label="Scheduled Bits"<?php echo ($future_count === 0 ? ' hidden' : ''); ?>>
+                                    <i class="fa-regular fa-clock" aria-hidden="true"></i>
+                                    <span class="bitstream-composer-pill-count"><?php echo $future_count; ?></span>
+                                </button>
                             </div>
                         </div>
 
