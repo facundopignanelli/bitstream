@@ -3209,9 +3209,14 @@
             const isSearchOpen = searchScreen && !searchScreen.hidden;
             const isMoreOpen = moreSheet && !moreSheet.hidden;
             const fab = document.getElementById('bs-compose-fab');
+            const bottomNav = document.querySelector('.bitstream-bottom-nav');
             if (fab) {
                 fab.style.display = (isComposerOpen || isSearchOpen || isMoreOpen) ? 'none' : '';
             }
+            if (bottomNav) {
+                bottomNav.style.display = isComposerOpen ? 'none' : '';
+            }
+            document.body.classList.toggle('bitstream-composer-open', !!isComposerOpen);
             if (navHome) navHome.classList.toggle('is-active', !isComposerOpen && !isSearchOpen && !isMoreOpen);
             if (navSearch) navSearch.classList.toggle('is-active', isSearchOpen);
             if (navMore) navMore.classList.toggle('is-active', isMoreOpen);

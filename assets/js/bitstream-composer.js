@@ -3441,6 +3441,60 @@
                         });
                     });
                 });
+
+                // Mobile visual viewport and keyboard handling
+                function syncVisualViewport() {
+                    const isMobile = window.innerWidth < 1024;
+                    const isOpen = !composerRoot.hidden;
+                    if (!isMobile || !isOpen) return;
+
+                    if (window.visualViewport) {
+                        const h = Math.round(window.visualViewport.height);
+                        const top = Math.round(window.visualViewport.offsetTop || 0);
+                        document.documentElement.style.setProperty('--bs-viewport-height', `${h}px`);
+                        if (top > 0) {
+                            document.documentElement.style.setProperty('--bs-viewport-top', `${top}px`);
+                        } else {
+                            document.documentElement.style.removeProperty('--bs-viewport-top');
+                        }
+                    }
+                    if (window.scrollY !== 0) {
+                        window.scrollTo(0, 0);
+                    }
+                }
+
+                function onComposerVisibilityChange() {
+                    const isMobile = window.innerWidth < 1024;
+                    const isOpen = !composerRoot.hidden;
+                    document.body.classList.toggle('bitstream-composer-open', !!(isOpen && isMobile));
+                    if (typeof window.bitstreamSyncBottomNav === 'function') {
+                        window.bitstreamSyncBottomNav();
+                    }
+                    if (isOpen && isMobile) {
+                        syncVisualViewport();
+                    } else {
+                        document.documentElement.style.removeProperty('--bs-viewport-height');
+                        document.documentElement.style.removeProperty('--bs-viewport-top');
+                    }
+                }
+
+                if (window.visualViewport) {
+                    window.visualViewport.addEventListener('resize', syncVisualViewport);
+                    window.visualViewport.addEventListener('scroll', syncVisualViewport);
+                }
+                window.addEventListener('resize', syncVisualViewport);
+
+                if (textarea) {
+                    textarea.addEventListener('focus', () => {
+                        setTimeout(syncVisualViewport, 50);
+                        setTimeout(syncVisualViewport, 300);
+                    });
+                }
+
+                if (window.MutationObserver) {
+                    const composerObserver = new MutationObserver(onComposerVisibilityChange);
+                    composerObserver.observe(composerRoot, { attributes: true, attributeFilter: ['hidden'] });
+                }
             });
         }
     };
