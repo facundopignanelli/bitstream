@@ -74,8 +74,10 @@
         if (cropperSizeLabel) {
             const imgW = rect.width || cropperImage.offsetWidth || 1;
             const imgH = rect.height || cropperImage.offsetHeight || 1;
-            const natW = cropperImage.naturalWidth || imgW;
-            const natH = cropperImage.naturalHeight || imgH;
+            const origW = (cropperState && cropperState.originalWidth > 0) ? cropperState.originalWidth : 0;
+            const origH = (cropperState && cropperState.originalHeight > 0) ? cropperState.originalHeight : 0;
+            const natW = origW > 0 ? origW : (cropperImage.naturalWidth || imgW);
+            const natH = origH > 0 ? origH : (cropperImage.naturalHeight || imgH);
             const scaleX = natW / imgW;
             const scaleY = natH / imgH;
             const finalW = Math.round(w * scaleX);
@@ -116,6 +118,34 @@
         }
 
         if (!attachmentId || !url) {
+            if (attachmentId > 0 && window.bitstream_ajax && bitstream_ajax.ajax_url && bitstream_ajax.media_upload_nonce) {
+                setStatus('Loading image...');
+                const fd = new FormData();
+                fd.append('action', 'bitstream_get_attachment_data');
+                fd.append('nonce', bitstream_ajax.media_upload_nonce);
+                fd.append('attachment_id', attachmentId);
+                fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
+                    .then(r => r.json())
+                    .then(res => {
+                        if (res.success && res.data) {
+                            const d = res.data;
+                            const isWeb = d.url && !d.url.toLowerCase().endsWith('.heic') && !d.url.toLowerCase().endsWith('.heif');
+                            const cropUrl = isWeb ? d.url : (d.full_web_url || d.preview_url || d.url);
+                            openCropper(targetInputId, targetPreviewId, Object.assign({}, options, {
+                                attachmentId: attachmentId,
+                                url: cropUrl,
+                                originalWidth: d.width || 0,
+                                originalHeight: d.height || 0
+                            }));
+                        } else {
+                            setStatus('No image loaded to crop.', true);
+                        }
+                    })
+                    .catch(() => {
+                        setStatus('Failed to load image for cropping.', true);
+                    });
+                return;
+            }
             setStatus('No image loaded to crop.', true);
             return;
         }
@@ -126,6 +156,8 @@
             attachmentId: attachmentId,
             enforceSquare: !!options.enforceSquare,
             onComplete: options.onComplete,
+            originalWidth: options.originalWidth || 0,
+            originalHeight: options.originalHeight || 0,
             startX: 0,
             startY: 0,
             mode: null,
@@ -388,7 +420,10 @@
                 const croppedMedia = {
                     id: media.id,
                     url: url,
+                    full_web_url: media.full_web_url ? (media.full_web_url + (media.full_web_url.indexOf('?') === -1 ? '?' : '&') + 't=' + cacheKey) : url,
                     preview_url: previewUrl,
+                    width: media.width || 0,
+                    height: media.height || 0,
                     mime: media.mime,
                     sizes: { medium: { url: previewUrl } }
                 };

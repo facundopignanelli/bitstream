@@ -10,6 +10,13 @@
         return match ? match[1] : '';
     }
 
+    function isWebImage(url) {
+        if (!url || typeof url !== 'string') return false;
+        const clean = url.split('?')[0].toLowerCase();
+        return clean.endsWith('.jpg') || clean.endsWith('.jpeg') || clean.endsWith('.png') || clean.endsWith('.webp') || clean.endsWith('.gif');
+    }
+    window.isBitstreamWebImage = isWebImage;
+
     function getUploadMimeType(file) {
         if (file && file.type) {
             return file.type;
@@ -225,9 +232,13 @@
                     if (openCropperFn) {
                         const targetInput = previewEl.closest('form') ? (previewEl.closest('form').querySelector('.bs-edit-attachment-id, #bitstream-composer-attachment-id')) : null;
                         const targetInputId = targetInput ? targetInput.id : 'bitstream-composer-attachment-id';
+                        const isWeb = isWebImage(item.url);
+                        const cropperUrl = isWeb ? item.url : (item.full_web_url || item.preview_url || item.url);
                         openCropperFn(targetInputId, previewEl.id || previewEl, {
                             attachmentId: item.id,
-                            url: item.preview_url || item.url,
+                            url: cropperUrl,
+                            originalWidth: item.width || 0,
+                            originalHeight: item.height || 0,
                             onComplete: (croppedMedia) => {
                                 if (croppedMedia && croppedMedia.id) {
                                     const currentAttachments = getExistingAttachments(previewEl);
@@ -845,7 +856,10 @@
                 loadedAttachments.push({
                     id: media.id,
                     url: media.url,
+                    full_web_url: media.full_web_url || media.url,
                     preview_url: media.preview_url || media.url,
+                    width: media.width || 0,
+                    height: media.height || 0,
                     mime: media.mime,
                     filename: file.name
                 });
@@ -897,10 +911,14 @@
                 const data = selection.toJSON();
                 const mime = data.mime || data.type || '';
                 if (mime.startsWith('image/') || mime.startsWith('video/')) {
+                    const meta = data.media_details || {};
                     loadedAttachments.push({
                         id: data.id,
                         url: data.url,
+                        full_web_url: data.url,
                         preview_url: data.preview_url || (data.sizes && ((data.sizes.large && data.sizes.large.url) || (data.sizes.medium_large && data.sizes.medium_large.url) || (data.sizes.medium && data.sizes.medium.url))) || data.url,
+                        width: meta.width || data.width || 0,
+                        height: meta.height || data.height || 0,
                         mime: mime,
                         filename: data.filename || data.title || ''
                     });

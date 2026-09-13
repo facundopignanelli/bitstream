@@ -295,6 +295,26 @@ class BitStream_Ajax_Handlers
             throw new Exception('Unsupported file format. Only images and videos are allowed.');
         }
 
+        // Auto-convert HEIC/HEIF to full-quality JPEG so all browsers can display and crop at full resolution
+        $ext = strtolower(pathinfo($file_path, PATHINFO_EXTENSION));
+        if (in_array($ext, ['heic', 'heif'], true) || in_array($mime_type, ['image/heic', 'image/heif'], true)) {
+            require_once ABSPATH . 'wp-admin/includes/image.php';
+            $editor = wp_get_image_editor($file_path);
+            if (!is_wp_error($editor)) {
+                $dir = pathinfo($file_path, PATHINFO_DIRNAME);
+                $filename = pathinfo($file_path, PATHINFO_FILENAME);
+                $jpg_path = trailingslashit($dir) . $filename . '.jpg';
+                $saved = $editor->save($jpg_path, 'image/jpeg');
+                if (!is_wp_error($saved) && file_exists($jpg_path)) {
+                    @unlink($file_path);
+                    $file_path = $jpg_path;
+                    $file_url = preg_replace('/\.(heic|heif)$/i', '.jpg', $file_url);
+                    $mime_type = 'image/jpeg';
+                    $file_type = ['ext' => 'jpg', 'type' => 'image/jpeg'];
+                }
+            }
+        }
+
         $attachment = [
             'post_mime_type' => $mime_type,
             'post_title' => sanitize_text_field(pathinfo($file_path, PATHINFO_FILENAME)),
@@ -314,11 +334,15 @@ class BitStream_Ajax_Handlers
         update_post_meta($attachment_id, '_bitstream_upload_created_at', time());
 
         $preview_url = $this->get_best_preview_url($attachment_id, $file_url);
+        $full_web_url = $this->get_highest_res_web_url($attachment_id, $file_url);
 
         return [
             'id' => $attachment_id,
             'url' => $file_url,
+            'full_web_url' => $full_web_url,
             'preview_url' => $preview_url,
+            'width' => !empty($attachment_data['width']) ? (int)$attachment_data['width'] : 0,
+            'height' => !empty($attachment_data['height']) ? (int)$attachment_data['height'] : 0,
             'mime' => $file_type['type'],
             'edit_url' => get_edit_post_link($attachment_id, ''),
         ];
@@ -902,11 +926,16 @@ class BitStream_Ajax_Handlers
             $file_url = wp_get_attachment_url($attachment_id);
             $mime_type = get_post_mime_type($attachment_id);
             $preview_url = $this->get_best_preview_url($attachment_id, $file_url);
+            $full_web_url = $this->get_highest_res_web_url($attachment_id, $file_url);
+            $metadata = wp_get_attachment_metadata($attachment_id);
 
             wp_send_json_success([
                 'id' => $attachment_id,
                 'url' => $file_url,
+                'full_web_url' => $full_web_url,
                 'preview_url' => $preview_url,
+                'width' => !empty($metadata['width']) ? (int)$metadata['width'] : 0,
+                'height' => !empty($metadata['height']) ? (int)$metadata['height'] : 0,
                 'mime' => $mime_type,
             ]);
         }
@@ -956,6 +985,48 @@ class BitStream_Ajax_Handlers
         }
 
         return $preview_url ?: $fallback_url;
+    }
+
+    /**
+     * Get the highest resolution web-compatible image URL for cropping and full display.
+     *
+     * @param int $attachment_id
+     * @param string $fallback_url
+     * @return string
+     */
+    private function get_highest_res_web_url($attachment_id, $fallback_url = '')
+    {
+        if (empty($fallback_url)) {
+            $fallback_url = wp_get_attachment_url($attachment_id);
+        }
+
+        $mime_type = get_post_mime_type($attachment_id);
+        if (strpos((string)$mime_type, 'image/') !== 0) {
+            return $fallback_url;
+        }
+
+        // Standard web formats are natively viewable at full resolution
+        $path = (string)parse_url($fallback_url, PHP_URL_PATH);
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true)) {
+            return $fallback_url;
+        }
+
+        // For HEIC or non-web formats, find the largest generated JPEG sub-size
+        $metadata = wp_get_attachment_metadata($attachment_id);
+        if (!empty($metadata['sizes'])) {
+            $high_res_sizes = ['scaled', '2048x2048', '1536x1536', 'large', 'medium_large', 'medium'];
+            foreach ($high_res_sizes as $size) {
+                if (isset($metadata['sizes'][$size])) {
+                    $url = wp_get_attachment_image_url($attachment_id, $size);
+                    if ($url) {
+                        return $url;
+                    }
+                }
+            }
+        }
+
+        return $fallback_url;
     }
 
     /**
@@ -1126,10 +1197,14 @@ class BitStream_Ajax_Handlers
             }
 
             $new_url = $wp_upload_dir['url'] . '/' . $new_filename;
+            $new_metadata = wp_get_attachment_metadata($new_attachment_id);
             wp_send_json_success([
                 'id' => $new_attachment_id,
                 'url' => $new_url,
+                'full_web_url' => $new_url,
                 'preview_url' => $this->get_best_preview_url($new_attachment_id, $new_url),
+                'width' => !empty($new_metadata['width']) ? (int)$new_metadata['width'] : $crop_w,
+                'height' => !empty($new_metadata['height']) ? (int)$new_metadata['height'] : $crop_h,
                 'mime' => $saved['mime-type'],
                 'cache_buster' => time(),
             ]);
@@ -2075,10 +2150,14 @@ class BitStream_Ajax_Handlers
                 $url = wp_get_attachment_url($id);
                 $mime = get_post_mime_type($id);
                 if ($url && $mime) {
+                    $meta = wp_get_attachment_metadata($id);
                     $attachments_data[] = [
                         'id' => $id,
                         'url' => $url,
+                        'full_web_url' => $this->get_highest_res_web_url($id, $url),
                         'preview_url' => $this->get_best_preview_url($id, $url),
+                        'width' => !empty($meta['width']) ? (int)$meta['width'] : 0,
+                        'height' => !empty($meta['height']) ? (int)$meta['height'] : 0,
                         'mime' => $mime
                     ];
                 }
@@ -2295,10 +2374,14 @@ class BitStream_Ajax_Handlers
                 $url = wp_get_attachment_url($id);
                 $mime = get_post_mime_type($id);
                 if ($url && $mime) {
+                    $meta = wp_get_attachment_metadata($id);
                     $attachments_data[] = [
                         'id' => $id,
                         'url' => $url,
+                        'full_web_url' => $this->get_highest_res_web_url($id, $url),
                         'preview_url' => $this->get_best_preview_url($id, $url),
+                        'width' => !empty($meta['width']) ? (int)$meta['width'] : 0,
+                        'height' => !empty($meta['height']) ? (int)$meta['height'] : 0,
                         'mime' => $mime
                     ];
                 }

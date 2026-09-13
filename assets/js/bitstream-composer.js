@@ -735,12 +735,19 @@
                             if (openCropperFn) {
                                 const attachments = previewMediaThumb && typeof window.getExistingAttachments === 'function' ? window.getExistingAttachments(previewMediaThumb) : [];
                                 const targetAttachment = attachments.length > 0 ? attachments[0] : null;
-                                const targetId = targetAttachment ? targetAttachment.id : (hAttachmentId ? parseInt(hAttachmentId.value || '0', 10) : 0);
-                                const targetUrl = targetAttachment ? (targetAttachment.preview_url || targetAttachment.url || '') : '';
+                                const isWebFn = window.isBitstreamWebImage || function (u) {
+                                    if (!u) return false;
+                                    const c = u.split('?')[0].toLowerCase();
+                                    return c.endsWith('.jpg') || c.endsWith('.jpeg') || c.endsWith('.png') || c.endsWith('.webp') || c.endsWith('.gif');
+                                };
+                                const isWeb = targetAttachment ? isWebFn(targetAttachment.url) : false;
+                                const targetUrl = targetAttachment ? (isWeb ? targetAttachment.url : (targetAttachment.full_web_url || targetAttachment.preview_url || targetAttachment.url || '')) : '';
 
                                 openCropperFn('bitstream-composer-attachment-id', 'bitstream-composer-preview-media-thumb', {
                                     attachmentId: targetId,
                                     url: targetUrl,
+                                    originalWidth: targetAttachment ? (targetAttachment.width || 0) : 0,
+                                    originalHeight: targetAttachment ? (targetAttachment.height || 0) : 0,
                                     onComplete: (croppedMedia) => {
                                         if (croppedMedia && croppedMedia.id) {
                                             const updated = attachments.length > 0 ? [croppedMedia, ...attachments.slice(1)] : [croppedMedia];
@@ -1382,6 +1389,11 @@
                         if (hMoodEmotion) hMoodEmotion.value = emotion;
                         setPreviewMoodDisplay(emoji, emotion);
                         syncPreviewArea();
+                        if (emotion && previewMood && previewCarousel && window.innerWidth < 1024) {
+                            requestAnimationFrame(() => {
+                                previewCarousel.scrollTo({ left: previewMood.offsetLeft, behavior: 'smooth' });
+                            });
+                        }
                     }
                 }
 
@@ -1486,11 +1498,23 @@
                         if (editHint) editHint.textContent = '';
                     }
 
+                    function triggerHaptic(duration = 60) {
+                        try {
+                            if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+                                const res = navigator.vibrate(duration);
+                                if (!res) {
+                                    navigator.vibrate([duration]);
+                                }
+                            }
+                        } catch (_) {}
+                    }
+
                     const currentEmoji   = hMoodEmoji?.value || '';
                     const currentEmotion = hMoodEmotion?.value || '';
                     const allMoods = getAllMoodsLive();
 
                     allMoods.forEach((mood, idx) => {
+                        let didDrag = false;
                         const btn = document.createElement('button');
                         btn.type = 'button';
                         btn.className = 'bitstream-mood-reaction-btn';
@@ -1549,21 +1573,9 @@
                             // Touch drag reordering (with haptic feedback)
                             let touchDragTimer = null;
                             let touchDragging = false;
-                            let didDrag = false;
                             let startX = 0;
                             let startY = 0;
                             let lastDragOverTarget = null;
-
-                            function triggerHaptic(duration = 60) {
-                                try {
-                                    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
-                                        const res = navigator.vibrate(duration);
-                                        if (!res) {
-                                            navigator.vibrate([duration]);
-                                        }
-                                    }
-                                } catch (_) {}
-                            }
 
                             function startTouchDrag() {
                                 if (touchDragging) return;
@@ -1705,6 +1717,7 @@
                             if (moodEditMode) {
                                 openMoodEditorFor(idx, mood);
                             } else {
+                                triggerHaptic(15);
                                 if (btn.classList.contains('is-active')) {
                                     applyMoodSelection('', '');
                                 } else {
@@ -2251,6 +2264,7 @@
                                 }, 50);
                             }
                         } else if (popoverName === 'mood') {
+                            activeEditMoodForm = null;
                             if (typeof exitMoodEditMode === 'function') exitMoodEditMode();
                             renderMoodReactions();
                         }
