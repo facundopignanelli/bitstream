@@ -881,153 +881,156 @@ class BitStream_Shortcodes
                             </div>
                         </div>
 
-                        <!-- Action buttons row with anchored popovers -->
-                        <div class="bitstream-composer-actions-row">
-                            <!-- Rebit Popover Anchor -->
-                            <div class="bitstream-composer-popover-anchor">
-                                <button type="button" class="bitstream-composer-action-btn" data-composer-popover-trigger="rebit"
-                                    title="Add Link / Rebit" aria-label="Add Link / Rebit">
-                                    <i class="fa-solid fa-link" aria-hidden="true"></i>
-                                </button>
-                                <div class="bitstream-composer-popover bitstream-composer-popover-rebit" id="bitstream-composer-popover-rebit" hidden>
-                                    <div class="bitstream-composer-popover-header">
-                                        <h4>Add Link</h4>
-                                        <button type="button" class="bitstream-composer-popover-close" data-popover-close="rebit" aria-label="Close">&times;</button>
+                        <!-- Bottom bar: actions + status + submit — sticky on mobile -->
+                        <div class="bitstream-composer-bottom-bar">
+                            <!-- Action buttons row with anchored popovers -->
+                            <div class="bitstream-composer-actions-row">
+                                <!-- Rebit Popover Anchor -->
+                                <div class="bitstream-composer-popover-anchor">
+                                    <button type="button" class="bitstream-composer-action-btn" data-composer-popover-trigger="rebit"
+                                        title="Add Link / Rebit" aria-label="Add Link / Rebit">
+                                        <i class="fa-solid fa-link" aria-hidden="true"></i>
+                                    </button>
+                                    <div class="bitstream-composer-popover bitstream-composer-popover-rebit" id="bitstream-composer-popover-rebit" hidden>
+                                        <div class="bitstream-composer-popover-header">
+                                            <h4>Add Link</h4>
+                                            <button type="button" class="bitstream-composer-popover-close" data-popover-close="rebit" aria-label="Close">&times;</button>
+                                        </div>
+                                        <div class="bitstream-composer-popover-body">
+                                            <div class="bitstream-rebit-popover-row">
+                                                <label for="bitstream-composer-rebit-popover-input">Link URL:</label>
+                                                <div class="bitstream-rebit-popover-input-wrap">
+                                                    <i class="fa-solid fa-link bitstream-rebit-popover-icon" aria-hidden="true"></i>
+                                                    <input type="url" id="bitstream-composer-rebit-popover-input" class="bitstream-rebit-popover-input" placeholder="https://..." aria-label="Link URL" value="<?php echo esc_url($shared_url); ?>">
+                                                </div>
+                                            </div>
+                                            <div class="bitstream-rebit-popover-status" id="bitstream-composer-rebit-popover-status" hidden></div>
+                                        </div>
+                                        <div class="bitstream-composer-popover-footer">
+                                            <button type="button" class="bitstream-composer-popover-btn-clear" id="bitstream-composer-rebit-popover-cancel" data-popover-close="rebit">Cancel</button>
+                                            <button type="button" class="bitstream-composer-popover-btn-confirm" id="bitstream-composer-rebit-popover-fetch">Attach Link</button>
+                                        </div>
                                     </div>
-                                    <div class="bitstream-composer-popover-body">
-                                        <div class="bitstream-rebit-popover-row">
-                                            <label for="bitstream-composer-rebit-popover-input">Link URL:</label>
-                                            <div class="bitstream-rebit-popover-input-wrap">
-                                                <i class="fa-solid fa-link bitstream-rebit-popover-icon" aria-hidden="true"></i>
-                                                <input type="url" id="bitstream-composer-rebit-popover-input" class="bitstream-rebit-popover-input" placeholder="https://..." aria-label="Link URL" value="<?php echo esc_url($shared_url); ?>">
+                                </div>
+                                
+                                <!-- Media Popover Anchor -->
+                                <div class="bitstream-composer-popover-anchor">
+                                    <button type="button" class="bitstream-composer-action-btn" data-composer-popover-trigger="media"
+                                        title="Add Media" aria-label="Add Media">
+                                        <i class="fa-solid fa-photo-film" aria-hidden="true"></i>
+                                    </button>
+                                    <div class="bitstream-composer-popover bitstream-composer-popover-media" id="bitstream-composer-popover-media" hidden>
+                                        <button type="button" class="bitstream-composer-popover-option" id="bitstream-popover-media-upload">
+                                            <i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i>
+                                            <span>Upload from Device</span>
+                                        </button>
+                                        <button type="button" class="bitstream-composer-popover-option" id="bitstream-popover-media-library">
+                                            <i class="fa-solid fa-images" aria-hidden="true"></i>
+                                            <span>WordPress Media Library</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <button type="button" class="bitstream-composer-action-btn bitstream-composer-save-draft-action"
+                                    title="Save to Drafts" aria-label="Save to Drafts">
+                                    <i class="fa-solid fa-file-lines" aria-hidden="true"></i>
+                                </button>
+
+                                <!-- Schedule Popover Anchor -->
+                                <div class="bitstream-composer-popover-anchor">
+                                    <button type="button" class="bitstream-composer-action-btn" data-composer-popover-trigger="schedule"
+                                        title="Schedule" aria-label="Schedule">
+                                        <i class="fa-solid fa-clock" aria-hidden="true"></i>
+                                    </button>
+                                    <div class="bitstream-composer-popover bitstream-composer-popover-schedule" id="bitstream-composer-popover-schedule" hidden>
+                                        <div class="bitstream-composer-popover-header">
+                                            <h4>Schedule Bit</h4>
+                                            <button type="button" class="bitstream-composer-popover-close" data-popover-close="schedule" aria-label="Close">&times;</button>
+                                        </div>
+                                        <div class="bitstream-composer-popover-body">
+                                            <div class="bitstream-schedule-custom-row">
+                                                <label for="bitstream-popover-schedule-datetime">Date &amp; Time:</label>
+                                                <input type="datetime-local" id="bitstream-popover-schedule-datetime" class="bitstream-composer-schedule-datetime-input">
                                             </div>
                                         </div>
-                                        <div class="bitstream-rebit-popover-status" id="bitstream-composer-rebit-popover-status" hidden></div>
-                                    </div>
-                                    <div class="bitstream-composer-popover-footer">
-                                        <button type="button" class="bitstream-composer-popover-btn-clear" id="bitstream-composer-rebit-popover-cancel" data-popover-close="rebit">Cancel</button>
-                                        <button type="button" class="bitstream-composer-popover-btn-confirm" id="bitstream-composer-rebit-popover-fetch">Attach Link</button>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Media Popover Anchor -->
-                            <div class="bitstream-composer-popover-anchor">
-                                <button type="button" class="bitstream-composer-action-btn" data-composer-popover-trigger="media"
-                                    title="Add Media" aria-label="Add Media">
-                                    <i class="fa-solid fa-photo-film" aria-hidden="true"></i>
-                                </button>
-                                <div class="bitstream-composer-popover bitstream-composer-popover-media" id="bitstream-composer-popover-media" hidden>
-                                    <button type="button" class="bitstream-composer-popover-option" id="bitstream-popover-media-upload">
-                                        <i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i>
-                                        <span>Upload from Device</span>
-                                    </button>
-                                    <button type="button" class="bitstream-composer-popover-option" id="bitstream-popover-media-library">
-                                        <i class="fa-solid fa-images" aria-hidden="true"></i>
-                                        <span>WordPress Media Library</span>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <button type="button" class="bitstream-composer-action-btn bitstream-composer-save-draft-action"
-                                title="Save to Drafts" aria-label="Save to Drafts">
-                                <i class="fa-solid fa-file-lines" aria-hidden="true"></i>
-                            </button>
-
-                            <!-- Schedule Popover Anchor -->
-                            <div class="bitstream-composer-popover-anchor">
-                                <button type="button" class="bitstream-composer-action-btn" data-composer-popover-trigger="schedule"
-                                    title="Schedule" aria-label="Schedule">
-                                    <i class="fa-solid fa-clock" aria-hidden="true"></i>
-                                </button>
-                                <div class="bitstream-composer-popover bitstream-composer-popover-schedule" id="bitstream-composer-popover-schedule" hidden>
-                                    <div class="bitstream-composer-popover-header">
-                                        <h4>Schedule Bit</h4>
-                                        <button type="button" class="bitstream-composer-popover-close" data-popover-close="schedule" aria-label="Close">&times;</button>
-                                    </div>
-                                    <div class="bitstream-composer-popover-body">
-                                        <div class="bitstream-schedule-custom-row">
-                                            <label for="bitstream-popover-schedule-datetime">Date &amp; Time:</label>
-                                            <input type="datetime-local" id="bitstream-popover-schedule-datetime" class="bitstream-composer-schedule-datetime-input">
+                                        <div class="bitstream-composer-popover-footer">
+                                            <button type="button" class="bitstream-composer-popover-btn-clear" id="bitstream-popover-schedule-clear">Clear</button>
+                                            <button type="button" class="bitstream-composer-popover-btn-confirm" id="bitstream-popover-schedule-set">Set Schedule</button>
                                         </div>
                                     </div>
-                                    <div class="bitstream-composer-popover-footer">
-                                        <button type="button" class="bitstream-composer-popover-btn-clear" id="bitstream-popover-schedule-clear">Clear</button>
-                                        <button type="button" class="bitstream-composer-popover-btn-confirm" id="bitstream-popover-schedule-set">Set Schedule</button>
-                                    </div>
                                 </div>
-                            </div>
 
-                            <!-- Mood Popover Anchor -->
-                            <div class="bitstream-composer-popover-anchor">
-                                <button type="button" class="bitstream-composer-action-btn" data-composer-popover-trigger="mood"
-                                    title="Mood" aria-label="Mood">
-                                    <i class="fa-solid fa-face-smile" aria-hidden="true"></i>
-                                </button>
-                                <div class="bitstream-composer-popover bitstream-composer-popover-mood" id="bitstream-composer-popover-mood" hidden>
-                                    <!-- Reaction bar (normal + edit mode) -->
-                                    <div class="bitstream-mood-reactions-bar" id="bitstream-mood-reactions-bar">
-                                        <div class="bitstream-mood-reactions-list" id="bitstream-mood-reactions-list"></div>
-                                        <div class="bitstream-mood-actions-row">
-                                            <div class="bitstream-mood-actions-left">
-                                                <button type="button" class="bitstream-mood-add-btn" id="bitstream-mood-add-trigger"
-                                                    title="Add mood" aria-label="Add mood">
-                                                    <i class="fa-solid fa-plus" aria-hidden="true"></i>
-                                                </button>
-                                                <button type="button" class="bitstream-mood-edit-btn" id="bitstream-mood-edit-trigger"
-                                                    title="Edit moods" aria-label="Edit moods">
-                                                    <i class="fa-solid fa-pencil" aria-hidden="true"></i>
-                                                </button>
+                                <!-- Mood Popover Anchor -->
+                                <div class="bitstream-composer-popover-anchor">
+                                    <button type="button" class="bitstream-composer-action-btn" data-composer-popover-trigger="mood"
+                                        title="Mood" aria-label="Mood">
+                                        <i class="fa-solid fa-face-smile" aria-hidden="true"></i>
+                                    </button>
+                                    <div class="bitstream-composer-popover bitstream-composer-popover-mood" id="bitstream-composer-popover-mood" hidden>
+                                        <!-- Reaction bar (normal + edit mode) -->
+                                        <div class="bitstream-mood-reactions-bar" id="bitstream-mood-reactions-bar">
+                                            <div class="bitstream-mood-reactions-list" id="bitstream-mood-reactions-list"></div>
+                                            <div class="bitstream-mood-actions-row">
+                                                <div class="bitstream-mood-actions-left">
+                                                    <button type="button" class="bitstream-mood-add-btn" id="bitstream-mood-add-trigger"
+                                                        title="Add mood" aria-label="Add mood">
+                                                        <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                                                    </button>
+                                                    <button type="button" class="bitstream-mood-edit-btn" id="bitstream-mood-edit-trigger"
+                                                        title="Edit moods" aria-label="Edit moods">
+                                                        <i class="fa-solid fa-pencil" aria-hidden="true"></i>
+                                                    </button>
+                                                </div>
+                                                <span class="bitstream-mood-edit-hint" id="bitstream-mood-edit-hint"></span>
                                             </div>
-                                            <span class="bitstream-mood-edit-hint" id="bitstream-mood-edit-hint"></span>
+                                        </div>
+                                        <!-- Inline creator / editor form -->
+                                        <div class="bitstream-mood-creator" id="bitstream-mood-creator" hidden>
+                                            <button type="button" class="bitstream-mood-creator-emoji-btn" id="bitstream-mood-creator-emoji-trigger"
+                                                title="Choose emoji" aria-label="Choose emoji">
+                                                <span class="bs-creator-emoji-val">😊</span>
+                                            </button>
+                                            <input type="hidden" id="bitstream-mood-custom-emoji" value="😊">
+                                            <input type="text" id="bitstream-mood-custom-emotion" class="bitstream-mood-creator-input"
+                                                placeholder="Feeling..." maxlength="25" autocomplete="off">
+                                            <button type="button" class="bitstream-mood-creator-confirm" id="bitstream-mood-creator-confirm"
+                                                title="Save mood" aria-label="Save mood">
+                                                <i class="fa-solid fa-check" aria-hidden="true"></i>
+                                            </button>
+                                            <button type="button" class="bitstream-mood-creator-back" id="bitstream-mood-creator-back"
+                                                title="Cancel" aria-label="Cancel">
+                                                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                                            </button>
+                                        </div>
+                                        <!-- Undo toast -->
+                                        <div class="bitstream-mood-undo-toast" id="bitstream-mood-undo-toast" hidden>
+                                            <span class="bitstream-mood-undo-msg">Mood removed</span>
+                                            <button type="button" class="bitstream-mood-undo-btn" id="bitstream-mood-undo-btn">Undo</button>
                                         </div>
                                     </div>
-                                    <!-- Inline creator / editor form -->
-                                    <div class="bitstream-mood-creator" id="bitstream-mood-creator" hidden>
-                                        <button type="button" class="bitstream-mood-creator-emoji-btn" id="bitstream-mood-creator-emoji-trigger"
-                                            title="Choose emoji" aria-label="Choose emoji">
-                                            <span class="bs-creator-emoji-val">😊</span>
-                                        </button>
-                                        <input type="hidden" id="bitstream-mood-custom-emoji" value="😊">
-                                        <input type="text" id="bitstream-mood-custom-emotion" class="bitstream-mood-creator-input"
-                                            placeholder="Feeling..." maxlength="25" autocomplete="off">
-                                        <button type="button" class="bitstream-mood-creator-confirm" id="bitstream-mood-creator-confirm"
-                                            title="Save mood" aria-label="Save mood">
-                                            <i class="fa-solid fa-check" aria-hidden="true"></i>
-                                        </button>
-                                        <button type="button" class="bitstream-mood-creator-back" id="bitstream-mood-creator-back"
-                                            title="Cancel" aria-label="Cancel">
-                                            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-                                        </button>
-                                    </div>
-                                    <!-- Undo toast -->
-                                    <div class="bitstream-mood-undo-toast" id="bitstream-mood-undo-toast" hidden>
-                                        <span class="bitstream-mood-undo-msg">Mood removed</span>
-                                        <button type="button" class="bitstream-mood-undo-btn" id="bitstream-mood-undo-btn">Undo</button>
-                                    </div>
+                                </div>
+
+                                <!-- Right-aligned Drafts & Scheduled List triggers (icon + counter) -->
+                                <div class="bitstream-composer-actions-right">
+                                    <button type="button" class="bitstream-composer-action-btn bitstream-composer-count-btn" data-composer-modal-trigger="drafts" title="Drafts" aria-label="Drafts"<?php echo ($draft_count === 0 ? ' hidden' : ''); ?>>
+                                        <i class="fa-regular fa-file-lines" aria-hidden="true"></i>
+                                        <span class="bitstream-composer-pill-count"><?php echo $draft_count; ?></span>
+                                    </button>
+                                    <button type="button" class="bitstream-composer-action-btn bitstream-composer-count-btn" data-composer-modal-trigger="scheduled-list" title="Scheduled Bits" aria-label="Scheduled Bits"<?php echo ($future_count === 0 ? ' hidden' : ''); ?>>
+                                        <i class="fa-regular fa-clock" aria-hidden="true"></i>
+                                        <span class="bitstream-composer-pill-count"><?php echo $future_count; ?></span>
+                                    </button>
                                 </div>
                             </div>
 
-                            <!-- Right-aligned Drafts & Scheduled List triggers (icon + counter) -->
-                            <div class="bitstream-composer-actions-right">
-                                <button type="button" class="bitstream-composer-action-btn bitstream-composer-count-btn" data-composer-modal-trigger="drafts" title="Drafts" aria-label="Drafts"<?php echo ($draft_count === 0 ? ' hidden' : ''); ?>>
-                                    <i class="fa-regular fa-file-lines" aria-hidden="true"></i>
-                                    <span class="bitstream-composer-pill-count"><?php echo $draft_count; ?></span>
-                                </button>
-                                <button type="button" class="bitstream-composer-action-btn bitstream-composer-count-btn" data-composer-modal-trigger="scheduled-list" title="Scheduled Bits" aria-label="Scheduled Bits"<?php echo ($future_count === 0 ? ' hidden' : ''); ?>>
-                                    <i class="fa-regular fa-clock" aria-hidden="true"></i>
-                                    <span class="bitstream-composer-pill-count"><?php echo $future_count; ?></span>
-                                </button>
+                            <!-- Status row -->
+                            <div class="bitstream-composer-status bitstream-sidebar-composer-status" aria-live="polite"></div>
+
+                            <!-- Submit Row -->
+                            <div class="bitstream-composer-submit-row" style="width: 100%;">
+                                <button type="submit" class="bitstream-composer-submit bitstream-composer-submit"
+                                    style="width: 100%;">Post Bit</button>
                             </div>
-                        </div>
-
-                        <!-- Status row (inside the form so it's part of the flex layout) -->
-                        <div class="bitstream-composer-status bitstream-sidebar-composer-status" aria-live="polite"></div>
-
-                        <!-- Submit Row -->
-                        <div class="bitstream-composer-submit-row" style="width: 100%;">
-                            <button type="submit" class="bitstream-composer-submit bitstream-composer-submit"
-                                style="width: 100%;">Post Bit</button>
                         </div>
                     </form>
 

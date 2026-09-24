@@ -98,7 +98,7 @@ This index serves as the primary map for understanding the backend and frontend 
     * `__construct()`: Registers frontend assets, footer forms, mobile layout filters, and cash flush triggers.
     * `register_shortcodes()`: Registers `[bitstream]` and `[bitstream_settings]`.
     * `enqueue_shortcode_assets()`: Loads `comment-reply` and native WP media frames.
-    * `render_feed($atts)`: Outputs the complete microblogging timeline layout (filters, search, composer modals, scheduled drawers, profiles, and hashtag widgets).
+    * `render_feed($atts)`: Outputs the complete microblogging timeline layout (filters, search, composer modals, scheduled drawers, profiles, and hashtag widgets). The composer form wraps its actions toolbar, status message, and submit button inside a `.bitstream-composer-bottom-bar` container, which becomes a sticky footer on mobile to keep controls visible when tall preview cards overflow the viewport.
     * `render_settings($atts)`: Emits settings interface panels (personalization, domain mappings, RSS, notifications, advanced options).
     * `render_settings_moods()`: Deprecated helper (custom moods are now managed directly within the mood popover's inline Edit Mode).
     * `render_timeline_edit_modal()`: Deprecated helper (editing and quoting now execute within the unified main composer).
