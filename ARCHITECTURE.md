@@ -317,3 +317,34 @@ This index serves as the primary map for understanding the backend and frontend 
   * Automates block updates and meta sync when loaded from a PWA Share Target redirect.
   * Fetches quoted bit summaries via AJAX to display quote previews directly inside Gutenberg.
   * Manages media block creation for items enqueued from share sheets.
+
+---
+
+## 5. Automated Testing Infrastructure ([tests/](tests/))
+
+### [playwright.config.ts](playwright.config.ts)
+* **Description**: Primary configuration for end-to-end browser automation running against `https://nightly.facundopignanelli.com` (local Docker/Nginx development instance). Configures `desktop-chrome` (1280x800), `mobile-chrome` (390x844 with touch), `mobile-small` (375x667 with touch), and `guest` projects, single-worker execution, and fast native ext4 caching for test results and traces.
+
+### End-to-End Browser Test Suite ([tests/e2e/](tests/e2e/))
+* **[tests/e2e/global-setup.ts](tests/e2e/global-setup.ts)**: Global setup hook. Automatically provisions and authenticates the `test_admin` user in WordPress and caches session cookies in `tests/.auth/admin.json` for fast reuse.
+* **[tests/e2e/00-smoke.spec.ts](tests/e2e/00-smoke.spec.ts)**: Verifies timeline connectivity, asset loading, window namespace initialization, and responsive composer layout (desktop embedded vs mobile FAB).
+* **[tests/e2e/01-micro-editor.spec.ts](tests/e2e/01-micro-editor.spec.ts)**: Tests `contenteditable` micro-editor typing, real-time `.bs-editor-hashtag` and `.bs-editor-url` formatting spans, emoji lookbehinds (`😋#yum`), hashtag autocomplete popup keyboard navigation, and XSS sanitization.
+* **[tests/e2e/02-composer-popovers.spec.ts](tests/e2e/02-composer-popovers.spec.ts)**: Tests modal-free inline popovers for Link/Rebit (URL fetch and preview card), Media (upload vs library), Schedule (future datetime and badges), and character counters.
+* **[tests/e2e/03-mood-popover-and-edit-mode.spec.ts](tests/e2e/03-mood-popover-and-edit-mode.spec.ts)**: Tests 320px floating mood reaction popover, 1-click select and deselect, inline `+` custom mood creation, dedicated ✏️ Edit Mode, delete badges with 5-second Undo toast, and auto-exit on dismissal.
+* **[tests/e2e/04-mobile-sticky-bottom-bar.spec.ts](tests/e2e/04-mobile-sticky-bottom-bar.spec.ts)**: Tests mobile viewports (390px/375px), 3-button bottom navigation bar (`Home`, `Search`, `More`) + floating compose FAB, and verifies `.bitstream-composer-bottom-bar` keeps the actions toolbar and "Post Bit" button sticky-pinned at the bottom of the viewport when tall preview cards overflow.
+* **[tests/e2e/05-unified-quote-and-edit.spec.ts](tests/e2e/05-unified-quote-and-edit.spec.ts)**: Tests unified Edit and Quote modes inside the main composer, "Editing Bit #ID" banner, submit button transformation, quote preview embeds, and cancel editing flows.
+* **[tests/e2e/06-drafts-and-scheduled.spec.ts](tests/e2e/06-drafts-and-scheduled.spec.ts)**: Tests pure-mood draft saving without validation errors, header pill counter synchronization, drafts modal list view with badges, and draft restoration into the composer.
+* **[tests/e2e/07-rebit-mappings-hub.spec.ts](tests/e2e/07-rebit-mappings-hub.spec.ts)**: Tests Settings modal, ReBit Mappings Hub, real-time search filtering, 1-click preset chips, and in-place drawer actions.
+* **[tests/e2e/08-timeline-reactions-and-cleanup.spec.ts](tests/e2e/08-timeline-reactions-and-cleanup.spec.ts)**: Tests timeline card like/unlike toggling with count updates, anchored share popover opening and auto-dismissal on scroll, and post creation/deletion cleanup.
+
+### Backend Integration Test Suite ([tests/backend/](tests/backend/))
+* **[tests/backend/run-backend-tests.php](tests/backend/run-backend-tests.php)**: Executes inside the `bitstream-dev-wp` container. Verifies PHP syntax across all files (`php -l`), constants, custom post type registration, hashtag regex lookbehinds, ReBit domain normalization and presets, OpenGraph fetcher SSRF protections, like handler dual-tracking (`_bitstream_liked_by` user ID vs guest IP hash), attachment usage scanner (`is_attachment_used`), and batch SQL custom mood propagation.
+
+### Testing Commands (`package.json`)
+* `npm test`: Runs the full testing suite (PHP syntax lint + backend integration + desktop E2E).
+* `npm run test:quick`: Fast smoke test running PHP syntax scan and all 36 backend integration tests in ~3 seconds.
+* `npm run test:desktop`: Runs all 22 E2E browser tests across desktop viewports.
+* `npm run test:mobile`: Runs mobile viewport tests specifically validating the sticky bottom bar and mobile layout constraints.
+* `npm run test:backend`: Runs the PHP / WP-CLI backend integration tests in Docker.
+* `npm run test:syntax`: Runs `php -l` linting across all plugin PHP files.
+

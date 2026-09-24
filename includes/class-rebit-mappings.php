@@ -68,8 +68,9 @@ class BitStream_ReBit_Mappings {
                 $domain = $parsed;
             }
         }
-        $domain = preg_replace('#[/\\?#].*$#', '', $domain);
+        $domain = preg_replace('~[/\\\\?#].*$~', '', $domain);
         $domain = preg_replace('#^https?://#i', '', $domain);
+        $domain = preg_replace('/^www\./i', '', $domain);
         return strtolower(trim($domain));
     }
 

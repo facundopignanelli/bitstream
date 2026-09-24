@@ -15,10 +15,12 @@ Repository-wide instructions for BitStream work in this workspace.
 - If a changelog entry already exists for the current version, add new notes there instead of creating a new version without explicit instruction.
 - Never add fixes or changes that affect the current version being developed (that is, if we fix a bug of a new feature introduced on the current unreleased version, do not add it to the changelog because nobody has encountered it yet since it is unreleased).
 
-## Editing and validation
-- Use `apply_patch` for file edits when possible.
-- Validate touched PHP files with `php -l` after changes.
-- Run the smallest useful check for the files you edited before wrapping up.
+## Editing, automated testing & self-healing workflow (MANDATORY)
+- Validate touched PHP files with `php -l` after changes (via `npm run test:syntax`).
+- **Continuous Automated Verification**: Always run the automated test suite before completing any turn (`npm test` for broad changes, `npm run test:quick` for backend/syntax, `npm run test:desktop` or `npm run test:mobile` for frontend/responsive work).
+- **Proactive Self-Fixing Loop**: If any test fails, do NOT stop to ask the user for permission. Proactively inspect the failure log or captured screenshot, identify the root cause, implement the fix, re-run tests until 100% green, and report back the results.
+- **Maintain Test Integrity**: When modifying UI behavior or backend routes, update or add the corresponding tests in `tests/e2e/` or `tests/backend/run-backend-tests.php`.
+
 
 ## Memory and preferences
 - If a rule is important for this repository, keep it here as well so it is visible in the workspace.

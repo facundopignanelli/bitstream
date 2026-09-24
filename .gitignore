@@ -16,3 +16,15 @@ dev-env/
 
 # IDE helpers
 .ide-helper/
+
+# Node & Testing
+node_modules/
+test-results/
+playwright-report/
+.playwright/
+package.json
+package-lock.json
+playwright.config.ts
+tests/
+
+
