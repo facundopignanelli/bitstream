@@ -336,16 +336,16 @@ This index serves as the primary map for understanding the backend and frontend 
 * **[tests/e2e/06-drafts-and-scheduled.spec.ts](tests/e2e/06-drafts-and-scheduled.spec.ts)**: Tests pure-mood draft saving without validation errors, header pill counter synchronization, drafts modal list view with badges, and draft restoration into the composer.
 * **[tests/e2e/07-rebit-mappings-hub.spec.ts](tests/e2e/07-rebit-mappings-hub.spec.ts)**: Tests Settings modal, ReBit Mappings Hub, real-time search filtering, 1-click preset chips, and in-place drawer actions.
 * **[tests/e2e/09-rebit-and-pwa-share.spec.ts](tests/e2e/09-rebit-and-pwa-share.spec.ts)**: Tests in-place ReBit OpenGraph metadata editing (modifying title and description before posting), full ReBit publishing lifecycle with timeline card verification, and PWA Web Share Target URL parameter handling (verifying toast alerts, composer auto-opening, and prefilled text/link content).
-* **[tests/e2e/10-media-upload-and-lightbox.spec.ts](tests/e2e/10-media-upload-and-lightbox.spec.ts)**: Tests native file uploads via the composer file input, thumbnail preview generation, publishing bits with image attachments, timeline card image rendering, and opening/navigating/closing the full-viewport Lightbox (`.bitstream-lightbox`).
+* **[tests/e2e/10-media-upload-and-lightbox.spec.ts](tests/e2e/10-media-upload-and-lightbox.spec.ts)**: Tests native file uploads via the composer file input, thumbnail preview generation, opening the image cropper modal (`.bitstream-cropper-modal`) and applying crops, publishing bits with image attachments, timeline card image rendering, and opening/navigating/closing the full-viewport Lightbox (`.bitstream-lightbox`).
 * **[tests/e2e/11-sharing-link-and-image.spec.ts](tests/e2e/11-sharing-link-and-image.spec.ts)**: Tests timeline post sharing: clicking "Share Link" to copy post URLs with highlight parameters to clipboard, and clicking "Share as Image" to generate branded HTML canvas cards, opening the `#bitstream-share-image-modal` download and copy modal.
 
 ### Backend Integration Test Suite ([tests/backend/](tests/backend/))
 * **[tests/backend/run-backend-tests.php](tests/backend/run-backend-tests.php)**: Executes inside the `bitstream-dev-wp` container. Verifies 55 automated assertions: PHP syntax linting (`php -l`), constants, custom post type registration, hashtag regex lookbehinds, ReBit domain normalization and presets, OpenGraph fetcher SSRF protections, like handler dual-tracking (`_bitstream_liked_by` user ID vs guest IP hash), attachment usage scanner (`is_attachment_used`), batch SQL custom mood propagation, Preview Shortcode output and admin action suppression (`[bitstream mode="preview"]`), RSS Feed generation and XML standards compliance (`/bitstream/feed/`, `.../bits/`), and PWA Push Notifications AJAX endpoints (`bitstream_get_latest_notification`).
 
 ### Testing Commands (`package.json`)
-* `npm test`: Runs the full testing suite (PHP syntax lint + 55 backend integration tests + 30 desktop E2E tests).
+* `npm test`: Runs the full testing suite (PHP syntax lint + 55 backend integration tests + 31 desktop E2E tests).
 * `npm run test:quick`: Fast smoke test running PHP syntax scan and all 55 backend integration tests in ~3 seconds.
-* `npm run test:desktop`: Runs all 30 E2E browser tests across desktop viewports.
+* `npm run test:desktop`: Runs all 31 E2E browser tests across desktop viewports.
 * `npm run test:mobile`: Runs mobile viewport tests specifically validating the sticky bottom bar and mobile layout constraints.
 * `npm run test:backend`: Runs the PHP / WP-CLI backend integration tests in Docker.
 * `npm run test:syntax`: Runs `php -l` linting across all plugin PHP files.

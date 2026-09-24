@@ -799,6 +799,7 @@
                             if (openCropperFn) {
                                 const attachments = previewMediaThumb && typeof window.getExistingAttachments === 'function' ? window.getExistingAttachments(previewMediaThumb) : [];
                                 const targetAttachment = attachments.length > 0 ? attachments[0] : null;
+                                const targetId = targetAttachment ? targetAttachment.id : (hAttachmentId ? parseInt(hAttachmentId.value || '0', 10) : 0);
                                 const isWebFn = window.isBitstreamWebImage || function (u) {
                                     if (!u) return false;
                                     const c = u.split('?')[0].toLowerCase();
