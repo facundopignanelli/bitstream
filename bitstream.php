@@ -53,6 +53,8 @@ class BitStream_Plugin
         wp_register_script('twemoji', 'https://cdn.jsdelivr.net/npm/@twemoji/api@latest/dist/twemoji.min.js', [], null, true);
         wp_register_script('bitstream-twitter-widgets', 'https://platform.twitter.com/widgets.js', [], null, true);
 
+        wp_register_style('font-awesome', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css', [], '6.5.2');
+
         // Register separate modular scripts
         wp_register_script('bitstream-lightbox', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream-lightbox.js', [], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/js/bitstream-lightbox.js'), true);
         wp_register_script('bitstream-cropper', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream-cropper.js', [], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/js/bitstream-cropper.js'), true);
@@ -60,12 +62,13 @@ class BitStream_Plugin
         wp_register_script('bitstream-editor', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream-editor.js', [], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/js/bitstream-editor.js'), true);
         wp_register_script('bitstream-composer', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream-composer.js', [], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/js/bitstream-composer.js'), true);
         wp_register_script('bitstream-timeline', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream-timeline.js', [], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/js/bitstream-timeline.js'), true);
+        wp_register_script('bitstream-settings', BITSTREAM_PLUGIN_URL . 'assets/js/bitstream-settings.js', [], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/js/bitstream-settings.js'), true);
 
         // Register main bootstrap script with all modules as dependencies
         wp_register_script(
             'bitstream-js',
             BITSTREAM_PLUGIN_URL . 'assets/js/bitstream.js',
-            ['jquery', 'twemoji', 'bitstream-twitter-widgets', 'bitstream-lightbox', 'bitstream-cropper', 'bitstream-uploader', 'bitstream-editor', 'bitstream-composer', 'bitstream-timeline'],
+            ['jquery', 'twemoji', 'bitstream-twitter-widgets', 'bitstream-lightbox', 'bitstream-cropper', 'bitstream-uploader', 'bitstream-editor', 'bitstream-composer', 'bitstream-timeline', 'bitstream-settings'],
             BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/js/bitstream.js'),
             true
         );
@@ -88,6 +91,9 @@ class BitStream_Plugin
 
         // Strip image metadata on upload
         add_filter('wp_generate_attachment_metadata', [$this, 'strip_image_metadata_on_upload'], 10, 2);
+
+        // Ensure video MIME types are accepted for media uploads and PWA share target
+        add_filter('upload_mimes', [$this, 'filter_upload_mimes']);
     }
 
     /**
@@ -255,6 +261,25 @@ class BitStream_Plugin
         }
 
         return false;
+    }
+
+    /**
+     * Filter upload MIME types to ensure video formats are accepted.
+     *
+     * @param array $mimes Current allowed MIME types.
+     * @return array
+     */
+    public function filter_upload_mimes($mimes)
+    {
+        if (!isset($mimes['mp4'])) $mimes['mp4'] = 'video/mp4';
+        if (!isset($mimes['m4v'])) $mimes['m4v'] = 'video/mp4';
+        if (!isset($mimes['mov'])) $mimes['mov'] = 'video/quicktime';
+        if (!isset($mimes['webm'])) $mimes['webm'] = 'video/webm';
+        if (!isset($mimes['3gp'])) $mimes['3gp'] = 'video/3gpp';
+        if (!isset($mimes['3gpp'])) $mimes['3gpp'] = 'video/3gpp';
+        if (!isset($mimes['mkv'])) $mimes['mkv'] = 'video/x-matroska';
+        if (!isset($mimes['avi'])) $mimes['avi'] = 'video/avi';
+        return $mimes;
     }
 }
 

@@ -18,23 +18,61 @@
     window.isBitstreamWebImage = isWebImage;
 
     function getUploadMimeType(file) {
-        if (file && file.type) {
-            return file.type;
+        if (!file) return '';
+
+        let type = file.type || '';
+        const extension = getFileExtension(file.name);
+
+        // If type is missing or generic octet-stream, infer from extension
+        if (!type || type === 'application/octet-stream' || type === 'binary/octet-stream') {
+            if (['jpg', 'jpeg'].includes(extension)) return 'image/jpeg';
+            if (extension === 'png') return 'image/png';
+            if (extension === 'gif') return 'image/gif';
+            if (extension === 'webp') return 'image/webp';
+            if (extension === 'heic') return 'image/heic';
+            if (extension === 'heif') return 'image/heif';
+            if (['mp4', 'm4v'].includes(extension)) return 'video/mp4';
+            if (extension === 'mov') return 'video/quicktime';
+            if (extension === 'webm') return 'video/webm';
+            if (['3gp', '3gpp'].includes(extension)) return 'video/3gpp';
+            if (extension === 'mkv') return 'video/x-matroska';
+            if (extension === 'avi') return 'video/x-msvideo';
         }
 
-        const extension = getFileExtension(file && file.name);
-        if (['jpg', 'jpeg'].includes(extension)) return 'image/jpeg';
-        if (extension === 'png') return 'image/png';
-        if (extension === 'gif') return 'image/gif';
-        if (extension === 'webp') return 'image/webp';
-        if (extension === 'heic') return 'image/heic';
-        if (extension === 'heif') return 'image/heif';
-        if (extension === 'mp4') return 'video/mp4';
-        if (extension === 'mov') return 'video/quicktime';
-        if (extension === 'webm') return 'video/webm';
+        // If type is already specific, return it
+        if (type && type !== 'application/octet-stream') {
+            return type;
+        }
 
         return '';
     }
+
+    function ensureFileExtension(filename, mimeType) {
+        let name = String(filename || '').trim();
+        if (!name || name === 'blob' || name === 'undefined') {
+            name = (mimeType && mimeType.startsWith('video/')) ? `video-${Date.now()}` : `upload-${Date.now()}`;
+        }
+        const ext = getFileExtension(name);
+        if (!ext) {
+            let defaultExt = '';
+            if (mimeType === 'video/mp4') defaultExt = 'mp4';
+            else if (mimeType === 'video/quicktime') defaultExt = 'mov';
+            else if (mimeType === 'video/webm') defaultExt = 'webm';
+            else if (mimeType === 'video/3gpp' || mimeType === 'video/3gp') defaultExt = '3gp';
+            else if (mimeType && mimeType.startsWith('video/')) defaultExt = 'mp4';
+            else if (mimeType === 'image/jpeg') defaultExt = 'jpg';
+            else if (mimeType === 'image/png') defaultExt = 'png';
+            else if (mimeType === 'image/webp') defaultExt = 'webp';
+            else if (mimeType === 'image/gif') defaultExt = 'gif';
+            else if (mimeType && mimeType.startsWith('image/')) defaultExt = 'jpg';
+
+            if (defaultExt) {
+                name = name + '.' + defaultExt;
+            }
+        }
+        return name;
+    }
+    window.bitstreamEnsureFileExtension = ensureFileExtension;
 
     function canvasToBlob(canvas, mimeType, quality) {
         return new Promise(resolve => {
@@ -251,11 +289,18 @@
                 });
                 wrap.appendChild(cropBtn);
             } else if (mime.startsWith('video/')) {
+                wrap.classList.add('is-video-item');
                 const video = document.createElement('video');
                 video.src = url;
                 video.muted = true;
                 video.playsInline = true;
+                video.preload = 'metadata';
                 wrap.appendChild(video);
+
+                const overlay = document.createElement('div');
+                overlay.className = 'bitstream-media-preview-video-overlay';
+                overlay.innerHTML = '<i class="fa-solid fa-play"></i>';
+                wrap.appendChild(overlay);
             }
 
             const removeBtn = document.createElement('button');
@@ -364,24 +409,26 @@
     }
 
     async function uploadMediaRequest(file, updateProgress) {
+        const mimeType = getUploadMimeType(file);
+        const effectiveName = ensureFileExtension(file.name, mimeType);
+
         if (file.size <= BITSTREAM_CHUNKED_UPLOAD_THRESHOLD) {
             const formData = new FormData();
             formData.append('action', 'bitstream_upload_media');
             formData.append('nonce', bitstream_ajax.media_upload_nonce);
-            formData.append('media', file);
+            formData.append('media', file, effectiveName);
 
             return sendAjaxFormData(formData, event => {
                 if (!event.lengthComputable || typeof updateProgress !== 'function') {
                     return;
                 }
                 const percent = Math.max(1, Math.round((event.loaded / event.total) * 100));
-                updateProgress(percent, 'Uploading... ' + percent + '%');
+                updateProgress(percent, (mimeType.startsWith('video/') ? 'Uploading video... ' : 'Uploading... ') + percent + '%');
             });
         }
 
         const totalChunks = Math.ceil(file.size / BITSTREAM_UPLOAD_CHUNK_SIZE);
         const uploadId = createUploadId();
-        const mimeType = getUploadMimeType(file);
 
         for (let index = 0; index < totalChunks; index++) {
             const start = index * BITSTREAM_UPLOAD_CHUNK_SIZE;
@@ -393,9 +440,11 @@
             formData.append('upload_id', uploadId);
             formData.append('chunk_index', String(index));
             formData.append('total_chunks', String(totalChunks));
-            formData.append('filename', file.name);
+            formData.append('filename', effectiveName);
+            formData.append('mime', mimeType);
             formData.append('mime_type', mimeType);
-            formData.append('chunk_data', chunk);
+            formData.append('chunk', chunk, `${effectiveName}.part${index}`);
+            formData.append('chunk_data', chunk, `${effectiveName}.part${index}`);
 
             const response = await sendAjaxFormData(formData, event => {
                 if (!event.lengthComputable || typeof updateProgress !== 'function') {
@@ -403,7 +452,7 @@
                 }
                 const chunkPercent = event.loaded / event.total;
                 const overallPercent = Math.max(1, Math.min(99, Math.round(((index + chunkPercent) / totalChunks) * 100)));
-                updateProgress(overallPercent, 'Uploading... ' + overallPercent + '%');
+                updateProgress(overallPercent, (mimeType.startsWith('video/') ? 'Uploading video... ' : 'Uploading... ') + overallPercent + '%');
             });
 
             if (response && !response.partial) {
@@ -416,77 +465,6 @@
 
         throw new Error('Upload did not finish.');
     }
-
-    async function uploadMultipleFiles(files, targetInputId, targetPreviewId, options = {}) {
-        const setStatusFn = options.setStatus || console.log;
-        setStatusFn('', false);
-
-        if (!bitstream_ajax || !bitstream_ajax.ajax_url || !bitstream_ajax.media_upload_nonce) {
-            setStatusFn('Media upload is unavailable.', true);
-            return;
-        }
-
-        const isRebit = targetInputId && (targetInputId.indexOf('rebit') !== -1);
-
-        const validFiles = Array.from(files).filter(file => {
-            const mimeType = getUploadMimeType(file);
-            return mimeType.startsWith('image/') || mimeType.startsWith('video/');
-        });
-
-        if (validFiles.length === 0) {
-            setStatusFn('Please select images or videos to upload.', true);
-            return;
-        }
-
-        const previewEl = getPreviewElement(targetPreviewId);
-        const existingAttachments = getExistingAttachments(previewEl);
-
-        if (!isRebit && existingAttachments.length + validFiles.length > 10) {
-            setStatusFn('You can attach up to 10 images or videos.', true);
-            return;
-        }
-
-        const attachmentsToSave = isRebit ? [] : [...existingAttachments];
-
-        for (let i = 0; i < validFiles.length; i++) {
-            let file = validFiles[i];
-            const mimeType = getUploadMimeType(file);
-            const indexLabel = validFiles.length > 1 ? ` (${i + 1}/${validFiles.length})` : '';
-
-            setStatusFn(`Uploading image...${indexLabel}`);
-
-            if (mimeType.startsWith('image/') && file.size > BITSTREAM_IMAGE_UPLOAD_MAX_BYTES) {
-                file = await scaleAndCompressImage(file, mimeType);
-            }
-
-            setStatusFn(`Uploading... 0%${indexLabel}`);
-
-            try {
-                const response = await uploadMediaRequest(file, (percent, label) => {
-                    setStatusFn(`${label}${indexLabel}`);
-                });
-
-                if (response && response.id) {
-                    attachmentsToSave.push(response);
-                    updateAttachmentsList(previewEl, attachmentsToSave);
-
-                    if (typeof options.onSingleComplete === 'function') {
-                        options.onSingleComplete(response, file);
-                    }
-                }
-            } catch (err) {
-                console.error('BitStream: media upload error:', err);
-                setStatusFn(err.message || 'Upload failed.', true);
-                return;
-            }
-        }
-
-        setStatusFn('');
-        if (typeof options.onAllComplete === 'function') {
-            options.onAllComplete(attachmentsToSave);
-        }
-    }
-    window.uploadMultipleFiles = uploadMultipleFiles;
 
     function applyMediaDeterrents(scope) {
         const root = scope || document;
@@ -782,12 +760,14 @@
 
     async function uploadMultipleFiles(files, targetInputId, targetPreviewId, options = {}) {
         const setStatusFn = options.setStatus || console.log;
-        setStatusFn('', false);
+        setStatusFn('Preparing media upload...', false);
 
         if (!window.bitstream_ajax || !bitstream_ajax.ajax_url || !bitstream_ajax.media_upload_nonce) {
             setStatusFn('Media upload is unavailable.', true);
-            alert('Media upload is unavailable.');
-            return;
+            if (!options.setStatus) {
+                alert('Media upload is unavailable.');
+            }
+            return [];
         }
 
         const isRebit = targetInputId && (targetInputId.indexOf('rebit') !== -1);
@@ -799,16 +779,20 @@
 
         if (validFiles.length === 0) {
             setStatusFn('Unsupported file format. Only images and videos are allowed.', true);
-            alert('Unsupported file format. Only images and videos are allowed.');
-            return;
+            if (!options.setStatus) {
+                alert('Unsupported file format. Only images and videos are allowed.');
+            }
+            return [];
         }
 
         const existingIds = getExistingAttachmentIds(targetInputId);
         const currentCount = existingIds.length;
         if (!isRebit && currentCount + validFiles.length > 10) {
             setStatusFn('You can attach up to 10 images or videos.', true);
-            alert('You can attach up to 10 images or videos.');
-            return;
+            if (!options.setStatus) {
+                alert('You can attach up to 10 images or videos.');
+            }
+            return [];
         }
 
         const progressContainer = document.querySelector(`[data-progress-bar="${targetInputId}"]`) || document.querySelector('.bitstream-media-progress-container');
@@ -843,6 +827,7 @@
                 const basePercent = Math.round((i / totalFiles) * 100);
                 const fileLabel = totalFiles > 1 ? `Uploading file ${fileNum} of ${totalFiles}...` : 'Uploading media...';
                 updateProgress(Math.max(4, basePercent), fileLabel);
+                setStatusFn(fileLabel, false);
 
                 const uploadFile = await prepareMediaFileForUpload(file);
                 const media = await uploadMediaRequest(uploadFile, (percent, text) => {
@@ -851,6 +836,7 @@
                         ? `Uploading file ${fileNum} of ${totalFiles} (${overallPercent}%)...` 
                         : `Uploading... ${overallPercent}%`;
                     updateProgress(overallPercent, statusMsg);
+                    setStatusFn(statusMsg, false);
                 });
 
                 loadedAttachments.push({
@@ -881,10 +867,14 @@
             setTimeout(() => {
                 hideProgress();
             }, 1000);
+            return finalAttachments;
         } catch (error) {
             hideProgress();
             setStatusFn(error.message || 'Upload failed.', true);
-            alert(error.message || 'Upload failed.');
+            if (!options.setStatus) {
+                alert(error.message || 'Upload failed.');
+            }
+            throw error;
         }
     }
     window.uploadMultipleFiles = uploadMultipleFiles;

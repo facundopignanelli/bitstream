@@ -1015,14 +1015,7 @@ class BitStream_Content_Display
         <div id="bit-quoted-<?php echo esc_attr($post_id); ?>" class="bit-card bit-card-quoted-nested">
             <header class="bit-card-header">
                 <div class="bit-meta">
-                    <span class="bit-author-line">
-                        <?php echo esc_html($author_name); ?>
-                        <?php if (!empty($mood_emotion) && !$is_pure_mood): ?>
-                            <span class="bit-mood-status">
-                                is feeling <?php echo esc_html($mood_emoji); ?> <strong><?php echo esc_html($mood_emotion); ?></strong>
-                            </span>
-                        <?php endif; ?>
-                    </span>
+                    <span class="bit-author-line"><?php echo esc_html($author_name); ?><?php if (!empty($mood_emotion) && !$is_pure_mood): ?> <span class="bit-mood-status">is feeling <?php echo esc_html($mood_emoji); ?> <strong><?php echo esc_html($mood_emotion); ?></strong></span><?php endif; ?></span>
                     <span class="bit-timestamp" title="<?php echo esc_attr($timestamp_tooltip); ?>" tabindex="0"><span class="bit-timestamp-relative"><?php echo esc_html($timestamp); ?></span><span class="bit-timestamp-full" style="display:none;"><span class="bit-timestamp-separator"> | </span><?php echo esc_html(get_post_time(get_option('date_format') . ' ' . get_option('time_format'), false, $post_id)); ?></span></span>
                 </div>
             </header>
@@ -1214,14 +1207,7 @@ class BitStream_Content_Display
                 <?php echo $avatar; ?>
             </div>
             <div class="bit-meta">
-                <span class="bit-author-line">
-                    <?php echo esc_html($author_name); ?>
-                    <?php if (!empty($mood_emotion) && !$is_pure_mood): ?>
-                        <span class="bit-mood-status">
-                            is feeling <?php echo esc_html($mood_emoji); ?> <strong><?php echo esc_html($mood_emotion); ?></strong>
-                        </span>
-                    <?php endif; ?>
-                </span>
+                <span class="bit-author-line"><?php echo esc_html($author_name); ?><?php if (!empty($mood_emotion) && !$is_pure_mood): ?> <span class="bit-mood-status">is feeling <?php echo esc_html($mood_emoji); ?> <strong><?php echo esc_html($mood_emotion); ?></strong></span><?php endif; ?></span>
                 <span class="bit-timestamp" tabindex="0"><span class="bit-timestamp-relative"><?php echo esc_html($timestamp); ?></span><span class="bit-timestamp-full" style="display:none;"><span class="bit-timestamp-separator"> | </span><?php echo esc_html(get_post_time(get_option('date_format') . ' ' . get_option('time_format'), false, $post_id)); ?></span></span>
             </div>
         </header>
@@ -1250,9 +1236,14 @@ class BitStream_Content_Display
         <?php
         endif; ?>
 
+        <?php
+        $is_nightly = class_exists('BitStream_PWA_Manager') && BitStream_PWA_Manager::is_nightly_instance();
+        $watermark_logo = $is_nightly ? 'logo_nightly_192.png' : 'logo_192.png';
+        $watermark_name = $is_nightly ? 'BitStream Nightly' : 'BitStream';
+        ?>
         <div class="bit-card-watermark">
-            <img src="<?php echo esc_url(BITSTREAM_PLUGIN_URL . 'assets/images/logo_192.png'); ?>" alt="" aria-hidden="true">
-            <span>BitStream</span>
+            <img src="<?php echo esc_url(BITSTREAM_PLUGIN_URL . 'assets/images/' . $watermark_logo); ?>" alt="" aria-hidden="true">
+            <span><?php echo esc_html($watermark_name); ?></span>
         </div>
 
         <?php

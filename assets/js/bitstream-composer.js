@@ -10,7 +10,7 @@
                 const statusEl = composerRoot.querySelector('.bitstream-sidebar-composer-status');
                 const submitBtn = form.querySelector('.bitstream-composer-submit');
                 const textarea = form.querySelector('#bitstream-quick-bit-content');
-                const submitNonce = composerRoot.dataset.submitNonce || '';
+                const submitNonce = composerRoot.dataset.submitNonce || (window.bitstream_ajax && bitstream_ajax.composer_submit_nonce) || '';
 
                 // Mobile only: grow textarea as user types (unconditionally bind, check inside)
                 if (textarea) {
@@ -53,13 +53,16 @@
                 const hRebitOgImage = form.querySelector('#bitstream-composer-rebit-og-image');
                 const hRebitOgImageRemoved = form.querySelector('#bitstream-composer-rebit-og-image-removed');
                 const hRebitAttachmentId = form.querySelector('#bitstream-composer-rebit-attachment-id');
+                const inlineRebitMeta = form.querySelector('#bitstream-composer-rebit-inline-meta');
+                const inlineRebitTitle = form.querySelector('#bitstream-composer-rebit-inline-title');
+                const inlineRebitDesc = form.querySelector('#bitstream-composer-rebit-inline-desc');
                 const hScheduleEnabled = form.querySelector('#bitstream-composer-schedule-enabled');
                 const hScheduleDatetime = form.querySelector('#bitstream-composer-schedule-datetime');
                 const hEditPostId = form.querySelector('#bitstream-composer-edit-post-id');
                 const hMoodEmoji = form.querySelector('#bitstream-composer-mood-emoji');
                 const hMoodEmotion = form.querySelector('#bitstream-composer-mood-emotion');
                 const hQuotePostId = form.querySelector('#bitstream-composer-quote-post-id');
-                let renderRebitLivePreview, updateModalImagePreview;
+                let renderRebitLivePreview, updateModalImagePreview, closeRebitMetaEditor;
 
                 // Preview containers
                 const previewArea = form.querySelector('.bitstream-composer-preview-area');
@@ -341,6 +344,8 @@
                                 rebitOgTitle: hRebitOgTitle ? hRebitOgTitle.value : '',
                                 rebitOgDesc: hRebitOgDesc ? hRebitOgDesc.value : '',
                                 rebitOgImage: hRebitOgImage ? hRebitOgImage.value : '',
+                                rebitOgImageRemoved: hRebitOgImageRemoved ? hRebitOgImageRemoved.value : '0',
+                                rebitAttachmentId: hRebitAttachmentId ? hRebitAttachmentId.value : '',
                                 moodEmoji: hMoodEmoji ? hMoodEmoji.value : '',
                                 moodEmotion: hMoodEmotion ? hMoodEmotion.value : '',
                                 quotePostId: hQuotePostId ? hQuotePostId.value : '',
@@ -350,12 +355,15 @@
                                 hasMedia: previewMedia ? !previewMedia.hidden : false,
                                 hasRebit: previewRebit ? !previewRebit.hidden : false,
                                 hasMood: previewMood ? !previewMood.hidden : false,
-                                hasQuote: previewQuote ? !previewQuote.hidden : false
+                                hasQuote: previewQuote ? !previewQuote.hidden : false,
+                                composerType: form.dataset.composerType || 'bit'
                             };
                         }
                     }
 
                     if (hEditPostId) hEditPostId.value = String(postId);
+                    form.dataset.composerType = postType === 'rebit' ? 'rebit' : 'bit';
+                    if (postType === 'rebit' && textarea) textarea.required = false;
                     if (editBanner) editBanner.hidden = false;
                     if (editBannerTitle) editBannerTitle.textContent = postType === 'rebit' ? `Editing Rebit #${postId}` : `Editing Bit #${postId}`;
                     if (submitBtn) submitBtn.textContent = postType === 'rebit' ? 'Update Rebit' : 'Update Bit';
@@ -397,9 +405,14 @@
                         if (hRebitOgTitle) hRebitOgTitle.value = stashedDraft.rebitOgTitle;
                         if (hRebitOgDesc) hRebitOgDesc.value = stashedDraft.rebitOgDesc;
                         if (hRebitOgImage) hRebitOgImage.value = stashedDraft.rebitOgImage;
+                        if (hRebitOgImageRemoved) hRebitOgImageRemoved.value = stashedDraft.rebitOgImageRemoved || '0';
+                        if (hRebitAttachmentId) hRebitAttachmentId.value = stashedDraft.rebitAttachmentId || '';
                         if (hMoodEmoji) hMoodEmoji.value = stashedDraft.moodEmoji;
                         if (hMoodEmotion) hMoodEmotion.value = stashedDraft.moodEmotion;
                         if (hQuotePostId) hQuotePostId.value = stashedDraft.quotePostId;
+
+                        form.dataset.composerType = stashedDraft.composerType || 'bit';
+                        if (textarea) textarea.required = (form.dataset.composerType === 'bit');
 
                         if (previewMediaThumb) previewMediaThumb.innerHTML = stashedDraft.previewMediaHtml;
                         if (previewMedia) previewMedia.hidden = !stashedDraft.hasMedia;
@@ -435,6 +448,12 @@
                             if (!res.success || !res.data) throw new Error(res.data || 'Could not load post data.');
                             const data = res.data;
 
+                            const actualPostType = data.post_type || postType;
+                            form.dataset.composerType = actualPostType === 'rebit' ? 'rebit' : 'bit';
+                            if (actualPostType === 'rebit' && textarea) textarea.required = false;
+                            if (editBannerTitle) editBannerTitle.textContent = actualPostType === 'rebit' ? `Editing Rebit #${postId}` : `Editing Bit #${postId}`;
+                            if (submitBtn) submitBtn.textContent = actualPostType === 'rebit' ? 'Update Rebit' : 'Update Bit';
+
                             if (textarea) {
                                 if (window.BitStream && window.BitStream.Editor) {
                                     window.BitStream.Editor.setEditorValue(textarea, data.content || '');
@@ -446,12 +465,17 @@
                             if (hMoodEmotion) hMoodEmotion.value = data.mood_emotion || '';
                             setPreviewMoodDisplay(data.mood_emoji || '', data.mood_emotion || '');
 
-                            if (data.post_type === 'rebit' && data.rebit_url) {
+                            if (data.rebit_url) {
                                 if (hRebitUrl) hRebitUrl.value = data.rebit_url;
                                 if (hRebitOgTitle) hRebitOgTitle.value = data.og_title || '';
                                 if (hRebitOgDesc) hRebitOgDesc.value = data.og_desc || '';
                                 if (hRebitOgImage) hRebitOgImage.value = data.og_image || '';
+                                if (hRebitOgImageRemoved) hRebitOgImageRemoved.value = '0';
                                 if (hRebitAttachmentId) hRebitAttachmentId.value = data.rebit_attachment_id || '0';
+                                if (inlineRebitTitle) inlineRebitTitle.value = data.og_title || '';
+                                if (inlineRebitDesc) inlineRebitDesc.value = data.og_desc || '';
+                                if (typeof updateModalImagePreview === 'function') updateModalImagePreview();
+                                if (previewRebit) previewRebit.hidden = false;
                                 if (renderRebitLivePreview) renderRebitLivePreview(data.rebit_url);
                             }
 
@@ -494,8 +518,46 @@
                 }
 
                 function loadQuoteData(quotePostId) {
+                    if (hEditPostId && hEditPostId.value !== '0') {
+                        exitEditMode();
+                    }
+                    if (hEditPostId) hEditPostId.value = '0';
+                    if (editBanner) editBanner.hidden = true;
+                    form.dataset.composerType = 'bit';
+                    if (submitBtn) {
+                        const isScheduled = hScheduleEnabled && hScheduleEnabled.value === '1';
+                        submitBtn.textContent = isScheduled ? 'Schedule Bit' : 'Post Bit';
+                    }
+                    if (composerSaveDraftActionBtn) composerSaveDraftActionBtn.style.display = 'block';
+
+                    // Clear any previous Rebit state
+                    if (hRebitUrl) hRebitUrl.value = '';
+                    if (hRebitOgTitle) hRebitOgTitle.value = '';
+                    if (hRebitOgDesc) hRebitOgDesc.value = '';
+                    if (hRebitOgImage) hRebitOgImage.value = '';
+                    if (hRebitOgImageRemoved) hRebitOgImageRemoved.value = '0';
+                    if (hRebitAttachmentId) hRebitAttachmentId.value = '';
+                    if (previewRebitCard) previewRebitCard.innerHTML = '';
+                    if (previewRebit) previewRebit.hidden = true;
+                    if (inlineRebitMeta) inlineRebitMeta.hidden = true;
+                    if (inlineRebitTitle) inlineRebitTitle.value = '';
+                    if (inlineRebitDesc) inlineRebitDesc.value = '';
+
                     if (hQuotePostId) hQuotePostId.value = String(quotePostId);
                     setStatus('Loading quote preview…');
+
+                    // Immediately open / focus composer so user gets instant visual response
+                    if (window.innerWidth >= 1024) {
+                        composerRoot.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        composerRoot.classList.remove('pulse-highlight');
+                        void composerRoot.offsetWidth;
+                        composerRoot.classList.add('pulse-highlight');
+                        setTimeout(() => composerRoot.classList.remove('pulse-highlight'), 1000);
+                        if (textarea) textarea.focus();
+                    } else {
+                        openModal('composer');
+                        if (textarea) textarea.focus();
+                    }
 
                     const fd = new FormData();
                     fd.append('action', 'bitstream_get_quote_preview');
@@ -513,14 +575,7 @@
                             if (previewQuote) previewQuote.hidden = false;
                             setStatus('');
                             syncPreviewArea();
-
-                            if (window.innerWidth >= 1024) {
-                                composerRoot.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                if (textarea) textarea.focus();
-                            } else {
-                                openModal('composer');
-                                if (textarea) textarea.focus();
-                            }
+                            if (textarea) textarea.focus();
                         })
                         .catch(err => {
                             setStatus(err.message || 'Error loading quote.', true);
@@ -584,12 +639,16 @@
                     }
                     const inlineRebitMeta = form.querySelector('#bitstream-composer-rebit-inline-meta');
                     if (inlineRebitMeta) inlineRebitMeta.hidden = true;
+                    if (inlineRebitTitle) inlineRebitTitle.value = '';
+                    if (inlineRebitDesc) inlineRebitDesc.value = '';
+                    if (typeof updateModalImagePreview === 'function') updateModalImagePreview();
                     const fileInput = form.querySelector('#bitstream-composer-file-input');
                     if (fileInput) fileInput.value = '';
                     if (typeof closeAllPopovers === 'function') closeAllPopovers();
                     activeEditMoodForm = null;
                     if (hEditPostId) hEditPostId.value = '0';
                     form.dataset.composerType = 'bit';
+                    if (textarea) textarea.required = true;
                     if (submitBtn) submitBtn.textContent = 'Post Bit';
                     if (composerSaveDraftActionBtn) {
                         composerSaveDraftActionBtn.style.display = 'block';
@@ -628,6 +687,11 @@
                         composerRoot.hidden = true;
                         delete composerRoot.dataset.quickActionSource;
                         composerRoot.querySelectorAll('.bitstream-composer-modal').forEach(m => m.hidden = true);
+                        if (hEditPostId && hEditPostId.value !== '0') {
+                            exitEditMode();
+                        } else {
+                            clearComposer();
+                        }
                     } else {
                         const modal = composerRoot.querySelector('.bitstream-composer-modal-' + name);
                         if (modal) {
@@ -835,6 +899,16 @@
                             if (hQuotePostId) hQuotePostId.value = '0';
                             if (previewQuote) previewQuote.hidden = true;
                             if (previewQuoteCard) previewQuoteCard.innerHTML = '';
+                            const hasRebit = hRebitUrl && hRebitUrl.value.trim();
+                            form.dataset.composerType = hasRebit ? 'rebit' : 'bit';
+                            if (submitBtn) {
+                                const isEdit = hEditPostId && hEditPostId.value !== '0';
+                                if (isEdit) {
+                                    submitBtn.textContent = hasRebit ? 'Update Rebit' : 'Update Bit';
+                                } else {
+                                    submitBtn.textContent = hasRebit ? 'Publish Rebit' : 'Post Bit';
+                                }
+                            }
                         }
                         syncPreviewArea();
                     });
@@ -2092,6 +2166,9 @@
                                 if (hRebitOgImage) hRebitOgImage.value = d.og_image || '';
                                 if (hRebitAttachmentId && d.attachment_id) hRebitAttachmentId.value = String(d.attachment_id);
                                 if (hRebitOgImageRemoved) hRebitOgImageRemoved.value = '0';
+                                if (inlineRebitTitle) inlineRebitTitle.value = d.og_title || '';
+                                if (inlineRebitDesc) inlineRebitDesc.value = d.og_desc || '';
+                                if (typeof updateModalImagePreview === 'function') updateModalImagePreview();
                                 form.dataset.composerType = 'rebit';
                                 if (textarea) textarea.required = false;
                                 if (previewRebitCard) previewRebitCard.innerHTML = d.media_preview_html || '<p style="font-size:0.85rem;color:#555;">Rebit: ' + d.rebit_url + '</p>';
@@ -2187,13 +2264,22 @@
                             }
 
                             const isScheduled = d.schedule_enabled === '1';
+                            const isPublished = d.post_status === 'publish';
                             if (previewDraftLabel) {
-                                previewDraftLabel.textContent = isScheduled ? 'Editing Scheduled #' + postId : 'Editing Draft #' + postId;
+                                if (isPublished) {
+                                    previewDraftLabel.textContent = d.is_rebit ? 'Editing Rebit #' + postId : 'Editing Bit #' + postId;
+                                } else {
+                                    previewDraftLabel.textContent = isScheduled ? 'Editing Scheduled #' + postId : 'Editing Draft #' + postId;
+                                }
                             }
                             if (previewDraft) previewDraft.hidden = false;
 
                             if (submitBtn) {
-                                submitBtn.textContent = isScheduled ? 'Update Scheduled Post' : 'Publish Draft';
+                                if (isPublished) {
+                                    submitBtn.textContent = d.is_rebit ? 'Update Rebit' : 'Update Bit';
+                                } else {
+                                    submitBtn.textContent = isScheduled ? 'Update Scheduled Post' : 'Publish Draft';
+                                }
                             }
 
                             if (composerSaveDraftBtn) {
@@ -2313,9 +2399,6 @@
                 const rebitPopoverFetchBtn = composerRoot.querySelector('#bitstream-composer-rebit-popover-fetch');
                 const rebitPopoverStatus = composerRoot.querySelector('#bitstream-composer-rebit-popover-status');
 
-                const inlineRebitMeta = form.querySelector('#bitstream-composer-rebit-inline-meta');
-                const inlineRebitTitle = form.querySelector('#bitstream-composer-rebit-inline-title');
-                const inlineRebitDesc = form.querySelector('#bitstream-composer-rebit-inline-desc');
                 const inlineRebitImgChange = form.querySelector('#bitstream-composer-rebit-img-change');
                 const inlineRebitImgCrop = form.querySelector('#bitstream-composer-rebit-img-crop');
                 const inlineRebitImgRemove = form.querySelector('#bitstream-composer-rebit-img-remove');
@@ -2436,15 +2519,17 @@
                     inlineRebitMeta.hidden = false;
                 };
 
-                closeRebitMetaEditor = function (save = false) {
+                closeRebitMetaEditor = function (save = false, skipPreview = false) {
                     if (!inlineRebitMeta) return;
                     if (save) {
                         if (hRebitOgTitle && inlineRebitTitle) hRebitOgTitle.value = inlineRebitTitle.value.trim();
                         if (hRebitOgDesc && inlineRebitDesc) hRebitOgDesc.value = inlineRebitDesc.value.trim();
-                        if (hRebitUrl && hRebitUrl.value) {
+                        if (!skipPreview && hRebitUrl && hRebitUrl.value) {
                             renderRebitLivePreview(hRebitUrl.value);
                         }
-                        setStatus('Link preview updated.');
+                        if (!skipPreview) {
+                            setStatus('Link preview updated.');
+                        }
                     } else if (rebitEditBackup) {
                         if (hRebitOgTitle) hRebitOgTitle.value = rebitEditBackup.title;
                         if (hRebitOgDesc) hRebitOgDesc.value = rebitEditBackup.desc;
@@ -2454,7 +2539,7 @@
                         if (inlineRebitTitle) inlineRebitTitle.value = rebitEditBackup.title;
                         if (inlineRebitDesc) inlineRebitDesc.value = rebitEditBackup.desc;
                         updateModalImagePreview();
-                        if (hRebitUrl && hRebitUrl.value) {
+                        if (!skipPreview && hRebitUrl && hRebitUrl.value) {
                             renderRebitLivePreview(hRebitUrl.value);
                         }
                     }
@@ -2515,7 +2600,8 @@
                                 triggerTwitterWidgetsLoad(previewRebitCard);
                                 if (previewRebit) previewRebit.hidden = false;
                                 syncPreviewArea();
-                                if (data.data.og && hRebitOgImage && !hRebitOgImage.value) {
+                                const isImageRemoved = hRebitOgImageRemoved && hRebitOgImageRemoved.value === '1';
+                                if (data.data.og && hRebitOgImage && !hRebitOgImage.value && !isImageRemoved) {
                                     hRebitOgImage.value = data.data.og.image || '';
                                 }
                                 updateModalImagePreview();
@@ -2558,7 +2644,8 @@
                             if (inlineRebitTitle) inlineRebitTitle.value = meta.title || '';
                             if (inlineRebitDesc) inlineRebitDesc.value = meta.description || '';
 
-                            form.dataset.composerType = 'rebit';
+                            const hasQuote = hQuotePostId && parseInt(hQuotePostId.value || '0', 10) > 0;
+                            form.dataset.composerType = hasQuote ? 'bit' : 'rebit';
                             if (textarea) textarea.required = false;
 
                             renderRebitLivePreview(url);
@@ -2572,21 +2659,18 @@
                             setStatus('Rebit attached.');
                         })
                         .catch(err => {
-                            if (isEmbeddableRebitUrl(url)) {
-                                if (hRebitUrl) hRebitUrl.value = url;
-                                form.dataset.composerType = 'rebit';
-                                if (textarea) textarea.required = false;
-                                renderRebitLivePreview(url);
-                                updateRebitEditVisibility(url, true);
-                                if (previewRebit) previewRebit.hidden = false;
-                                syncPreviewArea();
-                                closeAllPopovers();
-                                if (rebitPopoverInput) rebitPopoverInput.value = '';
-                                setRebitStatus('');
-                                setStatus('Rebit attached.');
-                            } else {
-                                setRebitStatus(err.message || 'Fetch failed.', true);
-                            }
+                            if (hRebitUrl) hRebitUrl.value = url;
+                            const hasQuote = hQuotePostId && parseInt(hQuotePostId.value || '0', 10) > 0;
+                            form.dataset.composerType = hasQuote ? 'bit' : 'rebit';
+                            if (textarea) textarea.required = false;
+                            renderRebitLivePreview(url);
+                            updateRebitEditVisibility(url, isEmbeddableRebitUrl(url));
+                            if (previewRebit) previewRebit.hidden = false;
+                            syncPreviewArea();
+                            closeAllPopovers();
+                            if (rebitPopoverInput) rebitPopoverInput.value = '';
+                            setRebitStatus('');
+                            setStatus(isEmbeddableRebitUrl(url) ? 'Rebit attached.' : 'Link attached.');
                         })
                         .finally(() => {
                             if (rebitPopoverFetchBtn) {
@@ -2884,13 +2968,16 @@
                 });
 
                 // ── COMPOSER MEDIA ATTACH HANDLER ──
-                function uploadComposerMedia(files, retries = 5) {
+                function uploadComposerMedia(files, retries = 20) {
                     if (!files || files.length === 0) return;
 
                     const uploadFn = window.uploadMultipleFiles || (window.BitStream && window.BitStream.Media && window.BitStream.Media.uploadMultipleFiles);
-                    if (typeof uploadFn !== 'function') {
+                    const isAjaxReady = window.bitstream_ajax && window.bitstream_ajax.ajax_url && window.bitstream_ajax.media_upload_nonce;
+
+                    if (typeof uploadFn !== 'function' || !isAjaxReady) {
                         if (retries > 0) {
-                            setTimeout(() => uploadComposerMedia(files, retries - 1), 150);
+                            setStatus('Preparing media uploader...');
+                            setTimeout(() => uploadComposerMedia(files, retries - 1), 200);
                             return;
                         }
                         setStatus('Media uploader is unavailable.', true);
@@ -2901,8 +2988,11 @@
 
                     uploadFn(files, 'bitstream-composer-attachment-id', previewMediaThumb || 'bitstream-composer-preview-media-thumb', {
                         setStatus: (msg, isError) => setStatus(msg, isError)
-                    }).then(() => {
-                        const attachments = previewMediaThumb ? (typeof window.getExistingAttachments === 'function' ? window.getExistingAttachments(previewMediaThumb) : []) : [];
+                    }).then((resultAttachments) => {
+                        const previewEl = previewMediaThumb || document.getElementById('bitstream-composer-preview-media-thumb') || form.querySelector('.bitstream-composer-preview-media-thumb');
+                        const attachments = (Array.isArray(resultAttachments) && resultAttachments.length > 0)
+                            ? resultAttachments
+                            : (previewEl && typeof window.getExistingAttachments === 'function' ? window.getExistingAttachments(previewEl) : []);
 
                         if (attachments.length > 0) {
                             const attachId = attachments[0].id;
@@ -3031,6 +3121,10 @@
                         e.preventDefault();
                         if (!window.bitstream_ajax || !submitNonce) { setStatus('Cannot save draft.', true); return; }
 
+                        if (inlineRebitMeta && !inlineRebitMeta.hidden && typeof closeRebitMetaEditor === 'function') {
+                            closeRebitMetaEditor(true, true);
+                        }
+
                         const content = textarea ? (window.BitStream && window.BitStream.Editor ? window.BitStream.Editor.getEditorValue(textarea) : (textarea.value || '')).trim() : '';
                         const hasRebit = hRebitUrl && hRebitUrl.value.trim();
                         const hasMedia = hAttachmentId && parseInt(hAttachmentId.value || '0', 10) > 0;
@@ -3043,11 +3137,23 @@
                         composerSaveDraftActionBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>';
                         setStatus('Saving draft...');
 
+                        const effectiveDraftType = hasQuote ? 'bit' : (hasRebit ? 'rebit' : (form.dataset.composerType === 'rebit' ? 'rebit' : 'bit'));
                         const fd = new FormData(form);
                         fd.append('action', 'bitstream_submit_composer');
                         fd.append('nonce', submitNonce);
-                        fd.append('composer_type', form.dataset.composerType || 'bit');
+                        fd.set('composer_type', effectiveDraftType);
                         fd.append('save_as_draft', '1');
+                        if (effectiveDraftType === 'bit') {
+                            fd.set('bit_content', content);
+                        }
+                        if (hasRebit) {
+                            fd.set('rebit_url', hasRebit);
+                            if (hRebitOgTitle) fd.set('rebit_og_title', hRebitOgTitle.value);
+                            if (hRebitOgDesc) fd.set('rebit_og_desc', hRebitOgDesc.value);
+                            if (hRebitOgImage) fd.set('rebit_og_image', hRebitOgImage.value);
+                            if (hRebitOgImageRemoved) fd.set('rebit_og_image_removed', hRebitOgImageRemoved.value);
+                            if (hRebitAttachmentId) fd.set('rebit_attachment_id', hRebitAttachmentId.value);
+                        }
 
                         fetch(bitstream_ajax.ajax_url, { method: 'POST', credentials: 'same-origin', body: fd })
                             .then(r => r.json())
@@ -3200,8 +3306,95 @@
                 if (urlParams.has('show_settings') || urlParams.get('composer_tab') === 'settings') {
                     openModal('settings');
                 }
-                if (urlParams.has('show_rebit') || urlParams.get('composer_tab') === 'rebit') {
-                    const rebitBtn = composerRoot.querySelector('[data-composer-action="rebit"], [data-composer-modal="rebit"]');
+                // Extract possible shared content from URL parameters
+                let sharedUrlParam = urlParams.get('shared_url') || urlParams.get('url') || '';
+                let sharedTextParam = urlParams.get('shared_text') || urlParams.get('text') || '';
+                let sharedTitleParam = urlParams.get('shared_title') || urlParams.get('title') || '';
+
+                if (sharedUrlParam && sharedUrlParam.includes('%')) {
+                    try { sharedUrlParam = decodeURIComponent(sharedUrlParam); } catch (_) {}
+                }
+                if (sharedTextParam && sharedTextParam.includes('%')) {
+                    try { sharedTextParam = decodeURIComponent(sharedTextParam); } catch (_) {}
+                }
+                if (sharedTitleParam && sharedTitleParam.includes('%')) {
+                    try { sharedTitleParam = decodeURIComponent(sharedTitleParam); } catch (_) {}
+                }
+
+                // If URL was not directly in URL param, check text/title or prefilled field
+                if (!sharedUrlParam) {
+                    const combined = [sharedTextParam, sharedTitleParam].filter(Boolean).join(' ');
+                    const match = combined.match(/https?:\/\/[^\s]+/);
+                    if (match) {
+                        sharedUrlParam = match[0];
+                        sharedTextParam = sharedTextParam.replace(sharedUrlParam, '').trim();
+                    } else if (hRebitUrl && hRebitUrl.value) {
+                        sharedUrlParam = hRebitUrl.value.trim();
+                    }
+                }
+
+                const hasSharedLink = !!sharedUrlParam;
+                const isRebitRequest = hasSharedLink || urlParams.has('show_rebit') || urlParams.get('composer_tab') === 'rebit';
+
+                if (hasSharedLink) {
+                    composerRoot.hidden = false;
+                    if (typeof openModal === 'function') {
+                        openModal('composer');
+                    } else if (typeof window.bitstreamSyncBottomNav === 'function') {
+                        window.bitstreamSyncBottomNav();
+                    }
+                    if (window.innerWidth >= 1024) {
+                        composerRoot.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+
+                    if (hRebitUrl) {
+                        hRebitUrl.value = sharedUrlParam;
+                    }
+                    form.dataset.composerType = 'rebit';
+                    if (textarea) textarea.required = false;
+
+                    if (sharedTextParam && textarea) {
+                        if (window.BitStream && window.BitStream.Editor) {
+                            window.BitStream.Editor.setEditorValue(textarea, sharedTextParam);
+                        } else {
+                            textarea.value = sharedTextParam;
+                        }
+                        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+
+                    const mRebitUrl = composerRoot.querySelector('#bitstream-composer-rebit-popover-input, .bitstream-rebit-popover-input');
+                    if (mRebitUrl) {
+                        mRebitUrl.value = sharedUrlParam;
+                    }
+
+                    if (typeof fetchAndAttachRebit === 'function') {
+                        fetchAndAttachRebit(sharedUrlParam);
+                    } else if (typeof renderRebitLivePreview === 'function') {
+                        renderRebitLivePreview(sharedUrlParam);
+                        if (previewRebit) previewRebit.hidden = false;
+                        syncPreviewArea();
+                    }
+
+                    try {
+                        const cleanUrl = new URL(window.location.href);
+                        cleanUrl.searchParams.delete('shared_url');
+                        cleanUrl.searchParams.delete('url');
+                        cleanUrl.searchParams.delete('shared_text');
+                        cleanUrl.searchParams.delete('text');
+                        cleanUrl.searchParams.delete('shared_title');
+                        cleanUrl.searchParams.delete('title');
+                        cleanUrl.searchParams.delete('composer_tab');
+                        cleanUrl.searchParams.delete('show_rebit');
+                        window.history.replaceState({}, '', cleanUrl.toString());
+                    } catch (_) {}
+                } else if (isRebitRequest) {
+                    composerRoot.hidden = false;
+                    if (typeof openModal === 'function') {
+                        openModal('composer');
+                    } else if (typeof window.bitstreamSyncBottomNav === 'function') {
+                        window.bitstreamSyncBottomNav();
+                    }
+                    const rebitBtn = composerRoot.querySelector('[data-composer-popover-trigger="rebit"], [data-composer-action="rebit"], [data-composer-modal="rebit"]');
                     if (rebitBtn) {
                         setTimeout(() => {
                             const isMobile = window.innerWidth < 1024;
@@ -3212,22 +3405,46 @@
                             if (!isMobile) {
                                 rebitBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
                             }
-                        }, 100);
+                            const popoverInput = composerRoot.querySelector('#bitstream-composer-rebit-popover-input, .bitstream-rebit-popover-input');
+                            if (popoverInput) popoverInput.focus();
+                        }, 150);
                     }
-                }
-                if (urlParams.has('focus_composer') || urlParams.get('composer_tab') === 'bit') {
-                    const isMobile = window.innerWidth < 1024;
-                    if (isMobile) {
-                        composerRoot.hidden = false;
+                } else if (urlParams.has('focus_composer') || urlParams.get('composer_tab') === 'bit') {
+                    composerRoot.hidden = false;
+                    if (typeof openModal === 'function') {
+                        openModal('composer');
+                    } else if (typeof window.bitstreamSyncBottomNav === 'function') {
+                        window.bitstreamSyncBottomNav();
                     }
                     if (textarea) {
                         setTimeout(() => {
                             textarea.focus();
-                            if (!isMobile) {
+                            if (window.innerWidth >= 1024) {
                                 textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
                             }
                         }, 100);
                     }
+                } else if (sharedTextParam && textarea) {
+                    composerRoot.hidden = false;
+                    if (typeof openModal === 'function') {
+                        openModal('composer');
+                    } else if (typeof window.bitstreamSyncBottomNav === 'function') {
+                        window.bitstreamSyncBottomNav();
+                    }
+                    if (window.BitStream && window.BitStream.Editor) {
+                        window.BitStream.Editor.setEditorValue(textarea, sharedTextParam);
+                    } else {
+                        textarea.value = sharedTextParam;
+                    }
+                    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                    try {
+                        const cleanUrl = new URL(window.location.href);
+                        cleanUrl.searchParams.delete('shared_text');
+                        cleanUrl.searchParams.delete('text');
+                        cleanUrl.searchParams.delete('shared_title');
+                        cleanUrl.searchParams.delete('title');
+                        window.history.replaceState({}, '', cleanUrl.toString());
+                    } catch (_) {}
                 }
 
                 const quotePostIdFromUrl = parseInt(urlParams.get('quote_post_id') || '0', 10);
@@ -3243,18 +3460,80 @@
                 // Handle PWA share target redirection payload
                 if (urlParams.has('share_target') && urlParams.has('shared_id')) {
                     const sharedId = urlParams.get('shared_id');
-                    const dbRequest = indexedDB.open('bitstream-pwa-share-db', 1);
-                    dbRequest.onsuccess = (event) => {
-                        const db = event.target.result;
-                        if (!db.objectStoreNames.contains('shared-payloads')) {
-                            return;
+                    const isMobile = window.innerWidth < 1024;
+                    if (isMobile) {
+                        composerRoot.hidden = false;
+                        if (typeof openModal === 'function') {
+                            openModal('composer');
                         }
-                        const transaction = db.transaction('shared-payloads', 'readonly');
-                        const store = transaction.objectStore('shared-payloads');
-                        const getRequest = store.get(sharedId);
-                        getRequest.onsuccess = () => {
-                            const payload = getRequest.result;
-                            if (!payload) return;
+                    }
+                    setStatus('Loading shared content...');
+
+                    let isFinished = false;
+                    const shareTimeout = setTimeout(() => {
+                        if (!isFinished) {
+                            console.warn('BitStream: Timed out waiting for shared DB payload');
+                            setStatus('Timed out loading shared media. Please try attaching it manually.', true);
+                        }
+                    }, 8000);
+
+                    const openShareDb = () => {
+                        return new Promise((resolve, reject) => {
+                            let req;
+                            try {
+                                req = indexedDB.open('bitstream-pwa-share-db');
+                            } catch (err) {
+                                reject(err);
+                                return;
+                            }
+
+                            req.onblocked = () => {
+                                console.warn('BitStream: IndexedDB open blocked on composer');
+                                reject(new Error('Storage access blocked'));
+                            };
+                            req.onerror = (e) => reject(e.target.error || req.error);
+                            req.onupgradeneeded = (e) => {
+                                const db = e.target.result;
+                                if (!db.objectStoreNames.contains('shared-payloads')) {
+                                    db.createObjectStore('shared-payloads');
+                                }
+                            };
+                            req.onsuccess = (e) => {
+                                const db = e.target.result;
+                                db.onversionchange = () => { try { db.close(); } catch (_) {} };
+                                if (!db.objectStoreNames.contains('shared-payloads')) {
+                                    try { db.close(); } catch (_) {}
+                                    reject(new Error('shared-payloads store not found'));
+                                    return;
+                                }
+                                resolve(db);
+                            };
+                        });
+                    };
+
+                    openShareDb().then(async (db) => {
+                        try {
+                            const payload = await new Promise((resolve, reject) => {
+                                try {
+                                    const tx = db.transaction('shared-payloads', 'readonly');
+                                    const store = tx.objectStore('shared-payloads');
+                                    const getReq = store.get(sharedId);
+                                    getReq.onsuccess = () => resolve(getReq.result);
+                                    getReq.onerror = (err) => reject(err.target.error || getReq.error);
+                                } catch (txErr) {
+                                    reject(txErr);
+                                }
+                            });
+
+                            isFinished = true;
+                            clearTimeout(shareTimeout);
+
+                            if (!payload) {
+                                console.warn('BitStream: Shared payload not found for ID:', sharedId);
+                                setStatus('Shared media payload not found.', true);
+                                try { db.close(); } catch (_) {}
+                                return;
+                            }
 
                             const extractShareUrl = (url, text, title) => {
                                 if (url && url.startsWith('http')) return url;
@@ -3276,11 +3555,6 @@
                             const finalUrl = extractShareUrl(payload.url, payload.text, payload.title);
                             const cleanText = cleanShareText(payload.text, finalUrl);
 
-                            const isMobile = window.innerWidth < 1024;
-                            if (isMobile) {
-                                composerRoot.hidden = false;
-                            }
-
                             if (cleanText && textarea) {
                                 if (window.BitStream && window.BitStream.Editor) {
                                     window.BitStream.Editor.setEditorValue(textarea, cleanText);
@@ -3297,52 +3571,243 @@
                                 form.dataset.composerType = 'rebit';
                                 if (textarea) textarea.required = false;
 
-                                const rebitBtn = composerRoot.querySelector('[data-composer-popover-trigger="rebit"], [data-composer-action="rebit"], [data-composer-modal="rebit"]');
-                                if (rebitBtn) {
-                                    rebitBtn.click();
-                                }
-
-                                const mRebitUrl = composerRoot.querySelector('#bitstream-composer-rebit-popover-input, #bitstream-composer-inline-rebit-input, #bitstream-composer-modal-rebit-url');
+                                const mRebitUrl = composerRoot.querySelector('#bitstream-composer-rebit-popover-input, .bitstream-rebit-popover-input');
                                 if (mRebitUrl) {
                                     mRebitUrl.value = finalUrl;
                                 }
-                                const mRebitFetch = composerRoot.querySelector('#bitstream-composer-rebit-popover-fetch, #bitstream-composer-inline-rebit-fetch-btn, .bitstream-composer-rebit-fetch');
-                                if (mRebitFetch) {
-                                    mRebitFetch.classList.remove('is-edit-mode');
-                                    mRebitFetch.textContent = 'Fetch';
-                                    setTimeout(() => {
-                                        mRebitFetch.click();
-                                    }, 100);
-                                }
 
-                                if (typeof renderRebitLivePreview === 'function') {
+                                if (typeof fetchAndAttachRebit === 'function') {
+                                    fetchAndAttachRebit(finalUrl);
+                                } else if (typeof renderRebitLivePreview === 'function') {
                                     renderRebitLivePreview(finalUrl);
+                                    if (previewRebit) previewRebit.hidden = false;
+                                    syncPreviewArea();
                                 }
-                                syncPreviewArea();
                             }
 
                             if (payload.mediaFiles && payload.mediaFiles.length > 0) {
-                                if (isMobile && typeof openModal === 'function') {
-                                    openModal('composer');
+                                setStatus('Preparing shared media for upload...');
+
+                                const normalizedFiles = payload.mediaFiles.map((rawItem, idx) => {
+                                    let blob = null;
+                                    let name = rawItem.name || ('shared-video-' + Date.now() + '.mp4');
+                                    let type = rawItem.type || '';
+                                    let lastModified = rawItem.lastModified || Date.now();
+
+                                    if (rawItem instanceof Blob || (typeof File !== 'undefined' && rawItem instanceof File)) {
+                                        blob = rawItem;
+                                        name = rawItem.name || name;
+                                        type = rawItem.type || type;
+                                    } else if (rawItem && (rawItem.blob instanceof Blob || (typeof File !== 'undefined' && rawItem.blob instanceof File))) {
+                                        blob = rawItem.blob;
+                                        name = rawItem.name || blob.name || name;
+                                        type = rawItem.type || blob.type || type;
+                                    } else if (rawItem && rawItem.file && (rawItem.file instanceof Blob || (typeof File !== 'undefined' && rawItem.file instanceof File))) {
+                                        blob = rawItem.file;
+                                        name = rawItem.name || rawItem.file.name || name;
+                                        type = rawItem.type || rawItem.file.type || type;
+                                    } else if (rawItem && rawItem.buffer) {
+                                        blob = new Blob([rawItem.buffer], { type: rawItem.type || 'video/mp4' });
+                                    } else if (rawItem && rawItem.blob && (typeof rawItem.blob.slice === 'function' || typeof rawItem.blob.arrayBuffer === 'function')) {
+                                        blob = rawItem.blob;
+                                        name = rawItem.name || name;
+                                        type = rawItem.type || type;
+                                    } else if (rawItem && (typeof rawItem.slice === 'function' || typeof rawItem.arrayBuffer === 'function')) {
+                                        blob = rawItem;
+                                        name = rawItem.name || name;
+                                        type = rawItem.type || type;
+                                    }
+
+                                    if (!blob) {
+                                        console.warn('BitStream: Could not extract blob from shared item:', rawItem);
+                                        return null;
+                                    }
+
+                                    // Extract extension
+                                    const extMatch = String(name).match(/\.([a-z0-9]+)$/i);
+                                    let ext = extMatch ? extMatch[1].toLowerCase() : '';
+
+                                    // Infer mime if generic
+                                    if ((!type || type === 'application/octet-stream') && ext) {
+                                        if (['mp4', 'm4v'].includes(ext)) type = 'video/mp4';
+                                        else if (ext === 'mov') type = 'video/quicktime';
+                                        else if (ext === 'webm') type = 'video/webm';
+                                        else if (['3gp', '3gpp'].includes(ext)) type = 'video/3gpp';
+                                        else if (['jpg', 'jpeg'].includes(ext)) type = 'image/jpeg';
+                                        else if (ext === 'png') type = 'image/png';
+                                        else if (ext === 'webp') type = 'image/webp';
+                                    }
+
+                                    // Ensure proper extension
+                                    if (!ext || name === 'blob' || name === 'undefined') {
+                                        let defaultExt = 'mp4';
+                                        if (type === 'video/quicktime') defaultExt = 'mov';
+                                        else if (type === 'video/webm') defaultExt = 'webm';
+                                        else if (type === 'video/3gpp' || type === 'video/3gp') defaultExt = '3gp';
+                                        else if (type.startsWith('video/')) defaultExt = 'mp4';
+                                        else if (type === 'image/png') defaultExt = 'png';
+                                        else if (type === 'image/webp') defaultExt = 'webp';
+                                        else if (type === 'image/gif') defaultExt = 'gif';
+                                        else if (type.startsWith('image/')) defaultExt = 'jpg';
+
+                                        const base = (name && name !== 'blob' && name !== 'undefined') ? name.replace(/\.[^.]+$/, '') : (type.startsWith('image/') ? `shared-image-${Date.now()}-${idx + 1}` : `shared-video-${Date.now()}-${idx + 1}`);
+                                        name = `${base}.${defaultExt}`;
+                                    }
+
+                                    if (!type) {
+                                        type = name.endsWith('.mp4') ? 'video/mp4' : (name.endsWith('.mov') ? 'video/quicktime' : 'video/mp4');
+                                    }
+
+                                    // If blob is already a File with matching attributes, return directly
+                                    if (typeof File !== 'undefined' && (blob instanceof File) && (!name || blob.name === name) && (!type || blob.type === type)) {
+                                        return blob;
+                                    }
+
+                                    try {
+                                        return new File([blob], name, {
+                                            type: type,
+                                            lastModified: lastModified
+                                        });
+                                    } catch (_) {
+                                        blob.name = name;
+                                        blob.lastModified = lastModified;
+                                        return blob;
+                                    }
+                                }).filter(Boolean);
+
+                                if (normalizedFiles.length > 0) {
+                                    console.log('BitStream PWA: Passing shared files to uploadComposerMedia:', normalizedFiles);
+                                    uploadComposerMedia(normalizedFiles);
+                                } else {
+                                    setStatus('Could not read shared video file.', true);
                                 }
-                                uploadComposerMedia(payload.mediaFiles);
+                            } else {
+                                console.warn('BitStream: Shared payload has no mediaFiles:', payload);
+                                if (!cleanText && !finalUrl) {
+                                    let statusMsg = 'No media was received from the share.';
+                                    if (payload && payload.debugInfo) {
+                                        const dbg = payload.debugInfo;
+                                        const count = dbg.entryCount || 0;
+                                        const keys = Array.isArray(dbg.keys) ? dbg.keys.join(',') : '';
+                                        const ct = dbg.contentType ? `, ct=${dbg.contentType}` : '';
+                                        const cl = dbg.contentLength ? `, cl=${dbg.contentLength}` : '';
+                                        const netErr = dbg.netFallbackError ? `, netErr=${dbg.netFallbackError}` : '';
+                                        statusMsg += ` (Debug: entries=${count}, keys=[${keys}]${ct}${cl}${netErr})`;
+                                    }
+                                    setStatus(statusMsg, true);
+                                } else {
+                                    setStatus('');
+                                }
                             }
 
                             try {
                                 const deleteTx = db.transaction('shared-payloads', 'readwrite');
                                 deleteTx.objectStore('shared-payloads').delete(sharedId);
-                            } catch (e) {
-                                console.warn('BitStream: Failed to delete processed PWA share payload:', e);
+                                deleteTx.oncomplete = () => { try { db.close(); } catch (_) {} };
+                            } catch (_) {
+                                try { db.close(); } catch (_) {}
                             }
+                        } catch (err) {
+                            console.error('BitStream: Error processing share target:', err);
+                            setStatus('Error processing shared file: ' + (err.message || err), true);
+                            try { db.close(); } catch (_) {}
+                        }
 
-                            try {
-                                const cleanUrl = new URL(window.location.href);
-                                cleanUrl.searchParams.delete('share_target');
-                                cleanUrl.searchParams.delete('shared_id');
-                                window.history.replaceState({}, '', cleanUrl.toString());
-                            } catch (_) {}
-                        };
-                    };
+                        try {
+                            const cleanUrl = new URL(window.location.href);
+                            cleanUrl.searchParams.delete('share_target');
+                            cleanUrl.searchParams.delete('shared_id');
+                            window.history.replaceState({}, '', cleanUrl.toString());
+                        } catch (_) {}
+                    }).catch((err) => {
+                        isFinished = true;
+                        clearTimeout(shareTimeout);
+                        console.error('BitStream: Failed to read share target payload from IndexedDB:', err);
+                        setStatus('Failed to read shared media from storage: ' + (err.message || err), true);
+                    });
+                }
+
+                // Handle PWA share target error redirect
+                if (urlParams.has('share_error')) {
+                    const err = urlParams.get('share_error');
+                    const isMobile = window.innerWidth < 1024;
+                    if (isMobile) {
+                        composerRoot.hidden = false;
+                        if (typeof openModal === 'function') openModal('composer');
+                    }
+                    if (err === 'post_max_size') {
+                        setStatus('The shared video exceeds the server upload limit. Please attach it using the media button.', true);
+                    } else {
+                        setStatus('Could not process shared file: ' + err, true);
+                    }
+                    try {
+                        const cleanUrl = new URL(window.location.href);
+                        cleanUrl.searchParams.delete('share_error');
+                        window.history.replaceState({}, '', cleanUrl.toString());
+                    } catch (_) {}
+                }
+
+                // Handle PWA share target server-side upload redirect (media_ids in URL)
+                if (urlParams.has('media_ids')) {
+                    const rawIds = urlParams.get('media_ids');
+                    const mediaIds = rawIds.split(',').map(id => parseInt(id.trim(), 10)).filter(id => id > 0);
+
+                    if (mediaIds.length > 0) {
+                        const isMobile = window.innerWidth < 1024;
+                        if (isMobile) {
+                            composerRoot.hidden = false;
+                            if (typeof openModal === 'function') {
+                                openModal('composer');
+                            }
+                        }
+
+                        const sharedTextParam = urlParams.get('shared_text');
+                        if (sharedTextParam && textarea) {
+                            const decodedText = decodeURIComponent(sharedTextParam);
+                            if (window.BitStream && window.BitStream.Editor) {
+                                window.BitStream.Editor.setEditorValue(textarea, decodedText);
+                            } else {
+                                textarea.value = decodedText;
+                            }
+                            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+
+                        // Fetch attachment data for each media ID
+                        const fetchPromises = mediaIds.map(id => {
+                            const fd = new FormData();
+                            fd.append('action', 'bitstream_get_attachment_data');
+                            fd.append('nonce', bitstream_ajax.media_upload_nonce);
+                            fd.append('attachment_id', String(id));
+                            return fetch(bitstream_ajax.ajax_url, {
+                                method: 'POST',
+                                body: fd,
+                                credentials: 'same-origin'
+                            }).then(res => res.json()).then(data => data.success ? data.data : null).catch(() => null);
+                        });
+
+                        Promise.all(fetchPromises).then(results => {
+                            const validAttachments = results.filter(Boolean);
+                            if (validAttachments.length > 0) {
+                                const previewEl = previewMediaThumb || form.querySelector('.bitstream-media-preview, .bitstream-composer-preview-media-thumb');
+                                if (typeof window.updateAttachmentsList === 'function' && previewEl) {
+                                    window.updateAttachmentsList(previewEl, validAttachments);
+                                }
+                                if (hAttachmentId) hAttachmentId.value = String(validAttachments[0].id);
+                                if (hAttachmentIds) hAttachmentIds.value = validAttachments.map(a => a.id).join(',');
+                                if (previewMedia) previewMedia.hidden = false;
+                                syncPreviewArea();
+                                setStatus('Media attached.');
+                            }
+                        });
+
+                        try {
+                            const cleanUrl = new URL(window.location.href);
+                            cleanUrl.searchParams.delete('media_ids');
+                            cleanUrl.searchParams.delete('shared_text');
+                            cleanUrl.searchParams.delete('shared_url');
+                            window.history.replaceState({}, '', cleanUrl.toString());
+                        } catch (_) {}
+                    }
                 }
 
                 // Auto-save Composer form content
@@ -3354,6 +3819,10 @@
                     if (!composerFormIsDirty) return;
                     if (!window.bitstream_ajax || !bitstream_ajax.ajax_url || !submitNonce) return;
 
+                    if (inlineRebitMeta && !inlineRebitMeta.hidden && typeof closeRebitMetaEditor === 'function') {
+                        closeRebitMetaEditor(true, true);
+                    }
+
                     const content = textarea ? (window.BitStream && window.BitStream.Editor ? window.BitStream.Editor.getEditorValue(textarea) : (textarea.value || '')).trim() : '';
                     const hasRebit = hRebitUrl && hRebitUrl.value.trim();
                     const hasMedia = hAttachmentId && parseInt(hAttachmentId.value || '0', 10) > 0;
@@ -3361,12 +3830,24 @@
                     const hasQuote = hQuotePostId && parseInt(hQuotePostId.value || '0', 10) > 0;
                     if (!content && !hasRebit && !hasMedia && !hasMood && !hasQuote) return;
 
+                    const effectiveBeaconType = hasQuote ? 'bit' : (hasRebit ? 'rebit' : (form.dataset.composerType === 'rebit' ? 'rebit' : 'bit'));
                     const fd = new FormData(form);
                     fd.append('action', 'bitstream_submit_composer');
                     fd.append('nonce', submitNonce);
-                    fd.append('composer_type', form.dataset.composerType || 'bit');
+                    fd.set('composer_type', effectiveBeaconType);
                     fd.append('save_as_draft', '1');
                     fd.append('is_auto_draft', '1');
+                    if (effectiveBeaconType === 'bit') {
+                        fd.set('bit_content', content);
+                    }
+                    if (hasRebit) {
+                        fd.set('rebit_url', hasRebit);
+                        if (hRebitOgTitle) fd.set('rebit_og_title', hRebitOgTitle.value);
+                        if (hRebitOgDesc) fd.set('rebit_og_desc', hRebitOgDesc.value);
+                        if (hRebitOgImage) fd.set('rebit_og_image', hRebitOgImage.value);
+                        if (hRebitOgImageRemoved) fd.set('rebit_og_image_removed', hRebitOgImageRemoved.value);
+                        if (hRebitAttachmentId) fd.set('rebit_attachment_id', hRebitAttachmentId.value);
+                    }
 
                     navigator.sendBeacon(bitstream_ajax.ajax_url, fd);
                     composerFormIsDirty = false;
@@ -3402,32 +3883,61 @@
                     e.preventDefault();
                     if (!window.bitstream_ajax || !submitNonce) { setStatus('Submit unavailable.', true); return; }
 
+                    if (inlineRebitMeta && !inlineRebitMeta.hidden && typeof closeRebitMetaEditor === 'function') {
+                        closeRebitMetaEditor(true, true);
+                    }
+
                     const composerType = form.dataset.composerType || 'bit';
                     const content = textarea ? (window.BitStream && window.BitStream.Editor ? window.BitStream.Editor.getEditorValue(textarea) : (textarea.value || '')).trim() : '';
                     const hasMedia = hAttachmentId && parseInt(hAttachmentId.value || '0', 10) > 0;
                     const hasRebit = hRebitUrl && hRebitUrl.value.trim();
                     const hasMood = hMoodEmotion && hMoodEmotion.value.trim();
                     const hasQuote = hQuotePostId && parseInt(hQuotePostId.value || '0', 10) > 0;
+                    const isUpdate = (hEditPostId && parseInt(hEditPostId.value || '0', 10) > 0);
 
-                    let effectiveType = composerType;
-                    if (composerType === 'bit' && !hasMedia && !hasRebit && content) {
+                    let effectiveType = hasQuote ? 'bit' : (hasRebit ? 'rebit' : (composerType === 'rebit' ? 'rebit' : 'bit'));
+                    if (!hasMedia && !hasRebit && !hasQuote && content) {
                         try {
                             const u = new URL(content);
                             if (u.protocol === 'http:' || u.protocol === 'https:') effectiveType = 'rebit';
                         } catch { }
                     }
 
-                    if (effectiveType === 'bit' && !content && !hasMedia && !hasMood && !hasQuote) { setStatus('Write something or attach media.', true); return; }
+                    if (effectiveType === 'bit' && !content && !hasMedia && !hasMood && !hasQuote && !hasRebit) {
+                        setStatus('Write something or attach media.', true);
+                        return;
+                    }
+                    if (effectiveType === 'rebit' && !hasRebit && !content) {
+                        setStatus('Enter a link or URL.', true);
+                        return;
+                    }
 
-                    setStatus(effectiveType === 'rebit' ? 'Posting ReBit...' : 'Posting...');
+                    let statusMsg = 'Posting...';
+                    if (isUpdate) {
+                        statusMsg = effectiveType === 'rebit' ? 'Updating Rebit...' : 'Updating Bit...';
+                    } else if (effectiveType === 'rebit') {
+                        statusMsg = 'Posting ReBit...';
+                    }
+                    setStatus(statusMsg);
                     if (submitBtn) submitBtn.disabled = true;
 
                     const fd = new FormData(form);
                     fd.append('action', 'bitstream_submit_composer');
                     fd.append('nonce', submitNonce);
-                    fd.append('composer_type', effectiveType);
+                    fd.set('composer_type', effectiveType);
 
-                    if (effectiveType === 'rebit' && !hasRebit && content) {
+                    if (effectiveType === 'bit') {
+                        fd.set('bit_content', content);
+                    }
+
+                    if (hasRebit) {
+                        fd.set('rebit_url', hasRebit);
+                        if (hRebitOgTitle) fd.set('rebit_og_title', hRebitOgTitle.value);
+                        if (hRebitOgDesc) fd.set('rebit_og_desc', hRebitOgDesc.value);
+                        if (hRebitOgImage) fd.set('rebit_og_image', hRebitOgImage.value);
+                        if (hRebitOgImageRemoved) fd.set('rebit_og_image_removed', hRebitOgImageRemoved.value);
+                        if (hRebitAttachmentId) fd.set('rebit_attachment_id', hRebitAttachmentId.value);
+                    } else if (effectiveType === 'rebit' && content) {
                         fd.set('rebit_url', content);
                         fd.delete('bit_content');
                     }

@@ -52,6 +52,23 @@ class BitStream_PWA_Manager {
     }
     
     /**
+     * Check if current instance is the Nightly build
+     */
+    public static function is_nightly_instance() {
+        if (defined('BITSTREAM_NIGHTLY') && BITSTREAM_NIGHTLY) {
+            return true;
+        }
+        $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
+        if (empty($host) && isset($_SERVER['SERVER_NAME'])) {
+            $host = $_SERVER['SERVER_NAME'];
+        }
+        if (strpos($host, 'vps.facundopignanelli.com') !== false || strpos($host, 'nightly') !== false) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * Add PWA assets for BitStream pages
      */
     public function pwa_assets() {
@@ -69,7 +86,14 @@ class BitStream_PWA_Manager {
             $base = BITSTREAM_PLUGIN_URL;
             $manifest_url = add_query_arg('bitstream_manifest', '1', home_url('/'));
             // Use a query-var endpoint to avoid redirect chains on /sw.js when rewrites are unavailable.
-            $sw_url = add_query_arg('bitstream_sw', 'main', home_url('/'));
+            $sw_v = defined('BITSTREAM_VERSION') ? BITSTREAM_VERSION : '1.0.0';
+            if (file_exists(BITSTREAM_PLUGIN_PATH . 'sw.js')) {
+                $sw_v .= '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'sw.js');
+            }
+            $sw_url = add_query_arg([
+                'bitstream_sw' => 'main',
+                'v' => $sw_v,
+            ], home_url('/'));
             
             $scope_path = wp_make_link_relative(home_url('/bitstream/'));
             if (empty($scope_path)) {
@@ -78,15 +102,27 @@ class BitStream_PWA_Manager {
                 $scope_path = '/' . ltrim($scope_path, '/');
             }
             
-            $app_title = 'BitStream';
             $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
-            if (strpos($host, 'beta') !== false) {
+            $is_nightly = self::is_nightly_instance();
+            $is_beta = !$is_nightly && (strpos($host, 'beta') !== false);
+
+            if ($is_nightly) {
+                $app_title = 'BitStream Nightly';
+                $theme_color = '#044389';
+                $apple_touch_icon = $base . 'assets/images/logo_nightly_192.png';
+            } elseif ($is_beta) {
                 $app_title = 'BS BETA';
+                $theme_color = '#2c6e49';
+                $apple_touch_icon = $base . 'assets/images/logo_192.png';
+            } else {
+                $app_title = 'BitStream';
+                $theme_color = '#2c6e49';
+                $apple_touch_icon = $base . 'assets/images/logo_192.png';
             }
             
             echo '<link rel="manifest" href="'.esc_url($manifest_url).'">';
-            echo '<link rel="apple-touch-icon" href="'.esc_url($base . 'assets/images/logo_192.png').'">';
-            echo '<meta name="theme-color" content="#2c6e49">';
+            echo '<link rel="apple-touch-icon" href="'.esc_url($apple_touch_icon).'">';
+            echo '<meta name="theme-color" content="' . esc_attr($theme_color) . '">';
             echo '<meta name="mobile-web-app-capable" content="yes">';
             echo '<meta name="apple-mobile-web-app-capable" content="yes">';
             echo '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">';
@@ -134,6 +170,7 @@ class BitStream_PWA_Manager {
                         updateViaCache: "none"
                     }).then(function(registration) {
                         console.log("BitStream PWA registered with scope:", registration.scope);
+                        try { registration.update(); } catch (_) {}
                         
                         // Check for installation prompt
                         window.addEventListener("beforeinstallprompt", function(event) {
@@ -256,7 +293,10 @@ class BitStream_PWA_Manager {
             echo "// BitStream PWA Config\n";
             echo "const BITSTREAM_AJAX_URL = '" . esc_js(admin_url('admin-ajax.php')) . "';\n";
             echo "const BITSTREAM_VAPID_PUBLIC_KEY = '" . esc_js($public_key) . "';\n";
-            echo "const BITSTREAM_SITE_URL = '" . esc_js(home_url('/bitstream/')) . "';\n\n";
+            $feed_url = $this->get_composer_url();
+            echo "const BITSTREAM_SITE_URL = '" . esc_js($feed_url) . "';\n";
+            echo "const BITSTREAM_PLUGIN_URL = '" . esc_js(BITSTREAM_PLUGIN_URL) . "';\n";
+            echo "const BITSTREAM_IS_NIGHTLY = " . (self::is_nightly_instance() ? 'true' : 'false') . ";\n\n";
             
             readfile($file_path);
             exit;
@@ -349,11 +389,22 @@ class BitStream_PWA_Manager {
             }
         }
 
+        $is_nightly = self::is_nightly_instance();
+
         // Main icons
         if (isset($manifest_data['icons']) && is_array($manifest_data['icons'])) {
             foreach ($manifest_data['icons'] as &$icon) {
                 if (isset($icon['src'])) {
                     $basename = basename($icon['src']);
+                    if ($is_nightly) {
+                        if ($basename === 'bitstream.svg') {
+                            $basename = 'bitstream-nightly.svg';
+                        } elseif ($basename === 'logo_192.png') {
+                            $basename = 'logo_nightly_192.png';
+                        } elseif ($basename === 'logo_512.png') {
+                            $basename = 'logo_nightly_512.png';
+                        }
+                    }
                     $icon_url = wp_make_link_relative(BITSTREAM_PLUGIN_URL . 'assets/images/' . $basename);
                     $icon['src'] = empty($icon_url) ? '/wp-content/plugins/bitstream/assets/images/' . $basename : '/' . ltrim($icon_url, '/');
                 }
@@ -366,12 +417,19 @@ class BitStream_PWA_Manager {
             'client_mode' => 'navigate-existing'
         ];
 
-        // Check if host contains "beta"
+        // Instance-aware branding
         $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['SERVER_NAME'] : '';
         if (empty($host) && isset($_SERVER['HTTP_HOST'])) {
             $host = $_SERVER['HTTP_HOST'];
         }
-        if (strpos($host, 'beta') !== false) {
+        $is_beta = !$is_nightly && (strpos($host, 'beta') !== false);
+
+        if ($is_nightly) {
+            $manifest_data['id'] = 'bitstream-nightly-wp-plugin';
+            $manifest_data['name'] = 'BitStream Nightly';
+            $manifest_data['short_name'] = 'BitStream Nightly';
+            $manifest_data['theme_color'] = '#044389';
+        } elseif ($is_beta) {
             if (isset($manifest_data['name'])) {
                 $manifest_data['name'] = 'BS BETA';
             }
@@ -446,8 +504,9 @@ class BitStream_PWA_Manager {
             $transient_key = 'bitstream_shared_' . wp_generate_password(16, false);
             set_transient($transient_key, $pending_share, 15 * MINUTE_IN_SECONDS);
 
+            $is_rebit_share = !empty($pending_share['url']) || preg_match('/https?:\/\/[^\s]+/', $pending_share['text'] . ' ' . $pending_share['title']);
             $login_url = wp_login_url($this->get_composer_url([
-                'composer_tab' => 'bit',
+                'composer_tab' => $is_rebit_share ? 'rebit' : 'bit',
                 'shared_key' => $transient_key,
             ]));
 
@@ -474,8 +533,22 @@ class BitStream_PWA_Manager {
             error_log('BitStream: user permission check passed for media share');
         }
         
+        // Check if server dropped POST payload due to post_max_size limit
+        $content_length = isset($_SERVER['CONTENT_LENGTH']) ? (int)$_SERVER['CONTENT_LENGTH'] : 0;
+        if ($content_length > 0 && empty($_POST) && empty($_FILES)) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('BitStream: POST content length was ' . $content_length . ' bytes but $_POST and $_FILES are empty. Request exceeded post_max_size.');
+            }
+            wp_redirect($this->get_composer_url([
+                'composer_tab' => 'bit',
+                'share_error' => 'post_max_size',
+            ]));
+            exit;
+        }
+
         // Handle file uploads
         $attachment_ids = [];
+        $upload_has_size_error = false;
         $shared_text = isset($_POST['text']) ? sanitize_textarea_field($_POST['text']) : '';
         $shared_title = isset($_POST['title']) ? sanitize_text_field($_POST['title']) : '';
         $shared_url = isset($_POST['url']) ? esc_url_raw($_POST['url']) : '';
@@ -487,7 +560,8 @@ class BitStream_PWA_Manager {
         }
         
         // Process uploaded files
-        if (!empty($_FILES['media'])) {
+        $incoming_files = !empty($_FILES['media']) ? $_FILES['media'] : (!empty($_FILES['files']) ? $_FILES['files'] : (!empty($_FILES['file']) ? $_FILES['file'] : (!empty($_FILES) ? reset($_FILES) : null)));
+        if (!empty($incoming_files)) {
             if (defined('WP_DEBUG') && WP_DEBUG) {
                 error_log('BitStream: processing uploaded media files');
             }
@@ -499,7 +573,7 @@ class BitStream_PWA_Manager {
             @set_time_limit(300);
             
             // Handle multiple files (media is an array)
-            $files = $_FILES['media'];
+            $files = $incoming_files;
             
             // Check if it's a single file or multiple files
             if (is_array($files['name'])) {
@@ -524,8 +598,11 @@ class BitStream_PWA_Manager {
                             $attachment_ids[] = $attachment_id;
                         }
                     } else {
+                        if ($files['error'][$i] === UPLOAD_ERR_INI_SIZE || $files['error'][$i] === UPLOAD_ERR_FORM_SIZE) {
+                            $upload_has_size_error = true;
+                        }
                         if (defined('WP_DEBUG') && WP_DEBUG) {
-                            error_log('BitStream: one shared file had upload error');
+                            error_log('BitStream: one shared file had upload error: ' . $files['error'][$i]);
                         }
                     }
                 }
@@ -540,8 +617,11 @@ class BitStream_PWA_Manager {
                         $attachment_ids[] = $attachment_id;
                     }
                 } else {
+                    if ($files['error'] === UPLOAD_ERR_INI_SIZE || $files['error'] === UPLOAD_ERR_FORM_SIZE) {
+                        $upload_has_size_error = true;
+                    }
                     if (defined('WP_DEBUG') && WP_DEBUG) {
-                        error_log('BitStream: shared file upload error encountered');
+                        error_log('BitStream: shared file upload error encountered: ' . $files['error']);
                     }
                 }
             }
@@ -560,7 +640,11 @@ class BitStream_PWA_Manager {
             if (defined('WP_DEBUG') && WP_DEBUG) {
                 error_log('BitStream: empty share payload, redirecting to new bit page');
             }
-            wp_redirect($this->get_composer_url(['composer_tab' => 'bit']));
+            $params = ['composer_tab' => 'bit'];
+            if ($upload_has_size_error) {
+                $params['share_error'] = 'post_max_size';
+            }
+            wp_redirect($this->get_composer_url($params));
             exit;
         }
         
@@ -572,11 +656,11 @@ class BitStream_PWA_Manager {
         }
         
         if (!empty($clean_text)) {
-            $redirect_url = add_query_arg('shared_text', urlencode($clean_text), $redirect_url);
+            $redirect_url = add_query_arg('shared_text', $clean_text, $redirect_url);
         }
         
         if (!empty($final_url)) {
-            $redirect_url = add_query_arg('shared_url', urlencode($final_url), $redirect_url);
+            $redirect_url = add_query_arg('shared_url', $final_url, $redirect_url);
             $redirect_url = add_query_arg('composer_tab', 'rebit', $redirect_url);
         }
 
@@ -595,17 +679,33 @@ class BitStream_PWA_Manager {
             error_log('BitStream: processing shared file upload');
         }
         
+        // Ensure file has a valid extension matching its MIME type if missing
+        $orig_filename = isset($file['name']) ? $file['name'] : '';
+        $ext = strtolower(pathinfo($orig_filename, PATHINFO_EXTENSION));
+        if (empty($ext) && !empty($file['type'])) {
+            $mime = strtolower($file['type']);
+            if ($mime === 'video/mp4' || strpos($mime, 'video/') === 0) {
+                $file['name'] = (empty($orig_filename) || $orig_filename === 'blob' ? 'shared-video-' . time() : $orig_filename) . '.mp4';
+            } elseif ($mime === 'image/jpeg') {
+                $file['name'] = (empty($orig_filename) || $orig_filename === 'blob' ? 'shared-image-' . time() : $orig_filename) . '.jpg';
+            } elseif ($mime === 'image/png') {
+                $file['name'] = (empty($orig_filename) || $orig_filename === 'blob' ? 'shared-image-' . time() : $orig_filename) . '.png';
+            } elseif ($mime === 'image/webp') {
+                $file['name'] = (empty($orig_filename) || $orig_filename === 'blob' ? 'shared-image-' . time() : $orig_filename) . '.webp';
+            }
+        }
+
         // Use wp_handle_upload to process the file
         $upload_overrides = [
             'test_form' => false,
-            'test_type' => true
+            'test_type' => false
         ];
         
         $uploaded_file = wp_handle_upload($file, $upload_overrides);
         
         if (isset($uploaded_file['error'])) {
             if (defined('WP_DEBUG') && WP_DEBUG) {
-                error_log('BitStream: upload error during shared file processing');
+                error_log('BitStream: upload error during shared file processing: ' . $uploaded_file['error']);
             }
             return false;
         }
@@ -616,10 +716,15 @@ class BitStream_PWA_Manager {
         
         // Prepare attachment data
         $file_type = wp_check_filetype(basename($uploaded_file['file']), null);
+        $mime_type = !empty($file_type['type']) ? $file_type['type'] : (!empty($file['type']) ? $file['type'] : '');
+        if (empty($mime_type) && function_exists('mime_content_type')) {
+            $mime_type = mime_content_type($uploaded_file['file']) ?: '';
+        }
+
         $attachment_title = !empty($title) ? $title : preg_replace('/\.[^.]+$/', '', basename($uploaded_file['file']));
         
         $attachment = [
-            'post_mime_type' => $file_type['type'],
+            'post_mime_type' => $mime_type,
             'post_title' => sanitize_text_field($attachment_title),
             'post_content' => '',
             'post_status' => 'inherit'
@@ -638,6 +743,9 @@ class BitStream_PWA_Manager {
         // Generate attachment metadata
         $attachment_data = wp_generate_attachment_metadata($attachment_id, $uploaded_file['file']);
         wp_update_attachment_metadata($attachment_id, $attachment_data);
+
+        update_post_meta($attachment_id, '_bitstream_uploaded_via_composer', 1);
+        update_post_meta($attachment_id, '_bitstream_upload_created_at', time());
         
         if (defined('WP_DEBUG') && WP_DEBUG) {
             error_log('BitStream: attachment created for shared file');
@@ -749,20 +857,20 @@ class BitStream_PWA_Manager {
                     
                     // Add shared content to redirect URL if available
                     if ($final_url) {
-                        $redirect_url = add_query_arg('shared_url', urlencode($final_url), $redirect_url);
+                        $redirect_url = add_query_arg('shared_url', $final_url, $redirect_url);
                         if (defined('WP_DEBUG') && WP_DEBUG) {
                             error_log('BitStream Share Debug: added shared_url to redirect');
                         }
                     }
                     if ($shared_title) {
-                        $redirect_url = add_query_arg('shared_title', urlencode($shared_title), $redirect_url);
+                        $redirect_url = add_query_arg('shared_title', $shared_title, $redirect_url);
                         if (defined('WP_DEBUG') && WP_DEBUG) {
                             error_log('BitStream Share Debug: added shared_title to redirect');
                         }
                     }
                     // Note: We use final_url instead of shared_text since shared_text might be the URL
                     if (!empty($clean_text)) {
-                        $redirect_url = add_query_arg('shared_text', urlencode($clean_text), $redirect_url);
+                        $redirect_url = add_query_arg('shared_text', $clean_text, $redirect_url);
                         if (defined('WP_DEBUG') && WP_DEBUG) {
                             error_log('BitStream Share Debug: added shared_text to redirect');
                         }
@@ -1275,12 +1383,16 @@ class BitStream_PWA_Manager {
         
         $query = new WP_Query($args);
         
+        $is_nightly = self::is_nightly_instance();
+        $icon_file = $is_nightly ? 'logo_nightly_192.png' : 'logo_192.png';
+        $default_title = $is_nightly ? 'BitStream Nightly' : get_bloginfo('name');
+        
         $data = [
-            'title' => get_bloginfo('name'),
+            'title' => $default_title,
             'body' => 'A new post has been published!',
             'url' => home_url('/bitstream/'),
-            'icon' => BITSTREAM_PLUGIN_URL . 'assets/images/logo_192.png',
-            'badge' => BITSTREAM_PLUGIN_URL . 'assets/images/logo_192.png'
+            'icon' => BITSTREAM_PLUGIN_URL . 'assets/images/' . $icon_file,
+            'badge' => BITSTREAM_PLUGIN_URL . 'assets/images/' . $icon_file
         ];
         
         if ($query->have_posts()) {
@@ -1302,7 +1414,7 @@ class BitStream_PWA_Manager {
             $mood_emoji   = get_post_meta($post_id, '_bitstream_mood_emoji', true);
             $mood_emotion = get_post_meta($post_id, '_bitstream_mood_emotion', true);
 
-            $data['title'] = 'New BitStream Post';
+            $data['title'] = $is_nightly ? 'New BitStream Nightly Post' : 'New BitStream Post';
 
             if ($is_empty_content && !empty($mood_emotion)) {
                 // Mood-only bit: match timeline format

@@ -121,6 +121,7 @@ class BitStream_Ajax_Handlers
             'composer_url'         => class_exists('BitStream_Shortcodes') ? BitStream_Shortcodes::get_feed_page_url() : home_url('/bitstream/'),
             'plugin_url'         => BITSTREAM_PLUGIN_URL,
             'save_share_image_nonce' => wp_create_nonce('bitstream_save_share_image_nonce'),
+            'rebit_mappings_nonce' => wp_create_nonce('bitstream_rebit_mappings_nonce'),
             'custom_moods'       => is_user_logged_in() ? (get_user_meta(get_current_user_id(), '_bitstream_custom_moods', true) ?: []) : [],
             'hashtags'           => class_exists('BitStream_Content_Display') ? BitStream_Content_Display::get_hashtag_counts() : [],
         ];
@@ -149,6 +150,10 @@ class BitStream_Ajax_Handlers
         add_action('before_delete_post', [$this, 'handle_before_delete_post']);
         add_action('wp_ajax_bitstream_save_share_image', [$this, 'handle_save_share_image']);
         add_action('wp_ajax_bitstream_save_custom_moods', [$this, 'handle_save_custom_moods']);
+        add_action('wp_ajax_bitstream_save_rebit_mapping', [$this, 'handle_save_rebit_mapping']);
+        add_action('wp_ajax_bitstream_delete_rebit_mapping', [$this, 'handle_delete_rebit_mapping']);
+        add_action('wp_ajax_bitstream_add_rebit_preset', [$this, 'handle_add_rebit_preset']);
+        add_action('wp_ajax_bitstream_reset_rebit_mappings', [$this, 'handle_reset_rebit_mappings']);
         add_action('post_updated', [$this, 'handle_post_updated'], 10, 3);
         add_action('save_post_bit', [$this, 'handle_save_post_bit'], 20, 3);
     }
@@ -289,6 +294,14 @@ class BitStream_Ajax_Handlers
     {
         $file_type = wp_check_filetype(basename($file_path), null);
         $mime_type = $file_type['type'];
+
+        if (empty($mime_type) && function_exists('mime_content_type')) {
+            $detected = mime_content_type($file_path);
+            if (!empty($detected)) {
+                $mime_type = $detected;
+                $file_type['type'] = $detected;
+            }
+        }
 
         if (empty($mime_type) || (strpos($mime_type, 'image/') !== 0 && strpos($mime_type, 'video/') !== 0)) {
             @unlink($file_path);
@@ -776,6 +789,23 @@ class BitStream_Ajax_Handlers
                 wp_send_json_error($this->get_upload_error_message($_FILES['media']['error']));
             }
 
+            // Ensure filename has a valid extension matching its MIME type if missing
+            if (!empty($_FILES['media']['name'])) {
+                $ext = strtolower(pathinfo($_FILES['media']['name'], PATHINFO_EXTENSION));
+                if (empty($ext) && !empty($_FILES['media']['type'])) {
+                    $mime = strtolower($_FILES['media']['type']);
+                    if ($mime === 'video/mp4' || strpos($mime, 'video/') === 0) {
+                        $_FILES['media']['name'] .= '.mp4';
+                    } elseif ($mime === 'image/jpeg') {
+                        $_FILES['media']['name'] .= '.jpg';
+                    } elseif ($mime === 'image/png') {
+                        $_FILES['media']['name'] .= '.png';
+                    } elseif ($mime === 'image/webp') {
+                        $_FILES['media']['name'] .= '.webp';
+                    }
+                }
+            }
+
             require_once ABSPATH . 'wp-admin/includes/file.php';
             require_once ABSPATH . 'wp-admin/includes/media.php';
             require_once ABSPATH . 'wp-admin/includes/image.php';
@@ -808,12 +838,13 @@ class BitStream_Ajax_Handlers
                 wp_send_json_error('Insufficient permissions.');
             }
 
-            if (empty($_FILES['chunk'])) {
+            $chunk_file = !empty($_FILES['chunk']) ? $_FILES['chunk'] : (!empty($_FILES['chunk_data']) ? $_FILES['chunk_data'] : null);
+            if (!$chunk_file) {
                 wp_send_json_error('No upload chunk received.');
             }
 
-            if (!empty($_FILES['chunk']['error'])) {
-                wp_send_json_error($this->get_upload_error_message($_FILES['chunk']['error']));
+            if (!empty($chunk_file['error'])) {
+                wp_send_json_error($this->get_upload_error_message($chunk_file['error']));
             }
 
             $upload_id = sanitize_key(wp_unslash($_POST['upload_id'] ?? ''));
@@ -836,7 +867,7 @@ class BitStream_Ajax_Handlers
             }
 
             $chunk_path = trailingslashit($chunk_dir) . sprintf('%06d.part', $chunk_index);
-            if (!move_uploaded_file($_FILES['chunk']['tmp_name'], $chunk_path)) {
+            if (!move_uploaded_file($chunk_file['tmp_name'], $chunk_path)) {
                 wp_send_json_error('Could not save upload chunk.');
             }
 
@@ -852,6 +883,22 @@ class BitStream_Ajax_Handlers
             require_once ABSPATH . 'wp-admin/includes/file.php';
             require_once ABSPATH . 'wp-admin/includes/media.php';
             require_once ABSPATH . 'wp-admin/includes/image.php';
+
+            $mime = sanitize_mime_type(wp_unslash($_POST['mime'] ?? $_POST['mime_type'] ?? ''));
+
+            // Ensure filename has an extension before creating temp file and sideloading
+            $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+            if (empty($ext) && !empty($mime)) {
+                if ($mime === 'video/mp4' || strpos($mime, 'video/') === 0) {
+                    $filename .= '.mp4';
+                } elseif ($mime === 'image/jpeg') {
+                    $filename .= '.jpg';
+                } elseif ($mime === 'image/png') {
+                    $filename .= '.png';
+                } elseif ($mime === 'image/webp') {
+                    $filename .= '.webp';
+                }
+            }
 
             $assembled_path = wp_tempnam($filename);
             if (!$assembled_path) {
@@ -884,7 +931,7 @@ class BitStream_Ajax_Handlers
 
             $file_array = [
                 'name' => $filename,
-                'type' => sanitize_mime_type(wp_unslash($_POST['mime'] ?? '')),
+                'type' => $mime,
                 'tmp_name' => $assembled_path,
                 'error' => 0,
                 'size' => filesize($assembled_path),
@@ -1251,12 +1298,17 @@ class BitStream_Ajax_Handlers
                 $is_update = true;
             }
 
-            if ($composer_type === 'bit') {
-                $existing_quote_id = $is_update ? intval(get_post_meta($edit_post_id, '_bitstream_quoted_bit', true)) : 0;
-                if ($is_update && !empty(get_post_meta($edit_post_id, 'bitstream_rebit_url', true)) && $existing_quote_id <= 0) {
-                    wp_send_json_error('This post is a Rebit. Edit it from the Rebit tab.');
-                }
+            $rebit_url_param = esc_url_raw(wp_unslash($_POST['rebit_url'] ?? ''));
+            $quote_post_id_param = intval($_POST['quote_post_id'] ?? 0);
 
+            // Any post quoting another post is always a 'bit'
+            if ($quote_post_id_param > 0) {
+                $composer_type = 'bit';
+            } elseif ($composer_type === 'bit' && !empty($rebit_url_param) && filter_var($rebit_url_param, FILTER_VALIDATE_URL)) {
+                $composer_type = 'rebit';
+            }
+
+            if ($composer_type === 'bit') {
                 $raw_content = wp_unslash($_POST['bit_content'] ?? '');
                 $content = wp_kses_post($raw_content);
                 
@@ -1345,6 +1397,35 @@ class BitStream_Ajax_Handlers
                     $og_image = esc_url_raw(wp_unslash($_POST['rebit_og_image'] ?? ''));
                     $og_image_removed = !empty($_POST['rebit_og_image_removed']) && strval($_POST['rebit_og_image_removed']) === '1';
 
+                    $fetched_embed_html = '';
+                    // If OG metadata wasn't pre-filled by the client, fetch it now
+                    if (empty($og_title) && empty($og_desc) && empty($og_image) && !$og_image_removed) {
+                        if (class_exists('BitStream_OG_Fetcher')) {
+                            $fetcher = new BitStream_OG_Fetcher();
+                            $fetched = $fetcher->fetch_og_data($rebit_url);
+                            if (is_array($fetched)) {
+                                $og_title = $fetched['title'] ?? '';
+                                $og_desc = $fetched['description'] ?? '';
+                                $og_image = $fetched['image'] ?? '';
+                                $fetched_embed_html = $fetched['embed_html'] ?? '';
+                            }
+                        }
+                    }
+
+                    // Check embeds (Twitter, YouTube, etc.)
+                    $embed_data = ['is_embeddable' => false];
+                    if (class_exists('BitStream_Embed_Parser')) {
+                        $embed_data = BitStream_Embed_Parser::get_embed_data($rebit_url);
+                    }
+
+                    if (!empty($fetched_embed_html)) {
+                        update_post_meta($post_id, '_bitstream_rebit_embed_html', $fetched_embed_html);
+                    } elseif (!empty($embed_data['is_embeddable']) && ($embed_data['embed_type'] ?? '') === 'twitter') {
+                        update_post_meta($post_id, '_bitstream_rebit_embed_html', '<blockquote class="twitter-tweet" data-dnt="true"><a href="' . esc_url($rebit_url) . '"></a></blockquote>');
+                    } else {
+                        delete_post_meta($post_id, '_bitstream_rebit_embed_html');
+                    }
+
                     update_post_meta($post_id, '_bitstream_og_title', $og_title);
                     update_post_meta($post_id, '_bitstream_og_desc', $og_desc);
 
@@ -1358,7 +1439,10 @@ class BitStream_Ajax_Handlers
                         update_post_meta($post_id, '_bitstream_og_image', wp_get_attachment_url($rebit_attachment_id));
                     } elseif (!empty($og_image)) {
                         update_post_meta($post_id, '_bitstream_og_image', $og_image);
-                        delete_post_meta($post_id, '_bitstream_rebit_attachment_id');
+                        $local_id = $this->create_attachment_from_url($og_image, $post_id);
+                        if ($local_id > 0) {
+                            update_post_meta($post_id, '_bitstream_rebit_attachment_id', $local_id);
+                        }
                     } else {
                         delete_post_meta($post_id, '_bitstream_og_image');
                         delete_post_meta($post_id, '_bitstream_rebit_attachment_id');
@@ -1431,8 +1515,13 @@ class BitStream_Ajax_Handlers
                 }
             }
 
-            $og_title = !empty($manual_title) ? $manual_title : ($og_data['title'] ?? '');
-            $og_desc = !empty($manual_desc) ? $manual_desc : ($og_data['description'] ?? '');
+            $og_title = !empty($manual_title) ? $manual_title : (!empty($og_data['title']) ? $og_data['title'] : $url);
+            
+            if ($is_update && isset($_POST['rebit_og_desc'])) {
+                $og_desc = $manual_desc;
+            } else {
+                $og_desc = !empty($manual_desc) ? $manual_desc : ($og_data['description'] ?? '');
+            }
             
             if ($manual_image_removed) {
                 $og_image = '';
@@ -1441,6 +1530,8 @@ class BitStream_Ajax_Handlers
                 $og_image = $att_url ? $att_url : (!empty($manual_image) ? $manual_image : ($og_data['image'] ?? ''));
             } elseif (!empty($manual_image)) {
                 $og_image = $manual_image;
+            } elseif ($is_update && isset($_POST['rebit_og_image'])) {
+                $og_image = '';
             } else {
                 $og_image = $og_data['image'] ?? '';
             }
@@ -1472,7 +1563,11 @@ class BitStream_Ajax_Handlers
             update_post_meta($post_id, 'bitstream_rebit_url', esc_url_raw($url));
             update_post_meta($post_id, '_bitstream_og_title', sanitize_text_field($og_title));
             update_post_meta($post_id, '_bitstream_og_desc', sanitize_textarea_field($og_desc));
-            update_post_meta($post_id, '_bitstream_og_image', esc_url_raw($og_image));
+            if (!empty($og_image)) {
+                update_post_meta($post_id, '_bitstream_og_image', esc_url_raw($og_image));
+            } else {
+                delete_post_meta($post_id, '_bitstream_og_image');
+            }
             if (!empty($og_data['avatar'])) {
                 update_post_meta($post_id, '_bitstream_og_avatar', esc_url_raw($og_data['avatar']));
             }
@@ -1490,7 +1585,7 @@ class BitStream_Ajax_Handlers
                 delete_post_meta($post_id, '_bitstream_rebit_embed_html');
             }
 
-            if ($manual_image_removed) {
+            if ($manual_image_removed || empty($og_image)) {
                 delete_post_meta($post_id, '_bitstream_rebit_attachment_id');
                 delete_post_meta($post_id, '_bitstream_og_image');
             } elseif ($rebit_attachment_id > 0) {
@@ -1499,7 +1594,13 @@ class BitStream_Ajax_Handlers
                 delete_post_meta($post_id, '_bitstream_rebit_attachment_id');
             }
 
-            if ($is_bit_to_rebit_conversion) {
+            $quote_post_id = intval($_POST['quote_post_id'] ?? 0);
+            if ($quote_post_id > 0) {
+                $quoted_post = get_post($quote_post_id);
+                if ($quoted_post && $quoted_post->post_type === 'bit' && $quoted_post->post_status === 'publish') {
+                    update_post_meta($post_id, '_bitstream_quoted_bit', $quote_post_id);
+                }
+            } elseif ($is_bit_to_rebit_conversion) {
                 delete_post_meta($post_id, '_bitstream_quoted_bit');
             }
 
@@ -1982,7 +2083,11 @@ class BitStream_Ajax_Handlers
             }
 
             $og_title = !empty($manual_title) ? $manual_title : ($og_data['title'] ?? '');
-            $og_desc = !empty($manual_desc) ? $manual_desc : ($og_data['description'] ?? '');
+            if (isset($_POST['rebit_og_desc']) && ($manual_desc !== '' || !empty($manual_title) || $manual_image_removed || !empty($manual_image))) {
+                $og_desc = $manual_desc;
+            } else {
+                $og_desc = !empty($manual_desc) ? $manual_desc : ($og_data['description'] ?? '');
+            }
             $og_image = $manual_image_removed ? '' : (!empty($manual_image) ? $manual_image : ($og_data['image'] ?? ''));
 
             if ($attachment_id > 0 && empty($manual_image)) {
@@ -2654,5 +2759,143 @@ class BitStream_Ajax_Handlers
             ];
             update_user_meta($user_id, '_bitstream_custom_moods', $custom_moods);
         }
+    }
+
+    /**
+     * AJAX handler to save (add or update) a ReBit mapping
+     */
+    public function handle_save_rebit_mapping()
+    {
+        check_ajax_referer('bitstream_rebit_mappings_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('You do not have permission to manage ReBit mappings.', 'bitstream')], 403);
+        }
+
+        $mode = sanitize_key($_POST['mode'] ?? 'add');
+        $domain = sanitize_text_field($_POST['domain'] ?? '');
+        $label = sanitize_text_field($_POST['label'] ?? '');
+        $icon = sanitize_text_field($_POST['icon'] ?? '');
+        $original_domain = sanitize_text_field($_POST['original_domain'] ?? '');
+
+        if (empty($domain) || empty($label) || empty($icon)) {
+            wp_send_json_error(['message' => __('Domain, label, and icon are all required.', 'bitstream')], 400);
+        }
+
+        if ($mode === 'edit') {
+            if (empty($original_domain)) {
+                $original_domain = $domain;
+            }
+            $success = BitStream_ReBit_Mappings::update_mapping($original_domain, $domain, $label, $icon);
+            if (!$success) {
+                wp_send_json_error(['message' => __('Failed to update mapping. Check for duplicate domain or invalid data.', 'bitstream')], 400);
+            }
+            $message = __('Mapping updated successfully.', 'bitstream');
+        } else {
+            $success = BitStream_ReBit_Mappings::add_mapping($domain, $label, $icon);
+            if (!$success) {
+                wp_send_json_error(['message' => __('A mapping for this domain already exists.', 'bitstream')], 400);
+            }
+            $message = __('Mapping added successfully.', 'bitstream');
+        }
+
+        wp_send_json_success([
+            'message'  => $message,
+            'mapping'  => [
+                'domain' => BitStream_ReBit_Mappings::normalize_domain($domain),
+                'label'  => $label,
+                'icon'   => $icon,
+            ],
+            'mappings' => BitStream_ReBit_Mappings::get_all_mappings(),
+        ]);
+    }
+
+    /**
+     * AJAX handler to delete a ReBit mapping
+     */
+    public function handle_delete_rebit_mapping()
+    {
+        check_ajax_referer('bitstream_rebit_mappings_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('You do not have permission to manage ReBit mappings.', 'bitstream')], 403);
+        }
+
+        $domain = sanitize_text_field($_POST['domain'] ?? '');
+        if (empty($domain)) {
+            wp_send_json_error(['message' => __('Domain is required.', 'bitstream')], 400);
+        }
+
+        $normalized = BitStream_ReBit_Mappings::normalize_domain($domain);
+        $all = BitStream_ReBit_Mappings::get_all_mappings();
+        $deleted_item = null;
+        foreach ($all as $item) {
+            if (BitStream_ReBit_Mappings::normalize_domain($item['domain']) === $normalized) {
+                $deleted_item = $item;
+                break;
+            }
+        }
+
+        $success = BitStream_ReBit_Mappings::remove_mapping($domain);
+        if (!$success) {
+            wp_send_json_error(['message' => __('Mapping not found or could not be removed.', 'bitstream')], 404);
+        }
+
+        wp_send_json_success([
+            'message' => __('Mapping removed.', 'bitstream'),
+            'deleted' => $deleted_item,
+            'mappings' => BitStream_ReBit_Mappings::get_all_mappings(),
+        ]);
+    }
+
+    /**
+     * AJAX handler to add a preset mapping
+     */
+    public function handle_add_rebit_preset()
+    {
+        check_ajax_referer('bitstream_rebit_mappings_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('You do not have permission to manage ReBit mappings.', 'bitstream')], 403);
+        }
+
+        $preset_key = sanitize_text_field($_POST['preset_key'] ?? '');
+        $presets = BitStream_ReBit_Mappings::get_rebit_presets();
+
+        if (empty($preset_key) || !isset($presets[$preset_key])) {
+            wp_send_json_error(['message' => __('Preset not found.', 'bitstream')], 400);
+        }
+
+        $preset = $presets[$preset_key];
+        $success = BitStream_ReBit_Mappings::add_mapping($preset['domain'], $preset['label'], $preset['icon']);
+
+        if (!$success) {
+            wp_send_json_error(['message' => __('A mapping for this domain already exists.', 'bitstream')], 400);
+        }
+
+        wp_send_json_success([
+            'message'  => sprintf(__('Added %s preset successfully.', 'bitstream'), $preset['label']),
+            'mapping'  => $preset,
+            'mappings' => BitStream_ReBit_Mappings::get_all_mappings(),
+        ]);
+    }
+
+    /**
+     * AJAX handler to reset mappings to factory defaults
+     */
+    public function handle_reset_rebit_mappings()
+    {
+        check_ajax_referer('bitstream_rebit_mappings_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('You do not have permission to manage ReBit mappings.', 'bitstream')], 403);
+        }
+
+        $defaults = BitStream_ReBit_Mappings::reset_default_mappings();
+
+        wp_send_json_success([
+            'message'  => __('ReBit mappings have been reset to factory defaults.', 'bitstream'),
+            'mappings' => $defaults,
+        ]);
     }
 }

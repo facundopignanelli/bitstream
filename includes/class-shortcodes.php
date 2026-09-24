@@ -556,9 +556,23 @@ class BitStream_Shortcodes
         $author_id = get_current_user_id();
 
         // Prefill values
-        $shared_url = isset($_GET['shared_url']) ? esc_url_raw(wp_unslash($_GET['shared_url'])) : '';
-        $shared_title = isset($_GET['shared_title']) ? sanitize_text_field(wp_unslash($_GET['shared_title'])) : '';
-        $shared_text = isset($_GET['shared_text']) ? sanitize_textarea_field(wp_unslash($_GET['shared_text'])) : '';
+        $shared_url_param = isset($_GET['shared_url']) ? wp_unslash($_GET['shared_url']) : (isset($_GET['url']) ? wp_unslash($_GET['url']) : '');
+        if (!empty($shared_url_param) && strpos($shared_url_param, '%') !== false) {
+            $shared_url_param = urldecode($shared_url_param);
+        }
+        $shared_url = !empty($shared_url_param) ? esc_url_raw($shared_url_param) : '';
+
+        $shared_title_param = isset($_GET['shared_title']) ? wp_unslash($_GET['shared_title']) : (isset($_GET['title']) ? wp_unslash($_GET['title']) : '');
+        if (!empty($shared_title_param) && strpos($shared_title_param, '%') !== false) {
+            $shared_title_param = urldecode($shared_title_param);
+        }
+        $shared_title = !empty($shared_title_param) ? sanitize_text_field($shared_title_param) : '';
+
+        $shared_text_param = isset($_GET['shared_text']) ? wp_unslash($_GET['shared_text']) : (isset($_GET['text']) ? wp_unslash($_GET['text']) : '');
+        if (!empty($shared_text_param) && strpos($shared_text_param, '%') !== false) {
+            $shared_text_param = urldecode($shared_text_param);
+        }
+        $shared_text = !empty($shared_text_param) ? sanitize_textarea_field($shared_text_param) : '';
         $edit_post_id = isset($_GET['edit_post_id']) ? intval($_GET['edit_post_id']) : 0;
         $quote_post_id_prefill = isset($_GET['quote_post_id']) ? intval($_GET['quote_post_id']) : 0;
         if ($quote_post_id_prefill > 0) {
@@ -594,7 +608,8 @@ class BitStream_Shortcodes
         $composer_type_prefill = 'bit';
         if (!empty($shared_url)) {
             $composer_type_prefill = 'rebit';
-        } elseif (!empty($shared_text)) {
+        }
+        if (!empty($shared_text)) {
             $bit_content_prefill = $shared_text;
         }
 
@@ -639,10 +654,11 @@ class BitStream_Shortcodes
             $future_count = (int) $future_count;
         }
 
+        $should_open_composer = !empty($shared_url) || !empty($bit_attachment_id_prefill) || (isset($_GET['composer_tab']) && in_array($_GET['composer_tab'], ['bit', 'rebit'], true)) || isset($_GET['focus_composer']) || isset($_GET['show_rebit']);
+
         ob_start();
         ?>
-        <section class="bitstream-composer bitstream-composer" data-submit-nonce="<?php echo esc_attr($submit_nonce); ?>"
-            hidden>
+        <section class="bitstream-composer bitstream-composer" data-submit-nonce="<?php echo esc_attr($submit_nonce); ?>"<?php echo $should_open_composer ? '' : ' hidden'; ?>>
             <div class="bitstream-composer-modal-backdrop" data-composer-modal-close="composer"></div>
             <div class="bitstream-composer-modal-dialog" role="dialog" aria-modal="true" aria-label="Post a Bit">
                 <header class="bitstream-composer-modal-header">
@@ -1292,6 +1308,9 @@ class BitStream_Shortcodes
             return;
         }
 
+        wp_enqueue_style('font-awesome');
+        wp_enqueue_style('bitstream-css', BITSTREAM_PLUGIN_URL . 'assets/css/bitstream.css', ['font-awesome'], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/css/bitstream.css'));
+        wp_enqueue_script('bitstream-js');
         wp_enqueue_script('comment-reply');
 
         if (is_user_logged_in() && current_user_can('edit_posts')) {

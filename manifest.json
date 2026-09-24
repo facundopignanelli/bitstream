@@ -21,7 +21,26 @@
       "files": [
         {
           "name": "media",
-          "accept": ["image/*", "video/*"]
+          "accept": [
+            "image/*",
+            "video/*",
+            "video/mp4",
+            "video/quicktime",
+            "video/webm",
+            "video/3gpp",
+            "video/x-matroska",
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".webp",
+            ".gif",
+            ".mp4",
+            ".mov",
+            ".webm",
+            ".3gp",
+            ".m4v",
+            ".mkv"
+          ]
         }
       ]
     }

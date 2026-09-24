@@ -15,6 +15,7 @@ This index serves as the primary map for understanding the backend and frontend 
     * `init()`: Runs initialization steps, loads files via `load_includes()`, and instantiates components via `init_components()`.
     * `strip_image_metadata_on_upload($metadata, $attachment_id)`: Intercepts attachment uploads to strip image metadata (EXIF/GPS) from full images and generated sub-sizes.
     * `strip_metadata_from_file($file_path)`: Uses `Imagick` (preferred) or `GD` (fallback) to clean metadata from JPEGs, PNGs, and WebPs.
+    * `filter_upload_mimes($mimes)`: Ensures video formats (`mp4`, `m4v`, `mov`, `webm`, `3gp`, `3gpp`, `mkv`, `avi`) are permitted for media uploads and PWA Web Share Target.
   * `bitstream_render_rebit_section($post_id)`: Delegation wrapper calling `BitStream_Content_Display::render_rebit_section($post_id)`.
   * `bitstream_render_nested_quoted_card($post_id, $depth)`: Delegation wrapper calling `BitStream_Content_Display::render_nested_quoted_card($post_id, $depth)`.
   * `bitstream_comment_callback($comment, $args, $depth)`: Delegation wrapper calling `BitStream_Content_Display::comment_callback($comment, $args, $depth)`.
@@ -26,6 +27,7 @@ This index serves as the primary map for understanding the backend and frontend 
   * Action: `wp_enqueue_scripts` -> `register_global_assets` (priority 5)
   * Action: `admin_enqueue_scripts` -> `register_global_assets` (priority 5)
   * Filter: `wp_generate_attachment_metadata` -> `strip_image_metadata_on_upload`
+  * Filter: `upload_mimes` -> `filter_upload_mimes`
 
 ---
 
@@ -37,7 +39,7 @@ This index serves as the primary map for understanding the backend and frontend 
 * **Classes & Functions**:
   * `BitStream_Post_Type`: Class managing the 'bit' post type.
     * `__construct()`: Hooks into custom post registration, saving actions, comments default state, and search queries.
-    * `register_post_type()`: Defines the labels, options, and REST attributes for the `bit` post type.
+    * `register_post_type()`: Defines the labels, options, and REST attributes for the `bit` post type. Sets `'has_archive' => false` with slug `'bitstream'` to avoid shadowing the main BitStream timeline page at `/bitstream`.
     * `auto_generate_title($post_id)`: Automatically numbers posts daily (e.g., `Bit #2026-07-18:001`) on publication and manages transient counters.
     * `enable_comments($data, $postarr)`: Hook to open comments by default on newly created posts.
     * `is_bit_search_query($query)`: Helper to identify active search actions on the 'bit' custom post type.
@@ -79,8 +81,12 @@ This index serves as the primary map for understanding the backend and frontend 
     * `handle_get_quoted_bit()`: Returns cards details for quote embeds.
     * `handle_get_draft_data()` / `handle_get_post_edit_data()`: Resolves data fields for editing drafts or post updates.
     * `handle_save_custom_moods()`: Persists user-defined emotion overrides.
+    * `handle_save_rebit_mapping()`: Validates and saves new or edited ReBit domain mappings.
+    * `handle_delete_rebit_mapping()`: Removes custom ReBit domain mappings.
+    * `handle_add_rebit_preset()`: Adds pre-configured domain presets with 1 click.
+    * `handle_reset_rebit_mappings()`: Restores factory default domain mappings.
 * **Registered Hooks**:
-  * AJAX Actions: `wp_ajax_bitstream_like`, `wp_ajax_nopriv_bitstream_like`, `wp_ajax_bitstream_load_more`, `wp_ajax_nopriv_bitstream_load_more`, `wp_ajax_bitstream_fetch_og_data`, `wp_ajax_bitstream_render_rebit_preview`, `wp_ajax_bitstream_get_quoted_bit`, `wp_ajax_bitstream_submit_composer`, `wp_ajax_bitstream_upload_media`, `wp_ajax_bitstream_upload_media_chunk`, `wp_ajax_bitstream_prepare_rebit_image_for_crop`, `wp_ajax_bitstream_crop_media`, `wp_ajax_bitstream_delete_post`, `wp_ajax_bitstream_get_draft_data`, `wp_ajax_bitstream_get_post_data`, `wp_ajax_bitstream_get_post_edit_data`, `wp_ajax_bitstream_get_quote_preview`, `wp_ajax_bitstream_get_attachment_data`, `wp_ajax_bitstream_save_share_image`, `wp_ajax_bitstream_save_custom_moods`.
+  * AJAX Actions: `wp_ajax_bitstream_like`, `wp_ajax_nopriv_bitstream_like`, `wp_ajax_bitstream_load_more`, `wp_ajax_nopriv_bitstream_load_more`, `wp_ajax_bitstream_fetch_og_data`, `wp_ajax_bitstream_render_rebit_preview`, `wp_ajax_bitstream_get_quoted_bit`, `wp_ajax_bitstream_submit_composer`, `wp_ajax_bitstream_upload_media`, `wp_ajax_bitstream_upload_media_chunk`, `wp_ajax_bitstream_prepare_rebit_image_for_crop`, `wp_ajax_bitstream_crop_media`, `wp_ajax_bitstream_delete_post`, `wp_ajax_bitstream_get_draft_data`, `wp_ajax_bitstream_get_post_data`, `wp_ajax_bitstream_get_post_edit_data`, `wp_ajax_bitstream_get_quote_preview`, `wp_ajax_bitstream_get_attachment_data`, `wp_ajax_bitstream_save_share_image`, `wp_ajax_bitstream_save_custom_moods`, `wp_ajax_bitstream_save_rebit_mapping`, `wp_ajax_bitstream_delete_rebit_mapping`, `wp_ajax_bitstream_add_rebit_preset`, `wp_ajax_bitstream_reset_rebit_mappings`.
   * Action: `before_delete_post` -> `handle_before_delete_post`
   * Action: `post_updated` -> `handle_post_updated`
 
@@ -169,7 +175,7 @@ This index serves as the primary map for understanding the backend and frontend 
 * **Description**: Oversees dynamic PWA generation, Web Share Target processing, and Web Push notifications.
 * **Component Interactions**: Intercepts queries to render [manifest.json](manifest.json) or [sw.js](sw.js).
 * **Classes & Functions**:
-  * `BitStream_PWA_Manager`:
+    * `is_nightly_instance()`: Environment-aware helper detecting whether the site is running on a nightly development instance (`BITSTREAM_NIGHTLY`, `vps.facundopignanelli.com`, or `nightly` hosts) to serve blue branding and "BitStream Nightly" PWA configuration.
     * `pwa_assets()`: Prints manifest URLs, apple touch icons, theme colors, and registers service workers in headers.
     * `serve_service_worker()` / `serve_manifest()`: Renders files on query matches.
     * `handle_shortcut_requests()`: Intercepts shortcut paths to load the composer.
@@ -196,8 +202,11 @@ This index serves as the primary map for understanding the backend and frontend 
 * **Description**: Central configuration lookup registry mapping shared bookmark domains.
 * **Classes & Functions**:
   * `BitStream_ReBit_Mappings`:
-    * `get_rebit_presets()`: Supplies predefined domain structures (e.g. YouTube, Twitter, GitHub) with designated icons and labels.
+    * `normalize_domain($domain)`: Sanitizes and standardizes hostnames (removes protocols, subpaths, trailing query strings).
+    * `get_rebit_presets()`: Supplies predefined domain structures (e.g. YouTube, Twitter, GitHub, Spotify, Discord) with designated icons and labels.
     * `get_mapping_for_domain($domain, $url = '')`: Finds saved overrides matching current hosts with dynamic path-aware mapping for Instagram content (photo, reel, story).
+    * `add_mapping($domain, $label, $icon)` / `update_mapping($old_domain, $new_domain, $label, $icon)` / `remove_mapping($domain)`: Granular domain mapping CRUD with automatic domain normalization and collision prevention.
+    * `reset_default_mappings()`: Restores factory default preset mappings.
     * `import_default_mappings()`: Activator handler writing configuration presets.
 
 ### [includes/class-rss-feeds.php](includes/class-rss-feeds.php)
@@ -234,7 +243,7 @@ This index serves as the primary map for understanding the backend and frontend 
   * Action: `save_post_bit` -> `save_rebit_og_data`
 
 ### [includes/admin-rebit-mappings-interface.php](includes/admin-rebit-mappings-interface.php)
-* **Description**: Admin template script included by `rebit_mappings_page()`. Renders configuration forms, icon layouts, domain options, presets, and picker scripts in backend settings screens.
+* **Description**: Modern master-detail template script included by `rebit_mappings_page()`. Renders real-time search filter, 1-click popular preset chips, in-place add/edit drawer with live badge preview and curated icon popover, active mapping card rows, and 5-second undo toast notifications.
 
 ---
 
@@ -245,14 +254,15 @@ This index serves as the primary map for understanding the backend and frontend 
 * **Configuration Details**:
   * Root path: `/bitstream/?pwa=1`.
   * Categories: `social`, `news`.
+  * Dynamic Nightly Branding: When served via `BitStream_PWA_Manager::serve_manifest()` on nightly instances, dynamically adjusts app ID to `bitstream-nightly-wp-plugin`, name/short_name to `BitStream Nightly`, theme color to `#044389`, and maps icons to `bitstream-nightly.svg`, `logo_nightly_192.png`, and `logo_nightly_512.png`.
   * Shortcuts: Defines fast targets for `/bitstream/new-bit/` and `/bitstream/new-rebit/`.
-  * Share Target: Handles POST file inputs from standard system share panels.
+  * Share Target: Handles POST image and video file inputs from standard system share panels with broad MIME and extension matching (`image/*`, `video/*`, `mp4`, `mov`, `webm`, `3gp`, `mkv`).
 
 ### [sw.js](sw.js)
 * **Description**: Service worker tracking lifecycle caching.
 * **Configuration Details**:
   * Cache Registry: `ASSETS_TO_CACHE` targets primary stylesheet, scripts, manifests, and system logos.
-  * Interceptor: Hijacks `/new-bit/` and `/new-rebit/` POST requests to parse incoming files and output upload progress pages.
+  * Interceptor: Hijacks `/new-bit/` and `/new-rebit/` POST requests to parse incoming files. If local `formData` contains media, buffers streams into detached `Blob` handles via `slice()`, commits payloads safely with `transaction.oncomplete` in IndexedDB (`bitstream-pwa-share-db`), releases locks immediately with `db.close()`, and redirects directly to the composer feed. If local `formData` contains 0 files (e.g. mobile streaming limitations), cleanly falls back to forwarding the untouched POST request directly to the server (`fetch(request)`) where `BitStream_PWA_Manager::handle_media_share()` saves attachments and redirects via `media_ids`.
   * Notifications: Handles Web Push notification messages and click routing.
 
 ---
@@ -277,7 +287,7 @@ This index serves as the primary map for understanding the backend and frontend 
   * Sheets / Search Screens: `99 997` / `99 996`
 
 ### [assets/js/bitstream.js](assets/js/bitstream.js)
-* **Description**: Main frontend bootstrap script. Initializes all modular components under the `window.BitStream` namespace (`window.BitStream.Media`, `window.BitStream.Timeline`, `window.BitStream.UI`, `window.BitStream.Editor`) upon DOMContentLoaded.
+* **Description**: Main frontend bootstrap script. Initializes all modular components under the `window.BitStream` namespace (`window.BitStream.Media`, `window.BitStream.Timeline`, `window.BitStream.UI`, `window.BitStream.Editor`) upon DOMContentLoaded. Detects PWA share target launches and displays confirmation notifications.
 
 ### [assets/js/bitstream-lightbox.js](assets/js/bitstream-lightbox.js)
 * **Description**: Fullscreen media lightbox script. Handles gallery navigation, gestures, keyboard shortcuts, and video players. Exposed under `window.BitStream.UI.openLightbox`.
@@ -286,17 +296,19 @@ This index serves as the primary map for understanding the backend and frontend 
 * **Description**: Canvas-based image cropping script. Allows users to resize, position, and crop images. Exposed under `window.BitStream.UI.openCropper`.
 
 ### [assets/js/bitstream-uploader.js](assets/js/bitstream-uploader.js)
-* **Description**: Multi-file and chunked uploader script. Manages file compression, progress queues, and dynamic upload forms. Exposed under `window.BitStream.Media`.
+* **Description**: Multi-file and chunked uploader script. Manages file compression, chunked video/image uploading (5MB parts with upload ID tracking and MIME normalization), video play-icon overlays in previews, progress queues, streaming percentage progress to status callbacks, returning attachment objects, and dynamic upload forms. Exposed under `window.BitStream.Media`.
 
 ### [assets/js/bitstream-editor.js](assets/js/bitstream-editor.js)
 * **Description**: Contenteditable micro-editor script. Powers live `#hashtag` coloring, `http://` URL highlighting, caret-anchored autocomplete popup, inline Twemoji rendering, DOM selection range preservation, plain-text paste sanitization, and clipboard image paste detection (`bitstream:paste-media`). Exposed under `window.BitStream.Editor`.
 
 ### [assets/js/bitstream-composer.js](assets/js/bitstream-composer.js)
-* **Description**: Composer and settings controller script. Powers the modal-free inline composing architecture: anchored popovers for Link/Rebit (URL fetcher with live metadata editing on preview card), Media (native device upload & WP Media Library), Scheduling (datetime picker), and Moods (floating multi-line reaction popover with unified standard/custom emojis, inline mood creator, mobile preview carousel integration with pure-mood large card styling, and full inline Edit Mode with drag-and-drop reordering backed by native haptic vibration feedback via `navigator.vibrate` on pick-up/drop, real-time floating finger-lift touch tracking, automatic edit mode exit on dismissal/toggle, delete with 5-second Undo toast, and in-place editing), direct composer drag-and-drop file uploading, character counters, settings forms, PWA share payloads, drafts lists, scheduled list drawers, direct clipboard image paste handling, twemoji lazy-parsing, and unified Composer Edit & Quote Modes (`openEdit`, `openQuote`, `cancelEdit`, and auto-stashed draft protection). Exposed under `window.BitStream.Composer`.
+* **Description**: Composer and settings controller script. Powers the modal-free inline composing architecture: anchored popovers for Link/Rebit (URL fetcher with live metadata editing on preview card), Media (native device upload & WP Media Library), Scheduling (datetime picker), and Moods (floating multi-line reaction popover with unified standard/custom emojis, inline mood creator, mobile preview carousel integration with pure-mood large card styling, and full inline Edit Mode with drag-and-drop reordering backed by native haptic vibration feedback via `navigator.vibrate` on pick-up/drop, real-time floating finger-lift touch tracking, automatic edit mode exit on dismissal/toggle, delete with 5-second Undo toast, and in-place editing), direct composer drag-and-drop file uploading, character counters, settings forms, PWA share payloads (IndexedDB v2 ArrayBuffer restoration, cold-start module retry polling, server-side `media_ids` redirect handoff for images and videos, Web Share Target URL and Rebit link interception with automatic mobile screen presentation and instant OpenGraph metadata fetching/card preview rendering, and `post_max_size` overflow detection), drafts lists, scheduled list drawers, direct clipboard image paste handling, twemoji lazy-parsing, and unified Composer Edit & Quote Modes (`openEdit`, `openQuote`, `cancelEdit`, and auto-stashed draft protection). Exposed under `window.BitStream.Composer`.
 
 ### [assets/js/bitstream-timeline.js](assets/js/bitstream-timeline.js)
 * **Description**: Timeline viewer and utilities script. Manages page scroll pagination, comments toggling/styling, media session metadata tracking, exposing hashtag data (`getHashtags()`), push notifications registration, image download protections, and anchored share options popovers (`openShareOptionsModal`) with auto-dismiss on scroll/resize and card capture modal triggers. Exposed under `window.BitStream.Timeline`.
 
+### [assets/js/bitstream-settings.js](assets/js/bitstream-settings.js)
+* **Description**: ReBit Mappings and settings administration script. Powers the real-time ReBit Mappings hub with live search filtering, 1-click popular preset auto-fill chips inside the Add/Edit drawer with live badge preview, full Font Awesome free icon library browser modal with category filters and progressive rendering, AJAX persistence, and 5-second undo toast notifications. Exposed under `window.BitStream.Settings`.
 
 ### [assets/js/bitstream-block.js](assets/js/bitstream-block.js)
 * **Description**: Gutenberg block editor custom integration script.

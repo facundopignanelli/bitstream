@@ -2,579 +2,234 @@
 /**
  * ReBit Mappings Admin Interface
  * 
- * This file contains the HTML/CSS/JS for the ReBit mappings admin page
- * Separated for better organization and maintainability
+ * Clean, modern master-detail interface for managing ReBit domain mappings,
+ * presets, search filtering, and curated icon picker.
+ * 
+ * @package BitStream
  */
 
 // Exit if accessed directly
 if (!defined('ABSPATH')) exit;
 
+$mappings = isset($mappings) && is_array($mappings) ? $mappings : BitStream_ReBit_Mappings::get_all_mappings();
+$all_presets = BitStream_ReBit_Mappings::get_rebit_presets();
+
+// Determine mapped domains for visual indicators
+$mapped_domains = [];
+foreach ($mappings as $m) {
+    if (!empty($m['domain'])) {
+        $mapped_domains[] = BitStream_ReBit_Mappings::normalize_domain($m['domain']);
+    }
+}
+
+$rebit_nonce = wp_create_nonce('bitstream_rebit_mappings_nonce');
 ?>
-<!-- Load Font Awesome for icon picker -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 
-<style>
-/* ReBit Mappings styles are now unified and handled in bitstream.css */
-</style>
-
-<div class="wrap">
-    <h1>ReBit Mappings</h1>
-    <p class="description">Configure how different websites appear when shared as ReBits. Each mapping adds a custom icon and label for specific domains.</p>
-    
-    <!-- Import Default Mappings -->
-    <?php if (empty($mappings)): ?>
-    <div class="bitstream-settings-welcome">
-        <h3>🚀 Get Started Quickly</h3>
-        <p>Import popular website mappings to get started immediately with Twitter, YouTube, GitHub, and more!</p>
-        <form method="post" style="display: inline;">
-            <?php wp_nonce_field('bitstream_rebit_mappings_save','bitstream_rebit_mappings_nonce'); ?>
-            <button type="submit" name="import_defaults" class="button button-primary">Import Default Mappings</button>
-        </form>
-    </div>
-    <?php endif; ?>
-    
-    <!-- Top Section: Quick Add and Add New Mapping -->
-    <div class="flex-container">
-        <!-- Quick Presets Section -->
-        <div class="card flex-item">
-            <h2 class="title">Quick Add Popular Sites</h2>
-            <p>Add pre-configured mappings for popular websites:</p>
-            <form method="post" class="bitstream-presets-form">
-                <?php wp_nonce_field('bitstream_rebit_mappings_save','bitstream_rebit_mappings_nonce'); ?>
-                <div class="bitstream-presets-row">
-                    <div class="bitstream-presets-select-wrap">
-                        <label><strong>Website:</strong></label><br>
-                        <select name="preset_selection">
-                            <option value="">Select a website...</option>
-                            <?php foreach (BitStream_ReBit_Mappings::get_rebit_presets() as $key => $preset): ?>
-                                <option value="<?php echo esc_attr($key); ?>">
-                                    <?php echo esc_html($preset['label']); ?> (<?php echo esc_html($preset['domain']); ?>)
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="bitstream-presets-btn-wrap">
-                        <button type="submit" name="add_preset" class="button button-secondary">Add Preset</button>
-                    </div>
-                </div>
-            </form>
+<div class="bitstream-rebit-manager" data-nonce="<?php echo esc_attr($rebit_nonce); ?>" data-json-url="<?php echo esc_url(BITSTREAM_PLUGIN_URL . 'assets/json/fontawesome6_free.json'); ?>">
+    <!-- Header & Action Bar -->
+    <div class="bitstream-rebit-manager-header">
+        <div class="bitstream-rebit-manager-intro">
+            <h2 class="bitstream-rebit-manager-title"><?php esc_html_e('ReBit Mappings', 'bitstream'); ?></h2>
+            <p class="bitstream-rebit-manager-desc"><?php esc_html_e('Customize how shared links and bookmarks appear on your timeline with domain-specific icons and action labels.', 'bitstream'); ?></p>
         </div>
-        
-        <!-- Add New Mapping Section -->
-        <div class="card flex-item">
-            <h2 class="title">Add New Mapping</h2>
-            <form method="post">
-                <?php wp_nonce_field('bitstream_rebit_mappings_save','bitstream_rebit_mappings_nonce'); ?>
-                
-                <!-- Include existing mappings as hidden fields to prevent override -->
-                <?php foreach ($mappings as $i => $map): ?>
-                    <input type="hidden" name="bitstream_rebit_mappings[existing][<?php echo $i; ?>][domain]" value="<?php echo esc_attr($map['domain']); ?>" />
-                    <input type="hidden" name="bitstream_rebit_mappings[existing][<?php echo $i; ?>][label]" value="<?php echo esc_attr($map['label']); ?>" />
-                    <input type="hidden" name="bitstream_rebit_mappings[existing][<?php echo $i; ?>][icon]" value="<?php echo esc_attr($map['icon']); ?>" />
-                <?php endforeach; ?>
-                
-                <div class="bitstream-settings-field">
-                    <label for="new-mapping-domain">Domain</label>
-                    <input type="text" id="new-mapping-domain" name="bitstream_rebit_mappings[new][domain]" 
-                           placeholder="example.com" 
-                           oninput="updateNewMappingPreview()" />
-                    <span class="description">Enter just the domain (e.g., "twitter.com")</span>
+        <div class="bitstream-rebit-manager-controls">
+            <div class="bitstream-rebit-search-wrap">
+                <i class="fa-solid fa-magnifying-glass bitstream-rebit-search-icon" aria-hidden="true"></i>
+                <input type="search" class="bitstream-rebit-search-input" id="bitstream-rebit-search" placeholder="<?php esc_attr_e('Search mappings…', 'bitstream'); ?>" autocomplete="off" />
+                <button type="button" class="bitstream-rebit-search-clear" id="bitstream-rebit-search-clear" aria-label="<?php esc_attr_e('Clear search', 'bitstream'); ?>" hidden>
+                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                </button>
+            </div>
+            <button type="button" class="bitstream-rebit-btn-add" id="bitstream-rebit-btn-add">
+                <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                <span><?php esc_html_e('Add Mapping', 'bitstream'); ?></span>
+            </button>
+            <button type="button" class="bitstream-rebit-btn-reset" id="bitstream-rebit-btn-reset" title="<?php esc_attr_e('Reset to factory defaults', 'bitstream'); ?>">
+                <i class="fa-solid fa-rotate-left" aria-hidden="true"></i>
+                <span><?php esc_html_e('Reset Defaults', 'bitstream'); ?></span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Collapsible Inline Drawer for Add/Edit Mapping -->
+    <div class="bitstream-rebit-drawer" id="bitstream-rebit-drawer" hidden>
+        <div class="bitstream-rebit-drawer-card">
+            <header class="bitstream-rebit-drawer-header">
+                <h3 id="bitstream-rebit-drawer-title"><?php esc_html_e('Add New Mapping', 'bitstream'); ?></h3>
+                <button type="button" class="bitstream-rebit-drawer-close" id="bitstream-rebit-drawer-close" aria-label="<?php esc_attr_e('Close drawer', 'bitstream'); ?>">
+                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                </button>
+            </header>
+
+            <!-- Popular Presets Shelf (Inside Drawer) -->
+            <div class="bitstream-rebit-drawer-presets" id="bitstream-rebit-drawer-presets">
+                <div class="bitstream-rebit-drawer-presets-header">
+                    <div class="bitstream-rebit-drawer-presets-label">
+                        <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+                        <span><?php esc_html_e('Popular Presets (1-Click Fill):', 'bitstream'); ?></span>
+                    </div>
+                    <span class="bitstream-rebit-drawer-presets-tip"><?php esc_html_e('Click any preset to auto-fill the form', 'bitstream'); ?></span>
                 </div>
-                <div class="bitstream-settings-field">
-                    <label for="new-mapping-label">Label</label>
-                    <input type="text" id="new-mapping-label" name="bitstream_rebit_mappings[new][label]" 
-                           placeholder="shared a Tweet" 
-                           oninput="updateNewMappingPreview()" />
-                    <span class="description">Text shown when sharing from this site (e.g., "shared a Tweet", "shared a video")</span>
-                </div>
-                <div class="bitstream-settings-field">
-                    <label for="new-icon-input">Icon Class</label>
-                    <div class="icon-input-container">
-                        <input type="text" name="bitstream_rebit_mappings[new][icon]" 
-                               placeholder="fas fa-link" 
-                               id="new-icon-input" 
-                               oninput="updateNewMappingPreview()" />
-                        <button type="button" class="icon-picker-button" onclick="openIconPicker('new-icon-input')">
-                            <i class="fas fa-palette"></i>
+                <div class="bitstream-rebit-drawer-presets-pills" id="bitstream-rebit-drawer-presets-pills">
+                    <?php foreach ($all_presets as $key => $preset): 
+                        $norm = BitStream_ReBit_Mappings::normalize_domain($preset['domain']);
+                        $is_mapped = in_array($norm, $mapped_domains, true);
+                    ?>
+                        <button type="button" 
+                                class="bitstream-preset-pill <?php echo $is_mapped ? 'is-mapped' : ''; ?>" 
+                                data-preset-key="<?php echo esc_attr($key); ?>" 
+                                data-domain="<?php echo esc_attr($preset['domain']); ?>" 
+                                data-label="<?php echo esc_attr($preset['label']); ?>" 
+                                data-icon="<?php echo esc_attr($preset['icon']); ?>"
+                                data-mapped="<?php echo $is_mapped ? '1' : '0'; ?>"
+                                title="<?php echo esc_attr(sprintf(__('Auto-fill with %s (%s)', 'bitstream'), $preset['label'], $preset['domain'])); ?>">
+                            <i class="<?php echo esc_attr($preset['icon']); ?>" aria-hidden="true"></i>
+                            <span><?php echo esc_html(ucwords(str_replace('_', ' ', $key))); ?></span>
+                            <?php if ($is_mapped): ?>
+                                <span class="bitstream-preset-pill-status" title="<?php esc_attr_e('Already in active mappings', 'bitstream'); ?>"><i class="fa-solid fa-check" aria-hidden="true"></i></span>
+                            <?php endif; ?>
                         </button>
-                    </div>
-                    <span class="description">Font Awesome class or use the icon picker</span>
-                </div>
-                <div class="bitstream-settings-field">
-                    <label>Preview</label>
-                    <div class="mapping-preview" id="new-mapping-preview">
-                        <i class="fas fa-link"></i>
-                        <span id="new-mapping-preview-text">shared from</span>
-                    </div>
-                </div>
-                <p class="submit">
-                    <input type="submit" name="submit" class="button-primary" value="Add Mapping" />
-                </p>
-            </form>
-        </div>
-    </div>
-    
-    <!-- Current Mappings -->
-    <div class="mappings-container">
-        <form method="post" id="mappings-form">
-            <?php wp_nonce_field('bitstream_rebit_mappings_save','bitstream_rebit_mappings_nonce'); ?>
-            
-            <h2 class="title" style="margin-top: 30px; margin-bottom: 15px;">Current Mappings</h2>
-            
-            <?php if (empty($mappings)): ?>
-                <div class="card">
-                    <p class="description">No mappings configured yet. Use the sections above to add mappings.</p>
-                </div>
-            <?php else: ?>
-                <div id="mappings-container" class="mappings-inner">
-                    <?php foreach ($mappings as $i => $map): ?>
-                        <div class="mapping-row">
-                            <div class="mapping-field">
-                                <label for="domain-<?php echo $i; ?>">Domain</label>
-                                <input type="text" id="domain-<?php echo $i; ?>" name="bitstream_rebit_mappings[existing][<?php echo $i; ?>][domain]" 
-                                       value="<?php echo esc_attr($map['domain']); ?>" 
-                                       placeholder="example.com" />
-                            </div>
-                            <div class="mapping-field">
-                                <label for="label-<?php echo $i; ?>">Label</label>
-                                <input type="text" id="label-<?php echo $i; ?>" name="bitstream_rebit_mappings[existing][<?php echo $i; ?>][label]" 
-                                       value="<?php echo esc_attr($map['label']); ?>" 
-                                       placeholder="shared a Tweet" />
-                            </div>
-                            <div class="mapping-field">
-                                <label for="icon-input-<?php echo $i; ?>">Icon Class</label>
-                                <div class="icon-input-container">
-                                    <input type="text" name="bitstream_rebit_mappings[existing][<?php echo $i; ?>][icon]" 
-                                           value="<?php echo esc_attr($map['icon']); ?>" 
-                                           placeholder="fab fa-twitter" 
-                                           id="icon-input-<?php echo $i; ?>" />
-                                    <button type="button" class="icon-picker-button" onclick="openIconPicker('icon-input-<?php echo $i; ?>')">
-                                        <i class="fas fa-palette"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="mapping-field preview-field">
-                                <label>Preview</label>
-                                <div class="mapping-preview">
-                                    <i class="<?php echo esc_attr($map['icon']); ?>"></i>
-                                    <span><?php echo esc_html($map['label']); ?></span>
-                                </div>
-                            </div>
-                            <div class="mapping-field actions-field">
-                                <button type="button" class="button button-link-delete" onclick="removeMapping(this)">Remove</button>
-                                <input type="hidden" name="bitstream_rebit_mappings[existing][<?php echo $i; ?>][remove]" value="0" class="remove-flag" />
-                            </div>
-                        </div>
                     <?php endforeach; ?>
                 </div>
-                
-                <p class="submit">
-                    <input type="submit" name="submit" class="button-primary" value="Save All Mappings" />
-                </p>
+            </div>
+            <form class="bitstream-rebit-drawer-form" id="bitstream-rebit-drawer-form">
+                <input type="hidden" id="bitstream-rebit-mode" value="add" />
+                <input type="hidden" id="bitstream-rebit-orig-domain" value="" />
+                <div class="bitstream-rebit-drawer-grid">
+                    <div class="bitstream-rebit-drawer-field">
+                        <label for="bitstream-rebit-input-domain"><?php esc_html_e('Domain or URL', 'bitstream'); ?></label>
+                        <input type="text" id="bitstream-rebit-input-domain" placeholder="example.com" required autocomplete="off" />
+                        <span class="bitstream-rebit-field-tip"><?php esc_html_e('Auto-cleans http://, https://, and paths (e.g. spotify.com)', 'bitstream'); ?></span>
+                    </div>
+                    <div class="bitstream-rebit-drawer-field">
+                        <label for="bitstream-rebit-input-label"><?php esc_html_e('Action Label', 'bitstream'); ?></label>
+                        <input type="text" id="bitstream-rebit-input-label" placeholder="shared a link" required autocomplete="off" />
+                        <span class="bitstream-rebit-field-tip"><?php esc_html_e('Shown on timeline card header (e.g. shared a video, shared a post)', 'bitstream'); ?></span>
+                    </div>
+                    <div class="bitstream-rebit-drawer-field">
+                        <label for="bitstream-rebit-input-icon"><?php esc_html_e('Icon Class', 'bitstream'); ?></label>
+                        <div class="bitstream-rebit-icon-input-row">
+                            <div class="bitstream-rebit-icon-preview-mini" id="bitstream-rebit-icon-preview-mini">
+                                <i class="fa-solid fa-link" aria-hidden="true"></i>
+                            </div>
+                            <input type="text" id="bitstream-rebit-input-icon" placeholder="fa-solid fa-link" value="fa-solid fa-link" required autocomplete="off" />
+                            <button type="button" class="bitstream-rebit-btn-icon-pick" id="bitstream-rebit-btn-icon-pick" aria-label="<?php esc_attr_e('Browse Font Awesome icons', 'bitstream'); ?>">
+                                <i class="fa-solid fa-icons" aria-hidden="true"></i>
+                                <span><?php esc_html_e('Browse', 'bitstream'); ?></span>
+                            </button>
+                        </div>
+                        <span class="bitstream-rebit-field-tip"><?php esc_html_e('Click Browse to search all Font Awesome icons, or enter any FA class directly', 'bitstream'); ?></span>
+                    </div>
+                    <div class="bitstream-rebit-drawer-field bitstream-rebit-drawer-field-preview">
+                        <label><?php esc_html_e('Live Card Preview', 'bitstream'); ?></label>
+                        <div class="bitstream-rebit-live-badge-preview" id="bitstream-rebit-live-preview">
+                            <div class="bitstream-rebit-preview-badge">
+                                <i class="fa-solid fa-link" id="bitstream-rebit-preview-icon"></i>
+                            </div>
+                            <div class="bitstream-rebit-preview-info">
+                                <span class="bitstream-rebit-preview-label" id="bitstream-rebit-preview-label"><?php esc_html_e('shared a link', 'bitstream'); ?></span>
+                                <span class="bitstream-rebit-preview-domain" id="bitstream-rebit-preview-domain">example.com</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <footer class="bitstream-rebit-drawer-footer">
+                    <button type="button" class="bitstream-rebit-btn-cancel" id="bitstream-rebit-drawer-cancel"><?php esc_html_e('Cancel', 'bitstream'); ?></button>
+                    <button type="submit" class="bitstream-rebit-btn-save" id="bitstream-rebit-drawer-save">
+                        <i class="fa-solid fa-check" aria-hidden="true"></i>
+                        <span id="bitstream-rebit-drawer-save-text"><?php esc_html_e('Save Mapping', 'bitstream'); ?></span>
+                    </button>
+                </footer>
+            </form>
+        </div>
+    </div>
+
+    <!-- Active Mappings Directory -->
+    <div class="bitstream-rebit-directory">
+        <div class="bitstream-rebit-directory-header">
+            <h3 class="bitstream-rebit-directory-title">
+                <span><?php esc_html_e('Active Mappings', 'bitstream'); ?></span>
+                <span class="bitstream-rebit-count-badge" id="bitstream-rebit-count-badge"><?php echo count($mappings); ?></span>
+            </h3>
+        </div>
+        <div class="bitstream-rebit-list" id="bitstream-rebit-list">
+            <?php if (empty($mappings)): ?>
+                <div class="bitstream-rebit-empty" id="bitstream-rebit-empty">
+                    <div class="bitstream-rebit-empty-icon"><i class="fa-solid fa-sitemap" aria-hidden="true"></i></div>
+                    <h4><?php esc_html_e('No mappings configured yet', 'bitstream'); ?></h4>
+                    <p><?php esc_html_e('Add your favorite sites or import defaults to show branded icons when sharing links.', 'bitstream'); ?></p>
+                    <button type="button" class="bitstream-rebit-btn-import-defaults" id="bitstream-rebit-btn-empty-import">
+                        <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+                        <span><?php esc_html_e('Import Default Mappings', 'bitstream'); ?></span>
+                    </button>
+                </div>
+            <?php else: ?>
+                <?php foreach ($mappings as $map): ?>
+                    <div class="bitstream-rebit-item" data-domain="<?php echo esc_attr($map['domain']); ?>" data-label="<?php echo esc_attr($map['label']); ?>" data-icon="<?php echo esc_attr($map['icon']); ?>">
+                        <div class="bitstream-rebit-item-badge">
+                            <i class="<?php echo esc_attr($map['icon']); ?>" aria-hidden="true"></i>
+                        </div>
+                        <div class="bitstream-rebit-item-details">
+                            <span class="bitstream-rebit-item-label"><?php echo esc_html($map['label']); ?></span>
+                            <span class="bitstream-rebit-item-domain"><?php echo esc_html($map['domain']); ?></span>
+                        </div>
+                        <div class="bitstream-rebit-item-actions">
+                            <button type="button" class="bitstream-rebit-action-btn bitstream-rebit-action-edit" title="<?php esc_attr_e('Edit mapping', 'bitstream'); ?>" aria-label="<?php esc_attr_e('Edit', 'bitstream'); ?>">
+                                <i class="fa-solid fa-pencil" aria-hidden="true"></i>
+                            </button>
+                            <button type="button" class="bitstream-rebit-action-btn bitstream-rebit-action-delete" title="<?php esc_attr_e('Delete mapping', 'bitstream'); ?>" aria-label="<?php esc_attr_e('Delete', 'bitstream'); ?>">
+                                <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
             <?php endif; ?>
-        </form>
-    </div>
-    
-    <!-- Icon Picker Modal -->
-    <div id="icon-picker-modal">
-        <div class="icon-picker-content">
-            <div class="icon-picker-header">
-                <h3>Select an Icon</h3>
-                <button type="button" class="icon-picker-close" onclick="closeIconPicker()">&times;</button>
-            </div>
-            
-            <div class="icon-picker-search">
-                <input type="text" id="icon-search" placeholder="Search icons..." onkeyup="filterIcons()" />
-            </div>
-            
-            <div class="icon-picker-tabs">
-                <button type="button" class="icon-category active" onclick="showCategory('all')" data-category="all">All</button>
-                <button type="button" class="icon-category" onclick="showCategory('brands')" data-category="brands">Brands</button>
-                <button type="button" class="icon-category" onclick="showCategory('solid')" data-category="solid">Solid</button>
-                <button type="button" class="icon-category" onclick="showCategory('regular')" data-category="regular">Regular</button>
-            </div>
-            
-            <div id="icon-grid">
-                <!-- Icons will be populated by JavaScript -->
-            </div>
+        </div>
+        <div class="bitstream-rebit-no-search-results" id="bitstream-rebit-no-search-results" hidden>
+            <p><?php esc_html_e('No mappings matching your search.', 'bitstream'); ?></p>
         </div>
     </div>
-    
-    <p class="description" style="margin-top: 20px;">
-        <strong>Icon Help:</strong> Use the icon picker button or manually enter <a href="https://fontawesome.com/icons" target="_blank">Font Awesome icons</a>.
-    </p>
+
+    <!-- Undo Toast Notification -->
+    <div class="bitstream-rebit-undo-toast" id="bitstream-rebit-undo-toast" hidden>
+        <span class="bitstream-rebit-undo-text" id="bitstream-rebit-undo-text"></span>
+        <button type="button" class="bitstream-rebit-undo-btn" id="bitstream-rebit-undo-btn"><?php esc_html_e('Undo', 'bitstream'); ?></button>
+    </div>
+
+    <!-- Font Awesome Icon Picker Modal -->
+    <div class="bitstream-composer-modal bitstream-composer-modal-icon-picker" id="bitstream-rebit-icon-modal" hidden>
+        <div class="bitstream-composer-modal-backdrop" id="bitstream-rebit-icon-backdrop"></div>
+        <div class="bitstream-composer-modal-dialog bitstream-composer-modal-dialog-wide bitstream-icon-picker-dialog" role="dialog" aria-modal="true" aria-label="<?php esc_attr_e('Select an Icon', 'bitstream'); ?>">
+            <header class="bitstream-composer-modal-header">
+                <h3><i class="fa-solid fa-icons" aria-hidden="true"></i> <span><?php esc_html_e('Select an Icon', 'bitstream'); ?></span></h3>
+                <button type="button" class="bitstream-composer-modal-close" id="bitstream-rebit-icon-close" aria-label="<?php esc_attr_e('Close icon picker', 'bitstream'); ?>">
+                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                </button>
+            </header>
+            <div class="bitstream-icon-picker-controls">
+                <div class="bitstream-icon-picker-search-wrap">
+                    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                    <input type="search" id="bitstream-rebit-icon-search" placeholder="<?php esc_attr_e('Search all Font Awesome icons (e.g. twitter, music, link)…', 'bitstream'); ?>" autocomplete="off" />
+                    <button type="button" id="bitstream-rebit-icon-search-clear" class="bitstream-icon-search-clear" aria-label="<?php esc_attr_e('Clear search', 'bitstream'); ?>" hidden>
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                    </button>
+                </div>
+                <div class="bitstream-icon-picker-tabs" role="tablist">
+                    <button type="button" class="bitstream-icon-category is-active" data-category="all"><?php esc_html_e('All', 'bitstream'); ?> <span class="bitstream-icon-cat-count" id="bitstream-cat-count-all"></span></button>
+                    <button type="button" class="bitstream-icon-category" data-category="brands"><?php esc_html_e('Brands', 'bitstream'); ?> <span class="bitstream-icon-cat-count" id="bitstream-cat-count-brands"></span></button>
+                    <button type="button" class="bitstream-icon-category" data-category="solid"><?php esc_html_e('Solid', 'bitstream'); ?> <span class="bitstream-icon-cat-count" id="bitstream-cat-count-solid"></span></button>
+                    <button type="button" class="bitstream-icon-category" data-category="regular"><?php esc_html_e('Regular', 'bitstream'); ?> <span class="bitstream-icon-cat-count" id="bitstream-cat-count-regular"></span></button>
+                </div>
+            </div>
+            <div class="bitstream-composer-modal-body bitstream-icon-picker-body" id="bitstream-rebit-icon-body">
+                <div class="bitstream-icon-grid" id="bitstream-rebit-icon-grid">
+                    <!-- Populated dynamically from fontawesome6_free.json -->
+                </div>
+            </div>
+            <footer class="bitstream-composer-modal-footer bitstream-icon-picker-footer">
+                <span class="bitstream-icon-picker-status" id="bitstream-icon-picker-status"></span>
+                <button type="button" class="bitstream-composer-modal-cancel" id="bitstream-rebit-icon-cancel"><?php esc_html_e('Cancel', 'bitstream'); ?></button>
+            </footer>
+        </div>
+    </div>
 </div>
-
-<script>
-// Global variables for icon picker - attach to window for global access
-window.currentIconInput = null;
-window.iconLibrary = { brands: [], solid: [], regular: [] };
-window.iconsLoaded = false;
-
-// Make variables accessible in local scope too
-var currentIconInput = window.currentIconInput;
-var iconLibrary = window.iconLibrary;
-var iconsLoaded = window.iconsLoaded;
-
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', function() {
-    updateNewMappingPreview(); // Initialize the preview
-});
-
-// Function to dynamically load Font Awesome icons from JSON file
-function loadFontAwesomeIcons() {
-    if (iconsLoaded) return Promise.resolve();
-    
-    return new Promise((resolve, reject) => {
-        // Try to load from JSON file first
-        fetch('<?php echo plugin_dir_url(__FILE__) . '../assets/json/fontawesome6_free.json'; ?>')
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Failed to load JSON file');
-                }
-                return response.json();
-            })
-            .then(data => {
-                window.iconLibrary = iconLibrary = data;
-                window.iconsLoaded = iconsLoaded = true;
-                resolve();
-            })
-            .catch(error => {
-                console.warn('Failed to load JSON file, using fallback:', error);
-                // Fall back to hardcoded icons
-                window.iconLibrary = iconLibrary = getFallbackIcons();
-                window.iconsLoaded = iconsLoaded = true;
-                resolve();
-            });
-    });
-}
-
-// Make loadFontAwesomeIcons globally accessible
-window.loadFontAwesomeIcons = loadFontAwesomeIcons;
-
-function closeIconPicker() {
-    const modal = document.getElementById('icon-picker-modal');
-    modal.style.display = 'none';
-    modal.classList.remove('show');
-    document.body.style.overflow = 'auto';
-    window.currentIconInput = currentIconInput = null;
-}
-
-function filterIcons() {
-    const searchTerm = document.getElementById('icon-search').value.toLowerCase();
-    const iconOptions = document.querySelectorAll('.icon-option');
-    
-    iconOptions.forEach(option => {
-        const iconText = option.textContent.toLowerCase();
-        if (iconText.includes(searchTerm)) {
-            option.style.display = 'block';
-        } else {
-            option.style.display = 'none';
-        }
-    });
-}
-
-function selectIcon(iconClass) {
-    if (currentIconInput) {
-        currentIconInput.value = iconClass;
-        
-        // Update preview if it exists nearby
-        const mappingRow = currentIconInput.closest('.mapping-row');
-        if (mappingRow) {
-            const preview = mappingRow.querySelector('.mapping-preview i');
-            if (preview) {
-                preview.className = iconClass;
-            }
-        }
-        
-        // Update new mapping preview if this is the new mapping input
-        if (currentIconInput.id === 'new-icon-input') {
-            updateNewMappingPreview();
-        }
-    }
-    closeIconPicker();
-}
-
-// Function to show loading indicator in the icon grid
-function showLoadingIndicator() {
-    const grid = document.getElementById('icon-grid');
-    grid.innerHTML = `
-        <div class="icon-loading">
-            <div class="icon-loading-spinner"></div>
-            <p>Loading Font Awesome icons...</p>
-            <small>This may take a few seconds</small>
-        </div>
-    `;
-}
-
-// Function to update the preview for new mapping as user types
-function updateNewMappingPreview() {
-    const domainInput = document.querySelector('input[name="bitstream_rebit_mappings[new][domain]"]');
-    const labelInput = document.querySelector('input[name="bitstream_rebit_mappings[new][label]"]');
-    const iconInput = document.getElementById('new-icon-input');
-    const previewIcon = document.querySelector('#new-mapping-preview i');
-    const previewText = document.getElementById('new-mapping-preview-text');
-    
-    if (previewIcon && previewText) {
-        // Update icon
-        const iconClass = iconInput?.value?.trim() || 'fas fa-link';
-        previewIcon.className = iconClass;
-        
-        // Update text
-        const label = labelInput?.value?.trim();
-        const domain = domainInput?.value?.trim();
-        
-        if (label) {
-            previewText.textContent = label;
-        } else if (domain) {
-            previewText.textContent = `shared from ${domain}`;
-        } else {
-            previewText.textContent = 'shared from';
-        }
-    }
-}
-
-function removeMapping(button) {
-    const row = button.closest('.mapping-row');
-    const removeFlag = row.querySelector('.remove-flag');
-    row.style.opacity = '0.5';
-    row.style.textDecoration = 'line-through';
-    removeFlag.value = '1';
-    button.textContent = 'Undo';
-    button.onclick = function() { undoRemove(this); };
-}
-
-function undoRemove(button) {
-    const row = button.closest('.mapping-row');
-    const removeFlag = row.querySelector('.remove-flag');
-    row.style.opacity = '1';
-    row.style.textDecoration = 'none';
-    removeFlag.value = '0';
-    button.textContent = 'Remove';
-    button.onclick = function() { removeMapping(this); };
-}
-
-// Comprehensive fallback icon list in case CSS parsing fails
-function getFallbackIcons() {
-    return {
-        brands: [
-            'fab fa-500px', 'fab fa-accessible-icon', 'fab fa-accusoft', 'fab fa-adn', 'fab fa-adobe', 'fab fa-adversal',
-            'fab fa-affiliatetheme', 'fab fa-airbnb', 'fab fa-algolia', 'fab fa-amazon', 'fab fa-amazon-pay', 'fab fa-amilia',
-            'fab fa-android', 'fab fa-angellist', 'fab fa-angrycreative', 'fab fa-angular', 'fab fa-app-store', 'fab fa-app-store-ios',
-            'fab fa-apper', 'fab fa-apple', 'fab fa-apple-pay', 'fab fa-artstation', 'fab fa-asymmetrik', 'fab fa-atlassian',
-            'fab fa-audible', 'fab fa-autoprefixer', 'fab fa-avianex', 'fab fa-aviato', 'fab fa-aws', 'fab fa-bandcamp',
-            'fab fa-battle-net', 'fab fa-behance', 'fab fa-behance-square', 'fab fa-bimobject', 'fab fa-bitbucket', 'fab fa-bitcoin',
-            'fab fa-bity', 'fab fa-black-tie', 'fab fa-blackberry', 'fab fa-blogger', 'fab fa-blogger-b', 'fab fa-bluetooth',
-            'fab fa-bluetooth-b', 'fab fa-bootstrap', 'fab fa-btc', 'fab fa-buffer', 'fab fa-buromobelexperte', 'fab fa-buy-n-large',
-            'fab fa-buysellads', 'fab fa-canadian-maple-leaf', 'fab fa-cc-amazon-payments', 'fab fa-cc-amex', 'fab fa-cc-apple-pay',
-            'fab fa-cc-diners-club', 'fab fa-cc-discover', 'fab fa-cc-jcb', 'fab fa-cc-mastercard', 'fab fa-cc-paypal',
-            'fab fa-cc-stripe', 'fab fa-cc-visa', 'fab fa-centercode', 'fab fa-centos', 'fab fa-chrome', 'fab fa-chromecast',
-            'fab fa-facebook', 'fab fa-github', 'fab fa-twitter', 'fab fa-youtube', 'fab fa-linkedin', 'fab fa-instagram'
-        ],
-        solid: [
-            'fas fa-ad', 'fas fa-address-book', 'fas fa-address-card', 'fas fa-adjust', 'fas fa-air-freshener', 'fas fa-align-center',
-            'fas fa-align-justify', 'fas fa-align-left', 'fas fa-align-right', 'fas fa-allergies', 'fas fa-ambulance', 'fas fa-american-sign-language-interpreting',
-            'fas fa-anchor', 'fas fa-angle-double-down', 'fas fa-angle-double-left', 'fas fa-angle-double-right', 'fas fa-angle-double-up', 'fas fa-angle-down',
-            'fas fa-angle-left', 'fas fa-angle-right', 'fas fa-angle-up', 'fas fa-angry', 'fas fa-ankh', 'fas fa-apple-alt',
-            'fas fa-archive', 'fas fa-archway', 'fas fa-arrow-alt-circle-down', 'fas fa-arrow-alt-circle-left', 'fas fa-arrow-alt-circle-right', 'fas fa-arrow-alt-circle-up',
-            'fas fa-arrow-circle-down', 'fas fa-arrow-circle-left', 'fas fa-arrow-circle-right', 'fas fa-arrow-circle-up', 'fas fa-arrow-down', 'fas fa-arrow-left',
-            'fas fa-arrow-right', 'fas fa-arrow-up', 'fas fa-arrows-alt', 'fas fa-arrows-alt-h', 'fas fa-arrows-alt-v', 'fas fa-assistive-listening-systems',
-            'fas fa-asterisk', 'fas fa-at', 'fas fa-atlas', 'fas fa-atom', 'fas fa-audio-description', 'fas fa-award',
-            'fas fa-baby', 'fas fa-baby-carriage', 'fas fa-backspace', 'fas fa-backward', 'fas fa-bacon', 'fas fa-bacteria',
-            'fas fa-link', 'fas fa-home', 'fas fa-user', 'fas fa-heart', 'fas fa-comment', 'fas fa-newspaper'
-        ],
-        regular: [
-            'far fa-address-book', 'far fa-address-card', 'far fa-angry', 'far fa-arrow-alt-circle-down', 'far fa-arrow-alt-circle-left', 'far fa-arrow-alt-circle-right',
-            'far fa-arrow-alt-circle-up', 'far fa-bell', 'far fa-bell-slash', 'far fa-bookmark', 'far fa-building', 'far fa-calendar',
-            'far fa-calendar-alt', 'far fa-calendar-check', 'far fa-calendar-minus', 'far fa-calendar-plus', 'far fa-calendar-times', 'far fa-caret-square-down',
-            'far fa-caret-square-left', 'far fa-caret-square-right', 'far fa-caret-square-up', 'far fa-chart-bar', 'far fa-check-circle', 'far fa-check-square',
-            'far fa-circle', 'far fa-clipboard', 'far fa-clock', 'far fa-clone', 'far fa-closed-captioning', 'far fa-comment',
-            'far fa-comment-alt', 'far fa-comment-dots', 'far fa-comments', 'far fa-compass', 'far fa-copy', 'far fa-copyright',
-            'far fa-credit-card', 'far fa-dizzy', 'far fa-dot-circle', 'far fa-edit', 'far fa-envelope', 'far fa-envelope-open',
-            'far fa-eye', 'far fa-eye-slash', 'far fa-file', 'far fa-file-alt', 'far fa-file-archive', 'far fa-file-audio'
-        ]
-    };
-}
-
-// Make getFallbackIcons globally accessible
-window.getFallbackIcons = getFallbackIcons;
-
-function openIconPicker(inputId) {
-    console.log('=== ICON PICKER DEBUG START ===');
-    console.log('openIconPicker called with inputId:', inputId);
-    
-    const inputElement = document.getElementById(inputId);
-    console.log('Input element found:', inputElement);
-    
-    const modal = document.getElementById('icon-picker-modal');
-    console.log('Modal element found:', modal);
-    
-    if (!modal) {
-        console.error('Modal not found!');
-        return;
-    }
-    
-    if (!inputElement) {
-        console.error('Input element not found!');
-        return;
-    }
-    
-    // Store reference to current input
-    window.currentIconInput = inputElement;
-    console.log('Current input stored:', window.currentIconInput);
-    
-    // Show modal with flexbox centering
-    modal.style.display = 'flex';
-    modal.style.visibility = 'visible';
-    modal.classList.add('show');
-    console.log('Modal should be visible now. Display:', modal.style.display);
-    
-    // Prevent background scrolling
-    document.body.style.overflow = 'hidden';
-    
-    // Show loading indicator immediately
-    showLoadingIndicator();
-    
-    console.log('=== ICON PICKER DEBUG END ===');
-    
-    // If icons not loaded yet, load from JSON file
-    if (!window.iconsLoaded) {
-        console.log('Loading icons from JSON file...');
-        
-        loadFontAwesomeIcons().then(() => {
-            console.log('Successfully loaded icons from JSON');
-            showCategory('all');
-            document.getElementById('icon-search').value = '';
-        }).catch(e => {
-            console.log('Failed to load icons, using fallback:', e);
-            window.iconLibrary = iconLibrary = getFallbackIcons();
-            window.iconsLoaded = iconsLoaded = true;
-            showCategory('all');
-            document.getElementById('icon-search').value = '';
-        });
-    } else {
-        // Icons already loaded, but still show loading spinner briefly for better UX
-        setTimeout(() => {
-            showCategory('all');
-            document.getElementById('icon-search').value = '';
-        }, 300); // Longer delay to show spinner properly
-    }
-}
-
-// Make functions globally accessible
-window.openIconPicker = openIconPicker;
-window.updateNewMappingPreview = updateNewMappingPreview;
-window.showLoadingIndicator = showLoadingIndicator;
-
-function showCategory(category) {
-    console.log('Showing category:', category);
-    console.log('Available icon library:', window.iconLibrary);
-    
-    // Update active category button
-    document.querySelectorAll('.icon-category').forEach(btn => btn.classList.remove('active'));
-    const categoryBtn = document.querySelector(`[data-category="${category}"]`);
-    if (categoryBtn) categoryBtn.classList.add('active');
-    
-    const grid = document.getElementById('icon-grid');
-    
-    let iconsToShow = [];
-    if (category === 'all') {
-        iconsToShow = [...window.iconLibrary.brands, ...window.iconLibrary.solid, ...window.iconLibrary.regular];
-    } else {
-        iconsToShow = window.iconLibrary[category] || [];
-    }
-    
-    console.log('Icons to show for category', category + ':', iconsToShow.length);
-    
-    if (iconsToShow.length === 0) {
-        // If we're in the middle of loading, show loading indicator
-        if (!window.iconsLoaded) {
-            showLoadingIndicator();
-            return;
-        }
-        
-        // If loading is complete but still no icons, show fallback message and force load fallback
-        grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #666;">No icons found. Loading fallback icons...</p>';
-        // Force load fallback if we don't have any icons
-        window.iconLibrary = iconLibrary = getFallbackIcons();
-        window.iconsLoaded = iconsLoaded = true;
-        // Retry showing category
-        setTimeout(() => showCategory(category), 100);
-        return;
-    }
-    
-    // Always show spinner first, then render icons directly - no separate rendering message
-    showLoadingIndicator();
-    
-    // Give a brief moment to show the spinner, then render
-    setTimeout(() => {
-        renderIcons(iconsToShow, grid);
-    }, 300);
-}
-
-// Separate function to handle icon rendering
-function renderIcons(iconsToShow, grid) {
-    grid.innerHTML = '';
-    
-    iconsToShow.forEach(iconClass => {
-        const iconDiv = document.createElement('div');
-        iconDiv.className = 'icon-option';
-        iconDiv.innerHTML = `<i class="${iconClass}"></i><small>${iconClass}</small>`;
-        
-        iconDiv.addEventListener('click', () => selectIcon(iconClass));
-        grid.appendChild(iconDiv);
-    });
-    
-    console.log('Added', iconsToShow.length, 'icons to grid');
-}
-
-// Make functions globally accessible
-window.showCategory = showCategory;
-window.renderIcons = renderIcons;
-
-// Close modal when clicking outside
-document.addEventListener('click', function(event) {
-    const modal = document.getElementById('icon-picker-modal');
-    if (event.target === modal) {
-        closeIconPicker();
-    }
-});
-
-// Close modal with Escape key
-document.addEventListener('keydown', function(event) {
-    if (event.key === 'Escape') {
-        closeIconPicker();
-    }
-});
-
-// Enhanced event handling for icon picker
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize the new mapping preview
-    updateNewMappingPreview();
-    
-    // Add click listeners to all icon picker buttons
-    const iconPickerButtons = document.querySelectorAll('button[onclick*="openIconPicker"]');
-    
-    iconPickerButtons.forEach(function(button, index) {
-        // Add both onclick backup and direct event listener
-        button.addEventListener('click', function(e) {
-            // Extract input ID from onclick attribute
-            const onclickValue = this.getAttribute('onclick');
-            const match = onclickValue ? onclickValue.match(/openIconPicker\('([^']+)'\)/) : null;
-            
-            if (match) {
-                const inputId = match[1];
-                
-                // Call function directly
-                if (typeof window.openIconPicker === 'function') {
-                    window.openIconPicker(inputId);
-                } else {
-                    console.error('openIconPicker function not available');
-                }
-            } else {
-                console.error('Could not extract input ID from onclick');
-            }
-        });
-    });
-});
-</script>

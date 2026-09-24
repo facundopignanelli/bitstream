@@ -10,5 +10,9 @@ composer.json
 composer.lock
 phpcs.xml.dist
 
+# Local dev environment
+docker-compose.dev.yml
+dev-env/
+
 # IDE helpers
 .ide-helper/

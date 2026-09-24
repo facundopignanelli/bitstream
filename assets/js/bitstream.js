@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', function () {
     // Check if this is a PWA share target launch
     const urlParams = new URLSearchParams(window.location.search);
-    const isShareTarget = urlParams.has('url') || urlParams.has('shared_url');
+    const isShareTarget = urlParams.has('url') || urlParams.has('shared_url') || urlParams.has('share_target') || urlParams.has('media_ids');
 
     if (isShareTarget) {
         console.log('BitStream: PWA Share target detected');
@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function () {
             padding: 12px 20px;
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(44,110,73,0.3);
-            z-index: 10000;
+            z-index: 100002;
             font-size: 14px;
             opacity: 0;
             transform: translateY(-20px);
@@ -53,6 +53,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (window.BitStream.Timeline && typeof window.BitStream.Timeline.init === 'function') {
             window.BitStream.Timeline.init();
+        }
+        if (window.BitStream.Settings && typeof window.BitStream.Settings.init === 'function') {
+            window.BitStream.Settings.init();
         }
     }
 });

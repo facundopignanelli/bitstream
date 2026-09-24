@@ -567,6 +567,10 @@ class BitStream_Admin_Interface
             wp_die(__('You do not have sufficient permissions to access this page.'));
         }
 
+        wp_enqueue_style('font-awesome');
+        wp_enqueue_style('bitstream-css', BITSTREAM_PLUGIN_URL . 'assets/css/bitstream.css', ['font-awesome'], BITSTREAM_VERSION . '.' . filemtime(BITSTREAM_PLUGIN_PATH . 'assets/css/bitstream.css'));
+        wp_enqueue_script('bitstream-js');
+
         // Handle form submission for saving/editing mappings
         if (isset($_POST['bitstream_rebit_mappings']) && check_admin_referer('bitstream_rebit_mappings_save', 'bitstream_rebit_mappings_nonce')) {
             $posted = $_POST['bitstream_rebit_mappings'];

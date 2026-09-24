@@ -147,7 +147,7 @@ class BitStream_Post_Type
             'show_in_menu' => true,
             'menu_position' => 5,
             'menu_icon' => 'dashicons-format-status',
-            'has_archive' => true,
+            'has_archive' => false,
             'rewrite' => ['slug' => 'bitstream'],
             'show_in_rest' => true,
         ];
