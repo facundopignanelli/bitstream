@@ -34,8 +34,14 @@ class BitStream_OG_Fetcher
         if ($cached && is_array($cached)) {
             if (in_array($host, ['twitter.com', 'x.com'], true) && (empty($cached['embed_html']) || !isset($cached['avatar']))) {
                 // Stale cache: refresh
-            } elseif (($host === 'instagram.com' || strpos($host, 'instagram.com') !== false) && (empty($cached['avatar']) || strpos($cached['avatar'], 'unavatar.io') !== false)) {
-                // Stale Instagram cache with broken unavatar.io avatar: refresh
+            } elseif (($host === 'instagram.com' || strpos($host, 'instagram.com') !== false) && (
+                empty($cached['avatar']) ||
+                strpos($cached['avatar'], 'unavatar.io') !== false ||
+                (!empty($cached['image']) && strpos($cached['image'], 'stp=c') !== false) ||
+                (empty($cached['image']) && empty($cached['embed_html'])) ||
+                in_array($cached['title'] ?? '', ['Instagram Reel', 'Instagram Post', 'Instagram Story'], true)
+            )) {
+                // Stale Instagram cache with broken avatar, cropped image, or missing media: refresh
             } else {
                 return $cached;
             }
@@ -428,9 +434,24 @@ class BitStream_OG_Fetcher
                 $type = 'Story';
                 $username = $segments[1];
                 $shortcode = $segments[2] ?? '';
+            } elseif (!empty($segments[1]) && $segments[1] === 'p' && !empty($segments[2])) {
+                $username = $segments[0];
+                $type = 'Post';
+                $shortcode = $segments[2];
+            } elseif (!empty($segments[1]) && in_array($segments[1], ['reel', 'reels'], true) && !empty($segments[2])) {
+                $username = $segments[0];
+                $type = 'Reel';
+                $shortcode = $segments[2];
             } else {
                 $username = $segments[0];
             }
+        }
+
+        // Canonicalize URL to ensure standard Instagram format (e.g. /reels/ -> /reel/)
+        if ($type === 'Reel' && !empty($shortcode)) {
+            $clean_url = 'https://www.instagram.com/reel/' . $shortcode . '/';
+        } elseif ($type === 'Post' && !empty($shortcode)) {
+            $clean_url = 'https://www.instagram.com/p/' . $shortcode . '/';
         }
 
         $args = [
@@ -448,6 +469,9 @@ class BitStream_OG_Fetcher
         $image = '';
         $avatar = '';
         $author_name = '';
+        $img_width = 0;
+        $img_height = 0;
+        $embed_html = '';
 
         // For non-story URLs, fetch target page OG tags
         if ($type !== 'Story') {
@@ -464,13 +488,79 @@ class BitStream_OG_Fetcher
                     if (preg_match('/<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']/i', $html, $m)) {
                         $image = esc_url_raw(html_entity_decode(trim($m[1]), ENT_QUOTES, 'UTF-8'));
                     }
+
+                    // Extract full uncropped image from embedded JSON image_versions2 if available (bypasses pre-cropped og:image with stp=c...)
+                    if (preg_match('/"image_versions2":\s*\{[^{]*"candidates":\s*\[\s*\{[^{]*"url":\s*"([^"]+)"/i', $html, $im)) {
+                        $decoded_image = json_decode('"' . $im[1] . '"') ?: stripcslashes($im[1]);
+                        if (!empty($decoded_image)) {
+                            $image = esc_url_raw($decoded_image);
+                        }
+                    }
                     if (empty($username) && preg_match('/<meta[^>]+property=["\']og:url["\'][^>]+content=["\']https?:\/\/(?:www\.)?instagram\.com\/([a-zA-Z0-9._]+)\//i', $html, $um)) {
                         if (!in_array($um[1], ['p', 'reel', 'reels', 'stories', 'tv'], true)) {
                             $username = $um[1];
                         }
                     }
+                    if (empty($username) && preg_match('/"username":\s*"([a-zA-Z0-9._]+)"/i', $html, $jum)) {
+                        if (!in_array($jum[1], ['p', 'reel', 'reels', 'stories', 'tv'], true)) {
+                            $username = $jum[1];
+                        }
+                    }
+                    if (empty($username) && preg_match('/@([a-zA-Z0-9._]+)/', $title, $tum)) {
+                        $username = $tum[1];
+                    }
+
+                    // Extract profile picture directly from embedded JSON in post HTML
+                    if (empty($avatar) && preg_match('/"(?:profile_pic_url_hd|profile_pic_url)":\s*"([^"]+)"/i', $html, $pam)) {
+                        $decoded_avatar = json_decode('"' . $pam[1] . '"') ?: stripcslashes($pam[1]);
+                        if (!empty($decoded_avatar)) {
+                            $avatar = esc_url_raw($decoded_avatar);
+                        }
+                    }
+
+                    // Extract original image width & height for aspect-ratio
+                    if (preg_match('/"original_width":\s*(\d+)/i', $html, $owm) && preg_match('/"original_height":\s*(\d+)/i', $html, $ohm)) {
+                        $img_width = intval($owm[1]);
+                        $img_height = intval($ohm[1]);
+                    }
                 }
             }
+        }
+
+        // Fallback: If image or description could not be scraped directly, query Meta tokenless oEmbed API
+        if ($type !== 'Story' && (empty($image) || empty($description))) {
+            $oembed_endpoint = 'https://graph.facebook.com/v25.0/instagram_oembed?url=' . rawurlencode($clean_url) . '&omitscript=true';
+            $oembed_resp = wp_remote_get($oembed_endpoint, [
+                'timeout' => 5,
+                'user-agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
+                'redirection' => 2,
+            ]);
+            if (!is_wp_error($oembed_resp) && wp_remote_retrieve_response_code($oembed_resp) === 200) {
+                $oembed_body = wp_remote_retrieve_body($oembed_resp);
+                $oembed_data = json_decode($oembed_body, true);
+                if (is_array($oembed_data)) {
+                    if (!empty($oembed_data['html'])) {
+                        $embed_html = $oembed_data['html'];
+                    }
+                    if (empty($title) && !empty($oembed_data['title'])) {
+                        $title = sanitize_text_field($oembed_data['title']);
+                    }
+                    if (empty($author_name) && !empty($oembed_data['author_name'])) {
+                        $author_name = sanitize_text_field($oembed_data['author_name']);
+                    }
+                    if (empty($username) && !empty($oembed_data['author_url'])) {
+                        $username = trim(wp_parse_url($oembed_data['author_url'], PHP_URL_PATH), '/');
+                    }
+                    if (empty($image) && !empty($oembed_data['thumbnail_url'])) {
+                        $image = esc_url_raw($oembed_data['thumbnail_url']);
+                    }
+                }
+            }
+        }
+
+        // Prevent caching completely broken / empty scrape results
+        if (empty($image) && empty($description) && empty($embed_html)) {
+            return false;
         }
 
         // Extract clean author display name
@@ -498,8 +588,8 @@ class BitStream_OG_Fetcher
             }
         }
 
-        // Fetch author profile page to resolve actual profile avatar & display name
-        if (!empty($username)) {
+        // Fallback: Fetch author profile page only if avatar was not found in post HTML
+        if (empty($avatar) && !empty($username)) {
             $prof_url = 'https://www.instagram.com/' . rawurlencode($username) . '/';
             $prof_resp = wp_safe_remote_get($prof_url, $args);
             $p_code = wp_remote_retrieve_response_code($prof_resp);
@@ -542,8 +632,11 @@ class BitStream_OG_Fetcher
             'image' => $image,
             'avatar' => $avatar,
             'username' => $username,
+            'image_width' => $img_width,
+            'image_height' => $img_height,
             'instagram_type' => $type,
             'url' => $clean_url,
+            'embed_html' => $embed_html,
             'is_embeddable' => true,
             'embed_type' => 'instagram',
         ];

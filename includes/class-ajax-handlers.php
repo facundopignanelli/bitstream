@@ -1574,6 +1574,12 @@ class BitStream_Ajax_Handlers
             if (!empty($og_data['images'])) {
                 update_post_meta($post_id, '_bitstream_og_images', $og_data['images']);
             }
+            if (!empty($og_data['image_width'])) {
+                update_post_meta($post_id, '_bitstream_og_img_width', intval($og_data['image_width']));
+            }
+            if (!empty($og_data['image_height'])) {
+                update_post_meta($post_id, '_bitstream_og_img_height', intval($og_data['image_height']));
+            }
             update_post_meta($post_id, '_bitstream_og_fetched', time());
 
             $embed_data = $this->get_rebit_embed_preview_data($url);
@@ -1986,7 +1992,8 @@ class BitStream_Ajax_Handlers
                 $cached_desc = get_post_meta($post_id, '_bitstream_og_desc', true);
                 $cached_image = get_post_meta($post_id, '_bitstream_og_image', true);
 
-                if ($cached_url === $url && !empty($cached_title)) {
+                $is_incomplete_instagram = (strpos($host, 'instagram.com') !== false) && (empty($cached_image) || in_array($cached_title, ['Instagram Reel', 'Instagram Post', 'Instagram Story'], true));
+                if ($cached_url === $url && !empty($cached_title) && !$is_incomplete_instagram) {
                     wp_send_json_success([
                         'title' => $cached_title,
                         'description' => $cached_desc,
@@ -2027,6 +2034,15 @@ class BitStream_Ajax_Handlers
                 if (!empty($og_images)) {
                     update_post_meta($post_id, '_bitstream_og_images', $og_images);
                 }
+                if (!empty($fetched['image_width'])) {
+                    update_post_meta($post_id, '_bitstream_og_img_width', intval($fetched['image_width']));
+                }
+                if (!empty($fetched['image_height'])) {
+                    update_post_meta($post_id, '_bitstream_og_img_height', intval($fetched['image_height']));
+                }
+                if (!empty($fetched['embed_html'])) {
+                    update_post_meta($post_id, '_bitstream_rebit_embed_html', $fetched['embed_html']);
+                }
                 update_post_meta($post_id, '_bitstream_og_fetched', time());
             }
 
@@ -2036,11 +2052,14 @@ class BitStream_Ajax_Handlers
                 'image' => $og_img,
                 'avatar' => $og_avatar,
                 'images' => $og_images,
+                'image_width' => $fetched['image_width'] ?? 0,
+                'image_height' => $fetched['image_height'] ?? 0,
                 'url' => $url,
                 'stored' => $post_id > 0,
                 'is_embeddable' => $embed_data['is_embeddable'],
                 'embed_type' => $embed_data['embed_type'],
                 'embed_url' => $embed_data['embed_url'],
+                'embed_html' => $fetched['embed_html'] ?? '',
             ]);
 
         }
@@ -2118,6 +2137,12 @@ class BitStream_Ajax_Handlers
             }
             if (!empty($og_data['images'])) {
                 update_post_meta($preview_post_id, '_bitstream_og_images', $og_data['images']);
+            }
+            if (!empty($og_data['image_width'])) {
+                update_post_meta($preview_post_id, '_bitstream_og_img_width', intval($og_data['image_width']));
+            }
+            if (!empty($og_data['image_height'])) {
+                update_post_meta($preview_post_id, '_bitstream_og_img_height', intval($og_data['image_height']));
             }
 
             $embed_data = $this->get_rebit_embed_preview_data($url);

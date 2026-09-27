@@ -1842,6 +1842,7 @@ class BitStream_Shortcodes
         echo '</div>';
         echo '</aside>';
 
+        echo '</div>'; // End sidebar right
         echo '</div>'; // End feed layout
 
         $filters_active = $has_active_filters ? '1' : '0';
@@ -2036,7 +2037,7 @@ class BitStream_Shortcodes
         echo '</div></div>';
         
         if (current_user_can('edit_posts')) {
-            echo '<button type="button" class="bitstream-compose-fab" id="bs-compose-fab" aria-label="Compose">';
+            echo '<button type="button" class="bitstream-compose-fab hide-on-desktop" id="bs-compose-fab" aria-label="Compose">';
             echo '<i class="fa-solid fa-pen" aria-hidden="true"></i>';
             echo '</button>';
         }

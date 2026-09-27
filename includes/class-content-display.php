@@ -149,17 +149,19 @@ class BitStream_Content_Display
 
         // Check if we already have OG data for this URL
         $existing_title = get_post_meta($post_id, '_bitstream_og_title', true);
-        if (!empty($existing_title)) {
-            return; // Already has OG data, probably from AJAX fetch
+        $existing_img = get_post_meta($post_id, '_bitstream_og_image', true);
+        $is_placeholder = in_array($existing_title, ['Instagram Reel', 'Instagram Post', 'Instagram Story'], true);
+        if (!empty($existing_title) && !$is_placeholder && !empty($existing_img)) {
+            return; // Already has full OG data
         }
 
-        // If we reach here, it means we have a ReBit URL but no OG data.
+        // If we reach here, it means we have a ReBit URL but incomplete OG data.
         // Fetch OG data synchronously without fake AJAX or process termination.
         if (class_exists('BitStream_OG_Fetcher')) {
             $fetcher = new BitStream_OG_Fetcher();
             $og_data = $fetcher->fetch_og_data($rebit_url);
             if (is_array($og_data)) {
-                if (!empty($og_data['title'])) {
+                if (!empty($og_data['title']) && (empty($existing_title) || $is_placeholder)) {
                     update_post_meta($post_id, '_bitstream_og_title', sanitize_text_field($og_data['title']));
                 }
                 if (!empty($og_data['description'])) {
@@ -167,6 +169,18 @@ class BitStream_Content_Display
                 }
                 if (!empty($og_data['image'])) {
                     update_post_meta($post_id, '_bitstream_og_image', esc_url_raw($og_data['image']));
+                }
+                if (!empty($og_data['avatar'])) {
+                    update_post_meta($post_id, '_bitstream_og_avatar', esc_url_raw($og_data['avatar']));
+                }
+                if (!empty($og_data['image_width'])) {
+                    update_post_meta($post_id, '_bitstream_og_img_width', intval($og_data['image_width']));
+                }
+                if (!empty($og_data['image_height'])) {
+                    update_post_meta($post_id, '_bitstream_og_img_height', intval($og_data['image_height']));
+                }
+                if (!empty($og_data['embed_html'])) {
+                    update_post_meta($post_id, '_bitstream_rebit_embed_html', $og_data['embed_html']);
                 }
                 update_post_meta($post_id, '_bitstream_og_fetched', time());
             }
@@ -752,19 +766,27 @@ class BitStream_Content_Display
             $og_desc = get_post_meta($post_id, '_bitstream_og_desc', true);
             $og_img = get_post_meta($post_id, '_bitstream_og_image', true);
             $og_avatar = get_post_meta($post_id, '_bitstream_og_avatar', true);
-            if (strpos($og_avatar, 'unavatar.io') !== false) {
+            $embed_html = get_post_meta($post_id, '_bitstream_rebit_embed_html', true);
+            $clean_url = preg_replace('/\?.*$/', '', $rebit_url);
+            if (!empty($og_avatar) && strpos($og_avatar, 'unavatar.io') !== false) {
                 $og_avatar = '';
                 delete_post_meta($post_id, '_bitstream_og_avatar');
                 delete_transient('bitstream_og_' . md5($clean_url));
                 delete_transient('bitstream_og_' . md5($rebit_url));
             }
-            $clean_url = preg_replace('/\?.*$/', '', $rebit_url);
+            if (!empty($og_img) && strpos($og_img, 'stp=c') !== false) {
+                $og_img = '';
+                delete_post_meta($post_id, '_bitstream_og_image');
+                delete_transient('bitstream_og_' . md5($clean_url));
+                delete_transient('bitstream_og_' . md5($rebit_url));
+            }
 
-            if ((empty($og_title) || empty($og_avatar)) && class_exists('BitStream_OG_Fetcher')) {
+            $is_placeholder_title = in_array($og_title, ['Instagram Reel', 'Instagram Post', 'Instagram Story'], true);
+            if ((empty($og_title) || empty($og_avatar) || empty($og_img) || $is_placeholder_title) && class_exists('BitStream_OG_Fetcher')) {
                 $fetcher = new BitStream_OG_Fetcher();
                 $fetched = $fetcher->fetch_og_data($clean_url);
                 if (is_array($fetched)) {
-                    if (!empty($fetched['title']) && empty($og_title)) {
+                    if (!empty($fetched['title']) && (empty($og_title) || $is_placeholder_title)) {
                         $og_title = $fetched['title'];
                         update_post_meta($post_id, '_bitstream_og_title', $og_title);
                     }
@@ -776,11 +798,44 @@ class BitStream_Content_Display
                         $og_img = $fetched['image'];
                         update_post_meta($post_id, '_bitstream_og_image', $og_img);
                     }
-                    if (!empty($fetched['avatar']) && empty($og_avatar)) {
+                    if (!empty($fetched['avatar'])) {
                         $og_avatar = $fetched['avatar'];
                         update_post_meta($post_id, '_bitstream_og_avatar', $og_avatar);
                     }
+                    if (!empty($fetched['image_width'])) {
+                        update_post_meta($post_id, '_bitstream_og_img_width', intval($fetched['image_width']));
+                    }
+                    if (!empty($fetched['image_height'])) {
+                        update_post_meta($post_id, '_bitstream_og_img_height', intval($fetched['image_height']));
+                    }
+                    if (!empty($fetched['embed_html']) && empty($embed_html)) {
+                        $embed_html = $fetched['embed_html'];
+                        update_post_meta($post_id, '_bitstream_rebit_embed_html', $embed_html);
+                    }
                 }
+            }
+
+            // Fallback: If image scraping failed but official oEmbed markup is available, render interactive embed
+            if (empty($og_img) && !empty($embed_html)) {
+                echo '<div class="bit-rebit-embed-instagram bit-rebit-embed-instagram-official">'
+                    . wp_kses($embed_html, [
+                        'blockquote' => [
+                            'class' => true,
+                            'data-instgrm-captioned' => true,
+                            'data-instgrm-permalink' => true,
+                            'data-instgrm-version' => true,
+                            'style' => true,
+                        ],
+                        'div' => ['style' => true, 'class' => true],
+                        'a' => ['href' => true, 'style' => true, 'target' => true, 'rel' => true],
+                        'p' => ['style' => true, 'class' => true],
+                        'svg' => ['width' => true, 'height' => true, 'viewbox' => true, 'version' => true, 'xmlns' => true, 'xmlns:xlink' => true],
+                        'g' => ['stroke' => true, 'stroke-width' => true, 'fill' => true, 'fill-rule' => true, 'transform' => true],
+                        'path' => ['d' => true],
+                    ])
+                    . '<script async src="//www.instagram.com/embed.js"></script>'
+                    . '</div>';
+                return ob_get_clean();
             }
 
             // Determine type: Post, Reel, or Story
@@ -797,6 +852,12 @@ class BitStream_Content_Display
                     $username = $path_parts[1] ?? '';
                 } elseif ($path_parts[0] === 'p') {
                     $type_label = 'Post';
+                } elseif (!empty($path_parts[1]) && $path_parts[1] === 'p') {
+                    $username = $path_parts[0];
+                    $type_label = 'Post';
+                } elseif (!empty($path_parts[1]) && in_array($path_parts[1], ['reel', 'reels'], true)) {
+                    $username = $path_parts[0];
+                    $type_label = 'Reel';
                 } else {
                     $username = $path_parts[0];
                 }
@@ -814,27 +875,6 @@ class BitStream_Content_Display
                     update_post_meta($post_id, '_bitstream_og_avatar', $og_avatar);
                 }
                 $og_img = ''; // Do not display duplicate profile picture in story body
-            }
-
-            if (empty($og_avatar) && !empty($username)) {
-                $prof_args = [
-                    'timeout' => 8,
-                    'redirection' => 3,
-                    'user-agent' => 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
-                    'headers' => [
-                        'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                        'Accept-Language' => 'en-US,en;q=0.5',
-                    ]
-                ];
-                $prof_resp = wp_safe_remote_get('https://www.instagram.com/' . rawurlencode($username) . '/', $prof_args);
-                $p_code = wp_remote_retrieve_response_code($prof_resp);
-                if (!is_wp_error($prof_resp) && $p_code >= 200 && $p_code < 400) {
-                    $prof_html = wp_remote_retrieve_body($prof_resp);
-                    if (preg_match('/<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']/i', $prof_html, $pm)) {
-                        $og_avatar = esc_url_raw(html_entity_decode(trim($pm[1]), ENT_QUOTES, 'UTF-8'));
-                        update_post_meta($post_id, '_bitstream_og_avatar', $og_avatar);
-                    }
-                }
             }
 
             // Extract concise author display name
@@ -899,10 +939,24 @@ class BitStream_Content_Display
                 . '</div>';
 
             if (!empty($og_img)) {
-                echo '<div class="bit-instagram-media">'
+                $img_width = (int) get_post_meta($post_id, '_bitstream_og_img_width', true);
+                $img_height = (int) get_post_meta($post_id, '_bitstream_og_img_height', true);
+                $aspect_style = '';
+                if ($img_width > 0 && $img_height > 0) {
+                    $aspect_style = ' style="aspect-ratio: ' . esc_attr($img_width) . ' / ' . esc_attr($img_height) . ';"';
+                }
+
+                $is_reel = ($type_label === 'Reel');
+                $media_classes = 'bit-instagram-media' . ($is_reel ? ' bit-instagram-media-reel' : ' bit-instagram-media-post');
+
+                echo '<div class="' . esc_attr($media_classes) . '"' . ($is_reel ? '' : $aspect_style) . '>'
                     . '<a href="' . esc_url($clean_url) . '" target="_blank" rel="noopener" class="bit-instagram-media-link">'
-                    . '<img src="' . esc_url($og_img) . '" class="bit-instagram-thumb" alt="' . esc_attr($display_author) . '" loading="lazy" referrerpolicy="no-referrer">'
-                    . ($type_label === 'Reel' ? '<div class="bit-instagram-play-overlay"><i class="fa-solid fa-play"></i></div>' : '')
+                    . '<img src="' . esc_url($og_img) . '" class="bit-instagram-thumb" alt="' . esc_attr($display_author) . '" loading="lazy" referrerpolicy="no-referrer"'
+                    . ($img_width > 0 ? ' width="' . esc_attr($img_width) . '"' : '')
+                    . ($img_height > 0 ? ' height="' . esc_attr($img_height) . '"' : '')
+                    . ($is_reel ? '' : $aspect_style)
+                    . '>'
+                    . ($is_reel ? '<div class="bit-instagram-play-overlay"><i class="fa-solid fa-play"></i></div>' : '')
                     . '</a>'
                     . '</div>';
             }

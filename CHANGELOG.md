@@ -3,10 +3,10 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.4.0] - 2026-XX-XX
+## [3.4.0] - 2026-09-27
 
 ### Added
-- **Native Instagram Embed Support for Rebits**: Added rich card embedding for Instagram Posts, Reels, and Stories (`instagram.com/p/`, `/reel/`, `/stories/`). Automatically parses usernames, post types, badges, descriptions, thumbnails with Reel video play overlays, gradient ring avatars, and direct "View on Instagram" actions while preserving full compatibility with PNG card exports and dark/light feed themes.
+- **Native Instagram Embed Support for Rebits**: Added rich card embedding for Instagram Posts, Reels, and Stories (`instagram.com/p/`, `/reel/`, `/stories/`). Automatically parses usernames, post types, badges, descriptions, thumbnails preserving natural aspect ratios (1:1 square, 4:5 portrait, and landscape) with Reel video play overlays, profile picture avatars in gradient rings, and direct "View on Instagram" actions while preserving full compatibility with PNG card exports and dark/light feed themes.
 - **X / Twitter Embed Support for Rebits**: Upgraded X/Twitter Rebits to use responsive native card styling with verified author avatar, handle, exact timestamp, formatted tweet text, attached image media & multi-photo galleries, and direct X actions.
 - **Contenteditable Micro-Editor with Live Hashtag & URL Highlighting**: Upgraded composer and timeline edit modal textareas to a `contenteditable` micro-editor module (`bitstream-editor.js`). Features real-time `#hashtag` accent coloring, `http://`/`https://` URL underline highlighting, caret-anchored hashtag autocomplete popup (`Range.getBoundingClientRect()`), inline Twemoji rendering, HTML entity escaping to prevent DOM XSS, and a plain-text paste sanitizer fallback for older browsers.
 - **Direct Clipboard Image Paste in Composer**: Added support for pasting images directly from the clipboard (`Ctrl+V` / `Cmd+V`) into the composer editor (`bitstream-editor.js` & `bitstream-composer.js`). Pasted images are automatically processed, compressed if necessary, uploaded to the WordPress media library, and attached to the bit with live thumbnail previews without needing to open the media upload dialog.

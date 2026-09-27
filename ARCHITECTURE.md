@@ -119,7 +119,7 @@ This index serves as the primary map for understanding the backend and frontend 
   * `BitStream_OG_Fetcher`: Metadata fetch utility.
     * `fetch_og_data($url)`: Evaluates targets, queries transients, performs oEmbed queries, or makes SSRF-protected HTTP gets to extract title/image/descriptions.
     * `fetch_twitter_oembed($url)`: Connects to public bridge pipelines (vxtwitter/fxtwitter) and official oEmbed fallback for Twitter/X URLs to extract tweet text, author info, avatar, and media images.
-    * `fetch_instagram_data($url)`: Parses Instagram posts, reels, and stories for authors, media, and captions.
+    * `fetch_instagram_data($url)`: Parses Instagram posts, reels, and stories for authors, media images, avatars, dimensions, and captions. Canonicalizes plural `/reels/` to `/reel/`, provides fallback to Meta's public oEmbed API for embed HTML and metadata, and guards against caching empty scrape failures.
 
 ### [includes/class-error-logger.php](includes/class-error-logger.php)
 * **Description**: Logs system bugs and serves the Debug Log admin page.
@@ -233,7 +233,7 @@ This index serves as the primary map for understanding the backend and frontend 
     * `is_attachment_used($attachment_id, $exclude_post_ids)`: Checks if an attachment is still referenced by parent relations, metadata, or post content inline tags.
     * `render_card($post_id, $skip_content_filter, $options)`: Primary generator of timeline card HTML.
     * `render_nested_quoted_card($post_id, $depth)`: Renders recursively quoted posts (up to depth of 1) with specific display constraints.
-    * `render_rebit_section($post_id)`: Renders shared links or video embeds (e.g. YouTube frames or mapped oEmbed structures).
+    * `render_rebit_section($post_id)`: Renders shared links or video embeds (e.g. YouTube frames, mapped oEmbed structures, X/Twitter native cards, responsive Instagram cards preserving 1:1/portrait/landscape aspect ratios with play button overlays, and official Meta interactive embeds fallback).
     * `comment_callback($comment, $args, $depth)`: Custom walker callback for modern, semantic comment layout rendering on frontend posts.
 * **Registered Hooks**:
   * Action: `template_redirect` -> `handle_single_bit_display`

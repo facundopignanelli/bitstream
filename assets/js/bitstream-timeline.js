@@ -3724,6 +3724,9 @@
             initTwitterObserver();
             cleanupUrlParams();
             parseTimelineCards();
+            if (typeof parseEmojis === 'function') {
+                document.querySelectorAll('.bitstream-emotion-list, .bitstream-feed-sidebar-panel-emotions, .bs-search-section').forEach(el => parseEmojis(el));
+            }
         },
         syncEditPreviewArea: function () {
             if (typeof window.syncEditPreviewArea === 'function') {
