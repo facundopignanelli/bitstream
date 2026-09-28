@@ -446,6 +446,9 @@
                         .then(r => r.json())
                         .then(res => {
                             if (!res.success || !res.data) throw new Error(res.data || 'Could not load post data.');
+                            if (hEditPostId && hEditPostId.value !== String(postId)) {
+                                return;
+                            }
                             const data = res.data;
 
                             const actualPostType = data.post_type || postType;
@@ -569,6 +572,9 @@
                         .then(r => r.json())
                         .then(res => {
                             if (!res.success || !res.data) throw new Error(res.data || 'Could not load quote preview.');
+                            if (hQuotePostId && hQuotePostId.value !== String(quotePostId)) {
+                                return;
+                            }
                             const responseData = res.data;
 
                             if (previewQuoteCard) previewQuoteCard.innerHTML = responseData.quote_preview_html || '';

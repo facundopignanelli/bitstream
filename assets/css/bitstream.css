@@ -7000,12 +7000,29 @@ iframe[src*="youtube-nocookie.com"] {
     box-sizing: border-box;
 }
 
-.bitstream-quoted-preview img {
+.bitstream-quoted-preview img,
+.bit-card-quoted-nested img {
     max-width: 100%;
     height: auto;
     display: block;
-    margin: 0.5em 0;
+    margin: 0.5em auto;
     border-radius: 15px;
+}
+
+.bitstream-quoted-preview video,
+.bit-card-quoted-nested video {
+    max-width: 100% !important;
+    width: auto !important;
+    height: auto !important;
+    display: block !important;
+    margin: 0.5em auto !important;
+}
+
+.bitstream-quoted-preview .bit-card-content p:has(> img),
+.bit-card-quoted-nested .bit-card-content p:has(> img),
+.bitstream-quoted-preview .bit-card-content p:has(> video),
+.bit-card-quoted-nested .bit-card-content p:has(> video) {
+    text-align: center;
 }
 
 .bitstream-quoted-preview a,

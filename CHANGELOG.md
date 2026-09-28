@@ -3,6 +3,12 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.4.1] - 2026-09-28
+
+### Fixed
+- **Center Alignment for Quoted Bit Media**: Fixed an issue where images and media in quoted bits (`.bitstream-quoted-preview` and `.bit-card-quoted-nested`) appeared left-aligned instead of center-aligned due to an overriding `margin: 0.5em 0;` CSS rule in the stylesheet.
+- **Composer Edit and Quote In-Flight Race Condition**: Added guards to `loadEditPostData()` and `loadQuoteData()` in `bitstream-composer.js` ensuring that cancelling edit or quote mode while an asynchronous fetch is in-flight will not clobber the composer state when the request resolves.
+
 ## [3.4.0] - 2026-09-27
 
 ### Added
